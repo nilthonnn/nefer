@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dimensionador de Grupo Electrógeno</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">⚡</span>
+        <div>
+          <h1>Dimensionador de Grupo Electrógeno</h1>
+          <p class="subtitle">Calcula la potencia necesaria a partir de tus cargas eléctricas</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="btnPrint" class="btn btn-ghost" title="Generar informe imprimible">🖨️ Imprimir informe</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section class="card" id="paramsCard">
+      <h2>1. Parámetros del proyecto</h2>
+      <div class="grid grid-4">
+        <label class="field">
+          <span>Nombre del proyecto</span>
+          <input type="text" id="projectName" placeholder="Ej. Vivienda / Local comercial" />
+        </label>
+        <label class="field">
+          <span>Tensión (V)</span>
+          <input type="number" id="voltage" value="220" min="1" />
+        </label>
+        <label class="field">
+          <span>Fases</span>
+          <select id="phases">
+            <option value="1">Monofásico</option>
+            <option value="3" selected>Trifásico</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Frecuencia (Hz)</span>
+          <select id="frequency">
+            <option value="60" selected>60 Hz</option>
+            <option value="50">50 Hz</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Margen de seguridad (%)</span>
+          <input type="number" id="margin" value="20" min="0" max="200" step="1" />
+        </label>
+        <label class="field">
+          <span>Factor de potencia del generador</span>
+          <input type="number" id="genPF" value="0.8" min="0.5" max="1" step="0.01" />
+        </label>
+        <label class="field">
+          <span>Altitud del sitio (msnm)</span>
+          <input type="number" id="altitude" value="0" min="0" step="10" />
+        </label>
+        <label class="field">
+          <span>Temperatura ambiente (°C)</span>
+          <input type="number" id="temp" value="25" step="1" />
+        </label>
+      </div>
+      <p class="hint">
+        El margen de seguridad cubre variaciones de carga futuras. El derating por altitud/temperatura usado aquí
+        es una regla general de referencia (aprox. 1% de reducción de capacidad por cada 100&nbsp;msnm sobre 1000&nbsp;msnm,
+        y 1% por cada °C sobre 25&nbsp;°C). Verifica siempre la ficha técnica del fabricante para el sitio de instalación real.
+      </p>
+    </section>
+
+    <section class="card" id="loadsCard">
+      <div class="card-header-row">
+        <h2>2. Cargas eléctricas</h2>
+        <button id="btnAddRow" class="btn btn-primary">+ Agregar carga</button>
+      </div>
+      <div class="table-scroll">
+        <table id="loadsTable">
+          <thead>
+            <tr>
+              <th class="col-desc">Descripción</th>
+              <th class="col-type">Tipo / Arranque</th>
+              <th class="col-power">Potencia</th>
+              <th class="col-unit">Unidad</th>
+              <th class="col-qty">Cant.</th>
+              <th class="col-pf">cos φ</th>
+              <th class="col-startf">Factor arranque (×)</th>
+              <th class="col-kw">kW total</th>
+              <th class="col-kva">kVA total</th>
+              <th class="col-kvastart">kVA arranque</th>
+              <th class="col-inc">Incluir</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody id="loadsTableBody"></tbody>
+        </table>
+      </div>
+      <p class="hint">
+        El "factor de arranque" multiplica el kVA nominal para estimar el pico de corriente al arrancar motores.
+        Valores típicos: resistiva/electrónica ≈ 1×, motor arranque directo (DOL) ≈ 6×, estrella-triángulo o arranque suave ≈ 3×,
+        variador de frecuencia (VFD) ≈ 1.2×. Puedes editar el valor manualmente si tienes el dato del fabricante.
+      </p>
+    </section>
+
+    <section class="card" id="resultsCard">
+      <h2>3. Resultado del dimensionamiento</h2>
+
+      <div class="stats-grid">
+        <div class="stat-tile">
+          <span class="stat-label">Carga total en régimen</span>
+          <span class="stat-value" id="statRunningKW">0.0 kW</span>
+          <span class="stat-sub" id="statRunningKVA">0.0 kVA</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Factor de potencia global</span>
+          <span class="stat-value" id="statGlobalPF">1.00</span>
+          <span class="stat-sub">promedio ponderado de las cargas</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Pico de arranque estimado</span>
+          <span class="stat-value" id="statPeakStart">0.0 kVA</span>
+          <span class="stat-sub" id="statPeakSource">sin motores registrados</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Derating por sitio</span>
+          <span class="stat-value" id="statDerating">0%</span>
+          <span class="stat-sub" id="statDeratingDetail">altitud + temperatura</span>
+        </div>
+        <div class="stat-tile stat-tile-highlight">
+          <span class="stat-label">Generador recomendado</span>
+          <span class="stat-value" id="statRecommendedKVA">0.0 kVA</span>
+          <span class="stat-sub" id="statRecommendedKW">0.0 kW</span>
+        </div>
+        <div class="stat-tile stat-tile-highlight">
+          <span class="stat-label">Tamaño comercial sugerido</span>
+          <span class="stat-value" id="statSuggestedSize">—</span>
+          <span class="stat-sub">tamaño estándar de referencia más cercano por encima</span>
+        </div>
+      </div>
+
+      <div class="breakdown">
+        <h3>Composición de la carga</h3>
+        <div id="breakdownBars" class="bars"></div>
+      </div>
+
+      <ol class="method-notes">
+        <li>Se suma el <strong>kW</strong> y <strong>kVA</strong> en régimen permanente de todas las cargas incluidas.</li>
+        <li>Se identifica la carga con mayor salto de arranque (kVA de arranque − kVA nominal), asumiendo que es la última en arrancar mientras el resto ya está en régimen (peor caso habitual en dimensionamiento de grupos electrógenos).</li>
+        <li>Se aplica el margen de seguridad definido en los parámetros.</li>
+        <li>Se aplica el derating por altitud y temperatura del sitio.</li>
+        <li>Se convierte a kW usando el factor de potencia del generador y se redondea al tamaño comercial estándar disponible más próximo por encima.</li>
+      </ol>
+    </section>
+
+    <section class="card no-print" id="actionsCard">
+      <h2>4. Guardar / exportar</h2>
+      <div class="actions-row">
+        <button id="btnSave" class="btn btn-secondary">💾 Guardar proyecto</button>
+        <button id="btnLoad" class="btn btn-secondary">📂 Cargar proyecto guardado</button>
+        <button id="btnExportJSON" class="btn btn-secondary">⬇️ Exportar JSON</button>
+        <label class="btn btn-secondary file-btn">
+          ⬆️ Importar JSON
+          <input type="file" id="btnImportJSON" accept="application/json" hidden />
+        </label>
+        <button id="btnExportCSV" class="btn btn-secondary">⬇️ Exportar CSV de cargas</button>
+        <button id="btnReset" class="btn btn-danger">🗑️ Reiniciar</button>
+      </div>
+      <p class="hint" id="saveStatus"></p>
+    </section>
+
+  </main>
+
+  <footer class="footer no-print">
+    <p>
+      Herramienta de estimación técnica. Los resultados son orientativos: para la selección final del grupo electrógeno,
+      valida siempre contra la ficha técnica del fabricante (curvas de arranque de motores, derating por altitud/temperatura,
+      tipo de carga no lineal, THD, etc.).
+    </p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
