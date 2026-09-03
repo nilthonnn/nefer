@@ -24,12 +24,30 @@
 
   <main class="container">
 
+    <section class="print-only report-cover">
+      <h1 id="coverTitle">Informe de Dimensionamiento de Grupo Electrógeno</h1>
+      <dl class="cover-meta">
+        <div><dt>Proyecto</dt><dd id="coverProject">—</dd></div>
+        <div><dt>Cliente</dt><dd id="coverClient">—</dd></div>
+        <div><dt>Fecha</dt><dd id="coverDate">—</dd></div>
+        <div><dt>Preparado por</dt><dd id="coverPreparedBy">—</dd></div>
+      </dl>
+    </section>
+
     <section class="card" id="paramsCard">
       <h2>1. Parámetros del proyecto</h2>
       <div class="grid grid-4">
         <label class="field">
           <span>Nombre del proyecto</span>
           <input type="text" id="projectName" placeholder="Ej. Vivienda / Local comercial" />
+        </label>
+        <label class="field">
+          <span>Cliente</span>
+          <input type="text" id="clientName" placeholder="Ej. Minera XYZ" />
+        </label>
+        <label class="field">
+          <span>Preparado por</span>
+          <input type="text" id="preparedBy" placeholder="Nombre del responsable" />
         </label>
         <label class="field">
           <span>Tensión (V)</span>
@@ -83,12 +101,14 @@
           <thead>
             <tr>
               <th class="col-desc">Descripción</th>
-              <th class="col-type">Tipo / Arranque</th>
+              <th class="col-category">Categoría</th>
+              <th class="col-type">Tipo de arranque</th>
               <th class="col-power">Potencia</th>
               <th class="col-unit">Unidad</th>
               <th class="col-qty">Cant.</th>
               <th class="col-pf">cos φ</th>
               <th class="col-startf">Factor arranque (×)</th>
+              <th class="col-harmonic">Armónicos (no lineal)</th>
               <th class="col-kw">kW total</th>
               <th class="col-kva">kVA total</th>
               <th class="col-kvastart">kVA arranque</th>
@@ -101,8 +121,12 @@
       </div>
       <p class="hint">
         El "factor de arranque" multiplica el kVA nominal para estimar el pico de corriente al arrancar motores.
-        Valores típicos: resistiva/electrónica ≈ 1×, motor arranque directo (DOL) ≈ 6×, estrella-triángulo o arranque suave ≈ 3×,
+        Valores típicos: sin arranque ≈ 1×, arranque directo (DOL) ≈ 6×, estrella-triángulo o arranque suave ≈ 3×,
         variador de frecuencia (VFD) ≈ 1.2×. Puedes editar el valor manualmente si tienes el dato del fabricante.
+        La columna "Categoría" clasifica la carga (motor, iluminación, electrónica/VFD o resistiva) y es independiente
+        del tipo de arranque: por ejemplo, tomacorrientes con electrónica no tienen arranque brusco pero sí aportan
+        armónicos. El campo "Armónicos" solo aplica a cargas de categoría Electrónica/VFD y estima cuánto de esa
+        carga es corriente no lineal, para sobredimensionar el alternador.
       </p>
     </section>
 
@@ -130,6 +154,11 @@
           <span class="stat-value" id="statDerating">0%</span>
           <span class="stat-sub" id="statDeratingDetail">altitud + temperatura</span>
         </div>
+        <div class="stat-tile">
+          <span class="stat-label">Carga no lineal (armónicos)</span>
+          <span class="stat-value" id="statHarmonicFraction">0%</span>
+          <span class="stat-sub" id="statHarmonicOversize">sin sobredimensión adicional</span>
+        </div>
         <div class="stat-tile stat-tile-highlight">
           <span class="stat-label">Generador recomendado</span>
           <span class="stat-value" id="statRecommendedKVA">0.0 kVA</span>
@@ -152,6 +181,7 @@
         <li>Se identifica la carga con mayor salto de arranque (kVA de arranque − kVA nominal), asumiendo que es la última en arrancar mientras el resto ya está en régimen (peor caso habitual en dimensionamiento de grupos electrógenos).</li>
         <li>Se aplica el margen de seguridad definido en los parámetros.</li>
         <li>Se aplica el derating por altitud y temperatura del sitio.</li>
+        <li>Se estima la fracción de carga no lineal (cargas de categoría Electrónica/VFD ponderadas por su severidad de armónicos) y se aplica una sobredimensión adicional del alternador si supera ciertos umbrales.</li>
         <li>Se convierte a kW usando el factor de potencia del generador y se redondea al tamaño comercial estándar disponible más próximo por encima.</li>
       </ol>
     </section>
@@ -167,9 +197,19 @@
           <input type="file" id="btnImportJSON" accept="application/json" hidden />
         </label>
         <button id="btnExportCSV" class="btn btn-secondary">⬇️ Exportar CSV de cargas</button>
+        <label class="btn btn-secondary file-btn">
+          ⬆️ Importar CSV de cargas
+          <input type="file" id="btnImportCSV" accept=".csv,text/csv" hidden />
+        </label>
         <button id="btnReset" class="btn btn-danger">🗑️ Reiniciar</button>
       </div>
       <p class="hint" id="saveStatus"></p>
+    </section>
+
+    <section class="print-only signature-block">
+      <div>Elaborado por: <span id="sigPreparedBy"></span></div>
+      <div>Revisado por: ______________________</div>
+      <div>Fecha: <span id="sigDate"></span></div>
     </section>
 
   </main>

@@ -16,19 +16,28 @@ python3 -m http.server 8080
 
 ## Qué hace
 
-1. **Parámetros del proyecto**: tensión, fases, frecuencia, margen de seguridad,
-   factor de potencia del generador, altitud y temperatura ambiente del sitio.
+1. **Parámetros del proyecto**: nombre, cliente, preparado por, tensión, fases, frecuencia,
+   margen de seguridad, factor de potencia del generador, altitud y temperatura ambiente
+   del sitio.
 2. **Tabla de cargas**: agregas cada equipo/carga con su potencia (kW o HP), cantidad,
-   factor de potencia (cos φ) y tipo de arranque. Al elegir el tipo (resistiva, motor
-   con arranque directo, estrella-triángulo, arranque suave o variador de frecuencia)
-   se autocompleta un factor de arranque típico, editable si tienes el dato real del
-   fabricante.
+   factor de potencia (cos φ), **categoría** (Motor, Iluminación, Electrónica/VFD o
+   Resistiva) y tipo de arranque. Categoría y tipo de arranque son independientes: una
+   carga puede ser "Electrónica/VFD" (no lineal, aporta armónicos) sin tener arranque
+   brusco. Al elegir el tipo de arranque (directo, estrella-triángulo, arranque suave o
+   variador de frecuencia) se autocompleta un factor de arranque típico, editable si
+   tienes el dato real del fabricante. Las cargas de categoría "Electrónica/VFD" además
+   llevan una **severidad de armónicos** (baja/media/alta).
 3. **Resultado**: calcula la carga total en régimen, el pico de arranque estimado, aplica
-   el margen de seguridad y el derating por altitud/temperatura, y sugiere el tamaño de
-   generador (kVA/kW) recomendado, junto con el tamaño comercial estándar más cercano.
+   el margen de seguridad, el derating por altitud/temperatura y una sobredimensión
+   adicional del alternador según la fracción de carga no lineal (armónicos), y sugiere
+   el tamaño de generador (kVA/kW) recomendado junto con el tamaño comercial estándar
+   más cercano.
 4. **Guardar/exportar**: autosave en el navegador (localStorage), guardar/cargar proyecto,
-   exportar/importar JSON y exportar CSV de las cargas, más un botón de impresión con
-   estilos listos para generar un informe en PDF desde el navegador.
+   exportar/importar JSON, exportar/**importar CSV** de las cargas (parser tolerante a
+   variantes de encabezado), y un botón de impresión que genera un **informe técnico**
+   con portada (proyecto/cliente/fecha/preparado por), parámetros, cuadro de cargas,
+   resultados, composición de la carga y bloque de firmas — listo para "Guardar como PDF"
+   desde el diálogo de impresión del navegador.
 
 ## Metodología de cálculo
 
@@ -48,6 +57,15 @@ python3 -m http.server 8080
 - **Derating por sitio**: regla general de referencia (no reemplaza la ficha técnica del
   fabricante): ~1% de reducción de capacidad por cada 100 msnm sobre 1000 msnm, y ~1%
   por cada °C sobre 25 °C.
+- **Carga no lineal / armónicos**: se suma el kVA de las cargas de categoría
+  "Electrónica/VFD", ponderado por su severidad de armónicos (baja ×0.5, media ×1.0,
+  alta ×1.5), y se calcula qué fracción representa del kVA total del sistema. Esa
+  fracción determina una sobredimensión adicional del alternador por tramos
+  (`js/app.js`, constante `HARMONIC_OVERSIZE_BRACKETS`): sin sobredimensión hasta 10%,
+  ×1.10 hasta 30%, ×1.20 hasta 60%, ×1.35 por encima. Es una heurística de referencia,
+  no un cálculo de THD real — para cargas no lineales dominantes (grandes VFD,
+  rectificadores, UPS) se requiere un estudio de armónicos y una especificación de
+  alternador (paso de bobinado, reactancia subtransitoria) con el fabricante.
 - **kW recomendado**: `kVA_recomendado × factor_de_potencia_del_generador` (por defecto 0.8).
 - **Tamaño comercial sugerido**: primer valor de una lista de tamaños estándar de
   referencia (`js/app.js`, constante `STANDARD_SIZES_KVA`) que sea igual o mayor al

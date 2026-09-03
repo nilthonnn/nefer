@@ -7,13 +7,44 @@
 const HP_TO_KW = 0.746;
 
 const STARTING_PRESETS = {
-  resistive:        { label: "Resistiva / electrónica (sin arranque)", factor: 1 },
+  resistive:        { label: "Sin arranque (resistiva/electrónica)", factor: 1 },
   motor_dol:        { label: "Motor - arranque directo (DOL)",         factor: 6 },
   motor_star_delta: { label: "Motor - arranque estrella-triángulo",    factor: 3 },
   motor_soft:       { label: "Motor - arranque suave (soft starter)",  factor: 3 },
   motor_vfd:        { label: "Motor - variador de frecuencia (VFD)",   factor: 1.2 },
   custom:           { label: "Personalizado",                         factor: null },
 };
+
+// Categoría de la carga: independiente del tipo de arranque. Determina si la
+// carga aporta corriente no lineal (armónicos) para el cálculo de sobredimensión
+// del alternador.
+const CATEGORY_PRESETS = {
+  motor:           { label: "Motor" },
+  lighting:        { label: "Iluminación" },
+  electronics_vfd: { label: "Electrónica / VFD (no lineal)" },
+  resistive:       { label: "Resistiva" },
+};
+
+// Severidad de armónicos de una carga no lineal: pondera cuánto de su kVA se
+// cuenta como "no lineal" al estimar la fracción total del sistema. Es una
+// heurística de referencia (no un cálculo de THD real) para decidir si conviene
+// sobredimensionar el alternador o especificar un rectificador con filtro/reactancia.
+const HARMONIC_SEVERITY = {
+  low:    { label: "Baja (con reactancia de línea / filtro)", weight: 0.5 },
+  medium: { label: "Media (rectificador 6 pulsos estándar)",  weight: 1.0 },
+  high:   { label: "Alta (conmutada sin filtro)",              weight: 1.5 },
+};
+
+// Umbrales de fracción de carga no lineal -> sobredimensión adicional del
+// alternador. Regla general de referencia: valida contra la guía del fabricante
+// del alternador (p.ej. 2/3 de paso, reactancia subtransitoria) para cargas
+// no lineales dominantes.
+const HARMONIC_OVERSIZE_BRACKETS = [
+  { maxFractionPct: 10, factor: 1.0 },
+  { maxFractionPct: 30, factor: 1.1 },
+  { maxFractionPct: 60, factor: 1.2 },
+  { maxFractionPct: Infinity, factor: 1.35 },
+];
 
 // Tamaños comerciales de referencia (kVA) - lista genérica orientativa.
 const STANDARD_SIZES_KVA = [
@@ -25,10 +56,10 @@ const STORAGE_KEY = "genset-sizer:autosave";
 const STORAGE_SAVED_KEY = "genset-sizer:saved-project";
 
 const DEFAULT_ROWS = [
-  { id: 1, desc: "Iluminación general", type: "resistive", power: 2, unit: "kw", qty: 1, pf: 1, startFactor: 1, included: true },
-  { id: 2, desc: "Tomacorrientes / electrónica", type: "resistive", power: 3, unit: "kw", qty: 1, pf: 0.95, startFactor: 1, included: true },
-  { id: 3, desc: "Bomba de agua", type: "motor_dol", power: 5.5, unit: "hp", qty: 1, pf: 0.85, startFactor: 6, included: true },
-  { id: 4, desc: "Aire acondicionado", type: "motor_dol", power: 3, unit: "hp", qty: 2, pf: 0.85, startFactor: 6, included: true },
+  { id: 1, desc: "Iluminación general", category: "lighting", type: "resistive", power: 2, unit: "kw", qty: 1, pf: 1, startFactor: 1, harmonicSeverity: "medium", included: true },
+  { id: 2, desc: "Tomacorrientes / electrónica", category: "electronics_vfd", type: "resistive", power: 3, unit: "kw", qty: 1, pf: 0.95, startFactor: 1, harmonicSeverity: "medium", included: true },
+  { id: 3, desc: "Bomba de agua", category: "motor", type: "motor_dol", power: 5.5, unit: "hp", qty: 1, pf: 0.85, startFactor: 6, harmonicSeverity: "medium", included: true },
+  { id: 4, desc: "Aire acondicionado", category: "motor", type: "motor_dol", power: 3, unit: "hp", qty: 2, pf: 0.85, startFactor: 6, harmonicSeverity: "medium", included: true },
 ];
 
 /* =========================================================================
@@ -73,6 +104,24 @@ function computeLoadRow(row) {
   return { unitKW, totalKW, totalKVA, startFactor, startKVA };
 }
 
+function harmonicOversizeFactor(fractionPct) {
+  const bracket = HARMONIC_OVERSIZE_BRACKETS.find((b) => fractionPct <= b.maxFractionPct);
+  return bracket ? bracket.factor : 1;
+}
+
+function computeHarmonics(computed, sumKVA) {
+  let nonlinearWeightedKVA = 0;
+  computed.forEach((c) => {
+    if (c.category === "electronics_vfd") {
+      const severity = HARMONIC_SEVERITY[c.harmonicSeverity] || HARMONIC_SEVERITY.medium;
+      nonlinearWeightedKVA += c.totalKVA * severity.weight;
+    }
+  });
+  const fractionPct = sumKVA > 0 ? clamp((nonlinearWeightedKVA / sumKVA) * 100, 0, 100) : 0;
+  const oversizeFactor = harmonicOversizeFactor(fractionPct);
+  return { nonlinearWeightedKVA, fractionPct, oversizeFactor };
+}
+
 function computeSummary(rows, params) {
   const includedRows = rows.filter((r) => r.included !== false);
   const computed = includedRows.map((r) => ({ ...r, ...computeLoadRow(r) }));
@@ -83,6 +132,8 @@ function computeSummary(rows, params) {
     sumKW += c.totalKW;
     sumKVA += c.totalKVA;
   });
+
+  const harmonics = computeHarmonics(computed, sumKVA);
 
   // Carga que produce el mayor salto de arranque (kVA arranque - kVA nominal).
   // Se asume que esta carga arranca de última, con el resto ya en régimen: peor caso típico.
@@ -106,7 +157,8 @@ function computeSummary(rows, params) {
   const deratingPct = clamp((altitudeExcess / 100) * 1 + tempExcess * 1, 0, 50);
   const deratingFactor = 1 - deratingPct / 100;
 
-  const recommendedKVA = deratingFactor > 0 ? beforeDerating / deratingFactor : beforeDerating;
+  const beforeHarmonics = deratingFactor > 0 ? beforeDerating / deratingFactor : beforeDerating;
+  const recommendedKVA = beforeHarmonics * harmonics.oversizeFactor;
   const genPF = clamp(toNumber(params.genPF, 0.8), 0.5, 1);
   const recommendedKW = recommendedKVA * genPF;
 
@@ -125,6 +177,8 @@ function computeSummary(rows, params) {
     beforeDerating,
     deratingPct,
     deratingFactor,
+    harmonics,
+    beforeHarmonics,
     recommendedKVA,
     recommendedKW,
     suggestedSize,
@@ -139,6 +193,8 @@ const state = {
   rows: [],
   params: {
     projectName: "",
+    clientName: "",
+    preparedBy: "",
     voltage: 220,
     phases: "3",
     frequency: "60",
@@ -161,14 +217,30 @@ function renderStartTypeOptions(selected) {
     .join("");
 }
 
+function renderCategoryOptions(selected) {
+  return Object.entries(CATEGORY_PRESETS)
+    .map(([key, preset]) => `<option value="${key}" ${key === selected ? "selected" : ""}>${preset.label}</option>`)
+    .join("");
+}
+
+function renderHarmonicOptions(selected) {
+  return Object.entries(HARMONIC_SEVERITY)
+    .map(([key, preset]) => `<option value="${key}" ${key === selected ? "selected" : ""}>${preset.label}</option>`)
+    .join("");
+}
+
 function renderRows() {
   tableBody.innerHTML = "";
   state.rows.forEach((row) => {
     const computedRow = computeLoadRow(row);
+    const isNonlinear = row.category === "electronics_vfd";
     const tr = document.createElement("tr");
     tr.dataset.id = String(row.id);
     tr.innerHTML = `
       <td><input type="text" data-field="desc" value="${escapeHtml(row.desc)}" placeholder="Descripción" /></td>
+      <td>
+        <select data-field="category">${renderCategoryOptions(row.category)}</select>
+      </td>
       <td>
         <select data-field="type">${renderStartTypeOptions(row.type)}</select>
       </td>
@@ -182,6 +254,9 @@ function renderRows() {
       <td><input type="number" data-field="qty" value="${row.qty}" min="0" step="1" /></td>
       <td><input type="number" data-field="pf" value="${row.pf}" min="0.1" max="1" step="0.01" /></td>
       <td><input type="number" data-field="startFactor" value="${row.startFactor}" min="0" step="0.1" /></td>
+      <td>
+        <select data-field="harmonicSeverity" ${isNonlinear ? "" : "disabled"} title="${isNonlinear ? "" : "Solo aplica a categoría Electrónica/VFD"}">${renderHarmonicOptions(row.harmonicSeverity)}</select>
+      </td>
       <td class="readout">${formatNumber(computedRow.totalKW)}</td>
       <td class="readout">${formatNumber(computedRow.totalKVA)}</td>
       <td class="readout">${formatNumber(computedRow.startKVA)}</td>
@@ -218,6 +293,11 @@ function renderResults() {
   document.getElementById("statDeratingDetail").textContent =
     `altitud ${formatNumber(state.params.altitude, 0)} msnm · ${formatNumber(state.params.temp, 0)} °C`;
 
+  document.getElementById("statHarmonicFraction").textContent = `${formatNumber(summary.harmonics.fractionPct, 1)}%`;
+  document.getElementById("statHarmonicOversize").textContent = summary.harmonics.oversizeFactor > 1
+    ? `sobredimensión ×${formatNumber(summary.harmonics.oversizeFactor, 2)} aplicada al alternador`
+    : "sin sobredimensión adicional";
+
   document.getElementById("statRecommendedKVA").textContent = `${formatNumber(summary.recommendedKVA)} kVA`;
   document.getElementById("statRecommendedKW").textContent = `≈ ${formatNumber(summary.recommendedKW)} kW`;
 
@@ -226,6 +306,17 @@ function renderResults() {
     : "fuera de rango estándar";
 
   renderBreakdown(summary);
+  renderReportMeta();
+}
+
+function renderReportMeta() {
+  const today = new Date().toLocaleDateString("es");
+  document.getElementById("coverProject").textContent = state.params.projectName || "—";
+  document.getElementById("coverClient").textContent = state.params.clientName || "—";
+  document.getElementById("coverDate").textContent = today;
+  document.getElementById("coverPreparedBy").textContent = state.params.preparedBy || "—";
+  document.getElementById("sigPreparedBy").textContent = state.params.preparedBy || "";
+  document.getElementById("sigDate").textContent = today;
 }
 
 function renderBreakdown(summary) {
@@ -275,12 +366,14 @@ document.getElementById("btnAddRow").addEventListener("click", () => {
   state.rows.push({
     id: nextRowId(),
     desc: "",
+    category: "resistive",
     type: "resistive",
     power: 1,
     unit: "kw",
     qty: 1,
     pf: 1,
     startFactor: 1,
+    harmonicSeverity: "medium",
     included: true,
   });
   renderAll();
@@ -303,14 +396,14 @@ tableBody.addEventListener("input", (e) => {
     if (preset && preset.factor !== null) {
       row.startFactor = preset.factor;
     }
-  } else if (["power", "qty", "pf", "startFactor"].includes(field)) {
-    row[field] = e.target.value;
   } else {
     row[field] = e.target.value;
   }
 
-  // Si cambió el tipo, hay que re-renderizar toda la fila para reflejar el nuevo factor de arranque.
-  if (field === "type") {
+  // Si cambió el tipo o la categoría, hay que re-renderizar toda la fila: el tipo
+  // puede cambiar el factor de arranque sugerido, y la categoría habilita/deshabilita
+  // el selector de armónicos.
+  if (field === "type" || field === "category") {
     renderRows();
   } else {
     updateRowReadouts(tr, row);
@@ -343,6 +436,8 @@ tableBody.addEventListener("click", (e) => {
 
 const paramInputs = {
   projectName: document.getElementById("projectName"),
+  clientName: document.getElementById("clientName"),
+  preparedBy: document.getElementById("preparedBy"),
   voltage: document.getElementById("voltage"),
   phases: document.getElementById("phases"),
   frequency: document.getElementById("frequency"),
@@ -459,20 +554,25 @@ document.getElementById("btnImportJSON").addEventListener("change", (e) => {
   e.target.value = "";
 });
 
+const CSV_HEADER = [
+  "Descripcion", "Categoria", "TipoArranque", "Potencia", "Unidad", "Cantidad",
+  "cosPhi", "FactorArranque", "SeveridadArmonicos", "kW_total", "kVA_total", "kVA_arranque", "Incluida",
+];
+
 document.getElementById("btnExportCSV").addEventListener("click", () => {
-  const header = ["Descripcion", "Tipo", "Potencia", "Unidad", "Cantidad", "cosPhi", "FactorArranque", "kW_total", "kVA_total", "kVA_arranque", "Incluida"];
-  const lines = [header.join(",")];
+  const lines = [CSV_HEADER.join(",")];
   state.rows.forEach((row) => {
     const c = computeLoadRow(row);
-    const preset = STARTING_PRESETS[row.type];
     lines.push([
       csvEscape(row.desc),
-      csvEscape(preset ? preset.label : row.type),
+      row.category || "",
+      row.type,
       row.power,
       row.unit,
       row.qty,
       row.pf,
       row.startFactor,
+      row.harmonicSeverity || "",
       c.totalKW.toFixed(2),
       c.totalKVA.toFixed(2),
       c.startKVA.toFixed(2),
@@ -483,11 +583,141 @@ document.getElementById("btnExportCSV").addEventListener("click", () => {
   downloadBlob(blob, `${slugify(state.params.projectName) || "cargas-grupo-electrogeno"}.csv`);
 });
 
+// ---- Importación de CSV de cargas ----
+// Parser tolerante RFC4180 (campos entrecomillados, comas y comillas escapadas).
+function parseCSV(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; }
+        else inQuotes = false;
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      row.push(field); field = "";
+    } else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      row.push(field); field = "";
+      rows.push(row); row = [];
+    } else {
+      field += ch;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows.filter((r) => r.some((cell) => cell.trim() !== ""));
+}
+
+// Mapea variantes comunes de encabezado (con/sin tilde, mayúsculas, alias) a
+// nuestros campos internos, para tolerar CSV de terceros además del propio.
+const CSV_HEADER_ALIASES = {
+  descripcion: "desc", descripción: "desc", description: "desc",
+  categoria: "category", categoría: "category",
+  tipoarranque: "type", tipo: "type", tipodearranque: "type",
+  potencia: "power",
+  unidad: "unit",
+  cantidad: "qty", cant: "qty",
+  cosphi: "pf", cosφ: "pf", fp: "pf", factorpotencia: "pf",
+  factorarranque: "startFactor",
+  severidadarmonicos: "harmonicSeverity", "severidadarmónicos": "harmonicSeverity", armonicos: "harmonicSeverity",
+  incluida: "included",
+};
+
+function normalizeHeaderKey(key) {
+  return String(key || "").trim().toLowerCase().replace(/\s+/g, "");
+}
+
+function findCategoryKeyByLabel(label) {
+  const found = Object.entries(CATEGORY_PRESETS).find(([, p]) => p.label.toLowerCase() === label.toLowerCase());
+  return found ? found[0] : null;
+}
+
+function findStartTypeKeyByLabel(label) {
+  const found = Object.entries(STARTING_PRESETS).find(([, p]) => p.label.toLowerCase() === label.toLowerCase());
+  return found ? found[0] : null;
+}
+
+function importLoadsFromCSV(text) {
+  const table = parseCSV(text);
+  if (table.length < 2) return { imported: [], skipped: 0 };
+
+  const headerKeys = table[0].map((h) => CSV_HEADER_ALIASES[normalizeHeaderKey(h)] || normalizeHeaderKey(h));
+  const imported = [];
+  let skipped = 0;
+
+  for (let i = 1; i < table.length; i++) {
+    const cells = table[i];
+    const record = {};
+    headerKeys.forEach((key, idx) => { record[key] = cells[idx] !== undefined ? cells[idx].trim() : ""; });
+
+    const power = toNumber(record.power, NaN);
+    if (!record.desc || !Number.isFinite(power)) { skipped++; continue; }
+
+    const unit = (record.unit || "kw").toLowerCase() === "hp" ? "hp" : "kw";
+    const categoryKey = CATEGORY_PRESETS[record.category]
+      ? record.category
+      : (findCategoryKeyByLabel(record.category) || "resistive");
+    const typeKey = STARTING_PRESETS[record.type]
+      ? record.type
+      : (findStartTypeKeyByLabel(record.type) || "resistive");
+    const harmonicKey = HARMONIC_SEVERITY[record.harmonicSeverity] ? record.harmonicSeverity : "medium";
+
+    imported.push({
+      id: nextRowId(),
+      desc: record.desc,
+      category: categoryKey,
+      type: typeKey,
+      power,
+      unit,
+      qty: Math.max(0, toNumber(record.qty, 1)),
+      pf: clamp(toNumber(record.pf, 1), 0.05, 1),
+      startFactor: Math.max(0, toNumber(record.startFactor, STARTING_PRESETS[typeKey].factor ?? 1)),
+      harmonicSeverity: harmonicKey,
+      included: !record.included || /^(si|sí|s|yes|y|true|1)$/i.test(record.included),
+    });
+  }
+
+  return { imported, skipped };
+}
+
+document.getElementById("btnImportCSV").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const { imported, skipped } = importLoadsFromCSV(String(reader.result));
+    if (imported.length === 0) {
+      setSaveStatus("No se encontraron filas válidas en el CSV.");
+      return;
+    }
+    const replace = confirm(
+      `Se leyeron ${imported.length} carga(s) válida(s)${skipped ? ` (${skipped} fila(s) omitida(s) por datos incompletos)` : ""}.\n\n` +
+      `Aceptar = reemplazar el cuadro de cargas actual.\nCancelar = agregarlas al final del cuadro actual.`
+    );
+    state.rows = replace ? imported : [...state.rows, ...imported];
+    renderAll();
+    persistAutosave();
+    setSaveStatus(`Importación completa: ${imported.length} carga(s)${skipped ? `, ${skipped} omitida(s)` : ""}.`);
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
 document.getElementById("btnReset").addEventListener("click", () => {
   if (!confirm("¿Reiniciar el proyecto actual? Se perderán los cambios no guardados.")) return;
   state.rows = DEFAULT_ROWS.map((r) => ({ ...r, id: nextRowId() }));
   state.params = {
     projectName: "",
+    clientName: "",
+    preparedBy: "",
     voltage: 220,
     phases: "3",
     frequency: "60",
