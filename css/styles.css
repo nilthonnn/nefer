@@ -15,6 +15,12 @@
 
 * { box-sizing: border-box; }
 
+/* El atributo hidden debe ganar siempre, incluso sobre reglas de layout como
+   .field{display:flex} — sin esto, un elemento oculto vía JS (el.hidden =
+   true) se sigue mostrando porque una regla de autor con la misma
+   especificidad que [hidden] gana por orden de cascada. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;

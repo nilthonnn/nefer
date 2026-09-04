@@ -50,12 +50,22 @@
           <input type="text" id="preparedBy" placeholder="Nombre del responsable" />
         </label>
         <label class="field">
+          <span>Tipo de conexión</span>
+          <select id="connectionType">
+            <option value="220_1f">220V Monofásico (F-N)</option>
+            <option value="220_3f">220V Trifásico (Δ, sin neutro)</option>
+            <option value="380_3f" selected>380V Trifásico + Neutro (220V F-N) — estándar Perú</option>
+            <option value="440_3f">440V Trifásico</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </label>
+        <label class="field">
           <span>Tensión (V)</span>
-          <input type="number" id="voltage" value="220" min="1" />
+          <input type="number" id="voltage" value="380" min="1" disabled />
         </label>
         <label class="field">
           <span>Fases</span>
-          <select id="phases">
+          <select id="phases" disabled>
             <option value="1">Monofásico</option>
             <option value="3" selected>Trifásico</option>
           </select>
@@ -118,6 +128,9 @@
         </label>
       </div>
       <p class="hint">
+        El "Tipo de conexión" fija Tensión y Fases de forma consistente (380V trifásico + neutro, con 220V fase-neutro,
+        es el esquema estándar de baja tensión en Perú); elige "Personalizado" para editar Tensión/Fases a mano en
+        otro esquema. Ninguno de los dos afecta el cálculo de kVA/kW en sí — es información del sitio para el informe.
         El margen de seguridad cubre variaciones de carga futuras. El derating por altitud/temperatura es una regla
         general de referencia (aprox. 1% de reducción de capacidad por cada 100&nbsp;msnm sobre 1000&nbsp;msnm, y 1%
         por cada °C sobre 25&nbsp;°C, para un motor turboalimentado); la tecnología del motor escala esa tasa

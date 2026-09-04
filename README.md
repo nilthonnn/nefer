@@ -16,13 +16,17 @@ python3 -m http.server 8080
 
 ## Qué hace
 
-1. **Parámetros del proyecto**: nombre, cliente, preparado por, tensión, fases, frecuencia,
-   margen de seguridad, factor de potencia del generador, altitud y temperatura ambiente
-   del sitio, **tecnología del motor** (aspirado natural / turboalimentado / turbo +
-   intercooler — escala la tasa de derating), **régimen de operación** (Standby / Prime /
-   Continuous — Continuous suma holgura porque no admite sobrecarga transitoria), y
-   **reactancia X"d del alternador + clase de rendimiento ISO 8528-5** (G1–G4) para el
-   criterio de caída de tensión de arranque.
+1. **Parámetros del proyecto**: nombre, cliente, preparado por, **tipo de conexión**
+   (220V monofásico, 220V trifásico Δ, 380V trifásico + neutro — estándar de baja tensión
+   en Perú —, 440V trifásico, o personalizado), frecuencia, margen de seguridad, factor
+   de potencia del generador, altitud y temperatura ambiente del sitio, **tecnología del
+   motor** (aspirado natural / turboalimentado / turbo + intercooler — escala la tasa de
+   derating), **régimen de operación** (Standby / Prime / Continuous — Continuous suma
+   holgura porque no admite sobrecarga transitoria), y **reactancia X"d del alternador +
+   clase de rendimiento ISO 8528-5** (G1–G4) para el criterio de caída de tensión de
+   arranque. El tipo de conexión fija Tensión y Fases automáticamente (quedan editables
+   solo en "Personalizado"); ninguno de los dos entra en el cálculo de kVA/kW — es
+   información del sitio para el informe.
 2. **Tabla de cargas**: agregas cada equipo/carga con su potencia (kW o HP), cantidad,
    factor de potencia (cos φ), **categoría** (Motor, Iluminación, Electrónica/VFD o
    Resistiva) y tipo de arranque. Categoría y tipo de arranque son independientes: una
@@ -216,3 +220,14 @@ Incrementa `CALC_SCHEMA_VERSION` cada vez que un cambio en `computeLoadRow` o
   los datos reales del fabricante que uses.
 - Editar `PERFORMANCE_CLASS_PRESETS` en `js/calc.js` para ajustar los límites de %dip
   por clase ISO 8528-5.
+- Editar `CONNECTION_TYPE_PRESETS` en `js/calc.js` para agregar otros esquemas de tensión
+  además de 220V/380V/440V (p. ej. 208V, 240V, 600V según el país).
+
+## Nota técnica: `hidden` y CSS
+
+`css/styles.css` incluye `[hidden] { display: none !important; }`. Sin esa regla, un
+elemento oculto vía `el.hidden = true` en JS se sigue mostrando en pantalla, porque una
+regla de autor con la misma especificidad que el selector `[hidden]` del navegador
+(como `.field { display: flex; }`) gana la cascada por orden de aparición — el atributo
+`hidden` por sí solo no basta. Si agregas un campo condicional nuevo con `hidden`,
+no necesitas repetir este fix: ya es una regla global.

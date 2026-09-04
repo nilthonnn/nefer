@@ -144,3 +144,16 @@ test("computeSummary: filas con included=false no cuentan en el total", () => {
   const s = calc.computeSummary(rows, baseParams());
   assert.equal(s.sumKW, 10);
 });
+
+test("CONNECTION_TYPE_PRESETS: cada preset trae voltaje+fases coherentes, salvo 'custom'", () => {
+  for (const [key, preset] of Object.entries(calc.CONNECTION_TYPE_PRESETS)) {
+    if (key === "custom") {
+      assert.equal(preset.voltage, null);
+      assert.equal(preset.phases, null);
+    } else {
+      assert.ok(preset.voltage > 0, `${key} debe tener voltaje > 0`);
+      assert.ok(preset.phases === "1" || preset.phases === "3", `${key} debe ser monofásico o trifásico`);
+    }
+  }
+  assert.ok(calc.CONNECTION_TYPE_PRESETS["380_3f"], "debe existir el estándar peruano 380V trifásico + neutro");
+});

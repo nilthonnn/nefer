@@ -63,6 +63,19 @@ const REGIME_PRESETS = {
   continuous: { label: "Continuous (COP) — 100% constante, sin sobrecarga", factor: 1.10 },
 };
 
+// Tipo de conexión: no entra en el cálculo de kVA/kW (que es independiente de
+// la tensión), pero fija consistentemente Tensión + Fases en vez de dejarlos
+// como dos campos sueltos que se puedan combinar de forma poco realista
+// (p.ej. "220V trifásico" ambiguo). 380V trifásico + neutro (220V F-N) es el
+// esquema estándar de baja tensión en Perú.
+const CONNECTION_TYPE_PRESETS = {
+  "220_1f": { label: "220V Monofásico (F-N)",                                    voltage: 220, phases: "1" },
+  "220_3f": { label: "220V Trifásico (Δ, sin neutro)",                           voltage: 220, phases: "3" },
+  "380_3f": { label: "380V Trifásico + Neutro (220V F-N) — estándar Perú",       voltage: 380, phases: "3" },
+  "440_3f": { label: "440V Trifásico",                                          voltage: 440, phases: "3" },
+  custom:   { label: "Personalizado",                                           voltage: null, phases: null },
+};
+
 // Tecnología del motor: cambia qué tan rápido pierde potencia con la altitud y
 // la temperatura. El multiplicador escala la tasa base (~1%/100msnm,
 // ~1%/°C) usada por defecto para un motor turboalimentado.
@@ -340,6 +353,7 @@ if (typeof module !== "undefined" && module.exports) {
     CATEGORY_PRESETS,
     HARMONIC_SEVERITY,
     HARMONIC_OVERSIZE_BRACKETS,
+    CONNECTION_TYPE_PRESETS,
     REGIME_PRESETS,
     ENGINE_TECH_PRESETS,
     PERFORMANCE_CLASS_PRESETS,

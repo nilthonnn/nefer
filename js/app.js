@@ -16,7 +16,8 @@ const DEFAULT_PARAMS = {
   projectName: "",
   clientName: "",
   preparedBy: "",
-  voltage: 220,
+  connectionType: "380_3f",
+  voltage: 380,
   phases: "3",
   frequency: "60",
   margin: 20,
@@ -302,6 +303,7 @@ const paramInputs = {
   projectName: document.getElementById("projectName"),
   clientName: document.getElementById("clientName"),
   preparedBy: document.getElementById("preparedBy"),
+  connectionType: document.getElementById("connectionType"),
   voltage: document.getElementById("voltage"),
   phases: document.getElementById("phases"),
   frequency: document.getElementById("frequency"),
@@ -320,6 +322,7 @@ Object.entries(paramInputs).forEach(([key, el]) => {
   if (!el) return;
   el.addEventListener("input", () => {
     state.params[key] = el.value;
+    if (key === "connectionType") applyConnectionTypePreset();
     updateCustomDipVisibility();
     renderResults();
     persistAutosave();
@@ -332,11 +335,28 @@ function updateCustomDipVisibility() {
   wrap.hidden = state.params.performanceClass !== "G4";
 }
 
+// El "tipo de conexión" fija Tensión + Fases de forma consistente (evita
+// combinaciones poco realistas como "220V trifásico sin aclarar si es Δ o
+// con neutro"). Solo con "Personalizado" quedan editables a mano.
+function applyConnectionTypePreset() {
+  const preset = CONNECTION_TYPE_PRESETS[state.params.connectionType] || CONNECTION_TYPE_PRESETS.custom;
+  const isCustom = state.params.connectionType === "custom";
+  if (!isCustom) {
+    state.params.voltage = preset.voltage;
+    state.params.phases = preset.phases;
+    if (paramInputs.voltage) paramInputs.voltage.value = preset.voltage;
+    if (paramInputs.phases) paramInputs.phases.value = preset.phases;
+  }
+  if (paramInputs.voltage) paramInputs.voltage.disabled = !isCustom;
+  if (paramInputs.phases) paramInputs.phases.disabled = !isCustom;
+}
+
 function applyParamsToInputs() {
   Object.entries(paramInputs).forEach(([key, el]) => {
     if (!el) return;
     el.value = state.params[key];
   });
+  applyConnectionTypePreset();
   updateCustomDipVisibility();
 }
 
@@ -344,10 +364,24 @@ function applyParamsToInputs() {
  * Persistencia: autosave, guardar/cargar, import/export
  * ========================================================================= */
 
+// Proyectos guardados antes de que existiera "connectionType" solo tienen
+// voltage/phases sueltos. Si calzan con un preset conocido lo usamos (sin
+// cambiar sus valores); si no, "custom" preserva exactamente lo que tenían
+// guardado en vez de pisarlo con el valor por defecto actual (380V).
+function inferConnectionType(params) {
+  if (params && params.connectionType) return params.connectionType;
+  if (!params || params.voltage == null || params.phases == null) return DEFAULT_PARAMS.connectionType;
+  const match = Object.entries(CONNECTION_TYPE_PRESETS).find(
+    ([key, p]) => key !== "custom" && Number(p.voltage) === Number(params.voltage) && String(p.phases) === String(params.phases)
+  );
+  return match ? match[0] : "custom";
+}
+
 function migrateLoadedState(parsed) {
   const loadedVersion = Number(parsed.schemaVersion) || 0;
   state.rows = parsed.rows || [];
   state.params = { ...DEFAULT_PARAMS, ...parsed.params };
+  state.params.connectionType = inferConnectionType(parsed.params);
   state.schemaVersion = CALC_SCHEMA_VERSION;
   rowIdCounter = Math.max(1, ...state.rows.map((r) => toNumber(r.id, 0) + 1));
   return loadedVersion !== CALC_SCHEMA_VERSION;
