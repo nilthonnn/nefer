@@ -37,12 +37,20 @@ python3 -m http.server 8080
    HVAC, iluminación, hornos, cargadores/UPS, herramientas) con potencia, cos φ, eficiencia
    y tipo de arranque precargados. Se abre con el botón "📚 Librería de cargas", tiene
    buscador y filtro por grupo, y cada "+ Añadir" agrega una fila lista a la tabla.
-5. **Guardar/exportar**: autosave en el navegador (localStorage), guardar/cargar proyecto,
+5. **Normativa de referencia**: tarjeta con las normas eléctricas y de vialidad/accesos
+   aplicables (Perú e internacional) — ver sección dedicada más abajo. Se incluye también
+   en el informe impreso.
+6. **Guardar/exportar**: autosave en el navegador (localStorage), guardar/cargar proyecto,
    exportar/importar JSON, exportar/**importar CSV** de las cargas (parser tolerante a
    variantes de encabezado), y un botón de impresión que genera un **informe técnico**
    con portada (proyecto/cliente/fecha/preparado por), parámetros, cuadro de cargas,
-   resultados, composición de la carga y bloque de firmas — listo para "Guardar como PDF"
-   desde el diálogo de impresión del navegador.
+   resultados, composición de la carga, normativa aplicable y bloque de firmas — listo
+   para "Guardar como PDF" desde el diálogo de impresión del navegador.
+
+   > El PDF se genera con la función de impresión del propio navegador (`window.print()`
+   > + hoja de estilos `@media print`). Esto solo funciona abriendo `index.html`
+   > directamente (o sirviéndolo localmente) — **no** funciona dentro del sandbox de un
+   > Artifact/preview embebido, que bloquea descargas e impresión por seguridad.
 
 ## Metodología de cálculo
 
@@ -84,6 +92,31 @@ python3 -m http.server 8080
 > ⚠️ Esta herramienta da una estimación orientativa. Para la selección final del grupo
 > electrógeno, valida siempre contra la ficha técnica del fabricante (curvas reales de
 > arranque de motores, derating específico del modelo, tipo de carga no lineal, THD, etc.).
+
+## Normativa de referencia
+
+La app incluye una tarjeta con el marco normativo aplicable a dimensionamiento e
+instalación de grupos electrógenos, orientada a Perú con referencias internacionales:
+
+- **Eléctrica (Perú)**: Código Nacional de Electricidad (CNE), Tomo V – Utilización,
+  Sección 240 "Sistemas de Emergencia" (Ministerio de Energía y Minas); y la Norma
+  Técnica **EM.010** "Instalaciones Eléctricas Interiores" del Reglamento Nacional de
+  Edificaciones (RNE), aprobada por RM N.° 083-2019-VIVIENDA.
+- **Instalación / distancias (referencia internacional)**: NFPA 37 y NFPA 110 —
+  separación mínima orientativa de 1.5 m (5 ft) desde aberturas, ventanas, rejillas de
+  ventilación y materiales combustibles; el aire de escape no debe recircular hacia la
+  edificación.
+- **Vialidad / accesos (Perú)**: RNE Norma **A.010** "Condiciones Generales de Diseño"
+  (accesos vehiculares: ancho máximo ≈12 m, ángulo 30°–45°) y Norma **GH.020**
+  "Componentes de Diseño Urbano" (vías de habilitación urbana).
+- **Fuera de Perú**: IEC 60364 (instalaciones eléctricas de baja tensión) y NFPA 70/NEC
+  (Estados Unidos), artículos 700/701/702 sobre sistemas de emergencia y espera.
+
+Es orientación general recopilada de fuentes públicas — verifica siempre el texto legal
+vigente y valida con un ingeniero colegiado y la autoridad competente (municipalidad,
+OSINERGMIN, Indeci, o el reglamento de seguridad de la operación minera) antes de una
+emisión de ingeniería final, ya que los requisitos exactos dependen del uso, la potencia
+y la ubicación específica del proyecto.
 
 ## Estructura del proyecto
 
