@@ -83,11 +83,49 @@
           <span>Temperatura ambiente (°C)</span>
           <input type="number" id="temp" value="25" step="1" />
         </label>
+        <label class="field">
+          <span>Tecnología del motor</span>
+          <select id="engineTech">
+            <option value="aspirated">Aspirado natural</option>
+            <option value="turbo" selected>Turboalimentado</option>
+            <option value="turbo_intercooler">Turbo + intercooler</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Régimen de operación</span>
+          <select id="regime">
+            <option value="standby" selected>Standby (ESP)</option>
+            <option value="prime">Prime (PRP)</option>
+            <option value="continuous">Continuous (COP)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Reactancia subtransitoria X"d del alternador (%)</span>
+          <input type="number" id="generatorXdPct" value="15" min="5" max="30" step="0.5" />
+        </label>
+        <label class="field">
+          <span>Clase de rendimiento (ISO 8528-5)</span>
+          <select id="performanceClass">
+            <option value="G1">G1 — no crítico (≤25% dip)</option>
+            <option value="G2">G2 — comercial estándar (≤20% dip)</option>
+            <option value="G3" selected>G3 — industrial exigente (≤15% dip)</option>
+            <option value="G4">G4 — a medida</option>
+          </select>
+        </label>
+        <label class="field" id="customMaxDipPctField" hidden>
+          <span>%dip máximo aceptado (clase G4)</span>
+          <input type="number" id="customMaxDipPct" value="15" min="1" max="30" step="0.5" />
+        </label>
       </div>
       <p class="hint">
-        El margen de seguridad cubre variaciones de carga futuras. El derating por altitud/temperatura usado aquí
-        es una regla general de referencia (aprox. 1% de reducción de capacidad por cada 100&nbsp;msnm sobre 1000&nbsp;msnm,
-        y 1% por cada °C sobre 25&nbsp;°C). Verifica siempre la ficha técnica del fabricante para el sitio de instalación real.
+        El margen de seguridad cubre variaciones de carga futuras. El derating por altitud/temperatura es una regla
+        general de referencia (aprox. 1% de reducción de capacidad por cada 100&nbsp;msnm sobre 1000&nbsp;msnm, y 1%
+        por cada °C sobre 25&nbsp;°C, para un motor turboalimentado); la tecnología del motor escala esa tasa
+        (aspirado natural deratinga más rápido, turbo+intercooler menos). El régimen de operación agrega holgura
+        adicional solo para Continuous (COP), que no admite sobrecarga transitoria. La reactancia X"d y la clase de
+        rendimiento ISO 8528-5 definen el %caída de tensión máximo aceptado al arrancar la carga más crítica: si el
+        tamaño comercial sugerido no lo cumple, la app busca el siguiente tamaño del catálogo que sí lo haga.
+        Verifica siempre la ficha técnica del fabricante para el sitio de instalación real.
       </p>
     </section>
 
@@ -165,6 +203,11 @@
           <span class="stat-value" id="statHarmonicFraction">0%</span>
           <span class="stat-sub" id="statHarmonicOversize">sin sobredimensión adicional</span>
         </div>
+        <div class="stat-tile">
+          <span class="stat-label">Caída de tensión de arranque</span>
+          <span class="stat-value" id="statDip">—</span>
+          <span class="stat-sub" id="statDipDetail">según X"d y clase ISO 8528-5</span>
+        </div>
         <div class="stat-tile stat-tile-highlight">
           <span class="stat-label">Generador recomendado</span>
           <span class="stat-value" id="statRecommendedKVA">0.0 kVA</span>
@@ -173,7 +216,7 @@
         <div class="stat-tile stat-tile-highlight">
           <span class="stat-label">Tamaño comercial sugerido</span>
           <span class="stat-value" id="statSuggestedSize">—</span>
-          <span class="stat-sub">tamaño estándar de referencia más cercano por encima</span>
+          <span class="stat-sub" id="statSuggestedSizeDetail">tamaño estándar de referencia más cercano por encima</span>
         </div>
       </div>
 
@@ -186,9 +229,10 @@
         <li>Se suma el <strong>kW</strong> y <strong>kVA</strong> en régimen permanente de todas las cargas incluidas.</li>
         <li>Se identifica la carga con mayor salto de arranque (kVA de arranque − kVA nominal), asumiendo que es la última en arrancar mientras el resto ya está en régimen (peor caso habitual en dimensionamiento de grupos electrógenos).</li>
         <li>Se aplica el margen de seguridad definido en los parámetros.</li>
-        <li>Se aplica el derating por altitud y temperatura del sitio.</li>
+        <li>Se aplica el derating por altitud y temperatura del sitio, escalado por la tecnología del motor.</li>
         <li>Se estima la fracción de carga no lineal (cargas de categoría Electrónica/VFD ponderadas por su severidad de armónicos) y se aplica una sobredimensión adicional del alternador si supera ciertos umbrales.</li>
-        <li>Se convierte a kW usando el factor de potencia del generador y se redondea al tamaño comercial estándar disponible más próximo por encima.</li>
+        <li>Se aplica el factor de régimen de operación (Continuous suma holgura adicional por no admitir sobrecarga transitoria).</li>
+        <li>Se convierte a kW usando el factor de potencia del generador y se busca, en el catálogo de tamaños comerciales de referencia, el primero que cubra la demanda continua <strong>y</strong> cuya caída de tensión de arranque (según X"d y la clase ISO 8528-5 elegida) esté dentro del límite.</li>
       </ol>
     </section>
 
@@ -340,6 +384,7 @@
     </p>
   </footer>
 
+  <script src="js/calc.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
