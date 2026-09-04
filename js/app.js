@@ -56,10 +56,77 @@ const STORAGE_KEY = "genset-sizer:autosave";
 const STORAGE_SAVED_KEY = "genset-sizer:saved-project";
 
 const DEFAULT_ROWS = [
-  { id: 1, desc: "Iluminación general", category: "lighting", type: "resistive", power: 2, unit: "kw", qty: 1, pf: 1, startFactor: 1, harmonicSeverity: "medium", included: true },
-  { id: 2, desc: "Tomacorrientes / electrónica", category: "electronics_vfd", type: "resistive", power: 3, unit: "kw", qty: 1, pf: 0.95, startFactor: 1, harmonicSeverity: "medium", included: true },
-  { id: 3, desc: "Bomba de agua", category: "motor", type: "motor_dol", power: 5.5, unit: "hp", qty: 1, pf: 0.85, startFactor: 6, harmonicSeverity: "medium", included: true },
-  { id: 4, desc: "Aire acondicionado", category: "motor", type: "motor_dol", power: 3, unit: "hp", qty: 2, pf: 0.85, startFactor: 6, harmonicSeverity: "medium", included: true },
+  { id: 1, desc: "Iluminación general", category: "lighting", type: "resistive", power: 2, unit: "kw", qty: 1, pf: 1, efficiency: 1, startFactor: 1, harmonicSeverity: "medium", included: true },
+  { id: 2, desc: "Tomacorrientes / electrónica", category: "electronics_vfd", type: "resistive", power: 3, unit: "kw", qty: 1, pf: 0.95, efficiency: 1, startFactor: 1, harmonicSeverity: "medium", included: true },
+  { id: 3, desc: "Bomba de agua", category: "motor", type: "motor_dol", power: 5.5, unit: "hp", qty: 1, pf: 0.85, efficiency: 0.878, startFactor: 6, harmonicSeverity: "medium", included: true },
+  { id: 4, desc: "Aire acondicionado", category: "motor", type: "motor_dol", power: 3, unit: "hp", qty: 2, pf: 0.82, efficiency: 0.855, startFactor: 6, harmonicSeverity: "medium", included: true },
+];
+
+// =========================================================================
+// Librería de cargas: equipos típicos del mercado con datos de placa de
+// referencia (motores trifásicos jaula de ardilla NEMA/IEC estándar,
+// soldadoras, bombas, compresores, HVAC, iluminación, hornos, etc.).
+// Son valores orientativos de catálogo — siempre confirmar contra la placa
+// del equipo real antes de una emisión de ingeniería final.
+// =========================================================================
+
+const LOAD_LIBRARY = [
+  // ---- Motores eléctricos trifásicos (jaula de ardilla, 4 polos) ----
+  { group: "Motores eléctricos", name: "Motor trifásico 1 HP", category: "motor", type: "motor_dol", power: 1, unit: "hp", pf: 0.80, efficiency: 0.825 },
+  { group: "Motores eléctricos", name: "Motor trifásico 2 HP", category: "motor", type: "motor_dol", power: 2, unit: "hp", pf: 0.81, efficiency: 0.840 },
+  { group: "Motores eléctricos", name: "Motor trifásico 3 HP", category: "motor", type: "motor_dol", power: 3, unit: "hp", pf: 0.82, efficiency: 0.855 },
+  { group: "Motores eléctricos", name: "Motor trifásico 5 HP", category: "motor", type: "motor_dol", power: 5, unit: "hp", pf: 0.82, efficiency: 0.875 },
+  { group: "Motores eléctricos", name: "Motor trifásico 7.5 HP", category: "motor", type: "motor_dol", power: 7.5, unit: "hp", pf: 0.83, efficiency: 0.885 },
+  { group: "Motores eléctricos", name: "Motor trifásico 10 HP", category: "motor", type: "motor_dol", power: 10, unit: "hp", pf: 0.83, efficiency: 0.895 },
+  { group: "Motores eléctricos", name: "Motor trifásico 15 HP", category: "motor", type: "motor_star_delta", power: 15, unit: "hp", pf: 0.84, efficiency: 0.902 },
+  { group: "Motores eléctricos", name: "Motor trifásico 20 HP", category: "motor", type: "motor_star_delta", power: 20, unit: "hp", pf: 0.84, efficiency: 0.908 },
+  { group: "Motores eléctricos", name: "Motor trifásico 25 HP", category: "motor", type: "motor_star_delta", power: 25, unit: "hp", pf: 0.85, efficiency: 0.912 },
+  { group: "Motores eléctricos", name: "Motor trifásico 30 HP", category: "motor", type: "motor_star_delta", power: 30, unit: "hp", pf: 0.85, efficiency: 0.917 },
+  { group: "Motores eléctricos", name: "Motor trifásico 40 HP", category: "motor", type: "motor_star_delta", power: 40, unit: "hp", pf: 0.86, efficiency: 0.920 },
+  { group: "Motores eléctricos", name: "Motor trifásico 50 HP", category: "motor", type: "motor_soft", power: 50, unit: "hp", pf: 0.86, efficiency: 0.924 },
+  { group: "Motores eléctricos", name: "Motor trifásico 60 HP", category: "motor", type: "motor_soft", power: 60, unit: "hp", pf: 0.86, efficiency: 0.928 },
+  { group: "Motores eléctricos", name: "Motor trifásico 75 HP", category: "motor", type: "motor_soft", power: 75, unit: "hp", pf: 0.87, efficiency: 0.931 },
+  { group: "Motores eléctricos", name: "Motor trifásico 100 HP", category: "motor", type: "motor_soft", power: 100, unit: "hp", pf: 0.87, efficiency: 0.935 },
+  { group: "Motores eléctricos", name: "Motor trifásico 125 HP (con VFD)", category: "motor", type: "motor_vfd", power: 125, unit: "hp", pf: 0.87, efficiency: 0.937 },
+  { group: "Motores eléctricos", name: "Motor monofásico 1 HP (taller)", category: "motor", type: "motor_dol", power: 1, unit: "hp", pf: 0.75, efficiency: 0.72 },
+  { group: "Motores eléctricos", name: "Motor monofásico 2 HP (taller)", category: "motor", type: "motor_dol", power: 2, unit: "hp", pf: 0.76, efficiency: 0.75 },
+
+  // ---- Soldadoras eléctricas ----
+  { group: "Soldadoras eléctricas", name: "Soldadora inversora MMA/TIG monofásica 160A", category: "electronics_vfd", type: "resistive", power: 5.0, unit: "kw", pf: 0.70, harmonicSeverity: "medium", note: "Inversor IGBT; entrada monofásica 220V" },
+  { group: "Soldadoras eléctricas", name: "Soldadora inversora MMA/TIG monofásica 200A", category: "electronics_vfd", type: "resistive", power: 6.5, unit: "kw", pf: 0.70, harmonicSeverity: "medium" },
+  { group: "Soldadoras eléctricas", name: "Soldadora inversora MIG/MAG trifásica 300A", category: "electronics_vfd", type: "resistive", power: 11, unit: "kw", pf: 0.75, harmonicSeverity: "medium" },
+  { group: "Soldadoras eléctricas", name: "Soldadora inversora MIG/MAG trifásica 400A", category: "electronics_vfd", type: "resistive", power: 15, unit: "kw", pf: 0.75, harmonicSeverity: "high" },
+  { group: "Soldadoras eléctricas", name: "Soldadora de transformador convencional 200A (no inversora)", category: "resistive", type: "resistive", power: 8, unit: "kw", pf: 0.60, note: "Tecnología antigua: PF bajo, sin electrónica de potencia relevante" },
+  { group: "Soldadoras eléctricas", name: "Soldadora por puntos (resistencia) 25 kVA", category: "resistive", type: "resistive", power: 20, unit: "kw", pf: 0.75, note: "Ciclo de trabajo bajo en la práctica; ajusta cantidad/inclusión según uso real" },
+
+  // ---- Bombeo y compresión de aire ----
+  { group: "Bombeo y compresión", name: "Bomba centrífuga 3 HP", category: "motor", type: "motor_dol", power: 3, unit: "hp", pf: 0.82, efficiency: 0.855 },
+  { group: "Bombeo y compresión", name: "Bomba centrífuga 5 HP", category: "motor", type: "motor_dol", power: 5, unit: "hp", pf: 0.82, efficiency: 0.875 },
+  { group: "Bombeo y compresión", name: "Bomba centrífuga 10 HP", category: "motor", type: "motor_star_delta", power: 10, unit: "hp", pf: 0.83, efficiency: 0.895 },
+  { group: "Bombeo y compresión", name: "Bomba sumergible de pozo 7.5 HP", category: "motor", type: "motor_dol", power: 7.5, unit: "hp", pf: 0.83, efficiency: 0.885 },
+  { group: "Bombeo y compresión", name: "Compresor de aire (pistón) 2 HP", category: "motor", type: "motor_dol", power: 2, unit: "hp", pf: 0.81, efficiency: 0.840 },
+  { group: "Bombeo y compresión", name: "Compresor de aire (pistón) 5 HP", category: "motor", type: "motor_dol", power: 5, unit: "hp", pf: 0.82, efficiency: 0.875 },
+  { group: "Bombeo y compresión", name: "Compresor de aire (tornillo) 25 HP", category: "motor", type: "motor_star_delta", power: 25, unit: "hp", pf: 0.85, efficiency: 0.912 },
+  { group: "Bombeo y compresión", name: "Compresor de aire (tornillo) 50 HP", category: "motor", type: "motor_soft", power: 50, unit: "hp", pf: 0.86, efficiency: 0.924 },
+
+  // ---- HVAC ----
+  { group: "Climatización (HVAC)", name: "Aire acondicionado split 18,000 BTU/h", category: "motor", type: "motor_dol", power: 1.6, unit: "kw", pf: 0.85, startFactorOverride: 5 },
+  { group: "Climatización (HVAC)", name: "Aire acondicionado split 24,000 BTU/h", category: "motor", type: "motor_dol", power: 2.2, unit: "kw", pf: 0.85, startFactorOverride: 5 },
+  { group: "Climatización (HVAC)", name: "Chiller / paquete industrial (compresor 15 HP)", category: "motor", type: "motor_star_delta", power: 15, unit: "hp", pf: 0.84, efficiency: 0.902 },
+
+  // ---- Iluminación ----
+  { group: "Iluminación", name: "Luminaria LED industrial 150 W (por punto)", category: "lighting", type: "resistive", power: 0.15, unit: "kw", pf: 0.90 },
+  { group: "Iluminación", name: "Luminaria haluro metálico 400 W (con corrección)", category: "lighting", type: "resistive", power: 0.42, unit: "kw", pf: 0.90 },
+  { group: "Iluminación", name: "Reflector halógeno 500 W", category: "lighting", type: "resistive", power: 0.5, unit: "kw", pf: 1.0 },
+
+  // ---- Herramientas y cargas varias ----
+  { group: "Herramientas y varios", name: "Taladro / esmeril eléctrico portátil", category: "resistive", type: "resistive", power: 0.8, unit: "kw", pf: 0.95 },
+  { group: "Herramientas y varios", name: "Grúa / polipasto eléctrico de izaje 10 HP", category: "motor", type: "motor_dol", power: 10, unit: "hp", pf: 0.83, efficiency: 0.895, startFactorOverride: 7, note: "Arranque más severo por carga de izaje" },
+  { group: "Herramientas y varios", name: "Cargador de batería industrial 10 kW", category: "electronics_vfd", type: "resistive", power: 10, unit: "kw", pf: 0.85, harmonicSeverity: "high" },
+  { group: "Herramientas y varios", name: "Horno de resistencia industrial 30 kW", category: "resistive", type: "resistive", power: 30, unit: "kw", pf: 0.98 },
+  { group: "Herramientas y varios", name: "Horno de inducción 50 kW", category: "electronics_vfd", type: "resistive", power: 50, unit: "kw", pf: 0.85, harmonicSeverity: "high" },
+  { group: "Herramientas y varios", name: "UPS / rectificador de sala de control 5 kW", category: "electronics_vfd", type: "resistive", power: 5, unit: "kw", pf: 0.90, harmonicSeverity: "medium" },
+  { group: "Herramientas y varios", name: "Tablero de cómputo / oficina (carga TI) 3 kW", category: "electronics_vfd", type: "resistive", power: 3, unit: "kw", pf: 0.95, harmonicSeverity: "low" },
 ];
 
 /* =========================================================================
@@ -93,7 +160,12 @@ function computeLoadRow(row) {
   const qty = Math.max(0, toNumber(row.qty, 0));
   const pf = clamp(toNumber(row.pf, 1), 0.05, 1);
   const powerValue = Math.max(0, toNumber(row.power, 0));
-  const unitKW = row.unit === "hp" ? powerValue * HP_TO_KW : powerValue;
+  // La potencia en HP es un rating mecánico de SALIDA del motor; el kW eléctrico
+  // consumido (lo que debe suministrar el generador) es mayor por la eficiencia
+  // de conversión. Para cargas en kW (iluminación, electrónica, resistivas) el
+  // valor ya representa consumo eléctrico directo, así que la eficiencia no aplica.
+  const efficiency = clamp(toNumber(row.efficiency, 1), 0.3, 1);
+  const unitKW = row.unit === "hp" ? (powerValue * HP_TO_KW) / efficiency : powerValue;
 
   const totalKW = unitKW * qty;
   const totalKVA = pf > 0 ? totalKW / pf : 0;
@@ -253,6 +325,7 @@ function renderRows() {
       </td>
       <td><input type="number" data-field="qty" value="${row.qty}" min="0" step="1" /></td>
       <td><input type="number" data-field="pf" value="${row.pf}" min="0.1" max="1" step="0.01" /></td>
+      <td><input type="number" data-field="efficiency" value="${row.efficiency ?? 1}" min="0.3" max="1" step="0.01" title="Solo afecta el cálculo cuando la unidad es HP" /></td>
       <td><input type="number" data-field="startFactor" value="${row.startFactor}" min="0" step="0.1" /></td>
       <td>
         <select data-field="harmonicSeverity" ${isNonlinear ? "" : "disabled"} title="${isNonlinear ? "" : "Solo aplica a categoría Electrónica/VFD"}">${renderHarmonicOptions(row.harmonicSeverity)}</select>
@@ -372,6 +445,7 @@ document.getElementById("btnAddRow").addEventListener("click", () => {
     unit: "kw",
     qty: 1,
     pf: 1,
+    efficiency: 1,
     startFactor: 1,
     harmonicSeverity: "medium",
     included: true,
@@ -556,7 +630,7 @@ document.getElementById("btnImportJSON").addEventListener("change", (e) => {
 
 const CSV_HEADER = [
   "Descripcion", "Categoria", "TipoArranque", "Potencia", "Unidad", "Cantidad",
-  "cosPhi", "FactorArranque", "SeveridadArmonicos", "kW_total", "kVA_total", "kVA_arranque", "Incluida",
+  "cosPhi", "Eficiencia", "FactorArranque", "SeveridadArmonicos", "kW_total", "kVA_total", "kVA_arranque", "Incluida",
 ];
 
 document.getElementById("btnExportCSV").addEventListener("click", () => {
@@ -571,6 +645,7 @@ document.getElementById("btnExportCSV").addEventListener("click", () => {
       row.unit,
       row.qty,
       row.pf,
+      row.efficiency ?? 1,
       row.startFactor,
       row.harmonicSeverity || "",
       c.totalKW.toFixed(2),
@@ -626,6 +701,7 @@ const CSV_HEADER_ALIASES = {
   unidad: "unit",
   cantidad: "qty", cant: "qty",
   cosphi: "pf", cosφ: "pf", fp: "pf", factorpotencia: "pf",
+  eficiencia: "efficiency", "eficienciaη": "efficiency", rendimiento: "efficiency",
   factorarranque: "startFactor",
   severidadarmonicos: "harmonicSeverity", "severidadarmónicos": "harmonicSeverity", armonicos: "harmonicSeverity",
   incluida: "included",
@@ -679,6 +755,7 @@ function importLoadsFromCSV(text) {
       unit,
       qty: Math.max(0, toNumber(record.qty, 1)),
       pf: clamp(toNumber(record.pf, 1), 0.05, 1),
+      efficiency: clamp(toNumber(record.efficiency, 1), 0.3, 1),
       startFactor: Math.max(0, toNumber(record.startFactor, STARTING_PRESETS[typeKey].factor ?? 1)),
       harmonicSeverity: harmonicKey,
       included: !record.included || /^(si|sí|s|yes|y|true|1)$/i.test(record.included),
@@ -710,6 +787,124 @@ document.getElementById("btnImportCSV").addEventListener("change", (e) => {
   reader.readAsText(file);
   e.target.value = "";
 });
+
+/* =========================================================================
+ * Librería de cargas (modal)
+ * ========================================================================= */
+
+const libraryDialog = document.getElementById("libraryDialog");
+const libSearchInput = document.getElementById("libSearch");
+const libCategorySelect = document.getElementById("libCategoryFilter");
+const libListEl = document.getElementById("libList");
+
+function libraryItemToRow(item) {
+  const preset = STARTING_PRESETS[item.type];
+  const startFactor = item.startFactorOverride ?? (preset && preset.factor !== null ? preset.factor : 1);
+  return {
+    id: nextRowId(),
+    desc: item.name,
+    category: item.category,
+    type: item.type,
+    power: item.power,
+    unit: item.unit,
+    qty: 1,
+    pf: item.pf,
+    efficiency: item.efficiency ?? 1,
+    startFactor,
+    harmonicSeverity: item.harmonicSeverity || "medium",
+    included: true,
+  };
+}
+
+function formatLibrarySpec(item) {
+  const powerLabel = `${formatNumber(item.power, item.unit === "hp" ? 1 : 2)} ${item.unit === "hp" ? "HP" : "kW"}`;
+  const parts = [powerLabel, `cos φ ${formatNumber(item.pf, 2)}`];
+  if (item.unit === "hp" && item.efficiency) {
+    parts.push(`η ${formatNumber(item.efficiency * 100, 0)}%`);
+  }
+  const preset = STARTING_PRESETS[item.type];
+  const startFactor = item.startFactorOverride ?? (preset ? preset.factor : null);
+  if (startFactor && startFactor > 1) {
+    parts.push(`arranque ×${formatNumber(startFactor, 1)}`);
+  }
+  if (item.category === "electronics_vfd") {
+    const sev = HARMONIC_SEVERITY[item.harmonicSeverity || "medium"];
+    parts.push(`no lineal: ${sev.label.split(" (")[0].toLowerCase()}`);
+  }
+  return parts.join(" · ");
+}
+
+function populateLibraryCategoryFilter() {
+  const groups = [...new Set(LOAD_LIBRARY.map((item) => item.group))];
+  libCategorySelect.innerHTML = '<option value="">Todos los grupos</option>' +
+    groups.map((g) => `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");
+}
+
+function renderLibraryList() {
+  const query = libSearchInput.value.trim().toLowerCase();
+  const groupFilter = libCategorySelect.value;
+
+  const filtered = LOAD_LIBRARY.filter((item) => {
+    if (groupFilter && item.group !== groupFilter) return false;
+    if (!query) return true;
+    return item.name.toLowerCase().includes(query) || item.group.toLowerCase().includes(query);
+  });
+
+  if (filtered.length === 0) {
+    libListEl.innerHTML = '<p class="lib-empty">No se encontraron equipos que coincidan con la búsqueda.</p>';
+    return;
+  }
+
+  const groupsInOrder = [...new Set(filtered.map((item) => item.group))];
+  libListEl.innerHTML = groupsInOrder.map((group) => {
+    const items = filtered.filter((item) => item.group === group);
+    const itemsHtml = items.map((item, idx) => {
+      const globalIdx = LOAD_LIBRARY.indexOf(item);
+      return `
+        <div class="lib-item">
+          <div class="lib-item-info">
+            <span class="lib-item-name">${escapeHtml(item.name)}</span>
+            <span class="lib-item-spec">${escapeHtml(formatLibrarySpec(item))}</span>
+          </div>
+          <button class="lib-item-add" data-lib-index="${globalIdx}">+ Añadir</button>
+        </div>
+      `;
+    }).join("");
+    return `<div class="lib-group-title">${escapeHtml(group)}</div>${itemsHtml}`;
+  }).join("");
+}
+
+document.getElementById("btnOpenLibrary").addEventListener("click", () => {
+  libSearchInput.value = "";
+  libCategorySelect.value = "";
+  renderLibraryList();
+  libraryDialog.showModal();
+  libSearchInput.focus();
+});
+
+document.getElementById("btnCloseLibrary").addEventListener("click", () => libraryDialog.close());
+
+libraryDialog.addEventListener("click", (e) => {
+  if (e.target === libraryDialog) libraryDialog.close(); // clic en el backdrop
+});
+
+libSearchInput.addEventListener("input", renderLibraryList);
+libCategorySelect.addEventListener("change", renderLibraryList);
+
+libListEl.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-lib-index]");
+  if (!btn) return;
+  const item = LOAD_LIBRARY[Number(btn.dataset.libIndex)];
+  if (!item) return;
+  state.rows.push(libraryItemToRow(item));
+  renderAll();
+  persistAutosave();
+  const original = btn.textContent;
+  btn.textContent = "✓ Agregado";
+  setTimeout(() => { btn.textContent = original; }, 1200);
+});
+
+populateLibraryCategoryFilter();
 
 document.getElementById("btnReset").addEventListener("click", () => {
   if (!confirm("¿Reiniciar el proyecto actual? Se perderán los cambios no guardados.")) return;

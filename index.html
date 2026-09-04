@@ -94,7 +94,10 @@
     <section class="card" id="loadsCard">
       <div class="card-header-row">
         <h2>2. Cargas eléctricas</h2>
-        <button id="btnAddRow" class="btn btn-primary">+ Agregar carga</button>
+        <div class="header-actions">
+          <button id="btnOpenLibrary" class="btn btn-secondary">📚 Librería de cargas</button>
+          <button id="btnAddRow" class="btn btn-primary">+ Agregar carga</button>
+        </div>
       </div>
       <div class="table-scroll">
         <table id="loadsTable">
@@ -107,6 +110,7 @@
               <th class="col-unit">Unidad</th>
               <th class="col-qty">Cant.</th>
               <th class="col-pf">cos φ</th>
+              <th class="col-eff">Eficiencia η</th>
               <th class="col-startf">Factor arranque (×)</th>
               <th class="col-harmonic">Armónicos (no lineal)</th>
               <th class="col-kw">kW total</th>
@@ -125,8 +129,10 @@
         variador de frecuencia (VFD) ≈ 1.2×. Puedes editar el valor manualmente si tienes el dato del fabricante.
         La columna "Categoría" clasifica la carga (motor, iluminación, electrónica/VFD o resistiva) y es independiente
         del tipo de arranque: por ejemplo, tomacorrientes con electrónica no tienen arranque brusco pero sí aportan
-        armónicos. El campo "Armónicos" solo aplica a cargas de categoría Electrónica/VFD y estima cuánto de esa
-        carga es corriente no lineal, para sobredimensionar el alternador.
+        armónicos. El campo "Armónicos" solo aplica a cargas de categoría Electrónica/VFD. La "Eficiencia η" solo
+        afecta el cálculo cuando la potencia está en HP (rating mecánico de salida): el kW eléctrico consumido se
+        calcula como HP&nbsp;×&nbsp;0.746&nbsp;/&nbsp;η. Usa el botón "Librería de cargas" para agregar equipos
+        típicos del mercado (motores, soldadoras, bombas, compresores, etc.) con estos datos precargados.
       </p>
     </section>
 
@@ -213,6 +219,25 @@
     </section>
 
   </main>
+
+  <dialog id="libraryDialog" class="no-print">
+    <div class="lib-header">
+      <h2>Librería de cargas</h2>
+      <button id="btnCloseLibrary" class="btn btn-secondary" title="Cerrar">✕</button>
+    </div>
+    <div class="lib-controls">
+      <input type="text" id="libSearch" placeholder="Buscar equipo (ej. soldadora, bomba, 10 HP)…" />
+      <select id="libCategoryFilter">
+        <option value="">Todos los grupos</option>
+      </select>
+    </div>
+    <p class="hint">
+      Valores de referencia típicos de catálogos de mercado (motores trifásicos jaula de ardilla, soldadoras
+      inversoras/convencionales, bombas, compresores, HVAC, iluminación, hornos, etc.). Verifica siempre la placa
+      del equipo real antes de una emisión de ingeniería final.
+    </p>
+    <div id="libList" class="lib-list"></div>
+  </dialog>
 
   <footer class="footer no-print">
     <p>

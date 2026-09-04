@@ -65,8 +65,9 @@ h1, h2, h3 { margin: 0; }
   box-shadow: var(--shadow);
 }
 .card h2 { font-size: 16px; color: var(--primary-dark); margin-bottom: 14px; }
-.card-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.card-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
 .card-header-row h2 { margin-bottom: 0; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .grid { display: grid; gap: 14px; }
 .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -133,6 +134,7 @@ tbody input, tbody select {
 .col-type { min-width: 190px; }
 .col-category { min-width: 150px; }
 .col-harmonic { min-width: 140px; }
+.col-eff { min-width: 80px; }
 .col-kw, .col-kva, .col-kvastart { min-width: 90px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .col-inc { text-align: center; width: 60px; }
 .col-actions { width: 40px; text-align: center; }
@@ -182,6 +184,73 @@ tbody input, tbody select {
 
 .print-only { display: none; }
 
+/* ---- Librería de cargas (dialog) ---- */
+dialog#libraryDialog {
+  width: min(720px, 92vw);
+  max-height: 82vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.22);
+}
+dialog#libraryDialog::backdrop { background: rgba(16, 24, 40, 0.45); }
+.lib-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.lib-header h2 { font-size: 17px; color: var(--primary-dark); }
+.lib-controls { display: flex; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.lib-controls input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+.lib-controls select {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13.5px;
+  background: #fff;
+}
+.lib-list { overflow-y: auto; max-height: 50vh; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.lib-group-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 10px 4px 4px;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+.lib-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+}
+.lib-item:hover { background: #f4f7fa; border-color: var(--border); }
+.lib-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lib-item-name { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.lib-item-spec { font-size: 12px; color: var(--text-muted); }
+.lib-item-add {
+  flex-shrink: 0;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.lib-item-add:hover { background: var(--primary-dark); }
+.lib-empty { padding: 20px 8px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
 .signature-block {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -200,6 +269,7 @@ tbody input, tbody select {
   .card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
   .table-scroll { overflow: visible; }
   #btnAddRow, .col-actions { display: none !important; }
+  dialog#libraryDialog { display: none !important; }
 
   .report-cover { padding: 40px 0 24px; border-bottom: 2px solid #000; margin-bottom: 24px; }
   .report-cover h1 { font-size: 22px; margin-bottom: 18px; }

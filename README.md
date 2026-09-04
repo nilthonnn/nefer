@@ -32,7 +32,12 @@ python3 -m http.server 8080
    adicional del alternador según la fracción de carga no lineal (armónicos), y sugiere
    el tamaño de generador (kVA/kW) recomendado junto con el tamaño comercial estándar
    más cercano.
-4. **Guardar/exportar**: autosave en el navegador (localStorage), guardar/cargar proyecto,
+4. **Librería de cargas**: catálogo de ~45 equipos típicos del mercado (motores trifásicos
+   por HP estándar NEMA/IEC, soldadoras inversoras y convencionales, bombas, compresores,
+   HVAC, iluminación, hornos, cargadores/UPS, herramientas) con potencia, cos φ, eficiencia
+   y tipo de arranque precargados. Se abre con el botón "📚 Librería de cargas", tiene
+   buscador y filtro por grupo, y cada "+ Añadir" agrega una fila lista a la tabla.
+5. **Guardar/exportar**: autosave en el navegador (localStorage), guardar/cargar proyecto,
    exportar/importar JSON, exportar/**importar CSV** de las cargas (parser tolerante a
    variantes de encabezado), y un botón de impresión que genera un **informe técnico**
    con portada (proyecto/cliente/fecha/preparado por), parámetros, cuadro de cargas,
@@ -41,7 +46,12 @@ python3 -m http.server 8080
 
 ## Metodología de cálculo
 
-- **kW → kVA** de cada carga: `kVA = kW / cos φ`.
+- **HP → kW eléctrico**: la potencia en HP es un rating mecánico de *salida* del motor;
+  el kW eléctrico consumido (lo que debe suministrar el generador) es mayor por la
+  eficiencia de conversión: `kW_eléctrico = HP × 0.746 / η`. Las cargas ingresadas
+  directamente en kW (iluminación, electrónica, resistivas) ya representan consumo
+  eléctrico y no usan este ajuste.
+- **kW → kVA** de cada carga: `kVA = kW_eléctrico / cos φ`.
 - **kVA de arranque** de cada carga: `kVA_arranque = kVA_nominal × factor_de_arranque`.
 - **Pico de arranque del sistema**: se identifica la carga con el mayor salto
   (`kVA_arranque − kVA_nominal`) y se asume que arranca de última, con el resto de
@@ -88,3 +98,5 @@ js/app.js          Estado, motor de cálculo y lógica de UI
 - Editar `STARTING_PRESETS` en `js/app.js` para cambiar los factores de arranque típicos.
 - Editar `STANDARD_SIZES_KVA` para ajustar la lista de tamaños comerciales de referencia
   a los modelos realmente disponibles en tu mercado/proveedor.
+- Editar `LOAD_LIBRARY` en `js/app.js` para agregar/quitar equipos de la librería de
+  cargas o ajustar sus valores de placa a los que realmente vendes/instalas.
