@@ -248,7 +248,11 @@ dialog#libraryDialog::backdrop { background: rgba(16, 24, 40, 0.45); }
   position: sticky;
   top: 0;
   background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
+.lib-group-icon { flex-shrink: 0; color: var(--primary); }
 .lib-item {
   display: flex;
   align-items: center;

@@ -620,6 +620,24 @@ const libSearchInput = document.getElementById("libSearch");
 const libCategorySelect = document.getElementById("libCategoryFilter");
 const libListEl = document.getElementById("libList");
 
+// Íconos por grupo: SVG en línea, minimalistas (solo trazo, sin relleno) y
+// mínimos en bytes — nada de librerías de íconos ni peticiones externas, para
+// no sumar peso ni dependencias a una app que ya es 100% sin build.
+const LIBRARY_GROUP_ICON_PATHS = {
+  "Motores eléctricos": '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
+  "Soldadoras eléctricas": '<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/>',
+  "Bombeo y compresión": '<path d="M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11Z"/>',
+  "Climatización (HVAC)": '<path d="M12 2v20M4.2 6.5l15.6 11M19.8 6.5 4.2 17.5"/>',
+  "Iluminación": '<circle cx="12" cy="10" r="5"/><path d="M12 15v4M9.5 21.5h5"/>',
+  "Herramientas y varios": '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2-2Z"/>',
+};
+const LIBRARY_GROUP_ICON_FALLBACK = '<circle cx="12" cy="12" r="1.4"/>';
+
+function libraryGroupIcon(group) {
+  const paths = LIBRARY_GROUP_ICON_PATHS[group] || LIBRARY_GROUP_ICON_FALLBACK;
+  return `<svg class="lib-group-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+}
+
 function libraryItemToRow(item) {
   const preset = STARTING_PRESETS[item.type];
   const startFactor = item.startFactorOverride ?? (preset && preset.factor !== null ? preset.factor : 1);
@@ -693,7 +711,7 @@ function renderLibraryList() {
         </div>
       `;
     }).join("");
-    return `<div class="lib-group-title">${escapeHtml(group)}</div>${itemsHtml}`;
+    return `<div class="lib-group-title">${libraryGroupIcon(group)}${escapeHtml(group)}</div>${itemsHtml}`;
   }).join("");
 }
 
