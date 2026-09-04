@@ -33,6 +33,7 @@ const DEFAULT_PARAMS = {
 
 const STORAGE_KEY = "genset-sizer:autosave";
 const STORAGE_SAVED_KEY = "genset-sizer:saved-project";
+const STORAGE_UI_ADVANCED_COLS_KEY = "genset-sizer:ui-advanced-cols";
 
 /* =========================================================================
  * Utilidades de UI (formato/DOM; el cálculo puro está en calc.js)
@@ -113,9 +114,9 @@ function renderRows() {
       </td>
       <td><input type="number" data-field="qty" value="${row.qty}" min="0" step="1" /></td>
       <td><input type="number" data-field="pf" value="${row.pf}" min="0.1" max="1" step="0.01" /></td>
-      <td><input type="number" data-field="efficiency" value="${row.efficiency ?? 1}" min="0.3" max="1" step="0.01" ${isHp ? "" : "disabled"} title="${isHp ? "" : "Solo aplica cuando la unidad es HP"}" /></td>
+      <td class="col-advanced"><input type="number" data-field="efficiency" value="${row.efficiency ?? 1}" min="0.3" max="1" step="0.01" ${isHp ? "" : "disabled"} title="${isHp ? "" : "Solo aplica cuando la unidad es HP"}" /></td>
       <td><input type="number" data-field="startFactor" value="${row.startFactor}" min="0" step="0.1" /></td>
-      <td>
+      <td class="col-advanced">
         <select data-field="harmonicSeverity" ${isNonlinear ? "" : "disabled"} title="${isNonlinear ? "" : "Solo aplica a categoría Electrónica/VFD"}">${renderHarmonicOptions(row.harmonicSeverity)}</select>
       </td>
       <td class="readout">${formatNumber(computedRow.totalKW)}</td>
@@ -358,6 +359,38 @@ function applyParamsToInputs() {
   });
   applyConnectionTypePreset();
   updateCustomDipVisibility();
+}
+
+// Preferencia de UI (no forma parte del proyecto): qué tan detallada se ve
+// la tabla de cargas. Se recuerda entre sesiones, pero no viaja en
+// guardar/exportar/importar — es solo una vista, no afecta el cálculo.
+const toggleAdvancedColsEl = document.getElementById("toggleAdvancedCols");
+const loadsTableEl = document.getElementById("loadsTable");
+
+function applyAdvancedColsPreference(checked) {
+  if (loadsTableEl) loadsTableEl.classList.toggle("show-advanced", checked);
+  if (toggleAdvancedColsEl) toggleAdvancedColsEl.checked = checked;
+}
+
+(function initAdvancedColsPreference() {
+  let checked = false;
+  try {
+    checked = localStorage.getItem(STORAGE_UI_ADVANCED_COLS_KEY) === "1";
+  } catch (e) {
+    // localStorage puede no estar disponible; se asume vista simple por defecto.
+  }
+  applyAdvancedColsPreference(checked);
+})();
+
+if (toggleAdvancedColsEl) {
+  toggleAdvancedColsEl.addEventListener("change", () => {
+    applyAdvancedColsPreference(toggleAdvancedColsEl.checked);
+    try {
+      localStorage.setItem(STORAGE_UI_ADVANCED_COLS_KEY, toggleAdvancedColsEl.checked ? "1" : "0");
+    } catch (e) {
+      // Se ignora silenciosamente si localStorage no está disponible.
+    }
+  });
 }
 
 /* =========================================================================

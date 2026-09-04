@@ -26,7 +26,13 @@ python3 -m http.server 8080
    clase de rendimiento ISO 8528-5** (G1–G4) para el criterio de caída de tensión de
    arranque. El tipo de conexión fija Tensión y Fases automáticamente (quedan editables
    solo en "Personalizado"); ninguno de los dos entra en el cálculo de kVA/kW — es
-   información del sitio para el informe.
+   información del sitio para el informe. **Divulgación progresiva**: solo los campos que
+   normalmente cambian por sitio (nombre/cliente, tipo de conexión, margen, factor de
+   potencia, altitud, temperatura) están visibles por defecto; frecuencia, tecnología del
+   motor, régimen, X"d y clase ISO 8528-5 quedan colapsados bajo "Parámetros avanzados"
+   (con valores por defecto razonables) y se despliegan con un clic — sin quitar ningún
+   campo del modelo de cálculo. El informe impreso siempre muestra todo, sin importar si
+   el bloque está colapsado en pantalla.
 2. **Tabla de cargas**: agregas cada equipo/carga con su potencia (kW o HP), cantidad,
    factor de potencia (cos φ), **categoría** (Motor, Iluminación, Electrónica/VFD o
    Resistiva) y tipo de arranque. Categoría y tipo de arranque son independientes: una
@@ -34,7 +40,11 @@ python3 -m http.server 8080
    brusco. Al elegir el tipo de arranque (directo, estrella-triángulo, arranque suave o
    variador de frecuencia) se autocompleta un factor de arranque típico, editable si
    tienes el dato real del fabricante. Las cargas de categoría "Electrónica/VFD" además
-   llevan una **severidad de armónicos** (baja/media/alta).
+   llevan una **severidad de armónicos** (baja/media/alta). Por defecto la tabla oculta
+   las columnas de eficiencia η y armónicos (afinan el cálculo pero rara vez se tocan);
+   el checkbox "Mostrar columnas avanzadas" las revela y recuerda tu preferencia entre
+   sesiones. "Tipo de arranque" y "kVA arranque" siempre están visibles, por ser
+   críticos para no subestimar el pico de arranque.
 3. **Resultado**: calcula la carga total en régimen, el pico de arranque estimado, aplica
    el margen de seguridad, el derating por altitud/temperatura (según tecnología del
    motor), una sobredimensión adicional del alternador según la fracción de carga no

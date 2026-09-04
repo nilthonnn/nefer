@@ -93,6 +93,39 @@ h1, h2, h3 { margin: 0; }
 
 .hint { font-size: 12.5px; color: var(--text-muted); margin: 10px 0 0; }
 
+/* Divulgación progresiva: parámetros avanzados colapsados por defecto,
+   visibles solo si el usuario los abre. Reduce la densidad percibida sin
+   quitar ningún campo del modelo de cálculo. */
+.advanced-details { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 14px; }
+.advanced-details summary {
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  list-style: none;
+}
+.advanced-details summary::-webkit-details-marker { display: none; }
+.advanced-details summary::before { content: "▸ "; color: var(--primary); }
+.advanced-details[open] summary::before { content: "▾ "; }
+.advanced-details .grid { margin-top: 14px; }
+
+.toggle-advanced-cols {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-right: auto;
+}
+.toggle-advanced-cols input { cursor: pointer; }
+
+/* Columnas avanzadas de la tabla de cargas: ocultas por defecto (η,
+   armónicos). "Tipo de arranque" y "kVA arranque" quedan siempre visibles
+   porque son críticas para no subestimar el pico de arranque. */
+.col-advanced { display: none; }
+#loadsTable.show-advanced .col-advanced { display: table-cell; }
+
 .btn {
   border: none;
   border-radius: 6px;
@@ -305,6 +338,16 @@ dialog#libraryDialog::backdrop { background: rgba(16, 24, 40, 0.45); }
   .table-scroll { overflow: visible; }
   #btnAddRow, .col-actions { display: none !important; }
   dialog#libraryDialog { display: none !important; }
+
+  /* El informe impreso siempre muestra todo: parámetros avanzados
+     desplegados y todas las columnas de la tabla, sin importar el estado
+     de la vista en pantalla (la divulgación progresiva es solo de UI). */
+  .advanced-details { border-top: none; padding-top: 0; }
+  .advanced-details summary { display: none; }
+  .advanced-details > .grid { display: grid !important; margin-top: 0; }
+  .advanced-details > .hint { display: block !important; }
+  .col-advanced { display: table-cell !important; }
+  .toggle-advanced-cols { display: none !important; }
 
   .report-cover { padding: 40px 0 24px; border-bottom: 2px solid #000; margin-bottom: 24px; }
   .report-cover h1 { font-size: 22px; margin-bottom: 18px; }
