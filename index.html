@@ -224,12 +224,17 @@
         <div class="norm-item">
           <span class="norm-tag">Vialidad / accesos · Perú</span>
           <strong>RNE – Norma GH.020 "Componentes de Diseño Urbano"</strong>
-          <span class="hint">Vías de habilitación urbana y secciones viales; consultar junto con el plan de accesos de la operación (relevante en proyectos mineros con vías internas propias, fuera del RNE, pero regidas por el reglamento de seguridad minera).</span>
+          <span class="hint">Vías de habilitación urbana y secciones viales; en proyectos mineros con vías internas propias (fuera del RNE), rige en su lugar el Reglamento de Seguridad y Salud Ocupacional en Minería (D.S. N.° 024-2016-EM, modificado por D.S. N.° 034-2023-EM).</span>
         </div>
         <div class="norm-item">
           <span class="norm-tag">Fuera de Perú</span>
           <strong>IEC 60364 / NFPA 70 (NEC)</strong>
           <span class="hint">Equivalentes internacionales para instalaciones eléctricas de baja tensión (IEC, uso general fuera de EE. UU.) y NEC/NFPA 70 (Estados Unidos), incluyendo el artículo 700/701/702 sobre sistemas de emergencia y espera.</span>
+        </div>
+        <div class="norm-item">
+          <span class="norm-tag">Calidad de energía / armónicos</span>
+          <strong>IEEE 519</strong>
+          <span class="hint">"Recommended Practice and Requirements for Harmonic Control in Electric Power Systems": referencia normativa para los límites de distorsión armónica (THD) de cargas no lineales — el criterio detrás de la sobredimensión del alternador que calcula el Paso&nbsp;2.</span>
         </div>
       </div>
       <p class="hint">
@@ -238,8 +243,50 @@
       </p>
     </section>
 
+    <section class="card" id="brandsCard">
+      <h2>5. Marcas y fabricantes de referencia</h2>
+      <p class="hint" style="margin-top:0;">
+        Panorama de mercado global, con distribución de referencia en Perú. No es exhaustivo (existen decenas de
+        ensambladores nacionales pequeños) y no implica recomendación de una marca sobre otra — verifica precio y
+        disponibilidad vigente con el distribuidor autorizado. Nota importante: el <strong>fabricante del motor
+        (OEM)</strong> casi siempre es una empresa distinta del <strong>empaquetador</strong> que arma el grupo
+        completo (motor + alternador + cabina + control) — por ejemplo, un grupo "Himoinsa" o "FG Wilson" trae
+        adentro un motor Perkins, John Deere u otro OEM.
+      </p>
+      <div class="brands-grid">
+        <div class="brand-item">
+          <span class="brand-tag">Motor · Premium / misión crítica</span>
+          <span class="hint">Caterpillar (EE. UU.) · Cummins (EE. UU.) · MTU / Rolls-Royce Power Systems (Alemania) · Mitsubishi (Japón)</span>
+        </div>
+        <div class="brand-item">
+          <span class="brand-tag">Motor · Industrial general</span>
+          <span class="hint">Perkins (Reino Unido, grupo Caterpillar) · Volvo Penta (Suecia) · John Deere (EE. UU.) · Deutz (Alemania) · Doosan (Corea) · Iveco/FPT (Italia) · Yanmar (Japón) · Kohler-Lombardini (Italia) · Hatz (Alemania)</span>
+        </div>
+        <div class="brand-item">
+          <span class="brand-tag">Motor · Gama económica (China / India)</span>
+          <span class="hint">Weichai — incluye Baudouin — Yuchai, SDEC, Ricardo, FAW (China) · Kirloskar, Mahindra Powerol (India)</span>
+        </div>
+        <div class="brand-item">
+          <span class="brand-tag">Empaquetador (grupo completo)</span>
+          <span class="hint">FG Wilson (Reino Unido) · Rehlko — antes Kohler Power Systems, incluye SDMO — (EE. UU./Francia) · Himoinsa (España) · Pramac (Italia) · Aksa (Turquía) · Generac (EE. UU.) · Atlas Copco QAS (Suecia) · Olympian, Doosan Portable Power, Multiquip (alquiler/construcción)</span>
+        </div>
+        <div class="brand-item">
+          <span class="brand-tag">Alternador</span>
+          <span class="hint">Stamford, Leroy-Somer (grupo Nidec, Reino Unido/Francia) · Mecc Alte (Italia) · Marathon (EE. UU.) · AVK, Sincro, ENGGA</span>
+        </div>
+        <div class="brand-item">
+          <span class="brand-tag">Control AMF / ATS</span>
+          <span class="hint">DeepSea Electronics (Reino Unido) · ComAp (Rep. Checa) · Woodward, Basler (EE. UU.)</span>
+        </div>
+        <div class="brand-item">
+          <span class="brand-tag">Distribución · Perú</span>
+          <span class="hint">Ferreyros y Unimaq — Caterpillar · Arcring Perú, Rivera Diesel, Grupos Electrógenos Perú (línea ENERPOWER) — multimarca: Cummins, Perkins, Volvo Penta, Doosan, Mitsubishi, FAW, con alternadores Stamford/Mecc Alte, desde ~2 kW hasta 2 MW</span>
+        </div>
+      </div>
+    </section>
+
     <section class="card no-print" id="actionsCard">
-      <h2>5. Guardar / exportar</h2>
+      <h2>6. Guardar / exportar</h2>
       <div class="actions-row">
         <button id="btnSave" class="btn btn-secondary">💾 Guardar proyecto</button>
         <button id="btnLoad" class="btn btn-secondary">📂 Cargar proyecto guardado</button>

@@ -37,10 +37,13 @@ python3 -m http.server 8080
    HVAC, iluminación, hornos, cargadores/UPS, herramientas) con potencia, cos φ, eficiencia
    y tipo de arranque precargados. Se abre con el botón "📚 Librería de cargas", tiene
    buscador y filtro por grupo, y cada "+ Añadir" agrega una fila lista a la tabla.
-5. **Normativa de referencia**: tarjeta con las normas eléctricas y de vialidad/accesos
-   aplicables (Perú e internacional) — ver sección dedicada más abajo. Se incluye también
-   en el informe impreso.
-6. **Guardar/exportar**: autosave en el navegador (localStorage), guardar/cargar proyecto,
+5. **Normativa de referencia**: tarjeta con las normas eléctricas, de calidad de energía
+   y de vialidad/accesos aplicables (Perú e internacional) — ver sección dedicada más
+   abajo. Se incluye también en el informe impreso.
+6. **Marcas y fabricantes de referencia**: panorama de mercado (fabricantes de motor,
+   empaquetadores de grupo completo, alternadores, controladores AMF/ATS, y distribución
+   en Perú) — ver sección dedicada más abajo.
+7. **Guardar/exportar**: autosave en el navegador (localStorage), guardar/cargar proyecto,
    exportar/importar JSON, exportar/**importar CSV** de las cargas (parser tolerante a
    variantes de encabezado), y un botón de impresión que genera un **informe técnico**
    con portada (proyecto/cliente/fecha/preparado por), parámetros, cuadro de cargas,
@@ -80,10 +83,11 @@ python3 -m http.server 8080
   alta ×1.5), y se calcula qué fracción representa del kVA total del sistema. Esa
   fracción determina una sobredimensión adicional del alternador por tramos
   (`js/app.js`, constante `HARMONIC_OVERSIZE_BRACKETS`): sin sobredimensión hasta 10%,
-  ×1.10 hasta 30%, ×1.20 hasta 60%, ×1.35 por encima. Es una heurística de referencia,
-  no un cálculo de THD real — para cargas no lineales dominantes (grandes VFD,
-  rectificadores, UPS) se requiere un estudio de armónicos y una especificación de
-  alternador (paso de bobinado, reactancia subtransitoria) con el fabricante.
+  ×1.10 hasta 30%, ×1.20 hasta 60%, ×1.35 por encima. Es una heurística de referencia
+  inspirada en el criterio de IEEE 519 (ver "Normativa de referencia"), no un cálculo de
+  THD real — para cargas no lineales dominantes (grandes VFD, rectificadores, UPS) se
+  requiere un estudio de armónicos y una especificación de alternador (paso de bobinado,
+  reactancia subtransitoria) con el fabricante.
 - **kW recomendado**: `kVA_recomendado × factor_de_potencia_del_generador` (por defecto 0.8).
 - **Tamaño comercial sugerido**: primer valor de una lista de tamaños estándar de
   referencia (`js/app.js`, constante `STANDARD_SIZES_KVA`) que sea igual o mayor al
@@ -111,12 +115,34 @@ instalación de grupos electrógenos, orientada a Perú con referencias internac
   "Componentes de Diseño Urbano" (vías de habilitación urbana).
 - **Fuera de Perú**: IEC 60364 (instalaciones eléctricas de baja tensión) y NFPA 70/NEC
   (Estados Unidos), artículos 700/701/702 sobre sistemas de emergencia y espera.
+- **Calidad de energía / armónicos**: IEEE 519 "Recommended Practice and Requirements for
+  Harmonic Control in Electric Power Systems" — referencia detrás de la sobredimensión
+  por armónicos que calcula la app.
+
+Para vías internas de una operación minera (fuera del alcance del RNE), rige en su lugar
+el **Reglamento de Seguridad y Salud Ocupacional en Minería** (D.S. N.° 024-2016-EM,
+modificado por D.S. N.° 034-2023-EM).
 
 Es orientación general recopilada de fuentes públicas — verifica siempre el texto legal
 vigente y valida con un ingeniero colegiado y la autoridad competente (municipalidad,
-OSINERGMIN, Indeci, o el reglamento de seguridad de la operación minera) antes de una
+OSINERGMIN, Indeci, o la gerencia de seguridad de la operación minera) antes de una
 emisión de ingeniería final, ya que los requisitos exactos dependen del uso, la potencia
 y la ubicación específica del proyecto.
+
+## Marcas y fabricantes de referencia
+
+Panorama de mercado (no exhaustivo) incluido como tarjeta de referencia en la app:
+
+- **Motor · premium/misión crítica**: Caterpillar, Cummins, MTU/Rolls-Royce Power Systems, Mitsubishi.
+- **Motor · industrial general**: Perkins, Volvo Penta, John Deere, Deutz, Doosan, Iveco/FPT, Yanmar, Kohler-Lombardini, Hatz.
+- **Motor · gama económica**: Weichai (incl. Baudouin), Yuchai, SDEC, Ricardo, FAW (China); Kirloskar, Mahindra Powerol (India).
+- **Empaquetador (grupo completo)**: FG Wilson, Rehlko (antes Kohler Power Systems, incl. SDMO), Himoinsa, Pramac, Aksa, Generac, Atlas Copco QAS, Olympian.
+- **Alternador**: Stamford, Leroy-Somer, Mecc Alte, Marathon, AVK, Sincro, ENGGA.
+- **Control AMF/ATS**: DeepSea Electronics, ComAp, Woodward, Basler.
+- **Distribución en Perú**: Ferreyros/Unimaq (Caterpillar); Arcring Perú, Rivera Diesel, Grupos Electrógenos Perú (multimarca).
+
+> El fabricante del motor (OEM) casi siempre es distinto del empaquetador que arma el
+> grupo completo — la app lo explica en la propia tarjeta.
 
 ## Estructura del proyecto
 
@@ -133,3 +159,5 @@ js/app.js          Estado, motor de cálculo y lógica de UI
   a los modelos realmente disponibles en tu mercado/proveedor.
 - Editar `LOAD_LIBRARY` en `js/app.js` para agregar/quitar equipos de la librería de
   cargas o ajustar sus valores de placa a los que realmente vendes/instalas.
+- Editar `HARMONIC_SEVERITY` y `HARMONIC_OVERSIZE_BRACKETS` en `js/app.js` para ajustar
+  los pesos de severidad y los umbrales/factores de sobredimensión por armónicos.
