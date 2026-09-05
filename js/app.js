@@ -823,6 +823,7 @@ populateLibraryCategoryFilter();
  * ========================================================================= */
 
 const disclaimerDialog = document.getElementById("disclaimerDialog");
+const btnCloseDisclaimer = document.getElementById("btnCloseDisclaimer");
 
 function isDisclaimerAccepted() {
   try {
@@ -832,6 +833,20 @@ function isDisclaimerAccepted() {
   }
 }
 
+// Antes de aceptar, este es un modal de consentimiento real: no debe poder
+// cerrarse con "✕" ni con Escape, solo con "Entiendo y acepto" — si no, un
+// usuario podría operar la app entera (incluido imprimir un informe) en la
+// misma sesión sin haber confirmado que leyó el aviso. Una vez aceptado,
+// reabrirlo desde el pie de página es solo para releerlo, así que ahí sí se
+// puede cerrar libremente.
+function updateDisclaimerCloseability() {
+  btnCloseDisclaimer.hidden = !isDisclaimerAccepted();
+}
+
+disclaimerDialog.addEventListener("cancel", (e) => {
+  if (!isDisclaimerAccepted()) e.preventDefault();
+});
+
 document.getElementById("btnAcceptDisclaimer").addEventListener("click", () => {
   try {
     localStorage.setItem(STORAGE_DISCLAIMER_ACCEPTED_KEY, "1");
@@ -839,11 +854,15 @@ document.getElementById("btnAcceptDisclaimer").addEventListener("click", () => {
     // Se ignora silenciosamente si localStorage no está disponible; el aviso
     // simplemente volverá a mostrarse en la próxima visita.
   }
+  updateDisclaimerCloseability();
   disclaimerDialog.close();
 });
 
-document.getElementById("btnCloseDisclaimer").addEventListener("click", () => disclaimerDialog.close());
-document.getElementById("btnOpenDisclaimer").addEventListener("click", () => disclaimerDialog.showModal());
+btnCloseDisclaimer.addEventListener("click", () => disclaimerDialog.close());
+document.getElementById("btnOpenDisclaimer").addEventListener("click", () => {
+  updateDisclaimerCloseability();
+  disclaimerDialog.showModal();
+});
 
 document.getElementById("btnReset").addEventListener("click", () => {
   if (!confirm("¿Reiniciar el proyecto actual? Se perderán los cambios no guardados.")) return;
@@ -891,6 +910,7 @@ function init() {
     setSaveStatus("Este proyecto se guardó con una versión anterior del método de cálculo; los resultados mostrados ya están recalculados con la metodología actual (ver README).");
     window.__pendingMigrationNotice = false;
   }
+  updateDisclaimerCloseability();
   if (!isDisclaimerAccepted()) {
     disclaimerDialog.showModal();
   }

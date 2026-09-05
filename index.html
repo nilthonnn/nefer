@@ -3,6 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+    CSP en profundidad: la app es 100% estática y sin dependencias externas
+    (sin CDN, sin fuentes, sin imágenes, sin fetch/XHR), así que puede ir tan
+    estricta como "todo 'self'". style-src necesita 'unsafe-inline' porque las
+    barras de "Composición de la carga" fijan su ancho con style="width:...%"
+    dinámico (sin eso no hay forma de expresar un valor calculado en runtime
+    con un nonce/hash estático). Nota: frame-ancestors NO tiene efecto en un
+    <meta> CSP (solo vía cabecera HTTP) — si despliegas detrás de un servidor,
+    agrégalo ahí (o X-Frame-Options: DENY) para protección real anti-clickjacking.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';" />
   <title>Dimensionador de Grupo Electrógeno</title>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
