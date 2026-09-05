@@ -34,6 +34,7 @@ const DEFAULT_PARAMS = {
 const STORAGE_KEY = "genset-sizer:autosave";
 const STORAGE_SAVED_KEY = "genset-sizer:saved-project";
 const STORAGE_UI_ADVANCED_COLS_KEY = "genset-sizer:ui-advanced-cols";
+const STORAGE_DISCLAIMER_ACCEPTED_KEY = "genset-sizer:disclaimer-accepted";
 
 /* =========================================================================
  * Utilidades de UI (formato/DOM; el cálculo puro está en calc.js)
@@ -817,6 +818,33 @@ libListEl.addEventListener("click", (e) => {
 
 populateLibraryCategoryFilter();
 
+/* =========================================================================
+ * Aviso legal / exención de responsabilidad
+ * ========================================================================= */
+
+const disclaimerDialog = document.getElementById("disclaimerDialog");
+
+function isDisclaimerAccepted() {
+  try {
+    return localStorage.getItem(STORAGE_DISCLAIMER_ACCEPTED_KEY) === "1";
+  } catch (e) {
+    return false;
+  }
+}
+
+document.getElementById("btnAcceptDisclaimer").addEventListener("click", () => {
+  try {
+    localStorage.setItem(STORAGE_DISCLAIMER_ACCEPTED_KEY, "1");
+  } catch (e) {
+    // Se ignora silenciosamente si localStorage no está disponible; el aviso
+    // simplemente volverá a mostrarse en la próxima visita.
+  }
+  disclaimerDialog.close();
+});
+
+document.getElementById("btnCloseDisclaimer").addEventListener("click", () => disclaimerDialog.close());
+document.getElementById("btnOpenDisclaimer").addEventListener("click", () => disclaimerDialog.showModal());
+
 document.getElementById("btnReset").addEventListener("click", () => {
   if (!confirm("¿Reiniciar el proyecto actual? Se perderán los cambios no guardados.")) return;
   state.rows = DEFAULT_ROWS.map((r) => ({ ...r, id: nextRowId() }));
@@ -868,6 +896,9 @@ function init() {
   if (window.__pendingMigrationNotice) {
     setSaveStatus("Este proyecto se guardó con una versión anterior del método de cálculo; los resultados mostrados ya están recalculados con la metodología actual (ver README).");
     window.__pendingMigrationNotice = false;
+  }
+  if (!isDisclaimerAccepted()) {
+    disclaimerDialog.showModal();
   }
 }
 

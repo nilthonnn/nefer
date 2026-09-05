@@ -241,3 +241,17 @@ regla de autor con la misma especificidad que el selector `[hidden]` del navegad
 (como `.field { display: flex; }`) gana la cascada por orden de aparición — el atributo
 `hidden` por sí solo no basta. Si agregas un campo condicional nuevo con `hidden`,
 no necesitas repetir este fix: ya es una regla global.
+
+## Licencia y aviso legal
+
+Este proyecto se distribuye bajo la [licencia MIT](LICENSE): software libre, sin garantía
+de ningún tipo ("as is"), ver el archivo `LICENSE` para el texto legal completo.
+
+La app misma muestra un aviso al primer uso (`<dialog id="disclaimerDialog">` en
+`index.html`, lógica en `js/app.js`) que dice explícitamente que es una **herramienta de
+referencia y orientación técnica preliminar**, que **no sustituye** el cálculo, diseño ni
+la firma de un ingeniero colegiado, ni el cumplimiento de la normativa vigente aplicable
+al proyecto específico. El usuario puede volver a leer este aviso en cualquier momento
+desde el enlace "Aviso legal" al pie de la página. La aceptación se recuerda en
+localStorage (`genset-sizer:disclaimer-accepted`) y, al igual que el resto del estado de
+la app, es local al navegador — no se envía a ningún servidor.

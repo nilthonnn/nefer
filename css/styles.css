@@ -245,8 +245,33 @@ tbody input, tbody select {
 .actions-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
 .footer { text-align: center; padding: 16px 24px 32px; font-size: 12px; color: var(--text-muted); }
+.footer p { margin: 6px 0 0; }
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-btn:hover { color: var(--primary-dark); }
 
 .print-only { display: none; }
+
+/* ---- Aviso legal (dialog) ---- */
+dialog#disclaimerDialog {
+  width: min(640px, 92vw);
+  max-height: 82vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.22);
+  overflow-y: auto;
+}
+dialog#disclaimerDialog::backdrop { background: rgba(16, 24, 40, 0.45); }
+.disclaimer-body { font-size: 13.5px; color: var(--text); line-height: 1.55; display: flex; flex-direction: column; gap: 12px; }
+.disclaimer-body code { background: #eef2f6; border-radius: 4px; padding: 1px 5px; font-size: 12.5px; }
 
 /* ---- Librería de cargas (dialog) ---- */
 dialog#libraryDialog {
@@ -337,7 +362,7 @@ dialog#libraryDialog::backdrop { background: rgba(16, 24, 40, 0.45); }
   .card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
   .table-scroll { overflow: visible; }
   #btnAddRow, .col-actions { display: none !important; }
-  dialog#libraryDialog { display: none !important; }
+  dialog#libraryDialog, dialog#disclaimerDialog { display: none !important; }
 
   /* El informe impreso siempre muestra todo: parámetros avanzados
      desplegados y todas las columnas de la tabla, sin importar el estado

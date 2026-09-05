@@ -411,11 +411,50 @@
     <div id="libList" class="lib-list"></div>
   </dialog>
 
+  <dialog id="disclaimerDialog" class="no-print">
+    <div class="lib-header">
+      <h2>Aviso legal y exención de responsabilidad</h2>
+      <button id="btnCloseDisclaimer" class="btn btn-secondary" title="Cerrar">✕</button>
+    </div>
+    <div class="disclaimer-body">
+      <p>
+        Esta es una <strong>herramienta gratuita de código abierto</strong> con fines de referencia y orientación
+        técnica preliminar. Se entrega "tal cual" ("as is"), sin garantía de ningún tipo, expresa o implícita,
+        incluyendo (sin limitarse a) garantías de idoneidad para un propósito particular — ver los términos
+        completos en el archivo <code>LICENSE</code> (licencia MIT) del repositorio.
+      </p>
+      <p>
+        Esta herramienta <strong>no sustituye</strong> el cálculo, diseño, verificación ni la firma de un
+        ingeniero colegiado, ni el cumplimiento de la normativa vigente aplicable a tu proyecto específico (CNE,
+        RNE, reglamento de la operación minera, o el equivalente en tu país). Los valores de la librería de
+        cargas y los tamaños comerciales de catálogo son orientativos: confirma siempre contra la placa del
+        equipo real y la ficha técnica del fabricante antes de cualquier emisión de ingeniería final.
+      </p>
+      <p>
+        El uso de los resultados para especificar, comprar, instalar u operar un grupo electrógeno es
+        responsabilidad exclusiva de quien los aplica. Los autores y colaboradores de este proyecto no serán
+        responsables por daños directos, indirectos, incidentales o consecuentes (incluyendo daños materiales,
+        lesiones personales o interrupción de servicio) derivados del uso, mal uso o interpretación de esta
+        herramienta o de sus resultados.
+      </p>
+      <p class="hint" style="margin-top:0;">
+        Puedes volver a leer este aviso en cualquier momento desde el enlace "Aviso legal" al pie de la página.
+      </p>
+    </div>
+    <div class="actions-row">
+      <button id="btnAcceptDisclaimer" class="btn btn-primary">Entiendo y acepto</button>
+    </div>
+  </dialog>
+
   <footer class="footer no-print">
     <p>
       Herramienta de estimación técnica. Los resultados son orientativos: para la selección final del grupo electrógeno,
       valida siempre contra la ficha técnica del fabricante (curvas de arranque de motores, derating por altitud/temperatura,
       tipo de carga no lineal, THD, etc.).
+    </p>
+    <p>
+      <button id="btnOpenDisclaimer" class="link-btn">Aviso legal</button> ·
+      Software libre bajo licencia <a href="LICENSE" target="_blank" rel="noopener">MIT</a>.
     </p>
   </footer>
 
