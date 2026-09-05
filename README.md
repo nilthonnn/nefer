@@ -203,8 +203,13 @@ node --test
 Corre `tests/calc.test.js` contra `js/calc.js` (sin dependencias, usa `node:test` /
 `node:assert`, requiere Node ≥18). Cubre la conversión HP→kW, el cálculo de arranque, la
 sobredimensión por armónicos, el ajuste por régimen de operación, el derating por
-tecnología de motor, y la búsqueda de tamaño comercial por %dip (incluido el caso donde
-ningún tamaño del catálogo alcanza).
+tecnología de motor, la búsqueda de tamaño comercial por %dip (incluido el caso donde
+ningún tamaño del catálogo alcanza), y `csvEscape` (mitigación de "CSV/Formula Injection"
+al exportar el cuadro de cargas).
+
+Un workflow de GitHub Actions (`.github/workflows/tests.yml`) corre esta misma suite en
+cada `push` y `pull_request`, para que un cambio que rompa la metodología de cálculo no
+pueda fusionarse sin que la suite lo detecte primero.
 
 ## Versión del esquema de cálculo
 

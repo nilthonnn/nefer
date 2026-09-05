@@ -157,3 +157,20 @@ test("CONNECTION_TYPE_PRESETS: cada preset trae voltaje+fases coherentes, salvo 
   }
   assert.ok(calc.CONNECTION_TYPE_PRESETS["380_3f"], "debe existir el estándar peruano 380V trifásico + neutro");
 });
+
+test("csvEscape: antepone comilla simple a valores que empiezan como fórmula (mitigación CSV injection)", () => {
+  assert.equal(calc.csvEscape("=1+1"), "'=1+1");
+  assert.equal(calc.csvEscape("+1+1"), "'+1+1");
+  assert.equal(calc.csvEscape("-5% offset"), "'-5% offset");
+  assert.equal(calc.csvEscape("@SUM(A1)"), "'@SUM(A1)");
+  // Un valor que además necesita comillas por contener comas queda con AMBAS
+  // protecciones: la comilla simple anti-fórmula y las comillas dobles CSV.
+  assert.equal(calc.csvEscape('=HYPERLINK("http://evil")'), '"\'=HYPERLINK(""http://evil"")"');
+});
+
+test("csvEscape: no altera texto normal y sigue citando comas/comillas/saltos de línea", () => {
+  assert.equal(calc.csvEscape("Bomba de agua"), "Bomba de agua");
+  assert.equal(calc.csvEscape("Carga, con coma"), '"Carga, con coma"');
+  assert.equal(calc.csvEscape('Con "comillas"'), '"Con ""comillas"""');
+  assert.equal(calc.csvEscape("=1+1,con coma"), '"\'=1+1,con coma"');
+});

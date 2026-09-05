@@ -857,12 +857,6 @@ document.getElementById("btnReset").addEventListener("click", () => {
 
 document.getElementById("btnPrint").addEventListener("click", () => window.print());
 
-function csvEscape(value) {
-  const str = String(value ?? "");
-  if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
-  return str;
-}
-
 function slugify(str) {
   return String(str || "")
     .toLowerCase()

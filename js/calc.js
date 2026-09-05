@@ -176,6 +176,19 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+// Mitigación de "CSV/Formula Injection" (OWASP): si el valor empieza con un
+// carácter que Excel/Sheets interpreta como inicio de fórmula (=, +, -, @, o
+// tab/CR), se antepone una comilla simple para forzarlo a texto plano al
+// abrir el archivo — evita que una descripción de carga maliciosa se
+// ejecute como fórmula en la hoja de cálculo de quien reciba el CSV
+// exportado (usado por "Exportar CSV de cargas" en js/app.js).
+function csvEscape(value) {
+  let str = String(value ?? "");
+  if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
+  if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
+  return str;
+}
+
 function toNumber(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -362,6 +375,7 @@ if (typeof module !== "undefined" && module.exports) {
     CALC_SCHEMA_VERSION,
     clamp,
     toNumber,
+    csvEscape,
     computeLoadRow,
     harmonicOversizeFactor,
     computeHarmonics,
