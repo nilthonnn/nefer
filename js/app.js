@@ -171,15 +171,18 @@ function renderResults() {
     : "⚠ no alcanza el catálogo de referencia a cumplir el %dip elegido";
 
   renderBreakdown(summary);
-  renderReportMeta();
+  renderReportMeta(summary);
 }
 
-function renderReportMeta() {
+function renderReportMeta(summary) {
   const today = new Date().toLocaleDateString("es");
   document.getElementById("coverProject").textContent = state.params.projectName || "—";
   document.getElementById("coverClient").textContent = state.params.clientName || "—";
   document.getElementById("coverDate").textContent = today;
   document.getElementById("coverPreparedBy").textContent = state.params.preparedBy || "—";
+  document.getElementById("coverCapacity").textContent = summary.suggestedSize
+    ? `${formatNumber(summary.recommendedKW)} kW (${summary.suggestedSize} kVA comercial)`
+    : "—";
   document.getElementById("sigPreparedBy").textContent = state.params.preparedBy || "";
   document.getElementById("sigDate").textContent = today;
 }
