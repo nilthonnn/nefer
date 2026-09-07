@@ -143,15 +143,16 @@ function renderResults() {
   const summary = computeSummary(state.rows, state.params);
   applyDriveTypeVisibility();
 
-  document.getElementById("statNominal").textContent = `${formatNumber(summary.sumNominal, 2)} m³/min`;
-  document.getElementById("statNominalCFM").textContent = `${formatNumber(summary.sumNominal * M3MIN_TO_CFM, 0)} CFM`;
+  document.getElementById("statNominal").textContent = `${formatNumber(summary.sumNominal * M3MIN_TO_CFM, 0)} CFM`;
+  document.getElementById("statNominalCFM").textContent = `${formatNumber(summary.sumNominal, 2)} m³/min`;
 
-  document.getElementById("statEffective").textContent = `${formatNumber(summary.sumEffective, 2)} m³/min`;
-  document.getElementById("statEffectiveDetail").textContent =
-    summary.sumNominal > 0 ? `${formatNumber((summary.sumEffective / summary.sumNominal) * 100, 0)}% del consumo nominal` : "sin consumidores registrados";
+  document.getElementById("statEffective").textContent = `${formatNumber(summary.sumEffective * M3MIN_TO_CFM, 0)} CFM`;
+  document.getElementById("statEffectiveDetail").textContent = summary.sumNominal > 0
+    ? `${formatNumber((summary.sumEffective / summary.sumNominal) * 100, 0)}% del consumo nominal · ${formatNumber(summary.sumEffective, 2)} m³/min`
+    : "sin consumidores registrados";
 
-  document.getElementById("statDesignDemand").textContent = `${formatNumber(summary.designDemandM3min, 2)} m³/min`;
-  document.getElementById("statDesignDemandDetail").textContent = `margen de seguridad ${formatNumber(state.params.margin, 0)}%`;
+  document.getElementById("statDesignDemand").textContent = `${formatNumber(summary.designDemandM3min * M3MIN_TO_CFM, 0)} CFM`;
+  document.getElementById("statDesignDemandDetail").textContent = `margen de seguridad ${formatNumber(state.params.margin, 0)}% · ${formatNumber(summary.designDemandM3min, 2)} m³/min`;
 
   document.getElementById("statSiteAtm").textContent = `${formatNumber(summary.siteAtmKPa, 1)} kPa abs`;
   document.getElementById("statSiteAtmDetail").textContent = `altitud ${formatNumber(state.params.altitude, 0)} msnm · ${formatNumber(state.params.temp, 0)} °C`;
@@ -168,8 +169,8 @@ function renderResults() {
   document.getElementById("statDensity").textContent = `${formatNumber((1 - summary.densityFactor) * 100, 1)}%`;
   document.getElementById("statDensityDetail").textContent = "reducción de densidad del aire de succión vs. referencia ISO 1217 (100 kPa, 20°C)";
 
-  document.getElementById("statCatalogFAD").textContent = `${formatNumber(summary.requiredCatalogFADm3min, 2)} m³/min`;
-  document.getElementById("statCatalogFADDetail").textContent = `≈ ${formatNumber(summary.requiredCatalogFADm3min * M3MIN_TO_CFM, 0)} CFM · caudal de catálogo (FAD) a pedir al fabricante`;
+  document.getElementById("statCatalogFAD").textContent = `${formatNumber(summary.requiredCatalogFADcfm, 0)} CFM`;
+  document.getElementById("statCatalogFADDetail").textContent = `≈ ${formatNumber(summary.requiredCatalogFADm3min, 2)} m³/min · caudal de catálogo (FAD) a pedir al fabricante`;
 
   document.getElementById("statPower").textContent = `${formatNumber(summary.shaftPowerKW, 1)} kW`;
   document.getElementById("statPowerDetail").textContent = `eficiencia global asumida ${formatNumber(summary.tech.overallEfficiency * 100, 0)}% (${summary.tech.label})`;
@@ -244,7 +245,7 @@ function renderReportMeta(summary) {
   document.getElementById("coverPreparedBy").textContent = state.params.preparedBy || "—";
   document.getElementById("coverCapacity").textContent = isDieselMobile()
     ? `${formatNumber(summary.suggestedMobileClass.cfm, 0)} CFM @ ${formatNumber(summary.suggestedMobileClass.pressureBar, 1)} bar — motor diésel ${formatNumber(summary.dieselSizing.ratedEngineKWNeeded, 0)} kW (${formatNumber(summary.dieselSizing.ratedEngineHPNeeded, 0)} HP)`
-    : `${formatNumber(summary.suggestedSizeKW, 1)} kW (${formatNumber(summary.requiredCatalogFADm3min, 1)} m³/min FAD @ ${formatNumber(summary.dischargeGaugeBar, 1)} bar)`;
+    : `${formatNumber(summary.requiredCatalogFADcfm, 0)} CFM FAD @ ${formatNumber(summary.dischargeGaugeBar, 1)} bar — ${formatNumber(summary.suggestedSizeKW, 1)} kW`;
   document.getElementById("sigPreparedBy").textContent = state.params.preparedBy || "";
   document.getElementById("sigDate").textContent = today;
 }
@@ -266,7 +267,7 @@ function renderBreakdown(summary) {
     runRow.innerHTML = `
       <span class="bar-label" title="${escapeHtml(c.desc)}">${escapeHtml(c.desc || "(sin nombre)")}</span>
       <span class="bar-track"><span class="bar-fill" style="width:${(c.effectiveM3min / maxValue) * 100}%"></span></span>
-      <span class="bar-value">${formatNumber(c.effectiveM3min, 2)} m³/min</span>
+      <span class="bar-value">${formatNumber(c.effectiveM3min * M3MIN_TO_CFM, 0)} CFM</span>
     `;
     container.appendChild(runRow);
 
@@ -276,7 +277,7 @@ function renderBreakdown(summary) {
       nominalRow.innerHTML = `
         <span class="bar-label">&nbsp;&nbsp;↳ nominal (sin factor de uso)</span>
         <span class="bar-track"><span class="bar-fill is-nominal" style="width:${(c.nominalM3min / maxValue) * 100}%"></span></span>
-        <span class="bar-value">${formatNumber(c.nominalM3min, 2)} m³/min</span>
+        <span class="bar-value">${formatNumber(c.nominalM3min * M3MIN_TO_CFM, 0)} CFM</span>
       `;
       container.appendChild(nominalRow);
     }

@@ -114,7 +114,15 @@ python3 -m http.server 8080
   Como el compresor tiene un volumen barrido geométricamente fijo, en altura ingiere
   aire menos denso y entrega menos caudal "normal" del que indica su placa (certificada
   a nivel del mar) — hay que pedir una capacidad de catálogo mayor para que, instalado
-  en el sitio, entregue la demanda real.
+  en el sitio, entregue la demanda real. Es, en la práctica, **el número final del
+  dimensionamiento** — el que se le pide al fabricante/distribuidor — así que la UI lo
+  muestra en **CFM** como unidad principal (con el equivalente en m³/min como dato
+  secundario), igual que el resto de los caudales de la sección "Resultado del
+  dimensionamiento" (consumo nominal, efectivo, demanda de diseño, composición de la
+  demanda): es la unidad con la que se especifica un compresor en la práctica comercial,
+  incluida la mayoría de catálogos vendidos en Perú. El motor de cálculo interno
+  (`js/calc.js`) sigue trabajando en m³/min (SI) — es un cambio solo de qué unidad se
+  muestra primero, no de la metodología.
 - **Presión de descarga y relación de compresión**: `presión_descarga_manométrica =
   presión_de_trabajo + caída_de_presión_de_línea`; la presión absoluta de descarga se
   obtiene sumando la presión atmosférica del sitio (una presión manométrica siempre se
