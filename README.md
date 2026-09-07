@@ -53,8 +53,9 @@ python3 -m http.server 8080
    catálogo de tamaños comerciales el primero que cumpla tanto la demanda continua como
    ese %dip — si el criterio de tensión exige más que el simple redondeo por kVA, el
    tamaño sugerido sube y queda explicado en pantalla. También estima el **consumo de
-   combustible a 100% de carga** (L/h y L/día en operación continua) del tamaño comercial
-   sugerido, interpolando una tabla de referencia de mercado — ver metodología abajo.
+   combustible a 100% de carga** (L/h y gal/h, más L/día y gal/día en operación continua)
+   del tamaño comercial sugerido, interpolando una tabla de referencia de mercado — ver
+   metodología abajo.
 4. **Librería de cargas**: catálogo de ~45 equipos típicos del mercado (motores trifásicos
    por HP estándar NEMA/IEC, soldadoras inversoras y convencionales, bombas, compresores,
    HVAC, iluminación, hornos, cargadores/UPS, herramientas) con potencia, cos φ, eficiencia
@@ -140,7 +141,17 @@ python3 -m http.server 8080
   consumo real de un modelo específico varía ±10-20% según fabricante, tecnología del
   motor, altitud/temperatura y estado de mantenimiento — es una cifra para presupuestar
   combustible/autonomía en etapa de anteproyecto, no reemplaza la curva de consumo (25/50/
-  75/100% de carga) de la ficha técnica del modelo real.
+  75/100% de carga) de la ficha técnica del modelo real. Se muestra también en galones/hora
+  (`L_TO_US_GAL = 0.264172`) para lectura directa en mercados que usan esa unidad.
+
+  **Validación adicional con fabricantes internacionales** (fichas técnicas oficiales):
+  Caterpillar 3516 (~2500 kVA): 111.2 gal/h (420.9 L/h) — tabla estima 460 L/h (~9% más
+  alto). Cummins C900D5E (~1125 kVA standby): 48.9 gal/h (185.1 L/h) — tabla interpola
+  ~216 L/h (~17% más alto). MTU 10V1600 DS500 (625 kVA): 33.1 gal/h (125.3 L/h) — tabla
+  interpola ~125 L/h (coincide casi exacto). En conjunto, la tabla se mantiene dentro del
+  margen de incertidumbre declarado (±10-20%), tendiendo a sobrestimar un poco en el rango
+  ≥1000 kVA frente a estos modelos específicos — otra razón más para no usarla como
+  sustituto de la ficha técnica real en esa categoría de tamaño.
 
 > ⚠️ Esta herramienta da una estimación orientativa. Para la selección final del grupo
 > electrógeno, valida siempre contra la ficha técnica del fabricante (curvas reales de

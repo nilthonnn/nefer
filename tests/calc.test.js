@@ -175,6 +175,13 @@ test("csvEscape: no altera texto normal y sigue citando comas/comillas/saltos de
   assert.equal(calc.csvEscape("=1+1,con coma"), '"\'=1+1,con coma"');
 });
 
+test("L_TO_US_GAL: convierte litros a galones estadounidenses correctamente", () => {
+  assert.ok(Math.abs(calc.L_TO_US_GAL - 0.264172) < 1e-9);
+  assert.ok(Math.abs(100 * calc.L_TO_US_GAL - 26.4172) < 1e-6);
+  // 1 galón estadounidense = 3.785411784 L (cifra de referencia conocida)
+  assert.ok(Math.abs(1 / calc.L_TO_US_GAL - 3.785411784) < 1e-3);
+});
+
 test("estimateFuelConsumptionLPerHour: coincide con los puntos de referencia exactos de la tabla", () => {
   assert.equal(calc.estimateFuelConsumptionLPerHour(30), 7.7);
   assert.equal(calc.estimateFuelConsumptionLPerHour(200), 42.4);

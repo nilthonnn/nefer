@@ -11,6 +11,7 @@
  * ========================================================================= */
 
 const HP_TO_KW = 0.746;
+const L_TO_US_GAL = 0.264172; // 1 litro = 0.264172 galones estadounidenses (US liquid gallon)
 
 const STARTING_PRESETS = {
   resistive:        { label: "Sin arranque (resistiva/electrónica)", factor: 1 },
@@ -428,6 +429,7 @@ if (typeof module !== "undefined" && module.exports) {
     STANDARD_SIZES_KVA,
     FUEL_CONSUMPTION_REFERENCE,
     estimateFuelConsumptionLPerHour,
+    L_TO_US_GAL,
     LOAD_LIBRARY,
     CALC_SCHEMA_VERSION,
     clamp,

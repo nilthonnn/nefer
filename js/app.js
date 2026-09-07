@@ -172,10 +172,10 @@ function renderResults() {
     : "⚠ no alcanza el catálogo de referencia a cumplir el %dip elegido";
 
   document.getElementById("statFuelConsumption").textContent = summary.suggestedSize
-    ? `${formatNumber(summary.fuelConsumptionLPerHour)} L/h`
+    ? `${formatNumber(summary.fuelConsumptionLPerHour)} L/h · ${formatNumber(summary.fuelConsumptionLPerHour * L_TO_US_GAL)} gal/h`
     : "—";
   document.getElementById("statFuelConsumptionDetail").textContent = summary.suggestedSize
-    ? `≈ ${formatNumber(summary.fuelConsumptionLPerHour * 24, 0)} L/día en operación continua a plena carga — referencia de mercado, verifica la curva real del motor`
+    ? `≈ ${formatNumber(summary.fuelConsumptionLPerHour * 24, 0)} L (${formatNumber(summary.fuelConsumptionLPerHour * 24 * L_TO_US_GAL, 0)} gal) por día en operación continua a plena carga — referencia de mercado, verifica la curva real del motor`
     : "a 100% de carga, del tamaño comercial sugerido";
 
   renderBreakdown(summary);
