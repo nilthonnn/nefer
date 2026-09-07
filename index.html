@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!--
+    CSP en profundidad: la app es 100% estática y sin dependencias externas
+    (sin CDN, sin fuentes, sin imágenes, sin fetch/XHR), así que puede ir tan
+    estricta como "todo 'self'". Nota: frame-ancestors NO tiene efecto en un
+    <meta> CSP (solo vía cabecera HTTP) — si despliegas detrás de un servidor,
+    agrégalo ahí (o X-Frame-Options: DENY) para protección real anti-clickjacking.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';" />
+  <title>Dimensionador de Compresores de Aire</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">🗜️</span>
+        <div>
+          <h1>Dimensionador de Compresores de Aire</h1>
+          <p class="subtitle">Calcula la capacidad de aire comprimido necesaria, corregida por altitud — Perú</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button id="btnPrint" class="btn btn-ghost" title="Generar informe imprimible">🖨️ Imprimir informe</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section class="print-only report-cover">
+      <h1 id="coverTitle">Informe de Dimensionamiento de Compresor de Aire</h1>
+      <dl class="cover-meta">
+        <div><dt>Proyecto</dt><dd id="coverProject">—</dd></div>
+        <div><dt>Cliente</dt><dd id="coverClient">—</dd></div>
+        <div><dt>Fecha</dt><dd id="coverDate">—</dd></div>
+        <div><dt>Preparado por</dt><dd id="coverPreparedBy">—</dd></div>
+        <div><dt>Capacidad calculada</dt><dd id="coverCapacity">—</dd></div>
+      </dl>
+    </section>
+
+    <section class="card" id="paramsCard">
+      <h2>1. Parámetros del proyecto y del sitio</h2>
+      <div class="grid grid-4">
+        <label class="field">
+          <span>Nombre del proyecto</span>
+          <input type="text" id="projectName" placeholder="Ej. Planta / Sala de compresores" />
+        </label>
+        <label class="field">
+          <span>Cliente</span>
+          <input type="text" id="clientName" placeholder="Ej. Minera XYZ" />
+        </label>
+        <label class="field">
+          <span>Preparado por</span>
+          <input type="text" id="preparedBy" placeholder="Nombre del responsable" />
+        </label>
+        <label class="field">
+          <span>Ubicación de referencia (Perú)</span>
+          <select id="locationPreset"></select>
+        </label>
+        <label class="field">
+          <span>Altitud del sitio (msnm)</span>
+          <input type="number" id="altitude" value="150" min="0" step="10" />
+        </label>
+        <label class="field">
+          <span>Temperatura ambiente (°C)</span>
+          <input type="number" id="temp" value="20" step="1" />
+        </label>
+        <label class="field">
+          <span>Presión de trabajo requerida (bar-g)</span>
+          <input type="number" id="workingPressure" value="7" min="0.5" step="0.1" />
+        </label>
+        <label class="field">
+          <span>Margen de seguridad / crecimiento futuro (%)</span>
+          <input type="number" id="margin" value="20" min="0" max="200" step="1" />
+        </label>
+      </div>
+      <p class="hint">
+        La <strong>altitud</strong> es el parámetro más determinante en Perú: un mismo compresor entrega menos aire
+        "libre" (FAD referido a condiciones normales) mientras más alto esté el sitio, porque succiona aire menos
+        denso — desde la costa (~0-200&nbsp;msnm) hasta ciudades mineras de gran altitud como Cerro de Pasco
+        (~4,338&nbsp;msnm) o La Rinconada (~5,100&nbsp;msnm) la corrección puede superar el 40%. Usa el selector de
+        "Ubicación de referencia" solo como atajo para rellenar la altitud; el campo queda editable con el dato real
+        del sitio. La "Presión de trabajo requerida" es la presión que necesitan los consumidores en el punto de uso
+        (sin contar la caída de presión de la línea, ver "Parámetros avanzados"). El margen cubre variaciones de
+        demanda y expansión futura de la planta.
+      </p>
+
+      <details id="advancedParamsDetails" class="advanced-details">
+        <summary>Parámetros avanzados (tecnología del compresor, caída de presión, respaldo)</summary>
+        <div class="grid grid-4">
+          <label class="field">
+            <span>Tecnología del compresor</span>
+            <select id="compressorTech">
+              <option value="screw_oil" selected>Tornillo lubricado (oil-injected)</option>
+              <option value="screw_oilfree">Tornillo libre de aceite (oil-free)</option>
+              <option value="reciprocating">Pistón (reciprocante)</option>
+              <option value="centrifugal">Centrífugo (dinámico)</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Caída de presión en línea/filtros/secador (bar)</span>
+            <input type="number" id="lineLoss" value="0.5" min="0" step="0.1" />
+          </label>
+          <label class="field field-checkbox">
+            <input type="checkbox" id="includeStandby" />
+            <span>Incluir unidad de respaldo (N+1)</span>
+          </label>
+        </div>
+        <p class="hint">
+          La tecnología del compresor fija la eficiencia global asumida (de energía eléctrica a trabajo de
+          compresión) y la relación de compresión práctica máxima en una sola etapa antes de requerir una segunda
+          etapa con interenfriamiento. Los centrífugos son, además, especialmente sensibles a la densidad del aire de
+          succión: a gran altitud su margen de surge (bombeo) se reduce y requieren curvas específicas del
+          fabricante — esta app no lo modela numéricamente, solo lo advierte. La "caída de presión en línea"
+          representa filtros, secador, tubería y la banda de regulación del propio compresor; se suma a la presión de
+          trabajo para obtener la presión de descarga real que debe entregar el equipo. "Incluir unidad de respaldo"
+          solo agrega una nota informativa al resultado — no cambia el cálculo de potencia.
+        </p>
+      </details>
+    </section>
+
+    <section class="card" id="consumersCard">
+      <div class="card-header-row">
+        <h2>2. Demanda de aire comprimido</h2>
+        <div class="header-actions">
+          <button id="btnOpenLibrary" class="btn btn-secondary">📚 Librería de consumos</button>
+          <button id="btnAddRow" class="btn btn-primary">+ Agregar consumidor</button>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table id="consumersTable">
+          <thead>
+            <tr>
+              <th class="col-desc">Descripción</th>
+              <th class="col-category">Categoría</th>
+              <th class="col-flow">Caudal</th>
+              <th class="col-unit">Unidad</th>
+              <th class="col-qty">Cant.</th>
+              <th class="col-usage">Factor de uso (%)</th>
+              <th class="col-nominal">m³/min nominal</th>
+              <th class="col-effective">m³/min efectivo</th>
+              <th class="col-inc">Incluir</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody id="consumersTableBody"></tbody>
+        </table>
+      </div>
+      <p class="hint">
+        El "factor de uso" (o simultaneidad) representa qué fracción del tiempo/de los equipos está realmente
+        consumiendo aire a la vez — evita sobredimensionar sumando el consumo de placa de todo como si operara
+        continua y simultáneamente. Al elegir la "Categoría" se autocompleta un factor de uso típico, editable si
+        conoces el dato real de tu planta. El caudal puede ingresarse en m³/min o CFM (ambos se entienden como
+        "aire libre"/ANR, es decir, referido a condiciones normales — así lo especifican casi todos los fabricantes
+        de herramientas y equipos neumáticos). Usa el botón "Librería de consumos" para agregar equipos típicos
+        (herramientas de taller, minería subterránea, construcción, pintura, instrumentación, proceso) con estos
+        datos precargados.
+      </p>
+    </section>
+
+    <section class="card" id="resultsCard">
+      <h2>3. Resultado del dimensionamiento</h2>
+
+      <div class="stats-grid">
+        <div class="stat-tile">
+          <span class="stat-label">Consumo nominal (placa)</span>
+          <span class="stat-value" id="statNominal">0,00 m³/min</span>
+          <span class="stat-sub" id="statNominalCFM">0 CFM</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Consumo efectivo (con factor de uso)</span>
+          <span class="stat-value" id="statEffective">0,00 m³/min</span>
+          <span class="stat-sub" id="statEffectiveDetail">sin consumidores registrados</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Demanda de diseño (con margen)</span>
+          <span class="stat-value" id="statDesignDemand">0,00 m³/min</span>
+          <span class="stat-sub" id="statDesignDemandDetail">margen de seguridad 0%</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Presión atmosférica del sitio</span>
+          <span class="stat-value" id="statSiteAtm">0,0 kPa abs</span>
+          <span class="stat-sub" id="statSiteAtmDetail">altitud 0 msnm</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Presión de descarga requerida</span>
+          <span class="stat-value" id="statDischarge">0,00 bar(g)</span>
+          <span class="stat-sub" id="statDischargeDetail">trabajo + línea/filtros/secador</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Relación de compresión en el sitio</span>
+          <span class="stat-value" id="statCompRatio">0,00×</span>
+          <span class="stat-sub" id="statCompRatioDetail">presión absoluta descarga / succión</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-label">Corrección por densidad de aire</span>
+          <span class="stat-value" id="statDensity">0,0%</span>
+          <span class="stat-sub" id="statDensityDetail">altitud + temperatura</span>
+        </div>
+        <div class="stat-tile stat-tile-highlight">
+          <span class="stat-label">Capacidad de catálogo requerida (FAD)</span>
+          <span class="stat-value" id="statCatalogFAD">0,00 m³/min</span>
+          <span class="stat-sub" id="statCatalogFADDetail">caudal a pedir al fabricante</span>
+        </div>
+        <div class="stat-tile stat-tile-highlight">
+          <span class="stat-label">Potencia estimada</span>
+          <span class="stat-value" id="statPower">0,0 kW</span>
+          <span class="stat-sub" id="statPowerDetail">eficiencia global asumida</span>
+        </div>
+        <div class="stat-tile stat-tile-highlight">
+          <span class="stat-label">Tamaño comercial sugerido</span>
+          <span class="stat-value" id="statSuggestedSize">0,0 kW</span>
+          <span class="stat-sub" id="statSuggestedSizeDetail">primer tamaño de catálogo de referencia que cubre la potencia estimada</span>
+        </div>
+      </div>
+
+      <div class="breakdown">
+        <h3>Composición de la demanda</h3>
+        <div id="breakdownBars" class="bars"></div>
+      </div>
+
+      <ol class="method-notes">
+        <li>Se suma el consumo <strong>nominal</strong> (placa × cantidad) y el <strong>efectivo</strong> (aplicando el factor de uso/simultaneidad de cada consumidor incluido).</li>
+        <li>Se aplica el margen de seguridad/crecimiento futuro sobre el consumo efectivo para obtener la <strong>demanda de diseño</strong>.</li>
+        <li>Se calcula la presión atmosférica del sitio con la fórmula barométrica de la Atmósfera Estándar Internacional (ISA/ICAO) a partir de la altitud.</li>
+        <li>Se obtiene el <strong>factor de corrección de densidad</strong> del aire de succión del sitio (altitud + temperatura) respecto a las condiciones de referencia ISO 1217 (100 kPa, 20°C) con las que los fabricantes certifican el caudal (FAD) de catálogo. La demanda de diseño se divide entre este factor para obtener la <strong>capacidad de catálogo</strong> que hay que pedir.</li>
+        <li>La presión de descarga requerida (presión de trabajo + caída de línea) se suma a la presión atmosférica del sitio para obtener la <strong>relación de compresión</strong> real (absoluta); se compara contra el límite práctico de una sola etapa de la tecnología elegida.</li>
+        <li>Se estima la <strong>potencia de compresión ideal</strong> (adiabática, modelo de una etapa equivalente) y se divide entre la eficiencia global asumida de la tecnología elegida para obtener la potencia eléctrica estimada.</li>
+        <li>Se busca, en el catálogo de tamaños comerciales de referencia (kW de motor), el primero que cubra la potencia estimada.</li>
+      </ol>
+    </section>
+
+    <section class="card" id="normsCard">
+      <h2>4. Normativa de referencia</h2>
+      <p class="hint" style="margin-top:0;">
+        Orientación general para dimensionamiento e instalación de sistemas de aire comprimido en Perú, con
+        referencias internacionales de uso extendido en la industria. No reemplaza la verificación con un ingeniero
+        colegiado y la autoridad competente (municipalidad, OSINERGMIN, Sunafil, o el reglamento interno de la
+        operación minera), ya que los requisitos exactos dependen del uso, la presión y la ubicación del proyecto.
+      </p>
+      <div class="norms-grid">
+        <div class="norm-item">
+          <span class="norm-tag">Eléctrica · Perú</span>
+          <strong>Código Nacional de Electricidad (CNE), Tomo V – Utilización</strong>
+          <span class="hint">Aplica al circuito eléctrico y arranque del motor del compresor (protecciones, dimensionamiento de conductores). Ministerio de Energía y Minas.</span>
+        </div>
+        <div class="norm-item">
+          <span class="norm-tag">Eléctrica · Perú</span>
+          <strong>RNE – Norma Técnica EM.010 "Instalaciones Eléctricas Interiores"</strong>
+          <span class="hint">Reglamento Nacional de Edificaciones (RM N.° 083-2019-VIVIENDA). Rige la instalación eléctrica interior de la sala de compresores.</span>
+        </div>
+        <div class="norm-item">
+          <span class="norm-tag">Seguridad laboral · Perú</span>
+          <strong>D.S. N.° 005-2012-TR – Reglamento de Seguridad y Salud en el Trabajo</strong>
+          <span class="hint">Obligaciones generales del empleador respecto a equipos y recipientes a presión, incluidos compresores y tanques pulmón.</span>
+        </div>
+        <div class="norm-item">
+          <span class="norm-tag">Minería · Perú</span>
+          <strong>Reglamento de Seguridad y Salud Ocupacional en Minería</strong>
+          <span class="hint">D.S. N.° 024-2016-EM, modificado por D.S. N.° 034-2023-EM. Incluye disposiciones sobre sistemas de aire comprimido, receptores de presión e inspección periódica en operaciones mineras — verificar el articulado vigente.</span>
+        </div>
+        <div class="norm-item">
+          <span class="norm-tag">Calidad de aire (referencia internacional)</span>
+          <strong>ISO 8573-1</strong>
+          <span class="hint">Clasifica la calidad del aire comprimido (partículas, agua, aceite) por clase — clave para especificar el tren de secado/filtrado según la aplicación (instrumentación, proceso, herramientas).</span>
+        </div>
+        <div class="norm-item">
+          <span class="norm-tag">Ensayo de aceptación (referencia internacional)</span>
+          <strong>ISO 1217</strong>
+          <span class="hint">Define las condiciones de referencia (100 kPa, 20°C, 0% HR) y el método de ensayo con el que los fabricantes certifican el caudal (FAD) de catálogo de un compresor de desplazamiento — la base de la corrección por altitud de esta app.</span>
+        </div>
+        <div class="norm-item">
+          <span class="norm-tag">Recipientes a presión (referencia internacional)</span>
+          <strong>ASME BPVC Sección VIII</strong>
+          <span class="hint">Código internacional de referencia (EE. UU.) para el diseño y fabricación de recipientes a presión como el tanque pulmón/receptor de aire, de uso extendido en Perú a falta de una norma técnica peruana equivalente.</span>
+        </div>
+        <div class="norm-item">
+          <span class="norm-tag">Seguridad de uso (referencia internacional)</span>
+          <strong>OSHA 29 CFR 1910.242(b)</strong>
+          <span class="hint">Referencia internacional (EE. UU.) ampliamente adoptada como buena práctica: limita a ≤30 psi (~2 bar) el uso de aire comprimido para limpieza con boquilla abierta, y exige protección contra proyección de partículas.</span>
+        </div>
+      </div>
+      <p class="hint">
+        Verifica siempre la versión vigente de cada norma citada: los enlaces y números de artículo pueden cambiar
+        con actualizaciones oficiales. Esta sección resume el marco normativo aplicable; no sustituye el texto legal.
+      </p>
+    </section>
+
+    <section class="card" id="brandsCard">
+      <h2>5. Marcas y fabricantes de referencia</h2>
+      <p class="hint" style="margin-top:0;">
+        Panorama de mercado global (no exhaustivo) incluido como tarjeta de referencia en la app. No implica
+        recomendación de una marca sobre otra — verifica precio, disponibilidad y representante autorizado vigente
+        antes de una compra.
+      </p>
+      <div class="brands-grid">
+        <div class="brand-item">
+          <span class="brand-tag">Premium / gama alta</span>
+          <span class="hint">Atlas Copco (Suecia) · Ingersoll Rand (EE. UU.) · Kaeser Kompressoren (Alemania) · Sullair — grupo Hitachi (EE. UU./Japón)</span>
+        </div>
+        <div class="brand-item">
+          <span class="brand-tag">Industrial general</span>
+          <span class="hint">Gardner Denver / GD Industries (EE. UU.) · Chicago Pneumatic — grupo Atlas Copco (Suecia) · Boge, Bauer Kompressoren (Alemania) · CompAir — grupo GD (Reino Unido) · Hitachi (Japón)</span>
+        </div>
+        <div class="brand-item">
+          <span class="brand-tag">Gama económica (China / Taiwán)</span>
+          <span class="hint">Fusheng (Taiwán) · Kaishan, Fujian Snowman (China) · Hanbell (Taiwán, fabricante de "airends" usado por múltiples marcas ensambladoras)</span>
+        </div>
+        <div class="brand-item">
+          <span class="brand-tag">Distribución · Perú</span>
+          <span class="hint">Atlas Copco cuenta con subsidiaria propia en el país (Atlas Copco Perú); el resto de marcas se comercializa mediante distribuidores/representantes multimarca regionales — confirma siempre el representante autorizado vigente antes de comprar o solicitar servicio.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card no-print" id="actionsCard">
+      <h2>6. Guardar / exportar</h2>
+      <div class="actions-row">
+        <button id="btnSave" class="btn btn-secondary">💾 Guardar proyecto</button>
+        <button id="btnLoad" class="btn btn-secondary">📂 Cargar proyecto guardado</button>
+        <button id="btnExportJSON" class="btn btn-secondary">⬇️ Exportar JSON</button>
+        <label class="btn btn-secondary file-btn">
+          ⬆️ Importar JSON
+          <input type="file" id="btnImportJSON" accept="application/json" hidden />
+        </label>
+        <button id="btnExportCSV" class="btn btn-secondary">⬇️ Exportar CSV de demanda</button>
+        <label class="btn btn-secondary file-btn">
+          ⬆️ Importar CSV de demanda
+          <input type="file" id="btnImportCSV" accept=".csv,text/csv" hidden />
+        </label>
+        <button id="btnReset" class="btn btn-danger">🗑️ Reiniciar</button>
+      </div>
+      <p class="hint" id="saveStatus"></p>
+    </section>
+
+    <section class="print-only signature-block">
+      <div>Elaborado por: <span id="sigPreparedBy"></span></div>
+      <div>Revisado por: ______________________</div>
+      <div>Fecha: <span id="sigDate"></span></div>
+    </section>
+
+  </main>
+
+  <dialog id="libraryDialog" class="no-print">
+    <div class="lib-header">
+      <h2>Librería de consumos de aire</h2>
+      <button id="btnCloseLibrary" class="btn btn-secondary" title="Cerrar">✕</button>
+    </div>
+    <div class="lib-controls">
+      <input type="text" id="libSearch" placeholder="Buscar equipo (ej. perforadora, vibrador, pistola de pintura…)" />
+      <select id="libCategoryFilter">
+        <option value="">Todos los grupos</option>
+      </select>
+    </div>
+    <p class="hint">
+      Valores de referencia típicos de catálogos de mercado (herramientas de taller, minería subterránea,
+      construcción, pintura, instrumentación, proceso). Verifica siempre la ficha técnica del equipo real antes de
+      una emisión de ingeniería final.
+    </p>
+    <div id="libList" class="lib-list"></div>
+  </dialog>
+
+  <dialog id="disclaimerDialog" class="no-print">
+    <div class="lib-header">
+      <h2>Aviso legal y exención de responsabilidad</h2>
+      <button id="btnCloseDisclaimer" class="btn btn-secondary" title="Cerrar">✕</button>
+    </div>
+    <div class="disclaimer-body">
+      <p>
+        Esta es una <strong>herramienta gratuita de código abierto</strong> con fines de referencia y orientación
+        técnica preliminar. Se entrega "tal cual" ("as is"), sin garantía de ningún tipo, expresa o implícita,
+        incluyendo (sin limitarse a) garantías de idoneidad para un propósito particular — ver los términos
+        completos en el archivo <code>LICENSE</code> (licencia MIT) del repositorio.
+      </p>
+      <p>
+        Esta herramienta <strong>no sustituye</strong> el cálculo, diseño, verificación ni la firma de un
+        ingeniero colegiado, ni el cumplimiento de la normativa vigente aplicable a tu proyecto específico (CNE,
+        RNE, reglamento de la operación minera, o el equivalente en tu país). Los valores de la librería de
+        consumos y los tamaños comerciales de catálogo son orientativos: confirma siempre contra la placa del
+        equipo real y la ficha técnica del fabricante antes de cualquier emisión de ingeniería final.
+      </p>
+      <p>
+        El uso de los resultados para especificar, comprar, instalar u operar un compresor de aire es
+        responsabilidad exclusiva de quien los aplica. Los autores y colaboradores de este proyecto no serán
+        responsables por daños directos, indirectos, incidentales o consecuentes (incluyendo daños materiales,
+        lesiones personales o interrupción de servicio) derivados del uso, mal uso o interpretación de esta
+        herramienta o de sus resultados.
+      </p>
+      <p class="hint" style="margin-top:0;">
+        Puedes volver a leer este aviso en cualquier momento desde el enlace "Aviso legal" al pie de la página.
+      </p>
+    </div>
+    <div class="actions-row">
+      <button id="btnAcceptDisclaimer" class="btn btn-primary">Entiendo y acepto</button>
+    </div>
+  </dialog>
+
+  <footer class="footer no-print">
+    <p>
+      Herramienta de estimación técnica. Los resultados son orientativos: para la selección final del compresor,
+      valida siempre contra la ficha técnica del fabricante (curva real de FAD vs. presión a la altitud del sitio,
+      potencia certificada, tren de secado/filtrado, etc.).
+    </p>
+    <p>
+      <button id="btnOpenDisclaimer" class="link-btn">Aviso legal</button> ·
+      Software libre bajo licencia <a href="LICENSE" target="_blank" rel="noopener">MIT</a>.
+    </p>
+  </footer>
+
+  <script src="js/calc.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

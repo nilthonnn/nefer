@@ -1,0 +1,368 @@
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --border: #e0e4e9;
+  --text: #1c2530;
+  --text-muted: #5b6572;
+  --primary: #1e6f5c;
+  --primary-dark: #145243;
+  --accent: #2c8fe6;
+  --danger: #c0392b;
+  --success: #1e8a5f;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+}
+
+* { box-sizing: border-box; }
+
+/* El atributo hidden debe ganar siempre, incluso sobre reglas de layout como
+   .field{display:flex} — sin esto, un elemento oculto vía JS (el.hidden =
+   true) se sigue mostrando porque una regla de autor con la misma
+   especificidad que [hidden] gana por orden de cascada. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.4;
+}
+
+h1, h2, h3 { margin: 0; }
+
+.topbar {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  color: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: var(--shadow);
+}
+.topbar-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark { font-size: 28px; }
+.brand h1 { font-size: 20px; }
+.subtitle { margin: 2px 0 0; font-size: 13px; opacity: 0.85; }
+
+.container {
+  max-width: 1200px;
+  margin: 24px auto;
+  padding: 0 24px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  box-shadow: var(--shadow);
+}
+.card h2 { font-size: 16px; color: var(--primary-dark); margin-bottom: 14px; }
+.card-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+.card-header-row h2 { margin-bottom: 0; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.grid { display: grid; gap: 14px; }
+.grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .grid-4 { grid-template-columns: 1fr; } }
+
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
+.field input, .field select {
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: #fff;
+}
+.field input:focus, .field select:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+.field.field-checkbox { flex-direction: row; align-items: center; gap: 8px; }
+.field.field-checkbox input { width: auto; }
+
+.hint { font-size: 12.5px; color: var(--text-muted); margin: 10px 0 0; }
+
+/* Divulgación progresiva: parámetros avanzados colapsados por defecto,
+   visibles solo si el usuario los abre. Reduce la densidad percibida sin
+   quitar ningún campo del modelo de cálculo. */
+.advanced-details { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 14px; }
+.advanced-details summary {
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--primary-dark);
+  list-style: none;
+}
+.advanced-details summary::-webkit-details-marker { display: none; }
+.advanced-details summary::before { content: "▸ "; color: var(--primary); }
+.advanced-details[open] summary::before { content: "▾ "; }
+.advanced-details .grid { margin-top: 14px; }
+
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 13px; }
+thead th {
+  text-align: left;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--border);
+  padding: 8px 6px;
+}
+tbody td { padding: 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr:hover { background: #fafbfc; }
+tbody input, tbody select {
+  width: 100%;
+  padding: 6px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 13px;
+}
+.col-flow, .col-qty, .col-usage { min-width: 90px; }
+.col-desc { min-width: 190px; }
+.col-category { min-width: 200px; }
+.col-nominal, .col-effective { min-width: 100px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.col-inc { text-align: center; width: 60px; }
+.col-actions { width: 40px; text-align: center; }
+.readout { font-variant-numeric: tabular-nums; }
+.row-remove-btn {
+  background: none; border: none; color: var(--danger); cursor: pointer; font-size: 16px; padding: 2px 6px;
+}
+.row-remove-btn:hover { background: #fdecea; border-radius: 4px; }
+
+.btn {
+  border: none;
+  border-radius: 6px;
+  padding: 9px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-secondary { background: #eef2f6; color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: #e3e9ef; }
+.btn-ghost { background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.4); }
+.btn-ghost:hover { background: rgba(255,255,255,0.22); }
+.btn-danger { background: #fdecea; color: var(--danger); border: 1px solid #f6cbc4; }
+.btn-danger:hover { background: #fbdedb; }
+.file-btn { position: relative; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+@media (max-width: 800px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .stats-grid { grid-template-columns: 1fr; } }
+
+.stat-tile {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-tile-highlight { background: #e9f5f0; border-color: #b9dccb; }
+.stat-label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+.stat-value { font-size: 22px; font-weight: 700; color: var(--primary-dark); font-variant-numeric: tabular-nums; }
+.stat-sub { font-size: 12px; color: var(--text-muted); }
+
+.breakdown h3 { font-size: 14px; margin-bottom: 10px; color: var(--text-muted); }
+.bars { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+.bar-row { display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+.bar-row .bar-label { width: 220px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+.bar-track { flex: 1; background: #eef1f4; border-radius: 5px; height: 16px; position: relative; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--primary); border-radius: 5px 0 0 5px; }
+.bar-fill.is-nominal { background: var(--accent); }
+.bar-value { width: 100px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; color: var(--text); }
+
+.method-notes { font-size: 12.5px; color: var(--text-muted); padding-left: 18px; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.norms-grid, .brands-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 4px 0 14px; }
+@media (max-width: 720px) { .norms-grid, .brands-grid { grid-template-columns: 1fr; } }
+.norm-item, .brand-item {
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  break-inside: avoid;
+}
+.norm-tag, .brand-tag {
+  align-self: flex-start;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--primary-dark);
+  background: #dcefe8;
+  border-radius: 4px;
+  padding: 2px 7px;
+}
+.norm-item strong { font-size: 13px; color: var(--text); }
+
+.actions-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+.footer { text-align: center; padding: 16px 24px 32px; font-size: 12px; color: var(--text-muted); }
+.footer p { margin: 6px 0 0; }
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-btn:hover { color: var(--primary-dark); }
+
+/* !important: sin esto, ".signature-block{display:grid}" (misma
+   especificidad que ".print-only" y definida después en el archivo) gana la
+   cascada por orden de aparición y el bloque de firmas quedaría visible en
+   pantalla en vez de solo al imprimir — el mismo tipo de colisión que
+   [hidden] arriba. */
+.print-only { display: none !important; }
+
+/* ---- Aviso legal (dialog) ---- */
+dialog#disclaimerDialog {
+  width: min(640px, 92vw);
+  max-height: 82vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.22);
+  overflow-y: auto;
+}
+dialog#disclaimerDialog::backdrop { background: rgba(16, 24, 40, 0.45); }
+.disclaimer-body { font-size: 13.5px; color: var(--text); line-height: 1.55; display: flex; flex-direction: column; gap: 12px; }
+.disclaimer-body code { background: #eef2f6; border-radius: 4px; padding: 1px 5px; font-size: 12.5px; }
+
+/* ---- Librería de consumos (dialog) ---- */
+dialog#libraryDialog {
+  width: min(720px, 92vw);
+  max-height: 82vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.22);
+}
+dialog#libraryDialog::backdrop { background: rgba(16, 24, 40, 0.45); }
+.lib-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.lib-header h2 { font-size: 17px; color: var(--primary-dark); }
+.lib-controls { display: flex; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+.lib-controls input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+.lib-controls select {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13.5px;
+  background: #fff;
+}
+.lib-list { overflow-y: auto; max-height: 50vh; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.lib-group-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  padding: 10px 4px 4px;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lib-group-icon { flex-shrink: 0; color: var(--primary); }
+.lib-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+}
+.lib-item:hover { background: #f4f7fa; border-color: var(--border); }
+.lib-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.lib-item-name { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.lib-item-spec { font-size: 12px; color: var(--text-muted); }
+.lib-item-add {
+  flex-shrink: 0;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.lib-item-add:hover { background: var(--primary-dark); }
+.lib-empty { padding: 20px 8px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+.signature-block {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 40px;
+}
+.signature-block div { border-top: 1px solid #999; padding-top: 6px; font-size: 12px; color: #333; }
+
+@media print {
+  .no-print, .topbar-actions, #actionsCard { display: none !important; }
+  .print-only { display: block !important; }
+  .topbar { position: static; background: none; color: #000; box-shadow: none; }
+  .brand-mark { display: none; }
+  .brand h1, .subtitle { color: #000; }
+  body { background: #fff; }
+  .card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+  .table-scroll { overflow: visible; }
+  #btnAddRow, .col-actions { display: none !important; }
+  dialog#libraryDialog, dialog#disclaimerDialog { display: none !important; }
+
+  /* El informe impreso siempre muestra todo: parámetros avanzados
+     desplegados, sin importar el estado de la vista en pantalla (la
+     divulgación progresiva es solo de UI). */
+  .advanced-details { border-top: none; padding-top: 0; }
+  .advanced-details summary { display: none; }
+  .advanced-details > .grid { display: grid !important; margin-top: 0; }
+  .advanced-details > .hint { display: block !important; }
+
+  .report-cover { padding: 40px 0 24px; border-bottom: 2px solid #000; margin-bottom: 24px; }
+  .report-cover h1 { font-size: 22px; margin-bottom: 18px; }
+  .cover-meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 24px; margin: 0; }
+  .cover-meta div { display: flex; gap: 6px; font-size: 13px; }
+  .cover-meta dt { font-weight: 700; }
+  .cover-meta dd { margin: 0; }
+}
