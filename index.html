@@ -59,6 +59,13 @@
           <input type="text" id="preparedBy" placeholder="Nombre del responsable" />
         </label>
         <label class="field">
+          <span>Tipo de accionamiento</span>
+          <select id="driveType">
+            <option value="electric" selected>Motor eléctrico (estacionario)</option>
+            <option value="diesel_mobile">Motor diésel (portátil / remolcado)</option>
+          </select>
+        </label>
+        <label class="field">
           <span>Ubicación de referencia (Perú)</span>
           <select id="locationPreset"></select>
         </label>
@@ -87,11 +94,18 @@
         "Ubicación de referencia" solo como atajo para rellenar la altitud; el campo queda editable con el dato real
         del sitio. La "Presión de trabajo requerida" es la presión que necesitan los consumidores en el punto de uso
         (sin contar la caída de presión de la línea, ver "Parámetros avanzados"). El margen cubre variaciones de
-        demanda y expansión futura de la planta.
+        demanda y expansión futura de la planta. El <strong>tipo de accionamiento</strong> importa porque son dos
+        máquinas distintas con física de derating y catálogos distintos: un compresor <strong>eléctrico
+        estacionario</strong> (sala de compresores con red eléctrica) se especifica por kW de motor y su
+        "Potencia estimada"/"Tamaño comercial sugerido" ya incluyen las pérdidas típicas de un motor eléctrico; un
+        compresor <strong>diésel portátil/remolcado</strong> (habitual en perforación y obra sin red eléctrica —
+        minería de altura, exploración, construcción) no tiene motor eléctrico en la cadena, así que el motor
+        diésel además deriva por su cuenta con la altitud (ver "Parámetros avanzados" y la sección 3 con el motor
+        seleccionado en "Motor diésel").
       </p>
 
       <details id="advancedParamsDetails" class="advanced-details">
-        <summary>Parámetros avanzados (tecnología del compresor, caída de presión, respaldo)</summary>
+        <summary id="advancedParamsSummary">Parámetros avanzados (tecnología del compresor, caída de presión, respaldo)</summary>
         <div class="grid grid-4">
           <label class="field">
             <span>Tecnología del compresor</span>
@@ -121,6 +135,44 @@
           trabajo para obtener la presión de descarga real que debe entregar el equipo. "Incluir unidad de respaldo"
           solo agrega una nota informativa al resultado — no cambia el cálculo de potencia.
         </p>
+
+        <div id="dieselAdvancedBlock" hidden>
+          <div class="grid grid-4" id="dieselAdvancedFields">
+            <label class="field">
+              <span>Tecnología del motor diésel</span>
+              <select id="dieselEngineTech">
+                <option value="aspirated">Aspirado natural</option>
+                <option value="turbo" selected>Turboalimentado</option>
+                <option value="turbo_intercooler">Turbo + intercooler</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Eficiencia de transmisión mecánica (%)</span>
+              <input type="number" id="mechanicalEfficiencyPct" value="96" min="50" max="100" step="0.5" />
+            </label>
+            <label class="field">
+              <span>Margen de motor sobre potencia absorbida (%)</span>
+              <input type="number" id="engineMarginPct" value="15" min="0" max="100" step="1" />
+            </label>
+            <label class="field">
+              <span>Consumo específico de combustible (g/kWh)</span>
+              <input type="number" id="specificFuelConsumptionGPerKWh" value="210" min="0" step="5" />
+            </label>
+          </div>
+          <p class="hint" id="dieselAdvancedHint">
+            Un motor diésel no tiene motor eléctrico en la cadena de accionamiento (acopla directo o por correa al
+            elemento compresor), así que además del derating por altitud/temperatura de la <em>succión</em> del
+            compresor (arriba), el motor diésel deriva por su cuenta según su propia tecnología — mismo fenómeno y
+            metodología que el "Dimensionador de Grupo Electrógeno" (proyecto hermano): a mayor altitud, menos
+            oxígeno disponible para la combustión. La "eficiencia de transmisión mecánica" es la pérdida en la
+            correa/acople entre el cigüeñal del motor y el elemento compresor (compresores portátiles pequeños suelen
+            llevar transmisión por correa; los grandes, acople directo — ~96-98%). El "margen de motor" es holgura
+            adicional habitual del sector sobre la potencia absorbida, para cubrir la carga parásita del ventilador de
+            enfriamiento del propio compresor y no operar el motor al límite de su curva de par. El "consumo
+            específico" (g/kWh) es un dato de catálogo del motor a plena carga; ~200-230 g/kWh es típico en diésel
+            turboalimentados modernos.
+          </p>
+        </div>
       </details>
     </section>
 
@@ -207,15 +259,35 @@
           <span class="stat-value" id="statCatalogFAD">0,00 m³/min</span>
           <span class="stat-sub" id="statCatalogFADDetail">caudal a pedir al fabricante</span>
         </div>
-        <div class="stat-tile stat-tile-highlight">
-          <span class="stat-label">Potencia estimada</span>
+        <div class="stat-tile stat-tile-highlight electric-only-tile">
+          <span class="stat-label">Potencia estimada (motor eléctrico)</span>
           <span class="stat-value" id="statPower">0,0 kW</span>
           <span class="stat-sub" id="statPowerDetail">eficiencia global asumida</span>
         </div>
-        <div class="stat-tile stat-tile-highlight">
-          <span class="stat-label">Tamaño comercial sugerido</span>
+        <div class="stat-tile stat-tile-highlight electric-only-tile">
+          <span class="stat-label">Tamaño comercial sugerido (motor eléctrico)</span>
           <span class="stat-value" id="statSuggestedSize">0,0 kW</span>
           <span class="stat-sub" id="statSuggestedSizeDetail">primer tamaño de catálogo de referencia que cubre la potencia estimada</span>
+        </div>
+        <div class="stat-tile diesel-only-tile" hidden>
+          <span class="stat-label">Derating del motor diésel</span>
+          <span class="stat-value" id="statDieselDerating">0,0%</span>
+          <span class="stat-sub" id="statDieselDeratingDetail">altitud + temperatura, según tecnología del motor</span>
+        </div>
+        <div class="stat-tile stat-tile-highlight diesel-only-tile" hidden>
+          <span class="stat-label">Motor diésel requerido (nominal, nivel del mar)</span>
+          <span class="stat-value" id="statDieselPower">0,0 kW</span>
+          <span class="stat-sub" id="statDieselPowerDetail">0,0 HP</span>
+        </div>
+        <div class="stat-tile diesel-only-tile" hidden>
+          <span class="stat-label">Consumo de combustible estimado</span>
+          <span class="stat-value" id="statFuelConsumption">0,0 L/h</span>
+          <span class="stat-sub" id="statFuelConsumptionDetail">a plena carga, consumo específico del motor</span>
+        </div>
+        <div class="stat-tile stat-tile-highlight diesel-only-tile" hidden>
+          <span class="stat-label">Clase de compresor portátil sugerida</span>
+          <span class="stat-value" id="statMobileClass">—</span>
+          <span class="stat-sub" id="statMobileClassDetail">primera clase de catálogo que cubre caudal y presión</span>
         </div>
       </div>
 
@@ -225,8 +297,8 @@
       </div>
 
       <div class="breakdown">
-        <h3>Compresores de referencia por marca, filtrados por CFM</h3>
-        <p class="hint" style="margin-top:0;">
+        <h3 id="brandMatchesTitle">Compresores estacionarios de referencia por marca, filtrados por CFM</h3>
+        <p class="hint" style="margin-top:0;" id="brandMatchesHint">
           Líneas de producto reales (no un modelo puntual) cuyo rango de capacidad publicado cubre — o está cerca
           de — la capacidad de catálogo requerida (<span id="matchTargetCFM">0</span> CFM). Confirma siempre el
           modelo exacto, la presión y el caudal certificado con el fabricante o distribuidor antes de comprar.
@@ -243,6 +315,8 @@
         <li>Se estima la <strong>potencia de compresión ideal</strong> (adiabática, modelo de una etapa equivalente) y se divide entre la eficiencia global asumida de la tecnología elegida para obtener la potencia eléctrica estimada.</li>
         <li>Se busca, en el catálogo de tamaños comerciales de referencia (kW de motor), el primero que cubra la potencia estimada.</li>
         <li>Se convierte la capacidad de catálogo requerida a CFM y se filtra el catálogo de líneas de producto por marca, mostrando las que cubren — o están cerca de — esa capacidad.</li>
+        <li><em>Solo si el accionamiento es motor diésel:</em> se "desagrega" la eficiencia de motor eléctrico asumida de la eficiencia global de la tecnología del compresor (un diésel no tiene motor eléctrico en la cadena), se aplica la eficiencia de transmisión mecánica y el margen de motor, y se divide entre el <strong>derating propio del motor diésel</strong> por altitud/temperatura (independiente y adicional al de la succión del compresor) para obtener la potencia nominal del motor a especificar.</li>
+        <li><em>Solo si el accionamiento es motor diésel:</em> se estima el consumo de combustible a plena carga a partir de un consumo específico (g/kWh), y se busca la primera clase comercial de compresor portátil (caudal + presión nominal) que cubra ambos requerimientos.</li>
       </ol>
     </section>
 
@@ -273,7 +347,22 @@
         <div class="norm-item">
           <span class="norm-tag">Minería · Perú</span>
           <strong>Reglamento de Seguridad y Salud Ocupacional en Minería</strong>
-          <span class="hint">D.S. N.° 024-2016-EM, modificado por D.S. N.° 034-2023-EM. Incluye disposiciones sobre sistemas de aire comprimido, receptores de presión e inspección periódica en operaciones mineras — verificar el articulado vigente.</span>
+          <span class="hint">D.S. N.° 024-2016-EM, modificado por D.S. N.° 034-2023-EM. Incluye disposiciones sobre sistemas de aire comprimido, receptores de presión e inspección periódica en operaciones mineras. Para equipo diésel operando bajo tierra (compresores portátiles incluidos) exige además control de emisiones (filtro de partículas/catalizador) y un caudal mínimo de ventilación por HP instalado del motor — verificar el articulado vigente para el valor exacto exigido.</span>
+        </div>
+        <div class="norm-item">
+          <span class="norm-tag">Emisiones diésel (referencia internacional)</span>
+          <strong>EPA Tier 4 Final / EU Stage V</strong>
+          <span class="hint">Estándares de emisiones para motores diésel fuera de ruta (off-road) de EE. UU. y la Unión Europea, respectivamente — Perú no certifica emisiones de motores fuera de ruta con norma propia, así que en la práctica el motor importado ya certifica contra uno de estos dos. Muchas operaciones mineras en Perú exigen Tier 4 Final/Stage V (o equivalente) como requisito de ingreso a sitio para equipo diésel.</span>
+        </div>
+        <div class="norm-item">
+          <span class="norm-tag">Vialidad / remolque · Perú</span>
+          <strong>Reglamento Nacional de Vehículos</strong>
+          <span class="hint">D.S. N.° 058-2003-MTC y modificatorias. Aplica al chasis remolcado del compresor portátil: peso máximo por eje, luces y señalización, y sistema de frenado del remolque según su peso bruto — relevante para el transporte por carretera hacia el sitio.</span>
+        </div>
+        <div class="norm-item">
+          <span class="norm-tag">Ruido ambiental · Perú</span>
+          <strong>Estándares de Calidad Ambiental (ECA) para Ruido</strong>
+          <span class="hint">D.S. N.° 085-2003-PCM. Un compresor diésel portátil sin atenuación acústica adecuada puede exceder el ECA de ruido en zona residencial/mixta cerca de campamentos o frentes de obra — relevante al elegir la cabina insonorizada del equipo.</span>
         </div>
         <div class="norm-item">
           <span class="norm-tag">Calidad de aire (referencia internacional)</span>
@@ -324,6 +413,10 @@
         <div class="brand-item">
           <span class="brand-tag">Gama económica (China / Taiwán)</span>
           <span class="hint">Fusheng (Taiwán) · Kaishan, Fujian Snowman (China) · Hanbell (Taiwán, fabricante de "airends" usado por múltiples marcas ensambladoras)</span>
+        </div>
+        <div class="brand-item">
+          <span class="brand-tag">Portátil diésel (remolcado)</span>
+          <span class="hint">Atlas Copco XAS/XATS · Doosan Portable Power — antes Ingersoll Rand — (EE. UU./Corea) · Sullair · Kaeser Mobilair · Chicago Pneumatic. Estas mismas marcas tienen además una línea estacionaria eléctrica (arriba) — son familias de producto distintas dentro de la misma empresa, no la misma máquina con otro motor.</span>
         </div>
         <div class="brand-item">
           <span class="brand-tag">Distribución · Perú</span>

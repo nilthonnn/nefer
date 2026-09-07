@@ -16,6 +16,7 @@ const DEFAULT_PARAMS = {
   projectName: "",
   clientName: "",
   preparedBy: "",
+  driveType: "electric",
   altitude: 150,
   temp: 20,
   workingPressure: 7,
@@ -23,6 +24,10 @@ const DEFAULT_PARAMS = {
   compressorTech: "screw_oil",
   lineLoss: 0.5,
   includeStandby: false,
+  dieselEngineTech: "turbo",
+  mechanicalEfficiencyPct: 96,
+  engineMarginPct: 15,
+  specificFuelConsumptionGPerKWh: 210,
 };
 
 const STORAGE_KEY = "compressor-sizer:autosave";
@@ -104,8 +109,39 @@ function renderRows() {
  * Render: resultados
  * ========================================================================= */
 
+function isDieselMobile() {
+  return state.params.driveType === "diesel_mobile";
+}
+
+// El tipo de accionamiento no es una preferencia de vista (como las
+// columnas avanzadas): es parte del modelo de cálculo (afecta qué motor se
+// dimensiona y qué catálogo de marcas se filtra), así que sí viaja en
+// guardar/exportar/importar, y también decide qué se imprime — a diferencia
+// de "Parámetros avanzados" (que siempre imprime todo), los campos y
+// resultados del motor diésel solo imprimen si el accionamiento elegido es
+// diésel (ver [hidden] en css/styles.css).
+function applyDriveTypeVisibility() {
+  const diesel = isDieselMobile();
+  const dieselBlock = document.getElementById("dieselAdvancedBlock");
+  if (dieselBlock) dieselBlock.hidden = !diesel;
+
+  document.querySelectorAll(".electric-only-tile").forEach((el) => { el.hidden = diesel; });
+  document.querySelectorAll(".diesel-only-tile").forEach((el) => { el.hidden = !diesel; });
+
+  const title = document.getElementById("brandMatchesTitle");
+  if (title) title.textContent = diesel
+    ? "Compresores portátiles diésel de referencia por marca, filtrados por CFM"
+    : "Compresores estacionarios de referencia por marca, filtrados por CFM";
+
+  const summary = document.getElementById("advancedParamsSummary");
+  if (summary) summary.textContent = diesel
+    ? "Parámetros avanzados (tecnología del compresor, caída de presión, respaldo, motor diésel)"
+    : "Parámetros avanzados (tecnología del compresor, caída de presión, respaldo)";
+}
+
 function renderResults() {
   const summary = computeSummary(state.rows, state.params);
+  applyDriveTypeVisibility();
 
   document.getElementById("statNominal").textContent = `${formatNumber(summary.sumNominal, 2)} m³/min`;
   document.getElementById("statNominalCFM").textContent = `${formatNumber(summary.sumNominal * M3MIN_TO_CFM, 0)} CFM`;
@@ -146,13 +182,35 @@ function renderResults() {
     ? "primer tamaño de catálogo de referencia que cubre la potencia estimada"
     : "⚠ fuera del catálogo de referencia — se requiere una unidad mayor a medida") + standbyNote;
 
+  const ds = summary.dieselSizing;
+  document.getElementById("statDieselDerating").textContent = `${formatNumber(ds.engineDeratingPct, 1)}%`;
+  document.getElementById("statDieselDeratingDetail").textContent = `${ds.engineTech.label} · independiente del derating de succión del compresor`;
+
+  document.getElementById("statDieselPower").textContent = `${formatNumber(ds.ratedEngineKWNeeded, 1)} kW`;
+  document.getElementById("statDieselPowerDetail").textContent = `${formatNumber(ds.ratedEngineHPNeeded, 0)} HP · incluye transmisión (${formatNumber(ds.mechanicalEfficiency * 100, 0)}%) y margen (${formatNumber(ds.engineMargin * 100, 0)}%)`;
+
+  document.getElementById("statFuelConsumption").textContent = `${formatNumber(ds.fuelConsumptionLPerHour, 1)} L/h`;
+  document.getElementById("statFuelConsumptionDetail").textContent = `≈ ${formatNumber(ds.specificFuelConsumptionGPerKWh, 0)} g/kWh a potencia nominal`;
+
+  const mc = summary.suggestedMobileClass;
+  document.getElementById("statMobileClass").textContent = `${formatNumber(mc.cfm, 0)} CFM @ ${formatNumber(mc.pressureBar, 1)} bar`;
+  document.getElementById("statMobileClassDetail").textContent = mc.fits
+    ? "primera clase de catálogo que cubre caudal y presión"
+    : "⚠ fuera del catálogo de referencia — se requiere una unidad mayor a medida";
+
   renderBreakdown(summary);
   renderBrandMatches(summary);
   renderReportMeta(summary);
 }
 
 function renderBrandMatches(summary) {
-  document.getElementById("matchTargetCFM").textContent = formatNumber(summary.requiredCatalogFADcfm, 0);
+  const hint = document.getElementById("brandMatchesHint");
+  if (hint) {
+    hint.innerHTML = isDieselMobile()
+      ? `Líneas de compresores <strong>portátiles a diésel</strong> reales (no un modelo puntual) cuyo rango de caudal publicado cubre — o está cerca de — la capacidad de catálogo requerida (<span id="matchTargetCFM">${formatNumber(summary.requiredCatalogFADcfm, 0)}</span> CFM). Confirma siempre el modelo exacto, la presión, la potencia del motor y el caudal certificado con el fabricante o distribuidor antes de comprar o alquilar.`
+      : `Líneas de producto reales (no un modelo puntual) cuyo rango de capacidad publicado cubre — o está cerca de — la capacidad de catálogo requerida (<span id="matchTargetCFM">${formatNumber(summary.requiredCatalogFADcfm, 0)}</span> CFM). Confirma siempre el modelo exacto, la presión y el caudal certificado con el fabricante o distribuidor antes de comprar.`;
+  }
+
   const container = document.getElementById("brandMatches");
   container.innerHTML = "";
 
@@ -160,12 +218,14 @@ function renderBrandMatches(summary) {
     container.innerHTML = '<p class="brand-match-empty">Agrega consumidores en la tabla para ver qué líneas de compresores cubren la capacidad requerida.</p>';
     return;
   }
-  if (summary.matchingBrandModels.length === 0) {
+
+  const matches = isDieselMobile() ? summary.matchingMobileDieselModels : summary.matchingBrandModels;
+  if (matches.length === 0) {
     container.innerHTML = '<p class="brand-match-empty">Ninguna línea de este catálogo de referencia cubre esta capacidad — consulta directamente con el fabricante/distribuidor para un equipo fuera de este rango.</p>';
     return;
   }
 
-  container.innerHTML = summary.matchingBrandModels.map((m) => `
+  container.innerHTML = matches.map((m) => `
     <div class="brand-match ${m.exactFit ? "is-exact" : ""}">
       <div class="brand-match-info">
         <span class="brand-match-name">${escapeHtml(m.brand)}</span>
@@ -182,7 +242,9 @@ function renderReportMeta(summary) {
   document.getElementById("coverClient").textContent = state.params.clientName || "—";
   document.getElementById("coverDate").textContent = today;
   document.getElementById("coverPreparedBy").textContent = state.params.preparedBy || "—";
-  document.getElementById("coverCapacity").textContent = `${formatNumber(summary.suggestedSizeKW, 1)} kW (${formatNumber(summary.requiredCatalogFADm3min, 1)} m³/min FAD @ ${formatNumber(summary.dischargeGaugeBar, 1)} bar)`;
+  document.getElementById("coverCapacity").textContent = isDieselMobile()
+    ? `${formatNumber(summary.suggestedMobileClass.cfm, 0)} CFM @ ${formatNumber(summary.suggestedMobileClass.pressureBar, 1)} bar — motor diésel ${formatNumber(summary.dieselSizing.ratedEngineKWNeeded, 0)} kW (${formatNumber(summary.dieselSizing.ratedEngineHPNeeded, 0)} HP)`
+    : `${formatNumber(summary.suggestedSizeKW, 1)} kW (${formatNumber(summary.requiredCatalogFADm3min, 1)} m³/min FAD @ ${formatNumber(summary.dischargeGaugeBar, 1)} bar)`;
   document.getElementById("sigPreparedBy").textContent = state.params.preparedBy || "";
   document.getElementById("sigDate").textContent = today;
 }
@@ -299,12 +361,17 @@ const paramInputs = {
   projectName: document.getElementById("projectName"),
   clientName: document.getElementById("clientName"),
   preparedBy: document.getElementById("preparedBy"),
+  driveType: document.getElementById("driveType"),
   altitude: document.getElementById("altitude"),
   temp: document.getElementById("temp"),
   workingPressure: document.getElementById("workingPressure"),
   margin: document.getElementById("margin"),
   compressorTech: document.getElementById("compressorTech"),
   lineLoss: document.getElementById("lineLoss"),
+  dieselEngineTech: document.getElementById("dieselEngineTech"),
+  mechanicalEfficiencyPct: document.getElementById("mechanicalEfficiencyPct"),
+  engineMarginPct: document.getElementById("engineMarginPct"),
+  specificFuelConsumptionGPerKWh: document.getElementById("specificFuelConsumptionGPerKWh"),
 };
 
 Object.entries(paramInputs).forEach(([key, el]) => {

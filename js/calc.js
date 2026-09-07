@@ -56,6 +56,170 @@ const STANDARD_SIZES_KW = [
   200, 250, 315, 355, 400, 450, 500,
 ];
 
+// =========================================================================
+// Accionamiento diésel (compresor portátil/remolcado)
+// -------------------------------------------------------------------------
+// Un compresor ESTACIONARIO típico va acoplado a un motor ELÉCTRICO; uno
+// PORTÁTIL/remolcado (el caso dominante para perforación y obra en sitios de
+// Perú sin red eléctrica: minería de altura, construcción, exploración) va
+// acoplado a un motor DIÉSEL. Son dos cadenas de accionamiento distintas con
+// físicas de derating distintas y catálogos comerciales distintos — ver
+// computeDieselEngineSizing más abajo.
+// =========================================================================
+
+// COMPRESSOR_TECH_PRESETS.overallEfficiency está calibrado contra consumo
+// ELÉCTRICO real de catálogo (ver más abajo), que ya incluye las pérdidas
+// propias de un motor eléctrico típico. Un compresor diésel portátil no
+// tiene motor eléctrico en la cadena (el diésel acopla directo o por correa
+// al elemento compresor), así que hay que "desagregar" esa eficiencia de
+// motor eléctrico asumida para aislar la eficiencia isentrópica+mecánica
+// propia del elemento compresor, antes de aplicar la cadena de transmisión
+// diésel real (ver airendMechEfficiency en computeDieselEngineSizing).
+const ASSUMED_ELECTRIC_MOTOR_EFFICIENCY = 0.94;
+
+// Derating del MOTOR DIÉSEL por altitud/temperatura: mismo fenómeno físico
+// (menor densidad de aire de admisión = menos oxígeno disponible para la
+// combustión) y misma metodología que ENGINE_TECH_PRESETS del
+// "Dimensionador de Grupo Electrógeno" (proyecto hermano de este mismo
+// repositorio). Es un derating INDEPENDIENTE y ADICIONAL al de la succión
+// del propio compresor (ver airDensityCorrectionFactor): ese penaliza el
+// aire que el compresor succiona; este penaliza el motor que arrastra al
+// compresor.
+const DIESEL_ENGINE_TECH_PRESETS = {
+  aspirated:         { label: "Aspirado natural",   altitudeRateMultiplier: 1.8, tempRateMultiplier: 1.3 },
+  turbo:             { label: "Turboalimentado",     altitudeRateMultiplier: 1.0, tempRateMultiplier: 1.0 },
+  turbo_intercooler: { label: "Turbo + intercooler", altitudeRateMultiplier: 0.6, tempRateMultiplier: 0.8 },
+};
+
+const DIESEL_FUEL_DENSITY_KG_PER_L = 0.84; // diésel #2, típico
+const HP_PER_KW = 1.34102;
+
+// Derating del motor diésel (no del compresor) por altitud/temperatura del
+// sitio, escalado por su tecnología. Misma regla general de referencia que
+// el motor de un grupo electrógeno (~1%/100msnm sobre 1000msnm, ~1%/°C
+// sobre 25°C, para un motor turboalimentado como línea base).
+function dieselEngineDeratingFactor(altitudeM, tempC, engineTechKey) {
+  const tech = DIESEL_ENGINE_TECH_PRESETS[engineTechKey] || DIESEL_ENGINE_TECH_PRESETS.turbo;
+  const altitude = Math.max(0, toNumber(altitudeM, 0));
+  const temp = toNumber(tempC, 25);
+  const altitudeExcess = Math.max(0, altitude - 1000);
+  const tempExcess = Math.max(0, temp - 25);
+  const deratingPct = clamp(
+    (altitudeExcess / 100) * tech.altitudeRateMultiplier + tempExcess * tech.tempRateMultiplier,
+    0, 50
+  );
+  return { deratingPct, deratingFactor: 1 - deratingPct / 100, tech };
+}
+
+// Cadena completa de dimensionamiento del motor diésel: parte de la misma
+// potencia isentrópica ideal que el caso eléctrico (idealPowerKW), pero:
+//   1. Desagrega la eficiencia de motor eléctrico asumida de la eficiencia
+//      global de la tecnología del compresor, para obtener la potencia en
+//      el acople del elemento compresor (sin motor eléctrico de por medio).
+//   2. Aplica la eficiencia de transmisión mecánica diésel→compresor
+//      (correa/acople, editable — compresores portátiles pequeños suelen
+//      llevar transmisión por correa; los grandes, acople directo).
+//   3. Aplica un margen de dimensionamiento del motor sobre la potencia
+//      absorbida (editable, ~15% por defecto) — práctica habitual del
+//      sector para cubrir la carga parásita del ventilador de enfriamiento
+//      y no operar el motor al límite de su curva de par.
+//   4. Aplica el derating propio del motor diésel por altitud/temperatura
+//      (independiente del derating del compresor, ver arriba) para hallar
+//      la potencia NOMINAL (a nivel del mar, norma ISO 3046/SAE J1349) que
+//      hay que especificar en el motor.
+//   5. Estima el consumo de combustible a plena carga a partir de un
+//      consumo específico (g/kWh) editable.
+function computeDieselEngineSizing(idealPowerKW, compressorTech, altitude, temp, params) {
+  const overallEfficiency = compressorTech && compressorTech.overallEfficiency > 0 ? compressorTech.overallEfficiency : 1;
+  const airendMechEfficiency = clamp(overallEfficiency / ASSUMED_ELECTRIC_MOTOR_EFFICIENCY, 0.05, 1);
+  const couplingPowerKW = idealPowerKW / airendMechEfficiency;
+
+  const mechanicalEfficiency = clamp(toNumber(params.mechanicalEfficiencyPct, 96), 50, 100) / 100;
+  const transmissionPowerKW = couplingPowerKW / mechanicalEfficiency;
+
+  const engineMargin = clamp(toNumber(params.engineMarginPct, 15), 0, 100) / 100;
+  const sizingTargetKW = transmissionPowerKW * (1 + engineMargin);
+
+  const { deratingPct, deratingFactor, tech: engineTech } = dieselEngineDeratingFactor(altitude, temp, params.dieselEngineTech);
+  const ratedEngineKWNeeded = deratingFactor > 0 ? sizingTargetKW / deratingFactor : sizingTargetKW;
+  const ratedEngineHPNeeded = ratedEngineKWNeeded * HP_PER_KW;
+
+  const specificFuelConsumptionGPerKWh = Math.max(0, toNumber(params.specificFuelConsumptionGPerKWh, 210));
+  const fuelConsumptionKgPerHour = (specificFuelConsumptionGPerKWh / 1000) * ratedEngineKWNeeded;
+  const fuelConsumptionLPerHour = fuelConsumptionKgPerHour / DIESEL_FUEL_DENSITY_KG_PER_L;
+
+  return {
+    airendMechEfficiency,
+    couplingPowerKW,
+    mechanicalEfficiency,
+    transmissionPowerKW,
+    engineMargin,
+    sizingTargetKW,
+    engineTech,
+    engineDeratingPct: deratingPct,
+    engineDeratingFactor: deratingFactor,
+    ratedEngineKWNeeded,
+    ratedEngineHPNeeded,
+    specificFuelConsumptionGPerKWh,
+    fuelConsumptionLPerHour,
+  };
+}
+
+// Clases comerciales de referencia para compresores portátiles/remolcados a
+// diésel, por caudal (CFM) y presión nominal — a diferencia de los
+// compresores estacionarios (que se especifican por kW de motor), la
+// industria de compresores portátiles converge, en todas las marcas, en
+// estas clases redondas de catálogo/alquiler. La presión nominal típica es
+// ~100 psi (7 bar) para uso general y ~150 psi (10.3 bar) o más para
+// accionar perforadoras neumáticas (mayor presión de trabajo en el frente
+// de perforación); las clases de muy alta presión (~350 psi / 24 bar) son
+// para perforación DTH (down-the-hole).
+const MOBILE_COMPRESSOR_CLASSES = [
+  { cfm: 185, pressureBar: 7 },
+  { cfm: 260, pressureBar: 7 },
+  { cfm: 375, pressureBar: 7 },
+  { cfm: 400, pressureBar: 10.3 },
+  { cfm: 600, pressureBar: 10.3 },
+  { cfm: 750, pressureBar: 10.3 },
+  { cfm: 900, pressureBar: 10.3 },
+  { cfm: 1150, pressureBar: 10.3 },
+  { cfm: 1300, pressureBar: 24.1 },
+];
+
+// Recorre las clases comerciales en orden ascendente y devuelve la primera
+// que cubre tanto el caudal requerido como la presión de descarga requerida
+// (dos criterios, igual que findSuggestedSize hace con FAD+%dip en el
+// dimensionador de grupo electrógeno).
+function findSuggestedMobileClass(requiredCFM, requiredDischargeBar) {
+  for (const cls of MOBILE_COMPRESSOR_CLASSES) {
+    if (cls.cfm >= requiredCFM - 1e-9 && cls.pressureBar >= requiredDischargeBar - 1e-9) {
+      return { ...cls, fits: true };
+    }
+  }
+  const largest = MOBILE_COMPRESSOR_CLASSES[MOBILE_COMPRESSOR_CLASSES.length - 1];
+  return { ...largest, fits: false };
+}
+
+// Catálogo de referencia por marca para compresores PORTÁTILES a diésel —
+// paralelo a BRAND_CATALOG (que es de línea ESTACIONARIA/eléctrica). Mismo
+// criterio de inclusión: solo marcas con nomenclatura de serie pública y
+// estable.
+const MOBILE_DIESEL_BRAND_CATALOG = [
+  { brand: "Atlas Copco", line: "XAS/XATS (portátil diésel, remolcado)", cfmMin: 130, cfmMax: 1300 },
+  { brand: "Doosan Portable Power (antes Ingersoll Rand)", line: "P-Series (portátil diésel)", cfmMin: 130, cfmMax: 1600 },
+  { brand: "Sullair", line: "Serie portátil diésel (skid/remolcado)", cfmMin: 185, cfmMax: 1300 },
+  { brand: "Kaeser Kompressoren", line: "Mobilair M-Series (portátil diésel)", cfmMin: 60, cfmMax: 1300 },
+  { brand: "Chicago Pneumatic", line: "Serie portátil diésel", cfmMin: 130, cfmMax: 900 },
+];
+
+function findMatchingMobileDieselModels(requiredCFM) {
+  if (!(requiredCFM > 0)) return [];
+  return MOBILE_DIESEL_BRAND_CATALOG
+    .filter((entry) => requiredCFM >= entry.cfmMin * (1 - BRAND_CATALOG_TOLERANCE) && requiredCFM <= entry.cfmMax * (1 + BRAND_CATALOG_TOLERANCE))
+    .map((entry) => ({ ...entry, exactFit: requiredCFM >= entry.cfmMin && requiredCFM <= entry.cfmMax }))
+    .sort((a, b) => (b.exactFit - a.exactFit) || (a.cfmMin - b.cfmMin));
+}
+
 // Catálogo de referencia por marca: líneas/series de producto reales de
 // fabricantes reconocidos, con su rango típico de capacidad (FAD, en CFM,
 // tal como suelen publicarse en las hojas de datos comerciales) y de
@@ -304,6 +468,14 @@ function computeSummary(rows, params) {
   const requiredCatalogFADcfm = requiredCatalogFADm3min * M3MIN_TO_CFM;
   const matchingBrandModels = findMatchingBrandModels(requiredCatalogFADcfm);
 
+  // Cadena de accionamiento diésel (compresor portátil/remolcado) — se
+  // calcula siempre, independientemente de params.driveType, para que la UI
+  // pueda alternar entre "eléctrico estacionario" y "diésel portátil" sin
+  // recalcular ni perder estado. Ver computeDieselEngineSizing más arriba.
+  const dieselSizing = computeDieselEngineSizing(idealPowerKW, tech, altitude, temp, params);
+  const suggestedMobileClass = findSuggestedMobileClass(requiredCatalogFADcfm, dischargeGaugeBar);
+  const matchingMobileDieselModels = findMatchingMobileDieselModels(requiredCatalogFADcfm);
+
   return {
     computed,
     sumNominal,
@@ -328,6 +500,9 @@ function computeSummary(rows, params) {
     sizeFits: sizing.fits,
     requiredCatalogFADcfm,
     matchingBrandModels,
+    dieselSizing,
+    suggestedMobileClass,
+    matchingMobileDieselModels,
   };
 }
 
@@ -349,6 +524,16 @@ if (typeof module !== "undefined" && module.exports) {
     BRAND_CATALOG,
     BRAND_CATALOG_TOLERANCE,
     findMatchingBrandModels,
+    ASSUMED_ELECTRIC_MOTOR_EFFICIENCY,
+    DIESEL_ENGINE_TECH_PRESETS,
+    DIESEL_FUEL_DENSITY_KG_PER_L,
+    HP_PER_KW,
+    dieselEngineDeratingFactor,
+    computeDieselEngineSizing,
+    MOBILE_COMPRESSOR_CLASSES,
+    findSuggestedMobileClass,
+    MOBILE_DIESEL_BRAND_CATALOG,
+    findMatchingMobileDieselModels,
     PERU_LOCATION_PRESETS,
     CONSUMER_LIBRARY,
     ADIABATIC_K,

@@ -160,6 +160,81 @@ test("computeSummary: incluye requiredCatalogFADcfm y matchingBrandModels cohere
   assert.deepEqual(s.matchingBrandModels, calc.findMatchingBrandModels(s.requiredCatalogFADcfm));
 });
 
+test("computeDieselEngineSizing: la potencia diésel requerida supera a la potencia eléctrica del mismo caso (a nivel del mar)", () => {
+  // A nivel del mar, el motor diésel no tiene su propio derating adicional
+  // (deratingFactor=1), así que la diferencia frente al caso eléctrico sale
+  // solo de desagregar la eficiencia del motor eléctrico + la transmisión +
+  // el margen del motor — con los valores por defecto, el diésel SIEMPRE
+  // pide más kW nominales que el equivalente eléctrico.
+  const rows = [baseRow({ flow: 30, unit: "m3min", usageFactorPct: 100 })];
+  const s = calc.computeSummary(rows, baseParams({ altitude: 0 }));
+  assert.ok(
+    s.dieselSizing.ratedEngineKWNeeded > s.shaftPowerKW,
+    `diésel=${s.dieselSizing.ratedEngineKWNeeded} debería superar a eléctrico=${s.shaftPowerKW}`
+  );
+});
+
+test("computeDieselEngineSizing: el motor diésel deriva MÁS que el caso eléctrico al subir la altitud (derating independiente y adicional)", () => {
+  const rows = [baseRow({ flow: 30, unit: "m3min", usageFactorPct: 100 })];
+  const sea = calc.computeSummary(rows, baseParams({ altitude: 0 }));
+  const alt = calc.computeSummary(rows, baseParams({ altitude: 4338 }));
+
+  const electricRatio = alt.shaftPowerKW / sea.shaftPowerKW;
+  const dieselRatio = alt.dieselSizing.ratedEngineKWNeeded / sea.dieselSizing.ratedEngineKWNeeded;
+  assert.ok(
+    dieselRatio > electricRatio,
+    `el diésel debe crecer más con la altitud (dieselRatio=${dieselRatio}) que el eléctrico (electricRatio=${electricRatio}), por su derating propio de motor de combustión`
+  );
+  assert.ok(alt.dieselSizing.engineDeratingPct > 0, "a 4338 msnm el motor diésel turboalimentado por defecto debe derating > 0");
+});
+
+test("computeDieselEngineSizing: motor aspirado natural deriva más que turbo+intercooler a la misma altitud", () => {
+  const rows = [baseRow({ flow: 30, unit: "m3min", usageFactorPct: 100 })];
+  const params = { altitude: 3500, temp: 25 };
+  const aspirated = calc.computeSummary(rows, baseParams({ ...params, dieselEngineTech: "aspirated" }));
+  const intercooler = calc.computeSummary(rows, baseParams({ ...params, dieselEngineTech: "turbo_intercooler" }));
+  assert.ok(aspirated.dieselSizing.engineDeratingPct > intercooler.dieselSizing.engineDeratingPct);
+});
+
+test("computeDieselEngineSizing: consumo de combustible escala con la potencia nominal del motor y el consumo específico", () => {
+  const rows = [baseRow({ flow: 30, unit: "m3min", usageFactorPct: 100 })];
+  const s = calc.computeSummary(rows, baseParams());
+  const expectedLPerHour = (s.dieselSizing.specificFuelConsumptionGPerKWh / 1000 * s.dieselSizing.ratedEngineKWNeeded) / calc.DIESEL_FUEL_DENSITY_KG_PER_L;
+  assert.ok(Math.abs(s.dieselSizing.fuelConsumptionLPerHour - expectedLPerHour) < 1e-6);
+  assert.ok(s.dieselSizing.fuelConsumptionLPerHour > 0);
+});
+
+test("computeDieselEngineSizing: sin demanda, no produce NaN/Infinity", () => {
+  const s = calc.computeSummary([], baseParams());
+  assert.ok(Number.isFinite(s.dieselSizing.ratedEngineKWNeeded));
+  assert.ok(Number.isFinite(s.dieselSizing.fuelConsumptionLPerHour));
+  assert.equal(s.dieselSizing.ratedEngineKWNeeded, 0);
+});
+
+test("findSuggestedMobileClass: exige que la clase cubra AMBOS criterios, caudal y presión nominal", () => {
+  // 150 CFM a 7 bar: la primera clase (185 CFM @ 7 bar) ya cubre ambos.
+  const r1 = calc.findSuggestedMobileClass(150, 7);
+  assert.equal(r1.cfm, 185);
+  assert.equal(r1.fits, true);
+
+  // 150 CFM pero a 10.3 bar: 185/260/375 CFM son de 7 bar, no alcanzan la
+  // presión -> debe saltar a la primera clase de 10.3 bar (400 CFM).
+  const r2 = calc.findSuggestedMobileClass(150, 10.3);
+  assert.equal(r2.cfm, 400);
+  assert.equal(r2.pressureBar, 10.3);
+
+  // Caudal fuera del catálogo de referencia.
+  const r3 = calc.findSuggestedMobileClass(1e6, 7);
+  assert.equal(r3.fits, false);
+});
+
+test("findMatchingMobileDieselModels: 0 y valores absurdos no producen resultados ni errores", () => {
+  assert.deepEqual(calc.findMatchingMobileDieselModels(0), []);
+  assert.deepEqual(calc.findMatchingMobileDieselModels(1e9), []);
+  const matches = calc.findMatchingMobileDieselModels(300);
+  assert.ok(matches.length > 0, "300 CFM es un tamaño común de compresor portátil, debe matchear al menos una marca");
+});
+
 test("computeIdealAdiabaticPowerKW: orden de magnitud consistente con la regla de mercado (~6.5 kW/m3-min a 7 bar(g), tornillo lubricado)", () => {
   const p1 = calc.SEA_LEVEL_PRESSURE_KPA;
   const p2 = p1 + 7 * 100; // 7 bar(g) -> kPa

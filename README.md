@@ -3,7 +3,11 @@
 Aplicación web ligera (HTML + CSS + JavaScript, sin dependencias ni build) para estimar
 la capacidad de compresor de aire industrial necesaria a partir de un listado de
 consumidores de aire comprimido, con corrección por altitud — pensada para el rango de
-altitudes de Perú (desde la costa hasta ciudades mineras de gran altitud).
+altitudes de Perú (desde la costa hasta ciudades mineras de gran altitud). Dimensiona
+tanto un compresor **eléctrico estacionario** (sala de compresores con red eléctrica)
+como uno **diésel portátil/remolcado** (el caso dominante en perforación y obra sin red
+eléctrica — minería de altura, exploración, construcción), cada uno con su propia
+física de derating y su propio catálogo de referencia por marca.
 
 ## Cómo usarla
 
@@ -17,16 +21,22 @@ python3 -m http.server 8080
 
 ## Qué hace
 
-1. **Parámetros del proyecto y del sitio**: nombre, cliente, preparado por, **ubicación de
-   referencia (Perú)** (atajo de UI que rellena la altitud típica de ciudades como Lima,
-   Arequipa, Cusco, Puno, Cerro de Pasco o La Rinconada — el campo de altitud queda
-   siempre editable con el dato real del sitio), altitud, temperatura ambiente, presión
-   de trabajo requerida en el punto de uso, y margen de seguridad/crecimiento futuro.
-   **Divulgación progresiva**: la tecnología del compresor, la caída de presión de línea
-   y la opción de unidad de respaldo quedan colapsadas bajo "Parámetros avanzados" (con
-   valores por defecto razonables) sin quitar ningún campo del modelo de cálculo. El
-   informe impreso siempre muestra todo, sin importar si el bloque está colapsado en
-   pantalla.
+1. **Parámetros del proyecto y del sitio**: nombre, cliente, preparado por, **tipo de
+   accionamiento** (motor eléctrico estacionario / motor diésel portátil-remolcado —
+   ver más abajo), **ubicación de referencia (Perú)** (atajo de UI que rellena la
+   altitud típica de ciudades como Lima, Arequipa, Cusco, Puno, Cerro de Pasco o La
+   Rinconada — el campo de altitud queda siempre editable con el dato real del sitio),
+   altitud, temperatura ambiente, presión de trabajo requerida en el punto de uso, y
+   margen de seguridad/crecimiento futuro. **Divulgación progresiva**: la tecnología del
+   compresor, la caída de presión de línea, la opción de unidad de respaldo, y — solo si
+   el accionamiento elegido es diésel — la tecnología del motor diésel, la eficiencia de
+   transmisión mecánica, el margen de motor y el consumo específico de combustible,
+   quedan colapsados bajo "Parámetros avanzados" (con valores por defecto razonables)
+   sin quitar ningún campo del modelo de cálculo. El informe impreso siempre muestra los
+   parámetros avanzados universales, sin importar si el bloque está colapsado en
+   pantalla — pero los campos y resultados específicos del motor diésel solo se imprimen
+   si el accionamiento elegido es diésel (a diferencia de los demás "avanzados", no son
+   universalmente aplicables).
 2. **Demanda de aire comprimido**: agregas cada consumidor (herramienta, proceso,
    instrumento) con su caudal (m³/min o CFM, "aire libre"/ANR), cantidad y **factor de
    uso/simultaneidad (%)**. Al elegir la **categoría** (herramienta intermitente, uso
@@ -44,7 +54,12 @@ python3 -m http.server 8080
    comercial sugerido (kW) del catálogo de referencia. Además, convierte esa capacidad
    a CFM y la cruza contra un **catálogo de líneas de producto reales por marca**,
    mostrando qué líneas (de las marcas con nomenclatura pública y estable — ver
-   "Marcas y fabricantes de referencia") cubren o están cerca de esa capacidad.
+   "Marcas y fabricantes de referencia") cubren o están cerca de esa capacidad. Si el
+   accionamiento elegido es **diésel portátil**, además calcula la potencia nominal del
+   motor diésel a especificar (con su propio derating por altitud/temperatura,
+   independiente del de la succión del compresor), el consumo de combustible estimado
+   (L/h), y la **clase comercial de compresor portátil** (CFM @ presión nominal) que
+   cubre la demanda — ver "Metodología de cálculo: accionamiento diésel" más abajo.
 4. **Librería de consumos**: catálogo de ~23 consumidores típicos (herramientas
    neumáticas de taller, perforadoras y equipos de minería subterránea — muy relevantes
    en el sector minero peruano —, herramientas de construcción, pintura, instrumentación
@@ -150,6 +165,67 @@ python3 -m http.server 8080
 > vs. presión a la altitud del sitio, potencia certificada, tren de secado/filtrado,
 > número de etapas, etc.).
 
+### Metodología de cálculo: accionamiento diésel (compresor portátil/remolcado)
+
+Un compresor **estacionario** va acoplado a un motor **eléctrico**; uno **portátil o
+remolcado** (el caso dominante en perforación y obra sin red eléctrica en Perú — minería
+de altura, exploración, construcción) va acoplado a un motor **diésel**. Son dos cadenas
+de accionamiento con física de derating y catálogos comerciales distintos; la app las
+calcula siempre en paralelo (`js/calc.js`, función `computeDieselEngineSizing`) y el
+selector "Tipo de accionamiento" solo decide cuál se muestra:
+
+1. **Desagregar la eficiencia de motor eléctrico**: `COMPRESSOR_TECH_PRESETS.overallEfficiency`
+   está calibrado contra consumo **eléctrico** real de catálogo (ver arriba), que ya
+   incluye las pérdidas de un motor eléctrico típico. Un compresor diésel no tiene motor
+   eléctrico en la cadena, así que se divide esa eficiencia global entre una eficiencia
+   de motor eléctrico asumida (`ASSUMED_ELECTRIC_MOTOR_EFFICIENCY = 0.94`, típica de un
+   motor NEMA/IE3 a plena carga) para aislar la eficiencia isentrópica+mecánica propia
+   del elemento compresor: `eficiencia_acople = eficiencia_global / 0.94`.
+2. **Transmisión mecánica**: la potencia en el acople del elemento compresor se divide
+   entre la eficiencia de transmisión diésel→compresor (editable, `mechanicalEfficiencyPct`,
+   por defecto 96% — compresores portátiles pequeños suelen llevar transmisión por
+   correa; los grandes, acople directo).
+3. **Margen de motor**: se aplica un margen adicional (editable, `engineMarginPct`, por
+   defecto 15%) sobre la potencia absorbida, práctica habitual del sector para cubrir la
+   carga parásita del ventilador de enfriamiento del propio compresor y no operar el
+   motor diésel al límite de su curva de par.
+4. **Derating del motor diésel**: el motor diésel deriva por altitud/temperatura **por su
+   cuenta**, de forma independiente y adicional al derating de la succión del compresor
+   (menor densidad de aire de admisión = menos oxígeno para la combustión) — misma regla
+   general de referencia y misma estructura (`DIESEL_ENGINE_TECH_PRESETS`, con las
+   mismas tres tecnologías y los mismos multiplicadores) que `ENGINE_TECH_PRESETS` del
+   ["Dimensionador de Grupo Electrógeno"](https://github.com/nilthonnn/nefer) (proyecto
+   hermano de este mismo repositorio). La potencia objetivo (pasos 1-3) se divide entre
+   este factor de derating para obtener la **potencia nominal del motor a especificar**
+   (a nivel del mar, la norma con la que los fabricantes certifican sus motores —
+   ISO 3046 / SAE J1349).
+5. **Consumo de combustible**: se estima a plena carga a partir de un consumo específico
+   editable (`specificFuelConsumptionGPerKWh`, por defecto 210 g/kWh, típico de un
+   diésel turboalimentado moderno) aplicado sobre la potencia nominal del motor,
+   convertido a L/h con la densidad del diésel (`DIESEL_FUEL_DENSITY_KG_PER_L = 0.84`).
+6. **Clase comercial de compresor portátil**: a diferencia del compresor estacionario
+   (que se especifica por kW de motor), la industria de compresores portátiles — todas
+   las marcas — converge en clases redondas de catálogo/alquiler por **caudal y presión
+   nominal** (`MOBILE_COMPRESSOR_CLASSES`, p.ej. 185 CFM @ 100 psi, 400 CFM @ 150 psi,
+   1300 CFM @ 350 psi). `findSuggestedMobileClass` recorre esas clases en orden
+   ascendente y toma la primera que cubre **ambos** criterios — el caudal de catálogo
+   requerido y la presión de descarga requerida — igual que `findSuggestedSize` hace con
+   FAD+kW para el caso eléctrico.
+7. **Marcas por línea portátil diésel**: `MOBILE_DIESEL_BRAND_CATALOG` (paralelo a
+   `BRAND_CATALOG`) filtra por CFM las líneas portátiles reales de fabricantes con
+   nomenclatura estable (Atlas Copco XAS/XATS, Doosan Portable Power — antes Ingersoll
+   Rand — P-Series, Sullair, Kaeser Mobilair, Chicago Pneumatic) — son familias de
+   producto **distintas** de la línea estacionaria eléctrica de la misma marca, no la
+   misma máquina con otro motor.
+
+> ⚠️ El motor diésel resultante siempre pide más kW nominales que el equivalente
+> eléctrico del mismo caso — es intencional: no tiene el "empuje" de un motor eléctrico
+> en la cadena, y además paga la transmisión mecánica y el margen del motor. A mayor
+> altitud, la brecha crece más todavía porque el motor diésel deriva por su cuenta,
+> encima del derating que ya paga la succión del propio compresor. Valida siempre contra
+> la ficha técnica del fabricante del paquete portátil completo (motor + compresor ya
+> emparejados de fábrica).
+
 ## Normativa de referencia
 
 La app incluye una tarjeta con el marco normativo aplicable a dimensionamiento e
@@ -167,7 +243,22 @@ internacionales de uso extendido en la industria:
 - **Minería (Perú)**: Reglamento de Seguridad y Salud Ocupacional en Minería
   (D.S. N.° 024-2016-EM, modificado por D.S. N.° 034-2023-EM), que incluye
   disposiciones sobre sistemas de aire comprimido, receptores de presión e inspección
-  periódica en operaciones mineras.
+  periódica en operaciones mineras. Para equipo diésel operando bajo tierra (incluidos
+  compresores portátiles) exige además control de emisiones (filtro de
+  partículas/catalizador) y un caudal mínimo de ventilación por HP instalado del motor —
+  verificar el articulado vigente para el valor exacto exigido.
+- **Emisiones diésel (referencia internacional)**: EPA Tier 4 Final (EE. UU.) / EU Stage
+  V (Unión Europea), estándares de emisiones para motores diésel fuera de ruta (off-road)
+  — Perú no certifica emisiones de motores fuera de ruta con norma propia, así que en la
+  práctica el motor importado ya certifica contra uno de estos dos. Muchas operaciones
+  mineras en Perú exigen Tier 4 Final/Stage V (o equivalente) como requisito de ingreso a
+  sitio para equipo diésel.
+- **Vialidad / remolque (Perú)**: Reglamento Nacional de Vehículos (D.S. N.° 058-2003-MTC
+  y modificatorias), aplicable al chasis remolcado del compresor portátil: peso máximo
+  por eje, luces y señalización, y sistema de frenado del remolque según su peso bruto.
+- **Ruido ambiental (Perú)**: Estándares de Calidad Ambiental (ECA) para Ruido
+  (D.S. N.° 085-2003-PCM) — relevante al elegir la cabina insonorizada de un compresor
+  diésel portátil operando cerca de zonas residenciales/mixtas o campamentos.
 - **Calidad de aire (referencia internacional)**: ISO 8573-1, que clasifica la calidad
   del aire comprimido (partículas, agua, aceite) por clase — clave para especificar el
   tren de secado/filtrado según la aplicación.
@@ -199,6 +290,10 @@ Panorama de mercado (no exhaustivo) incluido como tarjeta de referencia en la ap
 - **Gama económica (China / Taiwán)**: Fusheng (Taiwán), Kaishan, Fujian Snowman
   (China), Hanbell (Taiwán, fabricante de "airends" usado por múltiples marcas
   ensambladoras).
+- **Portátil diésel (remolcado)**: Atlas Copco XAS/XATS, Doosan Portable Power (antes
+  Ingersoll Rand) P-Series, Sullair, Kaeser Mobilair, Chicago Pneumatic — estas mismas
+  marcas tienen además una línea estacionaria eléctrica (arriba); son familias de
+  producto distintas dentro de la misma empresa, no la misma máquina con otro motor.
 - **Distribución en Perú**: Atlas Copco cuenta con subsidiaria propia en el país (Atlas
   Copco Perú); el resto de marcas se comercializa mediante distribuidores/representantes
   multimarca regionales.
@@ -235,8 +330,12 @@ consumo real exige más FAD de catálogo y más potencia en altura que a nivel d
 advertencia de relación de compresión que excede el límite de una etapa, el orden de
 magnitud de la potencia estimada contra la regla de mercado (~6.5 kW/m³-min a 7 bar(g)
 para tornillo lubricado), la búsqueda de tamaño comercial, el filtrado de líneas de
-producto por marca (`findMatchingBrandModels`, incluidos los casos sin coincidencias),
-y `csvEscape` (mitigación de
+producto por marca (`findMatchingBrandModels`, incluidos los casos sin coincidencias), la
+cadena completa de dimensionamiento del motor diésel (`computeDieselEngineSizing`,
+incluida la regresión de que el diésel siempre pide más kW que el eléctrico equivalente
+y que deriva más con la altitud por su derating propio), la búsqueda de clase comercial
+portátil por caudal+presión (`findSuggestedMobileClass`), el filtrado de marcas
+portátiles diésel (`findMatchingMobileDieselModels`), y `csvEscape` (mitigación de
 "CSV/Formula Injection" al exportar la tabla de demanda).
 
 Un workflow de GitHub Actions (`.github/workflows/tests.yml`) corre esta misma suite en
@@ -269,6 +368,15 @@ altere el resultado de proyectos ya guardados.
   rangos de CFM a datos actualizados del fabricante, o editar `BRAND_CATALOG_TOLERANCE`
   para cambiar qué tan "cerca" debe estar una línea del CFM requerido para aparecer como
   coincidencia cercana.
+- Editar `DIESEL_ENGINE_TECH_PRESETS` para ajustar las tasas de derating por tecnología
+  de motor diésel, `ASSUMED_ELECTRIC_MOTOR_EFFICIENCY` para cambiar la eficiencia de
+  motor eléctrico que se desagrega al calcular la cadena diésel, o
+  `DIESEL_FUEL_DENSITY_KG_PER_L` según el combustible/altitud (la densidad del diésel
+  varía levemente con la temperatura).
+- Editar `MOBILE_COMPRESSOR_CLASSES` para ajustar las clases comerciales de compresor
+  portátil (caudal + presión nominal) a los modelos realmente disponibles en tu
+  mercado/proveedor, o `MOBILE_DIESEL_BRAND_CATALOG` para las líneas portátiles por
+  marca.
 
 ## Nota técnica: `hidden` y CSS
 
