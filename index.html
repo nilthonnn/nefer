@@ -264,6 +264,11 @@
           <span class="stat-value" id="statSuggestedSize">—</span>
           <span class="stat-sub" id="statSuggestedSizeDetail">tamaño estándar de referencia más cercano por encima</span>
         </div>
+        <div class="stat-tile">
+          <span class="stat-label">Consumo de combustible estimado</span>
+          <span class="stat-value" id="statFuelConsumption">—</span>
+          <span class="stat-sub" id="statFuelConsumptionDetail">a 100% de carga, del tamaño comercial sugerido</span>
+        </div>
       </div>
 
       <div class="breakdown">
@@ -279,6 +284,7 @@
         <li>Se estima la fracción de carga no lineal (cargas de categoría Electrónica/VFD ponderadas por su severidad de armónicos) y se aplica una sobredimensión adicional del alternador si supera ciertos umbrales.</li>
         <li>Se aplica el factor de régimen de operación (Continuous suma holgura adicional por no admitir sobrecarga transitoria).</li>
         <li>Se convierte a kW usando el factor de potencia del generador y se busca, en el catálogo de tamaños comerciales de referencia, el primero que cubra la demanda continua <strong>y</strong> cuya caída de tensión de arranque (según X"d y la clase ISO 8528-5 elegida) esté dentro del límite.</li>
+        <li>Se estima el consumo de combustible a 100% de carga del tamaño comercial sugerido, interpolando una tabla de referencia de mercado (litros/hora según consumo específico típico por rango de kVA) — no es la curva real de un motor específico.</li>
       </ol>
     </section>
 

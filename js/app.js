@@ -171,6 +171,13 @@ function renderResults() {
     ? "cumple carga continua y caída de tensión de arranque"
     : "⚠ no alcanza el catálogo de referencia a cumplir el %dip elegido";
 
+  document.getElementById("statFuelConsumption").textContent = summary.suggestedSize
+    ? `${formatNumber(summary.fuelConsumptionLPerHour)} L/h`
+    : "—";
+  document.getElementById("statFuelConsumptionDetail").textContent = summary.suggestedSize
+    ? `≈ ${formatNumber(summary.fuelConsumptionLPerHour * 24, 0)} L/día en operación continua a plena carga — referencia de mercado, verifica la curva real del motor`
+    : "a 100% de carga, del tamaño comercial sugerido";
+
   renderBreakdown(summary);
   renderReportMeta(summary);
 }

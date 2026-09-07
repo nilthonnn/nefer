@@ -174,3 +174,35 @@ test("csvEscape: no altera texto normal y sigue citando comas/comillas/saltos de
   assert.equal(calc.csvEscape('Con "comillas"'), '"Con ""comillas"""');
   assert.equal(calc.csvEscape("=1+1,con coma"), '"\'=1+1,con coma"');
 });
+
+test("estimateFuelConsumptionLPerHour: coincide con los puntos de referencia exactos de la tabla", () => {
+  assert.equal(calc.estimateFuelConsumptionLPerHour(30), 7.7);
+  assert.equal(calc.estimateFuelConsumptionLPerHour(200), 42.4);
+  assert.equal(calc.estimateFuelConsumptionLPerHour(1000), 192.0);
+});
+
+test("estimateFuelConsumptionLPerHour: interpola entre puntos y es monótonamente creciente", () => {
+  const mid = calc.estimateFuelConsumptionLPerHour(175 + (200 - 175) / 2); // punto medio 175-200
+  assert.ok(mid > calc.estimateFuelConsumptionLPerHour(175) && mid < calc.estimateFuelConsumptionLPerHour(200));
+  let prev = 0;
+  for (const size of calc.STANDARD_SIZES_KVA) {
+    const v = calc.estimateFuelConsumptionLPerHour(size);
+    assert.ok(v > prev, `el consumo debe crecer con el tamaño (${size} kVA)`);
+    prev = v;
+  }
+});
+
+test("estimateFuelConsumptionLPerHour: sin tamaño válido devuelve 0", () => {
+  assert.equal(calc.estimateFuelConsumptionLPerHour(0), 0);
+  assert.equal(calc.estimateFuelConsumptionLPerHour(-5), 0);
+});
+
+test("computeSummary: incluye fuelConsumptionLPerHour coherente con el tamaño sugerido", () => {
+  const rows = [
+    { desc: "Bomba", category: "motor", type: "motor_dol", power: 5.5, unit: "hp", qty: 1, pf: 0.85, efficiency: 0.878, startFactor: 6, included: true },
+  ];
+  const s = calc.computeSummary(rows, baseParams());
+  assert.ok(s.suggestedSize, "debe haber un tamaño sugerido para este caso");
+  assert.equal(s.fuelConsumptionLPerHour, calc.estimateFuelConsumptionLPerHour(s.suggestedSize));
+  assert.ok(s.fuelConsumptionLPerHour > 0);
+});

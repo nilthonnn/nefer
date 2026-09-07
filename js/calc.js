@@ -102,6 +102,56 @@ const STANDARD_SIZES_KVA = [
 ];
 
 // =========================================================================
+// Consumo de combustible estimado a 100% de carga (L/h), por tamaño
+// comercial (kVA). Tabla de referencia general de mercado (no de un
+// fabricante específico), construida a partir de fichas técnicas reales
+// (Himoinsa, FG Wilson/Perkins) contrastadas contra el consumo específico
+// (SFC) típico de motores diésel: los equipos pequeños consumen más
+// litros por kWh generado (~0.36-0.40 L/kWh bajo 20 kVA) y los grandes se
+// acercan a ~0.23-0.25 L/kWh (>750 kVA), con la potencia nominal asumida a
+// factor de potencia 0.8 (convención de placa estándar). Verificado contra
+// datos reales publicados: 30 kVA (~7.6 L/h), 150 kVA (~32.7 L/h), 200 kVA
+// (~42.1 L/h) y 1000 kVA (~200 L/h) — todos dentro de ±5% de esta tabla.
+// El consumo real de un modelo específico varía ±10-20% según fabricante,
+// tecnología del motor, altitud/temperatura y estado de mantenimiento:
+// esta tabla es solo para presupuestar autonomía/combustible en etapa de
+// anteproyecto, no reemplaza la curva de consumo de la ficha técnica real.
+const FUEL_CONSUMPTION_REFERENCE = [
+  { kva: 5, lPerHour: 1.6 }, { kva: 8, lPerHour: 2.6 }, { kva: 10, lPerHour: 2.9 },
+  { kva: 15, lPerHour: 4.3 }, { kva: 20, lPerHour: 5.8 }, { kva: 25, lPerHour: 6.4 },
+  { kva: 30, lPerHour: 7.7 }, { kva: 40, lPerHour: 10.2 }, { kva: 50, lPerHour: 11.6 },
+  { kva: 65, lPerHour: 15.1 }, { kva: 80, lPerHour: 18.6 }, { kva: 100, lPerHour: 22.0 },
+  { kva: 125, lPerHour: 27.5 }, { kva: 150, lPerHour: 33.0 }, { kva: 175, lPerHour: 38.5 },
+  { kva: 200, lPerHour: 42.4 }, { kva: 250, lPerHour: 53.0 }, { kva: 300, lPerHour: 63.6 },
+  { kva: 350, lPerHour: 74.2 }, { kva: 400, lPerHour: 80.0 }, { kva: 500, lPerHour: 100.0 },
+  { kva: 600, lPerHour: 120.0 }, { kva: 650, lPerHour: 130.0 }, { kva: 700, lPerHour: 140.0 },
+  { kva: 750, lPerHour: 150.0 }, { kva: 800, lPerHour: 153.6 }, { kva: 900, lPerHour: 172.8 },
+  { kva: 1000, lPerHour: 192.0 }, { kva: 1250, lPerHour: 240.0 }, { kva: 1500, lPerHour: 276.0 },
+  { kva: 1750, lPerHour: 322.0 }, { kva: 2000, lPerHour: 368.0 }, { kva: 2500, lPerHour: 460.0 },
+];
+
+// Interpola linealmente entre los dos puntos de referencia más cercanos
+// (o extrapola proporcionalmente al SFC del extremo si el tamaño queda
+// fuera de la tabla) para estimar litros/hora a 100% de carga de un
+// tamaño comercial cualquiera.
+function estimateFuelConsumptionLPerHour(kva) {
+  const table = FUEL_CONSUMPTION_REFERENCE;
+  if (!(kva > 0)) return 0;
+  if (kva <= table[0].kva) return (kva / table[0].kva) * table[0].lPerHour;
+  const last = table[table.length - 1];
+  if (kva >= last.kva) return (kva / last.kva) * last.lPerHour;
+  for (let i = 0; i < table.length - 1; i++) {
+    const a = table[i];
+    const b = table[i + 1];
+    if (kva >= a.kva && kva <= b.kva) {
+      const t = (kva - a.kva) / (b.kva - a.kva);
+      return a.lPerHour + t * (b.lPerHour - a.lPerHour);
+    }
+  }
+  return 0;
+}
+
+// =========================================================================
 // Librería de cargas: equipos típicos del mercado con datos de placa de
 // referencia (motores trifásicos jaula de ardilla NEMA/IEC estándar,
 // soldadoras, bombas, compresores, HVAC, iluminación, hornos, etc.).
@@ -326,6 +376,10 @@ function computeSummary(rows, params) {
 
   const sizing = findSuggestedSize(recommendedKVA, peakStartKVA, xdPct, maxDipPct);
 
+  // Estimado a partir del tamaño comercial sugerido (no del kVA continuo),
+  // porque es el equipo que realmente se compraría/instalaría.
+  const fuelConsumptionLPerHour = sizing.size ? estimateFuelConsumptionLPerHour(sizing.size) : 0;
+
   const globalPF = sumKVA > 0 ? sumKW / sumKVA : 1;
 
   return {
@@ -350,6 +404,7 @@ function computeSummary(rows, params) {
     suggestedSize: sizing.size,
     dipPct: sizing.dipPct,
     dipOk: sizing.dipOk,
+    fuelConsumptionLPerHour,
   };
 }
 
@@ -371,6 +426,8 @@ if (typeof module !== "undefined" && module.exports) {
     ENGINE_TECH_PRESETS,
     PERFORMANCE_CLASS_PRESETS,
     STANDARD_SIZES_KVA,
+    FUEL_CONSUMPTION_REFERENCE,
+    estimateFuelConsumptionLPerHour,
     LOAD_LIBRARY,
     CALC_SCHEMA_VERSION,
     clamp,

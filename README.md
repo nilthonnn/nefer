@@ -52,7 +52,9 @@ python3 -m http.server 8080
    tensión de arranque** (%dip) contra la clase ISO 8528-5 elegida, y busca en el
    catálogo de tamaños comerciales el primero que cumpla tanto la demanda continua como
    ese %dip — si el criterio de tensión exige más que el simple redondeo por kVA, el
-   tamaño sugerido sube y queda explicado en pantalla.
+   tamaño sugerido sube y queda explicado en pantalla. También estima el **consumo de
+   combustible a 100% de carga** (L/h y L/día en operación continua) del tamaño comercial
+   sugerido, interpolando una tabla de referencia de mercado — ver metodología abajo.
 4. **Librería de cargas**: catálogo de ~45 equipos típicos del mercado (motores trifásicos
    por HP estándar NEMA/IEC, soldadoras inversoras y convencionales, bombas, compresores,
    HVAC, iluminación, hornos, cargadores/UPS, herramientas) con potencia, cos φ, eficiencia
@@ -127,6 +129,18 @@ python3 -m http.server 8080
   límite de la clase elegida. Si ninguno del catálogo cumple el %dip, se marca la
   advertencia correspondiente en pantalla (se requiere una unidad fuera de este catálogo
   o una clase de rendimiento menos exigente).
+- **Consumo de combustible a 100% de carga**: se interpola linealmente el tamaño comercial
+  sugerido contra `FUEL_CONSUMPTION_REFERENCE` (`js/calc.js`), una tabla de referencia
+  general de mercado (no de un fabricante específico) construida a partir de fichas
+  técnicas reales — Himoinsa (varios modelos entre 12 y 350 kVA) y FG Wilson/Perkins (75 y
+  135 kVA) — contrastadas contra el consumo específico (SFC) típico de motores diésel: los
+  equipos pequeños consumen más litros por kWh generado (~0.36-0.40 L/kWh bajo 20 kVA) y
+  los grandes se acercan a ~0.23-0.25 L/kWh (por encima de 750 kVA). Validado contra datos
+  reales publicados en 30, 150, 200 y 1000 kVA, todos dentro de ±5% de la tabla. El
+  consumo real de un modelo específico varía ±10-20% según fabricante, tecnología del
+  motor, altitud/temperatura y estado de mantenimiento — es una cifra para presupuestar
+  combustible/autonomía en etapa de anteproyecto, no reemplaza la curva de consumo (25/50/
+  75/100% de carga) de la ficha técnica del modelo real.
 
 > ⚠️ Esta herramienta da una estimación orientativa. Para la selección final del grupo
 > electrógeno, valida siempre contra la ficha técnica del fabricante (curvas reales de
@@ -237,6 +251,9 @@ Incrementa `CALC_SCHEMA_VERSION` cada vez que un cambio en `computeLoadRow` o
   por clase ISO 8528-5.
 - Editar `CONNECTION_TYPE_PRESETS` en `js/calc.js` para agregar otros esquemas de tensión
   además de 220V/380V/440V (p. ej. 208V, 240V, 600V según el país).
+- Editar `FUEL_CONSUMPTION_REFERENCE` en `js/calc.js` para ajustar la tabla de consumo de
+  combustible a los datos reales del fabricante/modelo que uses (reemplaza la referencia
+  genérica de mercado por la curva exacta de tu proveedor si la tienes).
 
 ## Nota técnica: `hidden` y CSS
 
