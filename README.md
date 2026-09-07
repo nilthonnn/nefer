@@ -41,7 +41,10 @@ python3 -m http.server 8080
    excede el límite práctico de una sola etapa de la tecnología elegida), la
    **corrección por densidad de aire** (altitud + temperatura), la capacidad de catálogo
    (FAD) que hay que pedir al fabricante, la potencia eléctrica estimada, y el tamaño
-   comercial sugerido (kW) del catálogo de referencia.
+   comercial sugerido (kW) del catálogo de referencia. Además, convierte esa capacidad
+   a CFM y la cruza contra un **catálogo de líneas de producto reales por marca**,
+   mostrando qué líneas (de las marcas con nomenclatura pública y estable — ver
+   "Marcas y fabricantes de referencia") cubren o están cerca de esa capacidad.
 4. **Librería de consumos**: catálogo de ~23 consumidores típicos (herramientas
    neumáticas de taller, perforadoras y equipos de minería subterránea — muy relevantes
    en el sector minero peruano —, herramientas de construcción, pintura, instrumentación
@@ -128,6 +131,19 @@ python3 -m http.server 8080
   referencia (`js/calc.js`, constante `STANDARD_SIZES_KW`, pasos de motor IEC/NEMA
   típicos de catálogos de compresores de tornillo/pistón) en orden ascendente y se toma
   el primero que cubre la potencia eléctrica estimada.
+- **Compresores de referencia por marca (filtrado por CFM)**: la capacidad de catálogo
+  requerida se convierte a CFM y se compara contra `js/calc.js`, constante
+  `BRAND_CATALOG` — líneas/series de producto reales de fabricantes con nomenclatura
+  pública y estable (p.ej. Atlas Copco GA/GA VSD+/ZR-ZT, Kaeser SM-SK/CSD-DSD/ASD-BSD,
+  Ingersoll Rand R-Series, Sullair LS-Series, CompAir L-Series, Hitachi Bebicon, Boge
+  S-Series), cada una con su rango de CFM típico publicado. La función
+  `findMatchingBrandModels` (`js/calc.js`) marca `exactFit: true` las líneas cuyo rango
+  cubre exactamente el CFM requerido, y también muestra las que están cerca (dentro de
+  un ±15% del rango, constante `BRAND_CATALOG_TOLERANCE`) para no dejar la lista vacía
+  cuando la capacidad cae justo en el borde de una línea. Son rangos de la **línea
+  completa** (que agrupa muchos modelos), no la ficha técnica de un modelo puntual — y
+  solo cubre las marcas de nomenclatura estable; las de "gama económica" no están en
+  este catálogo (ver "Marcas y fabricantes de referencia").
 
 > ⚠️ Esta herramienta da una estimación orientativa. Para la selección final del
 > compresor, valida siempre contra la ficha técnica del fabricante (curva real de FAD
@@ -218,7 +234,9 @@ densidad, la conversión CFM↔m³/min, el factor de uso, la regresión de que u
 consumo real exige más FAD de catálogo y más potencia en altura que a nivel del mar, la
 advertencia de relación de compresión que excede el límite de una etapa, el orden de
 magnitud de la potencia estimada contra la regla de mercado (~6.5 kW/m³-min a 7 bar(g)
-para tornillo lubricado), la búsqueda de tamaño comercial, y `csvEscape` (mitigación de
+para tornillo lubricado), la búsqueda de tamaño comercial, el filtrado de líneas de
+producto por marca (`findMatchingBrandModels`, incluidos los casos sin coincidencias),
+y `csvEscape` (mitigación de
 "CSV/Formula Injection" al exportar la tabla de demanda).
 
 Un workflow de GitHub Actions (`.github/workflows/tests.yml`) corre esta misma suite en
@@ -247,6 +265,10 @@ altere el resultado de proyectos ya guardados.
   fabricante que uses.
 - Editar `PERU_LOCATION_PRESETS` para agregar otras ubicaciones de referencia o ajustar
   las altitudes típicas.
+- Editar `BRAND_CATALOG` para agregar/quitar líneas de producto por marca, ajustar sus
+  rangos de CFM a datos actualizados del fabricante, o editar `BRAND_CATALOG_TOLERANCE`
+  para cambiar qué tan "cerca" debe estar una línea del CFM requerido para aparecer como
+  coincidencia cercana.
 
 ## Nota técnica: `hidden` y CSS
 

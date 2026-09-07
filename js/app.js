@@ -147,7 +147,33 @@ function renderResults() {
     : "⚠ fuera del catálogo de referencia — se requiere una unidad mayor a medida") + standbyNote;
 
   renderBreakdown(summary);
+  renderBrandMatches(summary);
   renderReportMeta(summary);
+}
+
+function renderBrandMatches(summary) {
+  document.getElementById("matchTargetCFM").textContent = formatNumber(summary.requiredCatalogFADcfm, 0);
+  const container = document.getElementById("brandMatches");
+  container.innerHTML = "";
+
+  if (summary.requiredCatalogFADcfm <= 0) {
+    container.innerHTML = '<p class="brand-match-empty">Agrega consumidores en la tabla para ver qué líneas de compresores cubren la capacidad requerida.</p>';
+    return;
+  }
+  if (summary.matchingBrandModels.length === 0) {
+    container.innerHTML = '<p class="brand-match-empty">Ninguna línea de este catálogo de referencia cubre esta capacidad — consulta directamente con el fabricante/distribuidor para un equipo fuera de este rango.</p>';
+    return;
+  }
+
+  container.innerHTML = summary.matchingBrandModels.map((m) => `
+    <div class="brand-match ${m.exactFit ? "is-exact" : ""}">
+      <div class="brand-match-info">
+        <span class="brand-match-name">${escapeHtml(m.brand)}</span>
+        <span class="brand-match-line">${escapeHtml(m.line)}</span>
+      </div>
+      <span class="brand-match-range">${formatNumber(m.cfmMin, 0)}–${formatNumber(m.cfmMax, 0)} CFM${m.exactFit ? " · dentro de rango" : " · cercano"}</span>
+    </div>
+  `).join("");
 }
 
 function renderReportMeta(summary) {

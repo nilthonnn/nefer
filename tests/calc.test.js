@@ -127,6 +127,39 @@ test("findSuggestedSize: toma el primer tamaño de catálogo que cubre la potenc
   assert.equal(r2.size, calc.STANDARD_SIZES_KW[calc.STANDARD_SIZES_KW.length - 1]);
 });
 
+test("findMatchingBrandModels: encuentra líneas que cubren un CFM típico y las marca exactFit", () => {
+  const matches = calc.findMatchingBrandModels(100);
+  assert.ok(matches.length > 0, "100 CFM es un tamaño común, debe matchear al menos una línea");
+  assert.ok(matches.every((m) => m.exactFit === true || m.exactFit === false));
+  const exact = matches.filter((m) => m.exactFit);
+  exact.forEach((m) => {
+    assert.ok(100 >= m.cfmMin && 100 <= m.cfmMax, `${m.brand} ${m.line} marcado exactFit pero 100 no cae en [${m.cfmMin},${m.cfmMax}]`);
+  });
+});
+
+test("findMatchingBrandModels: los exactFit aparecen antes que los cercanos, y ambos ordenados por cfmMin", () => {
+  const matches = calc.findMatchingBrandModels(100);
+  const exactCount = matches.filter((m) => m.exactFit).length;
+  matches.slice(0, exactCount).forEach((m) => assert.equal(m.exactFit, true));
+  matches.slice(exactCount).forEach((m) => assert.equal(m.exactFit, false));
+});
+
+test("findMatchingBrandModels: 0 o negativo no produce resultados ni errores", () => {
+  assert.deepEqual(calc.findMatchingBrandModels(0), []);
+  assert.deepEqual(calc.findMatchingBrandModels(-5), []);
+});
+
+test("findMatchingBrandModels: un CFM absurdamente alto no matchea nada (sin tolerancia infinita)", () => {
+  assert.deepEqual(calc.findMatchingBrandModels(1e9), []);
+});
+
+test("computeSummary: incluye requiredCatalogFADcfm y matchingBrandModels coherentes con findMatchingBrandModels", () => {
+  const rows = [baseRow({ flow: 30, unit: "m3min", usageFactorPct: 100 })];
+  const s = calc.computeSummary(rows, baseParams());
+  assert.ok(Math.abs(s.requiredCatalogFADcfm - s.requiredCatalogFADm3min * calc.M3MIN_TO_CFM) < 1e-6);
+  assert.deepEqual(s.matchingBrandModels, calc.findMatchingBrandModels(s.requiredCatalogFADcfm));
+});
+
 test("computeIdealAdiabaticPowerKW: orden de magnitud consistente con la regla de mercado (~6.5 kW/m3-min a 7 bar(g), tornillo lubricado)", () => {
   const p1 = calc.SEA_LEVEL_PRESSURE_KPA;
   const p2 = p1 + 7 * 100; // 7 bar(g) -> kPa

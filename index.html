@@ -224,6 +224,16 @@
         <div id="breakdownBars" class="bars"></div>
       </div>
 
+      <div class="breakdown">
+        <h3>Compresores de referencia por marca, filtrados por CFM</h3>
+        <p class="hint" style="margin-top:0;">
+          Líneas de producto reales (no un modelo puntual) cuyo rango de capacidad publicado cubre — o está cerca
+          de — la capacidad de catálogo requerida (<span id="matchTargetCFM">0</span> CFM). Confirma siempre el
+          modelo exacto, la presión y el caudal certificado con el fabricante o distribuidor antes de comprar.
+        </p>
+        <div id="brandMatches" class="brand-matches"></div>
+      </div>
+
       <ol class="method-notes">
         <li>Se suma el consumo <strong>nominal</strong> (placa × cantidad) y el <strong>efectivo</strong> (aplicando el factor de uso/simultaneidad de cada consumidor incluido).</li>
         <li>Se aplica el margen de seguridad/crecimiento futuro sobre el consumo efectivo para obtener la <strong>demanda de diseño</strong>.</li>
@@ -232,6 +242,7 @@
         <li>La presión de descarga requerida (presión de trabajo + caída de línea) se suma a la presión atmosférica del sitio para obtener la <strong>relación de compresión</strong> real (absoluta); se compara contra el límite práctico de una sola etapa de la tecnología elegida.</li>
         <li>Se estima la <strong>potencia de compresión ideal</strong> (adiabática, modelo de una etapa equivalente) y se divide entre la eficiencia global asumida de la tecnología elegida para obtener la potencia eléctrica estimada.</li>
         <li>Se busca, en el catálogo de tamaños comerciales de referencia (kW de motor), el primero que cubra la potencia estimada.</li>
+        <li>Se convierte la capacidad de catálogo requerida a CFM y se filtra el catálogo de líneas de producto por marca, mostrando las que cubren — o están cerca de — esa capacidad.</li>
       </ol>
     </section>
 
@@ -296,7 +307,10 @@
       <p class="hint" style="margin-top:0;">
         Panorama de mercado global (no exhaustivo) incluido como tarjeta de referencia en la app. No implica
         recomendación de una marca sobre otra — verifica precio, disponibilidad y representante autorizado vigente
-        antes de una compra.
+        antes de una compra. Las marcas de "Premium / gama alta" e "Industrial general" tienen además líneas de
+        producto con nomenclatura pública y estable, por lo que aparecen filtradas por CFM en el paso 3
+        ("Compresores de referencia por marca"); las de "Gama económica" cambian de nomenclatura más seguido según
+        el distribuidor, así que no se incluyen en ese filtro — confirma directamente su línea y capacidad vigente.
       </p>
       <div class="brands-grid">
         <div class="brand-item">

@@ -56,6 +56,46 @@ const STANDARD_SIZES_KW = [
   200, 250, 315, 355, 400, 450, 500,
 ];
 
+// Catálogo de referencia por marca: líneas/series de producto reales de
+// fabricantes reconocidos, con su rango típico de capacidad (FAD, en CFM,
+// tal como suelen publicarse en las hojas de datos comerciales) y de
+// potencia. Son rangos orientativos por línea completa (que agrupa muchos
+// modelos individuales), no la ficha técnica de un modelo puntual — cada
+// fabricante ofrece decenas de tamaños dentro de cada línea. Solo se
+// incluyen fabricantes cuya nomenclatura de serie es pública y estable; las
+// marcas de gama económica (cuya nomenclatura cambia más seguido y varía por
+// distribuidor) se muestran igual en la tarjeta "Marcas y fabricantes" pero
+// no aquí — confirma su línea y capacidad vigente con el distribuidor.
+const BRAND_CATALOG = [
+  { brand: "Atlas Copco", line: "GA (tornillo lubricado, ciclo fijo)", tech: "screw_oil", cfmMin: 15, cfmMax: 180 },
+  { brand: "Atlas Copco", line: "GA VSD+ (tornillo lubricado, velocidad variable)", tech: "screw_oil", cfmMin: 100, cfmMax: 1000 },
+  { brand: "Atlas Copco", line: "ZR/ZT (libre de aceite)", tech: "screw_oilfree", cfmMin: 50, cfmMax: 1000 },
+  { brand: "Ingersoll Rand", line: "R-Series (tornillo lubricado)", tech: "screw_oil", cfmMin: 25, cfmMax: 700 },
+  { brand: "Kaeser Kompressoren", line: "SM/SK (tornillo lubricado, compacto)", tech: "screw_oil", cfmMin: 15, cfmMax: 200 },
+  { brand: "Kaeser Kompressoren", line: "CSD/DSD (tornillo lubricado, industrial)", tech: "screw_oil", cfmMin: 200, cfmMax: 1600 },
+  { brand: "Kaeser Kompressoren", line: "ASD/BSD (libre de aceite)", tech: "screw_oilfree", cfmMin: 60, cfmMax: 800 },
+  { brand: "Sullair", line: "LS-Series (tornillo lubricado)", tech: "screw_oil", cfmMin: 30, cfmMax: 1300 },
+  { brand: "CompAir", line: "L-Series (tornillo lubricado)", tech: "screw_oil", cfmMin: 25, cfmMax: 600 },
+  { brand: "Hitachi", line: "Bebicon (tornillo lubricado)", tech: "screw_oil", cfmMin: 15, cfmMax: 500 },
+  { brand: "Boge", line: "S-Series (tornillo lubricado)", tech: "screw_oil", cfmMin: 20, cfmMax: 800 },
+  { brand: "Chicago Pneumatic", line: "Línea de tornillo lubricado industrial", tech: "screw_oil", cfmMin: 20, cfmMax: 500 },
+  { brand: "Gardner Denver / GD Industries", line: "Línea de tornillo lubricado industrial", tech: "screw_oil", cfmMin: 25, cfmMax: 1000 },
+];
+
+// Tolerancia para considerar una línea "cercana" al CFM requerido, además de
+// las que lo cubren exactamente: 15% por debajo del mínimo y por encima del
+// máximo publicado de la línea. Evita una lista vacía cuando la capacidad
+// requerida cae justo en el borde de un rango de catálogo.
+const BRAND_CATALOG_TOLERANCE = 0.15;
+
+function findMatchingBrandModels(requiredCFM) {
+  if (!(requiredCFM > 0)) return [];
+  return BRAND_CATALOG
+    .filter((entry) => requiredCFM >= entry.cfmMin * (1 - BRAND_CATALOG_TOLERANCE) && requiredCFM <= entry.cfmMax * (1 + BRAND_CATALOG_TOLERANCE))
+    .map((entry) => ({ ...entry, exactFit: requiredCFM >= entry.cfmMin && requiredCFM <= entry.cfmMax }))
+    .sort((a, b) => (b.exactFit - a.exactFit) || (a.cfmMin - b.cfmMin));
+}
+
 // Ubicaciones de referencia en Perú (altitud típica en msnm) — solo un
 // atajo de UI para rellenar el campo "Altitud del sitio"; no forma parte
 // del estado guardado del proyecto (ver js/app.js).
@@ -261,6 +301,9 @@ function computeSummary(rows, params) {
 
   const sizing = findSuggestedSize(shaftPowerKW);
 
+  const requiredCatalogFADcfm = requiredCatalogFADm3min * M3MIN_TO_CFM;
+  const matchingBrandModels = findMatchingBrandModels(requiredCatalogFADcfm);
+
   return {
     computed,
     sumNominal,
@@ -283,6 +326,8 @@ function computeSummary(rows, params) {
     shaftPowerKW,
     suggestedSizeKW: sizing.size,
     sizeFits: sizing.fits,
+    requiredCatalogFADcfm,
+    matchingBrandModels,
   };
 }
 
@@ -301,6 +346,9 @@ if (typeof module !== "undefined" && module.exports) {
     CONSUMER_CATEGORY_PRESETS,
     COMPRESSOR_TECH_PRESETS,
     STANDARD_SIZES_KW,
+    BRAND_CATALOG,
+    BRAND_CATALOG_TOLERANCE,
+    findMatchingBrandModels,
     PERU_LOCATION_PRESETS,
     CONSUMER_LIBRARY,
     ADIABATIC_K,
