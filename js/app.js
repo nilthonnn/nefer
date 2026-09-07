@@ -178,6 +178,16 @@ function renderResults() {
     ? `≈ ${formatNumber(summary.fuelConsumptionLPerHour * 24, 0)} L (${formatNumber(summary.fuelConsumptionLPerHour * 24 * L_TO_US_GAL, 0)} gal) por día en operación continua a plena carga — referencia de mercado, verifica la curva real del motor`
     : "a 100% de carga, del tamaño comercial sugerido";
 
+  const loadFactorTile = document.getElementById("statLoadFactorTile");
+  const hasLoad = summary.computed.length > 0 && summary.suggestedSize;
+  document.getElementById("statLoadFactor").textContent = hasLoad ? `${formatNumber(summary.typicalLoadPct, 0)}%` : "—";
+  loadFactorTile.classList.toggle("stat-tile-warning", hasLoad && summary.underloadRisk);
+  document.getElementById("statLoadFactorDetail").textContent = !hasLoad
+    ? "carga en régimen sobre la capacidad del tamaño sugerido"
+    : summary.underloadRisk
+      ? `⚠ por debajo de ${MIN_RECOMMENDED_LOAD_PCT}% de forma crónica favorece "wet stacking" (carbonilla por combustión incompleta) — ejercita a ≥${MIN_RECOMMENDED_LOAD_PCT}% periódicamente, usa banco de carga, o revisa si el tamaño elegido es más grande de lo necesario`
+      : `saludable (≥${MIN_RECOMMENDED_LOAD_PCT}% recomendado por el fabricante para evitar carbonilla)`;
+
   renderBreakdown(summary);
   renderReportMeta(summary);
 }

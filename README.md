@@ -55,7 +55,9 @@ python3 -m http.server 8080
    tamaño sugerido sube y queda explicado en pantalla. También estima el **consumo de
    combustible a 100% de carga** (L/h y gal/h, más L/día y gal/día en operación continua)
    del tamaño comercial sugerido, interpolando una tabla de referencia de mercado — ver
-   metodología abajo.
+   metodología abajo. Advierte también si la **carga típica de operación** queda por
+   debajo del mínimo recomendado por fabricantes (~30% de la capacidad nominal), riesgo
+   de "wet stacking"/carbonilla por subcarga crónica — el chequeo simétrico al %dip.
 4. **Librería de cargas**: catálogo de ~45 equipos típicos del mercado (motores trifásicos
    por HP estándar NEMA/IEC, soldadoras inversoras y convencionales, bombas, compresores,
    HVAC, iluminación, hornos, cargadores/UPS, herramientas) con potencia, cos φ, eficiencia
@@ -152,6 +154,26 @@ python3 -m http.server 8080
   margen de incertidumbre declarado (±10-20%), tendiendo a sobrestimar un poco en el rango
   ≥1000 kVA frente a estos modelos específicos — otra razón más para no usarla como
   sustituto de la ficha técnica real en esa categoría de tamaño.
+- **% de carga típica de operación / riesgo de subcarga crónica**: chequeo simétrico al
+  %dip — mientras el %dip evita un generador **demasiado chico** (colapso de tensión al
+  arrancar la carga crítica), este evita uno **demasiado grande** para su uso normal.
+  Se calcula `sumKW / (tamaño_sugerido_kVA × factor_de_potencia_del_generador) × 100` (la
+  carga real en régimen, sin margen de seguridad ni derating — eso es solo holgura de
+  diseño — contra la capacidad nominal del tamaño elegido) y se compara contra
+  `MIN_RECOMMENDED_LOAD_PCT = 30` (`js/calc.js`). Operar un motor diésel por debajo de
+  ~30% de su carga nominal de forma crónica causa **"wet stacking"** (combustión
+  incompleta que deja carbonilla/hollín en cilindros, válvulas y escape, con desgaste
+  interno acelerado). El umbral del 30% coincide entre tres fuentes independientes:
+  [Caterpillar](https://www.cat.com/en_US/by-industry/electric-power/Articles/White-papers/the-impact-of-generator-set-underloading.html)
+  (recomienda mínimo 30%, o cargar a ≥30% ~30 min por cada 4h de operación liviana),
+  [Cummins](https://www.cummins.com/sites/default/files/2019-10/FAQ_Introduction%20to%20Generator%20Set%20Sizing%20Software_vF.pdf)
+  (citando NFPA 110-2016: bajo ~30% aumenta el riesgo de wet stacking; usar banco de
+  carga si el consumo real quedará por debajo) y la propia **NFPA 110** (exige ejercitar
+  el equipo mensualmente ≥30 min a ≥30% de la placa standby). Si tu proyecto marca esta
+  advertencia, las salidas típicas son: ejercitar el equipo periódicamente a carga alta,
+  usar un banco de carga, replantear si el tamaño sugerido por %dip es mayor de lo que
+  el sitio realmente necesita en régimen, o considerar un grupo más chico en paralelo con
+  gestión de carga si el pico de arranque es la única razón del sobredimensionamiento.
 
 > ⚠️ Esta herramienta da una estimación orientativa. Para la selección final del grupo
 > electrógeno, valida siempre contra la ficha técnica del fabricante (curvas reales de
@@ -265,6 +287,9 @@ Incrementa `CALC_SCHEMA_VERSION` cada vez que un cambio en `computeLoadRow` o
 - Editar `FUEL_CONSUMPTION_REFERENCE` en `js/calc.js` para ajustar la tabla de consumo de
   combustible a los datos reales del fabricante/modelo que uses (reemplaza la referencia
   genérica de mercado por la curva exacta de tu proveedor si la tienes).
+- Editar `MIN_RECOMMENDED_LOAD_PCT` en `js/calc.js` para ajustar el umbral de subcarga
+  crónica (30% por defecto, según Caterpillar/Cummins/NFPA 110) al criterio de tu
+  fabricante específico si difiere.
 
 ## Nota técnica: `hidden` y CSS
 

@@ -96,6 +96,18 @@ const PERFORMANCE_CLASS_PRESETS = {
   G4: { label: "G4 — a medida (definir con el proveedor)", maxDipPct: null },
 };
 
+// Carga mínima recomendada como % de la capacidad nominal del grupo, para
+// evitar "wet stacking" (carbonilla/hollín por combustión incompleta a baja
+// carga, con desgaste de camisas/anillos y taponamiento del escape).
+// Coincide entre tres fuentes independientes: Caterpillar (mínimo 30%, o
+// cargar a ≥30% ~30 min por cada 4h de operación liviana), Cummins (citando
+// NFPA 110-2016: por debajo de ~30% aumenta el riesgo de wet stacking; usar
+// banco de carga si el consumo real quedará bajo ese umbral) y NFPA 110
+// (exige ejercitar el equipo mensualmente ≥30 min a ≥30% de la placa
+// standby). Es una operación crónica (motor de combustión), no aplica al
+// arranque momentáneo de una carga puntual.
+const MIN_RECOMMENDED_LOAD_PCT = 30;
+
 // Tamaños comerciales de referencia (kVA) - lista genérica orientativa.
 const STANDARD_SIZES_KVA = [
   5, 8, 10, 15, 20, 25, 30, 40, 50, 65, 80, 100, 125, 150, 175, 200,
@@ -381,6 +393,16 @@ function computeSummary(rows, params) {
   // porque es el equipo que realmente se compraría/instalaría.
   const fuelConsumptionLPerHour = sizing.size ? estimateFuelConsumptionLPerHour(sizing.size) : 0;
 
+  // % de carga típica de operación: la carga REAL en régimen (sumKW, sin
+  // margen de seguridad ni derating — eso es solo holgura de diseño) contra
+  // la capacidad nominal del generador elegido. Es el chequeo simétrico al
+  // %dip: el %dip evita un generador demasiado CHICO (colapso de tensión al
+  // arrancar); este evita uno demasiado GRANDE para su uso normal (riesgo de
+  // wet stacking/carbonilla por subcarga crónica).
+  const ratedKWAtSuggestedSize = sizing.size ? sizing.size * genPF : 0;
+  const typicalLoadPct = ratedKWAtSuggestedSize > 0 ? (sumKW / ratedKWAtSuggestedSize) * 100 : 0;
+  const underloadRisk = sizing.size != null && sumKW > 0 && typicalLoadPct < MIN_RECOMMENDED_LOAD_PCT;
+
   const globalPF = sumKVA > 0 ? sumKW / sumKVA : 1;
 
   return {
@@ -406,6 +428,8 @@ function computeSummary(rows, params) {
     dipPct: sizing.dipPct,
     dipOk: sizing.dipOk,
     fuelConsumptionLPerHour,
+    typicalLoadPct,
+    underloadRisk,
   };
 }
 
@@ -426,6 +450,7 @@ if (typeof module !== "undefined" && module.exports) {
     REGIME_PRESETS,
     ENGINE_TECH_PRESETS,
     PERFORMANCE_CLASS_PRESETS,
+    MIN_RECOMMENDED_LOAD_PCT,
     STANDARD_SIZES_KVA,
     FUEL_CONSUMPTION_REFERENCE,
     estimateFuelConsumptionLPerHour,

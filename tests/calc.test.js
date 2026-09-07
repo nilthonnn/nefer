@@ -213,3 +213,32 @@ test("computeSummary: incluye fuelConsumptionLPerHour coherente con el tamaño s
   assert.equal(s.fuelConsumptionLPerHour, calc.estimateFuelConsumptionLPerHour(s.suggestedSize));
   assert.ok(s.fuelConsumptionLPerHour > 0);
 });
+
+test("computeSummary: detecta riesgo de subcarga crónica (wet stacking) cuando la carga de arranque infla el tamaño muy por encima de la carga en régimen", () => {
+  // Caso por defecto de la app: un motor grande de arranque directo dispara
+  // el sizing, pero la carga real en régimen es baja frente a ese tamaño —
+  // exactamente el escenario que MIN_RECOMMENDED_LOAD_PCT debe detectar.
+  const rows = [
+    baseRow({ desc: "Iluminación", category: "lighting", type: "resistive", power: 2, unit: "kw", pf: 1, efficiency: 1, startFactor: 1 }),
+    baseRow({ desc: "Tomacorrientes", category: "electronics_vfd", type: "resistive", power: 3, unit: "kw", pf: 0.95, efficiency: 1, startFactor: 1 }),
+    baseRow({ desc: "Bomba", category: "motor", type: "motor_dol", power: 5.5, unit: "hp", pf: 0.85, efficiency: 0.878, startFactor: 6 }),
+    baseRow({ desc: "AC", category: "motor", type: "motor_dol", power: 3, unit: "hp", qty: 2, pf: 0.82, efficiency: 0.855, startFactor: 6 }),
+  ];
+  const s = calc.computeSummary(rows, baseParams());
+  assert.equal(s.suggestedSize, 65);
+  assert.ok(s.typicalLoadPct < calc.MIN_RECOMMENDED_LOAD_PCT, `typicalLoadPct=${s.typicalLoadPct} debería quedar bajo el mínimo recomendado`);
+  assert.equal(s.underloadRisk, true);
+});
+
+test("computeSummary: NO marca riesgo de subcarga cuando la carga en régimen usa una fracción saludable del tamaño elegido", () => {
+  const rows = [baseRow({ power: 50, unit: "kw", pf: 0.9, startFactor: 1 })];
+  const s = calc.computeSummary(rows, baseParams({ margin: 0 }));
+  assert.ok(s.typicalLoadPct >= calc.MIN_RECOMMENDED_LOAD_PCT, `typicalLoadPct=${s.typicalLoadPct} debería superar el mínimo recomendado`);
+  assert.equal(s.underloadRisk, false);
+});
+
+test("computeSummary: sin cargas, underloadRisk es false (no hay nada que subcargar)", () => {
+  const s = calc.computeSummary([], baseParams());
+  assert.equal(s.underloadRisk, false);
+  assert.equal(s.typicalLoadPct, 0);
+});
