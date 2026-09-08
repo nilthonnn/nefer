@@ -329,7 +329,25 @@ CODIGO_TIPO_FECHA.pdf        →  TI009-04_DESPACHO_2026-09-08.pdf
 Una carpeta por acta, con su `acta.json` y sus fotos dentro. El JSON es el
 respaldo: con él se regenera el Excel y el PDF cuando haga falta.
 
-### Reutilizar el despacho para la recepción
+### Levantar la recepción con el asistente
+
+Abra **`herramientas/asistente-recepcion.html`** en el navegador y cargue tres
+cosas: el `acta.json` del despacho, su carpeta `fotos/`, y las fotos del
+retorno que acaba de tomar.
+
+Para cada vista muestra **la foto de salida al lado**, y le pide la del retorno.
+Para cada accesorio le pide el estado. Para cada componente marcado observado o
+dañado le pide la foto de retorno y la observación escrita.
+
+Abajo indica en todo momento qué falta, y al final copia el acta de recepción
+completa. El acta resultante lleva `archivo_despacho` en cada vista, que es lo
+que hace aparecer en el PDF las secciones **COMPARATIVO DESPACHO / RECEPCIÓN**
+y **DAÑOS Y OBSERVACIONES**.
+
+> **El horómetro se teclea mirando la foto.** El asistente no lo adivina, y si
+> no se lee con certeza hay que escribir `REVISIÓN MANUAL REQUERIDA`.
+
+### Reutilizar el despacho para la recepción, a mano
 
 ```bash
 cp -r TI009-04-despacho TI009-04-recepcion
@@ -417,7 +435,8 @@ que confirmarla igual, y en patio muchas veces no hay señal.
 | `nefer acta -e GE110-02 -c andina` | Acta con el encabezado ya lleno |
 | `nefer plantilla -o acta.json` | Manifiesto en blanco, sin catálogo |
 | `nefer fotos fotos/ -m acta.json` | Carga la carpeta de fotos en el manifiesto |
-| `herramientas/asignador-fotos.html` | Asignación visual en el navegador, sin conexión |
+| `herramientas/asignador-fotos.html` | Asignación visual de fotos, sin conexión |
+| `herramientas/asistente-recepcion.html` | Despacho → recepción, con antes y después |
 | `nefer validar acta.json` | Verifica el manifiesto y que las fotos existan |
 | `nefer validar acta.json --sin-verificar-fotos` | Solo el manifiesto, sin mirar el disco |
 | `nefer construir acta.json -o salida.xlsx` | Genera el Excel |

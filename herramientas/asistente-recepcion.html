@@ -1,0 +1,628 @@
+<title>Asistente de recepción</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --paper:#F3F4F2; --card:#FFFFFF; --card-2:#EAEDEB;
+    --ink:#16191B; --ink-2:#4E5860; --ink-3:#7F8B93;
+    --rule:#D6DCDA; --rule-2:#E6EAE8;
+    --accent:#1E4B6B; --accent-soft:#E3ECF3;
+    --ok:#1F6B4C; --ok-soft:#E1F0E9;
+    --obs:#8A5A00; --obs-soft:#F8EFDB; --obs-rule:#E0C894;
+    --mal:#96341F; --mal-soft:#F7E6E0; --mal-rule:#E0B2A2;
+    --lift:0 1px 2px rgba(22,25,27,.05), 0 10px 26px -16px rgba(22,25,27,.28);
+    --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+    --sans:"Barlow",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+      --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#74838A;
+      --rule:#2F383D; --rule-2:#262E32;
+      --accent:#6FA8CE; --accent-soft:#16303F;
+      --ok:#6FC49B; --ok-soft:#143024;
+      --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+      --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+      --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+    --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#74838A;
+    --rule:#2F383D; --rule-2:#262E32;
+    --accent:#6FA8CE; --accent-soft:#16303F;
+    --ok:#6FC49B; --ok-soft:#143024;
+    --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+    --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+    --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+         font-family:var(--sans); font-size:15px; line-height:1.55;
+         -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:64rem; margin:0 auto; padding:2rem 1.1rem 4rem; }
+
+  header { border-bottom:3px solid var(--ink); padding-bottom:1rem; margin-bottom:1.1rem; }
+  .kicker { font-family:var(--mono); font-size:.68rem; letter-spacing:.16em;
+            text-transform:uppercase; color:var(--accent); margin:0 0 .5rem; }
+  h1 { font-family:var(--cond); font-size:clamp(2rem,1.4rem + 2.6vw,3rem);
+       font-weight:700; line-height:.98; text-transform:uppercase; margin:0 0 .5rem; }
+  .sub { margin:0; color:var(--ink-2); max-width:44rem; font-size:.96rem; }
+
+  /* ---------- pasos de carga ---------- */
+  .cargas { display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));
+            gap:.6rem; margin-bottom:1.1rem; }
+  .carga { background:var(--card); border:1px solid var(--rule); border-radius:7px;
+           box-shadow:var(--lift); padding:.75rem .85rem; display:flex;
+           flex-direction:column; gap:.45rem; }
+  .carga.lista { border-color:color-mix(in srgb,var(--ok) 50%,transparent); }
+  .carga h2 { font-family:var(--cond); font-size:1rem; font-weight:600;
+              text-transform:uppercase; letter-spacing:.02em; margin:0;
+              display:flex; gap:.5rem; align-items:baseline; }
+  .carga h2 .n { font-family:var(--mono); font-size:.68rem; color:var(--accent); }
+  .carga p { margin:0; font-size:.8rem; color:var(--ink-3); }
+  .carga .estado { font-family:var(--mono); font-size:.72rem; color:var(--ok); }
+
+  button { font-family:var(--sans); font-size:.85rem; font-weight:600;
+           padding:.4rem .75rem; border-radius:5px; cursor:pointer;
+           border:1px solid var(--rule); background:var(--card-2); color:var(--ink); }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:var(--paper); }
+  button.primary:hover { filter:brightness(1.12); color:var(--paper); }
+  button.ghost { background:none; border-color:transparent; color:var(--ink-3);
+                 text-decoration:underline; text-underline-offset:2px; }
+  button:focus-visible, input:focus-visible, select:focus-visible,
+  textarea:focus-visible, .mini:focus-visible {
+    outline:2px solid var(--accent); outline-offset:2px; }
+
+  input[type="text"], input[type="number"], input[type="date"], select, textarea {
+    font-family:var(--sans); font-size:.86rem; color:var(--ink);
+    background:var(--card-2); border:1px solid var(--rule);
+    border-radius:5px; padding:.34rem .5rem; width:100%; }
+  textarea { resize:vertical; min-height:3.2rem; }
+
+  .bar { display:flex; flex-wrap:wrap; gap:.55rem; align-items:center;
+         padding:.7rem .8rem; background:var(--card); border:1px solid var(--rule);
+         border-radius:7px; box-shadow:var(--lift); margin-bottom:1rem; }
+  .grow { flex:1; }
+  .lb { font-family:var(--mono); font-size:.65rem; letter-spacing:.1em;
+        text-transform:uppercase; color:var(--ink-3); }
+
+  /* ---------- cabecera del acta ---------- */
+  .campos { display:grid; grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));
+            gap:.55rem; }
+  .campo { display:flex; flex-direction:column; gap:.2rem; }
+
+  /* ---------- filas antes / después ---------- */
+  .seccion { margin-top:1.6rem; }
+  .seccion > h2 { font-family:var(--cond); font-size:1.25rem; font-weight:600;
+                  text-transform:uppercase; letter-spacing:.02em; margin:0 0 .2rem;
+                  display:flex; justify-content:space-between; align-items:baseline;
+                  gap:.6rem; border-bottom:2px solid var(--rule); padding-bottom:.35rem; }
+  .seccion > h2 .tally { font-family:var(--mono); font-size:.72rem; font-weight:400;
+                         color:var(--ink-3); text-transform:none; letter-spacing:0; }
+  .seccion > p { margin:.5rem 0 .8rem; font-size:.85rem; color:var(--ink-3); }
+
+  .par { background:var(--card); border:1px solid var(--rule); border-radius:7px;
+         box-shadow:var(--lift); padding:.7rem .8rem; margin-bottom:.6rem; }
+  .par.pendiente { border-left:3px solid var(--obs); }
+  .par.resuelto  { border-left:3px solid var(--ok); }
+  .par-top { display:flex; justify-content:space-between; align-items:baseline;
+             gap:.6rem; margin-bottom:.55rem; }
+  .par-top h3 { font-size:.92rem; font-weight:700; margin:0; }
+  .par-top .idx { font-family:var(--mono); font-size:.68rem; color:var(--ink-3); }
+
+  .dupla { display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+  .lado { display:flex; flex-direction:column; gap:.3rem; }
+  .lado .tag { font-family:var(--mono); font-size:.6rem; letter-spacing:.1em;
+               text-transform:uppercase; color:var(--ink-3); }
+  .marco { aspect-ratio:4/3; border:1px solid var(--rule); border-radius:5px;
+           overflow:hidden; background:var(--card-2); display:grid; place-items:center;
+           width:100%; padding:0; cursor:pointer; }
+  .marco img { width:100%; height:100%; object-fit:cover; display:block; }
+  .marco .vacio { font-family:var(--mono); font-size:.6rem; color:var(--ink-3);
+                  padding:.4rem; text-align:center; }
+  .marco.fija { cursor:default; }
+  .marco.hot { border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent); }
+
+  .estados { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.55rem; }
+  .estados button { font-size:.76rem; padding:.28rem .55rem; font-weight:600; }
+  .estados button[aria-pressed="true"][data-e="OK"]  { background:var(--ok-soft);
+    border-color:var(--ok); color:var(--ok); }
+  .estados button[aria-pressed="true"][data-e="OBS"] { background:var(--obs-soft);
+    border-color:var(--obs); color:var(--obs); }
+  .estados button[aria-pressed="true"][data-e="D"],
+  .estados button[aria-pressed="true"][data-e="NO_RETORNA"] { background:var(--mal-soft);
+    border-color:var(--mal); color:var(--mal); }
+  .obs-campo { margin-top:.45rem; }
+
+  /* ---------- bandeja de fotos del retorno ---------- */
+  .bandeja { position:sticky; top:0; z-index:6; background:var(--card);
+             border:1px solid var(--rule); border-radius:7px; box-shadow:var(--lift);
+             padding:.55rem .65rem; margin-bottom:1rem; }
+  .bandeja h2 { font-family:var(--cond); font-size:.98rem; font-weight:600;
+                text-transform:uppercase; margin:0 0 .4rem;
+                display:flex; justify-content:space-between; align-items:baseline; }
+  .bandeja .tally { font-family:var(--mono); font-size:.7rem; font-weight:400;
+                    color:var(--ink-3); text-transform:none; }
+  .tira { display:flex; gap:.35rem; overflow-x:auto; padding-bottom:.2rem; }
+  .tile { position:relative; flex:0 0 4.2rem; aspect-ratio:4/3; border:1px solid var(--rule);
+          border-radius:4px; overflow:hidden; background:var(--card-2); padding:0;
+          cursor:pointer; }
+  .tile img { width:100%; height:100%; object-fit:cover; display:block; }
+  .tile.sel { outline:3px solid var(--accent); outline-offset:-1px; }
+  .tile .fn { position:absolute; left:0; right:0; bottom:0; background:rgba(0,0,0,.62);
+              color:#fff; font-family:var(--mono); font-size:.5rem; padding:.08rem .15rem;
+              white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .aviso { padding:.65rem .8rem; border-radius:5px; border:1px solid var(--obs-rule);
+           background:var(--obs-soft); font-size:.87rem; color:var(--ink-2);
+           margin-bottom:.8rem; }
+  .aviso.ok { border-color:color-mix(in srgb,var(--ok) 45%,transparent);
+              background:var(--ok-soft); }
+  .aviso b { color:var(--ink); }
+
+  textarea.salida { min-height:11rem; font-family:var(--mono); font-size:.72rem;
+                    background:var(--card); border-left:3px solid var(--accent); }
+
+  .oculto { display:none !important; }
+
+  @media (max-width:34rem) {
+    .wrap { padding:1.1rem .7rem 3rem; }
+    .dupla { gap:.4rem; }
+    .par { padding:.55rem .6rem; }
+    .seccion > h2 { font-size:1.08rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="kicker">nefer · acta de recepción</p>
+    <h1>Asistente de recepción</h1>
+    <p class="sub">
+      Parte del acta de despacho y la convierte en la de recepción, poniendo cada
+      foto de salida al lado de la de retorno. Funciona sin conexión.
+    </p>
+  </header>
+
+  <div class="cargas">
+    <div class="carga" id="c1">
+      <h2><span class="n">01</span> Acta de despacho</h2>
+      <p>El <code>acta.json</code> del despacho de este equipo.</p>
+      <button class="primary" id="b1" type="button">Cargar acta.json…</button>
+      <input type="file" id="f1" accept=".json,application/json" hidden>
+      <span class="estado" id="e1"></span>
+    </div>
+    <div class="carga" id="c2">
+      <h2><span class="n">02</span> Fotos del despacho</h2>
+      <p>La carpeta <code>fotos/</code> de ese mismo despacho.</p>
+      <button id="b2" type="button">Cargar fotos…</button>
+      <input type="file" id="f2" accept="image/*" multiple hidden>
+      <span class="estado" id="e2"></span>
+    </div>
+    <div class="carga" id="c3">
+      <h2><span class="n">03</span> Fotos del retorno</h2>
+      <p>Las que acaba de tomar al recibir el equipo.</p>
+      <button id="b3" type="button">Cargar fotos…</button>
+      <input type="file" id="f3" accept="image/*" multiple hidden>
+      <span class="estado" id="e3"></span>
+    </div>
+  </div>
+
+  <div id="trabajo" class="oculto">
+
+    <div class="bandeja">
+      <h2>Fotos del retorno sin usar <span class="tally" id="t-tira">0</span></h2>
+      <div class="tira" id="tira"></div>
+      <p class="lb" id="pista" style="margin:.4rem 0 0">
+        Toque una foto y luego el recuadro «DESPUÉS» donde va.
+      </p>
+    </div>
+
+    <section class="bar">
+      <div class="campos" style="width:100%">
+        <label class="campo"><span class="lb">N° acta</span>
+          <input type="text" id="n_acta" placeholder="004-001155"></label>
+        <label class="campo"><span class="lb">N° guía</span>
+          <input type="text" id="n_guia" placeholder="T001-00020144"></label>
+        <label class="campo"><span class="lb">Fecha de recepción</span>
+          <input type="date" id="fecha"></label>
+        <label class="campo"><span class="lb">Horómetro de retorno</span>
+          <input type="text" id="horometro" placeholder="1731.2"></label>
+      </div>
+    </section>
+    <div class="aviso" id="aviso-horo">
+      <b>El horómetro se teclea mirando la foto.</b> Si no se lee con certeza,
+      escriba <code>REVISIÓN MANUAL REQUERIDA</code>: nunca lo estime.
+      Las horas facturables salen de la diferencia con el despacho.
+    </div>
+
+    <section class="seccion">
+      <h2>Vistas del equipo <span class="tally" id="t-vistas">0 / 0</span></h2>
+      <p>La foto de salida ya está. Ponga al lado la del retorno, con la misma toma.</p>
+      <div id="vistas"></div>
+    </section>
+
+    <section class="seccion">
+      <h2>Accesorios <span class="tally" id="t-cons">0 / 0</span></h2>
+      <p>Qué volvió y en qué estado. Lo que no retorna genera recuperación.</p>
+      <div id="consumibles"></div>
+    </section>
+
+    <section class="seccion">
+      <h2>Componentes <span class="tally" id="t-insp">0 / 0</span></h2>
+      <p>Marque el estado de cada uno. Los observados o dañados van a la sección
+         DAÑOS del acta y necesitan una observación escrita.</p>
+      <div id="inspeccion"></div>
+      <button id="b-comp" type="button" style="margin-top:.4rem">+ Añadir componente</button>
+    </section>
+
+    <section class="seccion">
+      <h2>Resultado</h2>
+      <div class="aviso" id="estado-final"></div>
+      <label class="campo" style="margin-bottom:.6rem">
+        <span class="lb">Resumen ejecutivo · máximo 20 palabras</span>
+        <input type="text" id="resumen"
+               placeholder="Grupo retorna operativo; junta de escape rota, se factura el cambio."></label>
+      <div class="bar">
+        <button class="primary" id="b-copiar" type="button">Copiar acta de recepción</button>
+        <span class="grow"></span>
+        <span class="lb" id="copiado"></span>
+      </div>
+      <textarea class="salida" id="salida" readonly spellcheck="false"></textarea>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (t) {
+    return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c];
+    });
+  };
+
+  var despacho = null;          // manifiesto de despacho
+  var antes = {};               // nombre de archivo -> url (fotos del despacho)
+  var retorno = [];             // {id, nombre, url}
+  var elegida = null;
+  var vistas = [];              // {rotulo, archivo_despacho, fotoId, observacion}
+  var cons = [];                // {descripcion, cantidad, foto_despacho, fotoId, estado}
+  var insp = [];                // {item, estado, observacion, foto_despacho, fotoId}
+  var sig = 1;
+
+  var ESTADOS_CONS = [["OK","Conforme"],["OBS","Observado"],["D","Dañado"],
+                      ["NO_RETORNA","No retornó"]];
+  var ESTADOS_INSP = [["OK","Funcional"],["OBS","Observado"],["D","Dañado"]];
+
+  // ---------- carga ----------
+  $("#b1").addEventListener("click", function () { $("#f1").click(); });
+  $("#b2").addEventListener("click", function () { $("#f2").click(); });
+  $("#b3").addEventListener("click", function () { $("#f3").click(); });
+
+  $("#f1").addEventListener("change", function (e) {
+    var f = e.target.files[0];
+    if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function () {
+      try { despacho = JSON.parse(fr.result); }
+      catch (err) {
+        $("#e1").textContent = "no es JSON válido";
+        $("#e1").style.color = "var(--mal)";
+        return;
+      }
+      prepararDesdeDespacho();
+      $("#c1").classList.add("lista");
+      var enc = despacho.encabezado || {};
+      $("#e1").textContent = (enc.codigo_equipo || "?") + " · " +
+                             (enc.tipo_documento || "?");
+      $("#e1").style.color = "var(--ok)";
+      pintar();
+    };
+    fr.readAsText(f);
+    e.target.value = "";
+  });
+
+  function cargarFotos(files, destino) {
+    Array.prototype.forEach.call(files, function (f) {
+      if (!/^image\//.test(f.type) && !/\.(jpe?g|png|gif|bmp)$/i.test(f.name)) return;
+      var url = URL.createObjectURL(f);
+      if (destino === "antes") antes[f.name] = url;
+      else retorno.push({ id: sig++, nombre: f.name, url: url });
+    });
+  }
+
+  $("#f2").addEventListener("change", function (e) {
+    cargarFotos(e.target.files, "antes");
+    var n = Object.keys(antes).length;
+    $("#c2").classList.toggle("lista", n > 0);
+    $("#e2").textContent = n + " foto(s)";
+    pintar(); e.target.value = "";
+  });
+  $("#f3").addEventListener("change", function (e) {
+    cargarFotos(e.target.files, "retorno");
+    $("#c3").classList.toggle("lista", retorno.length > 0);
+    $("#e3").textContent = retorno.length + " foto(s)";
+    pintar(); e.target.value = "";
+  });
+
+  // ---------- preparar desde el acta de despacho ----------
+  function prepararDesdeDespacho() {
+    var d = despacho || {};
+    vistas = (d.registro_fotografico || []).map(function (f) {
+      return { rotulo: f.descripcion || "", archivo_despacho: f.archivo || null,
+               fotoId: null, observacion: "" };
+    });
+    cons = (d.consumibles || []).map(function (c) {
+      return { descripcion: c.descripcion || "", cantidad: c.cantidad || 1,
+               foto_despacho: c.foto_despacho || null, fotoId: null, estado: null };
+    });
+    insp = (d.inspeccion_componentes || []).map(function (i) {
+      return { item: i.item || "", estado: null, observacion: "",
+               foto_despacho: i.foto_despacho || null, fotoId: null };
+    });
+    var hoy = new Date();
+    $("#fecha").value = hoy.toISOString().slice(0, 10);
+    $("#trabajo").classList.remove("oculto");
+  }
+
+  // ---------- pintado ----------
+  function usadas() {
+    var s = {};
+    [vistas, cons, insp].forEach(function (col) {
+      col.forEach(function (x) { if (x.fotoId) s[x.fotoId] = true; });
+    });
+    return s;
+  }
+  function porId(id) {
+    for (var i = 0; i < retorno.length; i++) if (retorno[i].id === id) return retorno[i];
+    return null;
+  }
+  function urlAntes(archivo) {
+    if (!archivo) return null;
+    return antes[String(archivo).split("/").pop()] || null;
+  }
+
+  function marco(url, textoVacio, attrs) {
+    return '<button type="button" class="marco' + (url ? "" : " vacia") + '" ' +
+      (attrs || "") + '>' +
+      (url ? '<img alt="" src="' + url + '">'
+           : '<span class="vacio">' + esc(textoVacio) + '</span>') + '</button>';
+  }
+
+  function filaPar(clase, i, titulo, urlIzq, urlDer, extra) {
+    var resuelto = !!urlDer;
+    return '<div class="par ' + (resuelto ? "resuelto" : "pendiente") + '">' +
+      '<div class="par-top"><h3>' + esc(titulo) + '</h3>' +
+      '<span class="idx">' + (i + 1) + '</span></div>' +
+      '<div class="dupla">' +
+        '<div class="lado"><span class="tag">Antes · despacho</span>' +
+          marco(urlIzq, "sin foto de despacho", 'disabled class="marco fija"') + '</div>' +
+        '<div class="lado"><span class="tag">Después · retorno</span>' +
+          marco(urlDer, "toque para asignar",
+                'data-destino="' + clase + '" data-i="' + i + '"') + '</div>' +
+      '</div>' + (extra || "") + '</div>';
+  }
+
+  function botonesEstado(lista, actual, clase, i) {
+    return '<div class="estados" data-estados="' + clase + '" data-i="' + i + '">' +
+      lista.map(function (e) {
+        return '<button type="button" data-e="' + e[0] + '" aria-pressed="' +
+          (actual === e[0]) + '">' + esc(e[1]) + '</button>';
+      }).join("") + '</div>';
+  }
+
+  function pintar() {
+    if (!despacho) return;
+
+    // tira de fotos del retorno
+    var u = usadas();
+    var libres = retorno.filter(function (f) { return !u[f.id]; });
+    $("#tira").innerHTML = libres.map(function (f) {
+      return '<button type="button" class="tile' + (elegida === f.id ? " sel" : "") +
+        '" data-foto="' + f.id + '" title="' + esc(f.nombre) + '">' +
+        '<img alt="" src="' + f.url + '"><span class="fn">' + esc(f.nombre) + '</span></button>';
+    }).join("");
+    $("#t-tira").textContent = libres.length;
+
+    // vistas
+    $("#vistas").innerHTML = vistas.map(function (v, i) {
+      var extra = '<div class="obs-campo"><input type="text" data-obs="vistas" data-i="' +
+        i + '" placeholder="observación (opcional)" value="' + esc(v.observacion) + '"></div>';
+      return filaPar("vistas", i, v.rotulo, urlAntes(v.archivo_despacho),
+                     v.fotoId ? porId(v.fotoId).url : null, extra);
+    }).join("");
+    $("#t-vistas").textContent =
+      vistas.filter(function (v) { return v.fotoId; }).length + " / " + vistas.length;
+
+    // consumibles
+    $("#consumibles").innerHTML = cons.map(function (c, i) {
+      var necesita = c.estado === "OBS" || c.estado === "D" || c.estado === "NO_RETORNA";
+      return filaPar("cons", i,
+        String(c.cantidad).padStart(2, "0") + " " + c.descripcion,
+        urlAntes(c.foto_despacho), c.fotoId ? porId(c.fotoId).url : null,
+        botonesEstado(ESTADOS_CONS, c.estado, "cons", i) +
+        (necesita ? '<p class="lb" style="margin:.4rem 0 0;color:var(--obs)">' +
+                    'genera recuperación en el acta</p>' : ""));
+    }).join("") || '<p class="lb">El despacho no llevaba accesorios.</p>';
+    $("#t-cons").textContent =
+      cons.filter(function (c) { return c.estado; }).length + " / " + cons.length;
+
+    // inspección
+    $("#inspeccion").innerHTML = insp.map(function (c, i) {
+      var necesita = c.estado === "OBS" || c.estado === "D";
+      var extra = botonesEstado(ESTADOS_INSP, c.estado, "insp", i) +
+        (necesita
+          ? '<div class="obs-campo"><textarea data-obs="insp" data-i="' + i +
+            '" placeholder="qué tiene — obligatorio para OBS y Dañado">' +
+            esc(c.observacion) + '</textarea></div>'
+          : "");
+      return '<div class="par ' + (c.estado ? "resuelto" : "pendiente") + '">' +
+        '<div class="par-top"><h3><input type="text" data-item="' + i +
+        '" value="' + esc(c.item) + '" placeholder="componente"></h3>' +
+        '<span class="idx">' + (i + 1) + '</span></div>' +
+        (necesita
+          ? '<div class="dupla">' +
+            '<div class="lado"><span class="tag">Antes · despacho</span>' +
+              marco(urlAntes(c.foto_despacho), "sin foto", 'disabled class="marco fija"') +
+            '</div><div class="lado"><span class="tag">Después · retorno</span>' +
+              marco(c.fotoId ? porId(c.fotoId).url : null, "toque para asignar",
+                    'data-destino="insp" data-i="' + i + '"') + '</div></div>'
+          : "") +
+        extra + '</div>';
+    }).join("");
+    $("#t-insp").textContent =
+      insp.filter(function (c) { return c.estado; }).length + " / " + insp.length;
+
+    pintarSalida();
+  }
+
+  // ---------- salida ----------
+  function pintarSalida() {
+    var enc = JSON.parse(JSON.stringify((despacho || {}).encabezado || {}));
+    enc.tipo_documento = "RECEPCION";
+    enc.n_acta = $("#n_acta").value.trim();
+    enc.n_guia = $("#n_guia").value.trim();
+    enc.fecha = $("#fecha").value;
+    var h = $("#horometro").value.trim();
+    enc.horometro = /^[0-9]+([.,][0-9]+)?$/.test(h) ? parseFloat(h.replace(",", "."))
+                                                    : (h || 0);
+
+    var registro = [], n = 0;
+    vistas.forEach(function (v) {
+      if (!v.fotoId) return;
+      var f = { foto_id: ++n, descripcion: v.rotulo,
+                archivo: "fotos/" + porId(v.fotoId).nombre };
+      if (v.archivo_despacho) f.archivo_despacho = v.archivo_despacho;
+      if (v.observacion.trim()) f.observacion = v.observacion.trim();
+      registro.push(f);
+    });
+
+    var consumibles = cons.filter(function (c) { return c.estado; }).map(function (c) {
+      var o = { descripcion: c.descripcion, cantidad: c.cantidad,
+                estado_recepcion: c.estado };
+      if (c.foto_despacho) o.foto_despacho = c.foto_despacho;
+      if (c.fotoId) o.foto_recepcion = "fotos/" + porId(c.fotoId).nombre;
+      return o;
+    });
+
+    var componentes = insp.filter(function (c) { return c.item.trim() && c.estado; })
+      .map(function (c) {
+        var o = { item: c.item.trim(), estado: c.estado,
+                  observacion: c.observacion.trim() };
+        if (c.foto_despacho) o.foto_despacho = c.foto_despacho;
+        if (c.fotoId) o.foto_recepcion = "fotos/" + porId(c.fotoId).nombre;
+        return o;
+      });
+
+    var acta = { encabezado: enc, inspeccion_componentes: componentes,
+                 registro_fotografico: registro, consumibles: consumibles,
+                 control_consumibles: (despacho || {}).control_consumibles || [],
+                 resumen_ejecutivo: $("#resumen").value.trim() };
+    $("#salida").value = JSON.stringify(acta, null, 2);
+
+    // qué falta
+    var faltan = [];
+    if (!enc.n_acta) faltan.push("el N° de acta");
+    if (!h) faltan.push("el horómetro de retorno");
+    var sinFoto = vistas.filter(function (v) { return !v.fotoId; }).length;
+    if (sinFoto) faltan.push(sinFoto + " vista(s) sin foto de retorno");
+    var sinEstado = cons.filter(function (c) { return !c.estado; }).length;
+    if (sinEstado) faltan.push(sinEstado + " accesorio(s) sin estado");
+    var sinObs = insp.filter(function (c) {
+      return (c.estado === "OBS" || c.estado === "D") && !c.observacion.trim();
+    }).length;
+    if (sinObs) faltan.push(sinObs + " componente(s) dañado(s) sin observación escrita");
+    var palabras = $("#resumen").value.trim().split(/\s+/).filter(Boolean).length;
+    if (!palabras) faltan.push("el resumen ejecutivo");
+    else if (palabras > 20) faltan.push("recortar el resumen a 20 palabras (tiene " + palabras + ")");
+
+    var caja = $("#estado-final");
+    if (faltan.length) {
+      caja.className = "aviso";
+      caja.innerHTML = "<b>Falta:</b> " + esc(faltan.join(" · ")) +
+        ". El acta se puede copiar igual, pero <code>nefer validar</code> la rechazará.";
+    } else {
+      caja.className = "aviso ok";
+      caja.innerHTML = "<b>Acta completa.</b> Cópiela sobre el <code>acta.json</code> " +
+        "de la carpeta de recepción y ejecute <code>nefer construir acta.json " +
+        "-o RECEPCION.xlsx --pdf</code>.";
+    }
+  }
+
+  // ---------- interacción ----------
+  $("#tira").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-foto]");
+    if (!t) return;
+    var id = +t.dataset.foto;
+    elegida = elegida === id ? null : id;
+    pintar();
+  });
+
+  document.addEventListener("click", function (e) {
+    var destino = e.target.closest("[data-destino]");
+    if (destino) {
+      var col = { vistas: vistas, cons: cons, insp: insp }[destino.dataset.destino];
+      var i = +destino.dataset.i;
+      if (elegida !== null) {
+        [vistas, cons, insp].forEach(function (c) {
+          c.forEach(function (x) { if (x.fotoId === elegida) x.fotoId = null; });
+        });
+        col[i].fotoId = elegida; elegida = null;
+      } else { col[i].fotoId = null; }
+      pintar();
+      return;
+    }
+    var caja = e.target.closest("[data-estados]");
+    var boton = e.target.closest("[data-e]");
+    if (caja && boton) {
+      var c2 = { vistas: vistas, cons: cons, insp: insp }[caja.dataset.estados];
+      var j = +caja.dataset.i;
+      c2[j].estado = c2[j].estado === boton.dataset.e ? null : boton.dataset.e;
+      pintar();
+    }
+  });
+
+  document.addEventListener("input", function (e) {
+    var obs = e.target.closest("[data-obs]");
+    if (obs) {
+      var col = { vistas: vistas, insp: insp }[obs.dataset.obs];
+      col[+obs.dataset.i].observacion = e.target.value;
+      pintarSalida();
+      return;
+    }
+    var item = e.target.closest("[data-item]");
+    if (item) { insp[+item.dataset.item].item = e.target.value; pintarSalida(); return; }
+    if (["n_acta","n_guia","fecha","horometro","resumen"].indexOf(e.target.id) !== -1) {
+      pintarSalida();
+    }
+  });
+
+  $("#b-comp").addEventListener("click", function () {
+    insp.push({ item: "", estado: null, observacion: "",
+                foto_despacho: null, fotoId: null });
+    pintar();
+  });
+
+  $("#b-copiar").addEventListener("click", function () {
+    var area = $("#salida"), aviso = $("#copiado");
+    function fin(ok) {
+      aviso.textContent = ok ? "copiado" : "seleccione y copie a mano";
+      setTimeout(function () { aviso.textContent = ""; }, 2600);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(area.value)
+        .then(function () { fin(true); }, function () { area.select(); fin(false); });
+    } else { area.select(); fin(false); }
+  });
+})();
+</script>
