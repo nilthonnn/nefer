@@ -83,6 +83,8 @@ CODIGO_FORMATO = "FO-DR-001"
 VERSION_FORMATO = "00"
 FECHA_FORMATO = ""
 TITULO_FORMATO = " REPORTE FOTOGRÁFICO \nDE DESPACHO Y RECEPCIÓN"
+TITULO_COMPARATIVO = "COMPARATIVO DESPACHO / RECEPCIÓN"
+TITULO_DANOS = "DAÑOS Y OBSERVACIONES"
 
 # Rotulos por defecto de la rejilla fotografica, por familia de equipo.
 VISTAS_POR_CATEGORIA = {
@@ -192,10 +194,67 @@ def bloque_consumible(indice: int, n_bloques_foto: int) -> dict:
     }
 
 
-def ultima_fila(n_bloques_foto: int, n_consumibles: int) -> int:
+def fin_consumibles(n_bloques_foto: int, n_consumibles: int) -> int:
+    """Ultima fila ocupada por la seccion OBSERVACIONES."""
     if n_consumibles:
         return bloque_consumible(n_consumibles - 1, n_bloques_foto)["fila_recuperacion"]
     return fila_titulo_observaciones(n_bloques_foto)
+
+
+# --- Secciones pareadas: solo en actas de recepcion ---------------------------
+# Comparten la forma del bloque de consumible (encabezado + imagenes + rotulos +
+# pie), porque es la misma idea: lo que salio a la izquierda, lo que volvio a la
+# derecha.
+ALTO_BLOQUE_PAREADO = ALTO_BLOQUE_CONSUMIBLE
+
+
+def bloque_pareado(indice: int, fila_titulo: int) -> dict:
+    """Filas del bloque pareado `indice` bajo el titulo de su seccion."""
+    base = fila_titulo + 1 + ALTO_BLOQUE_PAREADO * indice
+    return {
+        "fila_encabezado": base,
+        "fila_imagen_inicio": base + 1,
+        "fila_imagen_fin": base + FILAS_IMAGEN,
+        "fila_rotulo": base + FILAS_IMAGEN + 1,
+        "fila_pie": base + FILAS_IMAGEN + 2,
+    }
+
+
+def fin_seccion_pareada(fila_titulo: int, n_bloques: int) -> int:
+    if not n_bloques:
+        return fila_titulo
+    return bloque_pareado(n_bloques - 1, fila_titulo)["fila_pie"]
+
+
+def plan_secciones(n_bloques_foto: int, n_consumibles: int,
+                   n_comparativo: int = 0, n_danos: int = 0) -> dict:
+    """Fila donde arranca cada seccion y donde termina el acta.
+
+    Las secciones se encadenan en el orden en que se imprimen: rejilla,
+    observaciones, comparativo despacho/recepcion y, al final, danos.
+    """
+    fila = fin_consumibles(n_bloques_foto, n_consumibles)
+
+    titulo_comparativo = fila + 1 if n_comparativo else None
+    if n_comparativo:
+        fila = fin_seccion_pareada(titulo_comparativo, n_comparativo)
+
+    titulo_danos = fila + 1 if n_danos else None
+    if n_danos:
+        fila = fin_seccion_pareada(titulo_danos, n_danos)
+
+    return {
+        "fila_observaciones": fila_titulo_observaciones(n_bloques_foto) if n_consumibles else None,
+        "fila_comparativo": titulo_comparativo,
+        "fila_danos": titulo_danos,
+        "ultima_fila": fila,
+    }
+
+
+def ultima_fila(n_bloques_foto: int, n_consumibles: int,
+                n_comparativo: int = 0, n_danos: int = 0) -> int:
+    return plan_secciones(n_bloques_foto, n_consumibles,
+                          n_comparativo, n_danos)["ultima_fila"]
 
 
 def _ancho_px(col: str) -> int:

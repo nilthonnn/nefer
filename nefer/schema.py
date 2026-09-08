@@ -100,7 +100,7 @@ def _validar_encabezado(enc, errores, raiz=None):
             errores.append(f"encabezado.logo: no existe {raiz / logo}.")
 
 
-def _validar_inspeccion(items, errores):
+def _validar_inspeccion(items, errores, raiz=None, tipo_documento=None):
     if not isinstance(items, list):
         errores.append("inspeccion_componentes: debe ser una lista.")
         return
@@ -119,9 +119,22 @@ def _validar_inspeccion(items, errores):
             errores.append(
                 f"{ruta}.observacion: obligatoria cuando el estado es OBS o D."
             )
+        for clave in ("foto_despacho", "foto_recepcion"):
+            archivo = it.get(clave)
+            if archivo is None:
+                continue
+            if not _es_texto(archivo):
+                errores.append(f"{ruta}.{clave}: debe ser una ruta de imagen.")
+            elif raiz is not None and not (raiz / archivo).exists():
+                errores.append(f"{ruta}.{clave}: no existe {raiz / archivo}.")
+        if tipo_documento == "DESPACHO" and it.get("foto_recepcion") is not None:
+            errores.append(
+                f"{ruta}.foto_recepcion: un acta de DESPACHO no puede declarar "
+                "datos de recepcion; el equipo todavia no ha retornado."
+            )
 
 
-def _validar_fotos(fotos, errores, raiz: Path | None):
+def _validar_fotos(fotos, errores, raiz: Path | None, tipo_documento=None):
     if not isinstance(fotos, list):
         errores.append("registro_fotografico: debe ser una lista.")
         return
@@ -142,13 +155,19 @@ def _validar_fotos(fotos, errores, raiz: Path | None):
             vistos.add(fid)
         if not _es_texto(f.get("descripcion")):
             errores.append(f"{ruta}.descripcion: obligatoria (es el rotulo bajo la foto).")
-        archivo = f.get("archivo")
-        if archivo is None:
-            continue
-        if not _es_texto(archivo):
-            errores.append(f"{ruta}.archivo: debe ser una ruta de imagen.")
-        elif raiz is not None and not (raiz / archivo).exists():
-            errores.append(f"{ruta}.archivo: no existe {raiz / archivo}.")
+        if tipo_documento == "DESPACHO" and f.get("archivo_despacho") is not None:
+            errores.append(
+                f"{ruta}.archivo_despacho: solo tiene sentido en un acta de "
+                "RECEPCION, donde compara la foto de salida con la de retorno."
+            )
+        for clave in ("archivo", "archivo_despacho"):
+            archivo = f.get(clave)
+            if archivo is None:
+                continue
+            if not _es_texto(archivo):
+                errores.append(f"{ruta}.{clave}: debe ser una ruta de imagen.")
+            elif raiz is not None and not (raiz / archivo).exists():
+                errores.append(f"{ruta}.{clave}: no existe {raiz / archivo}.")
 
 
 def _validar_consumibles(consumibles, errores, raiz: Path | None,
@@ -218,8 +237,11 @@ def validar(manifiesto, raiz: Path | None = None) -> list[str]:
 
     encabezado = manifiesto.get("encabezado")
     _validar_encabezado(encabezado, errores, raiz)
-    _validar_inspeccion(manifiesto.get("inspeccion_componentes", []), errores)
-    _validar_fotos(manifiesto.get("registro_fotografico", []), errores, raiz)
+    tipo_previo = encabezado.get("tipo_documento") if isinstance(encabezado, dict) else None
+    _validar_inspeccion(manifiesto.get("inspeccion_componentes", []), errores,
+                        raiz, tipo_previo)
+    _validar_fotos(manifiesto.get("registro_fotografico", []), errores, raiz,
+                   tipo_previo)
     tipo = encabezado.get("tipo_documento") if isinstance(encabezado, dict) else None
     _validar_consumibles(manifiesto.get("consumibles", []), errores, raiz, tipo)
     _validar_control_consumibles(manifiesto.get("control_consumibles", []), errores)
