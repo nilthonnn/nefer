@@ -7,7 +7,7 @@ aparece en el acta.
 Valide siempre antes de construir:
 
 ```bash
-python -m nefer validar acta.json --verificar-fotos
+python -m nefer validar acta.json
 ```
 
 ## Estructura

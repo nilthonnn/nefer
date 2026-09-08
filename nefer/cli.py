@@ -15,15 +15,18 @@ def _imprimir_avisos(avisos: list[str]) -> None:
         print(f"  aviso: {aviso}", file=sys.stderr)
 
 
+def _cargar(ruta: Path, validar_rutas: bool = True):
+    """Lee y valida un manifiesto, o imprime el motivo y devuelve None."""
+    try:
+        return schema.cargar(ruta, validar_rutas=validar_rutas)
+    except schema.ErrorManifiesto as exc:
+        print(str(exc), file=sys.stderr)
+        return None
+
+
 def cmd_validar(args) -> int:
     ruta = Path(args.manifiesto)
-    with ruta.open(encoding="utf-8") as fh:
-        manifiesto = json.load(fh)
-    errores = schema.validar(manifiesto, ruta.parent if args.verificar_fotos else None)
-    if errores:
-        print(f"{ruta}: {len(errores)} error(es)", file=sys.stderr)
-        for e in errores:
-            print(f"  - {e}", file=sys.stderr)
+    if _cargar(ruta, validar_rutas=not args.sin_verificar_fotos) is None:
         return 1
     print(f"{ruta}: manifiesto valido.")
     return 0
@@ -31,10 +34,8 @@ def cmd_validar(args) -> int:
 
 def cmd_construir(args) -> int:
     ruta = Path(args.manifiesto)
-    try:
-        manifiesto = schema.cargar(ruta, validar_rutas=True)
-    except schema.ErrorManifiesto as exc:
-        print(str(exc), file=sys.stderr)
+    manifiesto = _cargar(ruta)
+    if manifiesto is None:
         return 1
 
     salida = Path(args.salida) if args.salida else ruta.with_suffix(".xlsx")
@@ -139,8 +140,9 @@ def construir_parser() -> argparse.ArgumentParser:
 
     v = sub.add_parser("validar", help="verificar un manifiesto contra el esquema")
     v.add_argument("manifiesto")
-    v.add_argument("--verificar-fotos", action="store_true",
-                   help="comprobar ademas que exista cada archivo de imagen")
+    v.add_argument("--sin-verificar-fotos", action="store_true",
+                   help="no comprobar que exista cada archivo de imagen "
+                        "(por defecto si se comprueba, igual que al construir)")
     v.set_defaults(func=cmd_validar)
 
     e = sub.add_parser("extraer", help="Excel llenado -> manifiesto JSON")

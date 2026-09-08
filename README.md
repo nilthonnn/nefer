@@ -52,12 +52,14 @@ python -m nefer construir acta.json -o salidas/acta.xlsx --pdf
 ### Validar antes de generar
 
 ```bash
-python -m nefer validar acta.json --verificar-fotos
+python -m nefer validar acta.json
 ```
 
 Devuelve la lista completa de errores en un solo pase: campos faltantes, fechas
 mal formadas, estados `OBS`/`D` sin observación, `foto_id` duplicados, resúmenes
-de más de 20 palabras y rutas de imagen inexistentes.
+de más de 20 palabras y rutas de imagen inexistentes. Comprueba el disco por
+defecto, igual que `construir`; `--sin-verificar-fotos` lo omite cuando aún no
+se han descargado las fotos de la cámara.
 
 ### Digitalizar un acta antigua
 
