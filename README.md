@@ -80,6 +80,15 @@ python -m nefer guias -o docs/                  # guías en Markdown
 python -m nefer pdf acta.xlsx                   # convertir un Excel ya generado
 ```
 
+## Documentación
+
+| | |
+|---|---|
+| **[docs/MANUAL-OPERACION.md](docs/MANUAL-OPERACION.md)** | Cómo levantar un acta, de la primera prueba en patio al uso diario |
+| **[docs/ESQUEMA-JSON.md](docs/ESQUEMA-JSON.md)** | Todos los campos del manifiesto |
+| **[docs/GUIA-OPERADOR.md](docs/GUIA-OPERADOR.md)** | Procedimiento interno, también incluido en cada acta |
+| **[docs/GUIA-CLIENTE.md](docs/GUIA-CLIENTE.md)** | Condiciones de uso y devolución para el cliente |
+
 ## El manifiesto
 
 Documentado en **[docs/ESQUEMA-JSON.md](docs/ESQUEMA-JSON.md)**. En resumen:
