@@ -56,12 +56,19 @@ def control_consumibles_vacio(categoria: str) -> list[dict]:
             for nombre, unidad in base]
 
 
-def texto_consumible(cons: dict, lado: str) -> str:
-    """Rotulo del bloque fotografico de un consumible/accesorio."""
+def texto_consumible(cons: dict, lado: str, tipo_documento: str = "RECEPCION") -> str:
+    """Rotulo del bloque fotografico de un consumible/accesorio.
+
+    En un acta de DESPACHO el lado de recepcion va en blanco: el equipo aun no
+    ha vuelto, y afirmar lo contrario en un documento que el cliente firma
+    seria declarar un hecho que no ocurrio.
+    """
     cantidad = cons.get("cantidad", 1)
     descripcion = cons.get("descripcion", "").strip()
     if lado == "DESPACHO":
         return f"{cantidad:02d} {descripcion} DESPACHADO"
+    if tipo_documento == "DESPACHO":
+        return ""
 
     estado = cons.get("estado_recepcion")
     if estado == "NO_RETORNA":
@@ -73,8 +80,15 @@ def texto_consumible(cons: dict, lado: str) -> str:
     return f"EL EQUIPO RETORNÓ CON {cantidad:02d} {descripcion}"
 
 
-def texto_recuperacion(cons: dict, numero: int) -> str:
-    """Leyenda amarilla de recuperacion (lo que se cobra o se da por conforme)."""
+def texto_recuperacion(cons: dict, numero: int,
+                       tipo_documento: str = "RECEPCION") -> str:
+    """Leyenda amarilla de recuperacion (lo que se cobra o se da por conforme).
+
+    Solo tiene sentido en una recepcion: en el despacho todavia no hay nada
+    que recuperar ni que dar por conforme.
+    """
+    if tipo_documento == "DESPACHO":
+        return ""
     if cons.get("recuperacion"):
         return cons["recuperacion"]
     cantidad = cons.get("cantidad", 1)

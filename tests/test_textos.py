@@ -28,3 +28,18 @@ def test_control_por_categoria_de_equipo():
     electrica = [c["consumible"] for c in textos.control_consumibles_vacio("plataforma_elevacion")]
     assert "Combustible diésel" in diesel
     assert "Combustible diésel" not in electrica  # es electrica: no lleva diesel
+
+
+def test_el_despacho_no_afirma_un_retorno():
+    """Un acta de despacho no puede declarar hechos que aun no ocurrieron."""
+    cons = {"cantidad": 1, "descripcion": "EXTINTOR 6 KG"}
+    assert textos.texto_consumible(cons, "DESPACHO", "DESPACHO") == \
+           "01 EXTINTOR 6 KG DESPACHADO"
+    assert textos.texto_consumible(cons, "RECEPCIÓN", "DESPACHO") == ""
+    assert textos.texto_recuperacion(cons, 1, "DESPACHO") == ""
+
+
+def test_la_recepcion_si_declara_el_retorno():
+    cons = {"cantidad": 1, "descripcion": "EXTINTOR 6 KG", "estado_recepcion": "OK"}
+    assert "RETORNÓ" in textos.texto_consumible(cons, "RECEPCIÓN", "RECEPCION")
+    assert textos.texto_recuperacion(cons, 1, "RECEPCION") != ""

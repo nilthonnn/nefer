@@ -49,7 +49,7 @@ def _es_texto(v) -> bool:
     return isinstance(v, str) and v.strip() != ""
 
 
-def _validar_encabezado(enc, errores):
+def _validar_encabezado(enc, errores, raiz=None):
     if not isinstance(enc, dict):
         errores.append("encabezado: debe ser un objeto.")
         return
@@ -90,6 +90,14 @@ def _validar_encabezado(enc, errores):
         errores.append(
             f"encabezado.categoria: debe ser una de {sorted(CATEGORIAS)}, no {categoria!r}."
         )
+
+    logo = enc.get("logo")
+    if logo is not None:
+        if not _es_texto(logo):
+            errores.append("encabezado.logo: debe ser una ruta de imagen, o omitirse.")
+        elif raiz is not None and not (raiz / logo).exists():
+            # Sin esto el acta saldria sin logo y sin decir por que.
+            errores.append(f"encabezado.logo: no existe {raiz / logo}.")
 
 
 def _validar_inspeccion(items, errores):
@@ -143,7 +151,8 @@ def _validar_fotos(fotos, errores, raiz: Path | None):
             errores.append(f"{ruta}.archivo: no existe {raiz / archivo}.")
 
 
-def _validar_consumibles(consumibles, errores, raiz: Path | None):
+def _validar_consumibles(consumibles, errores, raiz: Path | None,
+                         tipo_documento: str | None = None):
     if not isinstance(consumibles, list):
         errores.append("consumibles: debe ser una lista.")
         return
@@ -163,6 +172,15 @@ def _validar_consumibles(consumibles, errores, raiz: Path | None):
                 f"{ruta}.estado_recepcion: uno de "
                 f"{sorted(ESTADOS | {'NO_RETORNA'})}, no {estado!r}."
             )
+        if tipo_documento == "DESPACHO":
+            # En un despacho el equipo aun no ha vuelto: cualquier dato de
+            # retorno es una contradiccion, no un descuido que se pueda ignorar.
+            for clave in ("estado_recepcion", "texto_recepcion", "foto_recepcion"):
+                if c.get(clave) is not None:
+                    errores.append(
+                        f"{ruta}.{clave}: un acta de DESPACHO no puede declarar "
+                        "datos de recepcion; el equipo todavia no ha retornado."
+                    )
         for clave in ("foto_despacho", "foto_recepcion"):
             archivo = c.get(clave)
             if archivo is None:
@@ -198,10 +216,12 @@ def validar(manifiesto, raiz: Path | None = None) -> list[str]:
     if not isinstance(manifiesto, dict):
         return ["El manifiesto debe ser un objeto JSON."]
 
-    _validar_encabezado(manifiesto.get("encabezado"), errores)
+    encabezado = manifiesto.get("encabezado")
+    _validar_encabezado(encabezado, errores, raiz)
     _validar_inspeccion(manifiesto.get("inspeccion_componentes", []), errores)
     _validar_fotos(manifiesto.get("registro_fotografico", []), errores, raiz)
-    _validar_consumibles(manifiesto.get("consumibles", []), errores, raiz)
+    tipo = encabezado.get("tipo_documento") if isinstance(encabezado, dict) else None
+    _validar_consumibles(manifiesto.get("consumibles", []), errores, raiz, tipo)
     _validar_control_consumibles(manifiesto.get("control_consumibles", []), errores)
 
     resumen = manifiesto.get("resumen_ejecutivo", "")

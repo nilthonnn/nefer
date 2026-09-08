@@ -79,7 +79,7 @@ python -m nefer validar acta.json --verificar-fotos
 | `codigo_equipo` | **sí** | Código interno del equipo (`GE074-01`, `PLT010-02`) |
 | `modelo_equipo` | **sí** | Descripción del equipo tal como va en el acta |
 | `categoria` | no | Define los rótulos sugeridos y la tabla de consumibles |
-| `logo` | no | Ruta al logo de la organización; si se omite, el acta sale sin logo |
+| `logo` | no | Ruta al logo de la organización; si se omite, el acta sale sin logo. Si se declara, el archivo debe existir |
 | `codigo_formato` | no | Bloque de control documental. Por defecto `FO-DR-001` |
 | `version_formato` | no | Por defecto `00` |
 | `fecha_formato` | no | Fecha de emisión del formato. Vacía por defecto |
@@ -138,6 +138,19 @@ recepción a la derecha y una franja amarilla de recuperación.
 
 La franja amarilla dice `RECUPERACIÓN N° n` cuando el estado es `NO_RETORNA`,
 `D` u `OBS`; en cualquier otro caso dice `CONFORME — SIN RECUPERACIÓN`.
+
+### Un despacho no declara el retorno
+
+En un acta de `DESPACHO` el equipo todavía no ha vuelto. Por eso:
+
+- `estado_recepcion`, `texto_recepcion` y `foto_recepcion` **son un error de
+  validación**, no un descuido que se ignore: describen un hecho que aún no
+  ocurrió en un documento que el cliente firma.
+- La columna de recepción y la franja de recuperación salen en blanco, pero el
+  bloque se imprime completo para poder cerrarlo a mano cuando el equipo
+  regrese.
+
+Esos mismos campos son válidos y esperados en un acta de `RECEPCION`.
 
 ## `control_consumibles`
 

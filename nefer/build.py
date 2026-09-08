@@ -92,13 +92,15 @@ def _ruta_logo(enc: dict, raiz: Path) -> Path | None:
     return raiz / enc["logo"] if enc.get("logo") else None
 
 
-def _cabecera(ws, enc: dict, raiz: Path) -> None:
+def _cabecera(ws, enc: dict, raiz: Path, avisos: list[str]) -> None:
     logo = _ruta_logo(enc, raiz)
     st.escribir(ws, "A1:F3", None)
-    if logo and logo.exists():
-        insertar_imagen(ws, logo, "A", 1,
-                        sum(round(layout.ANCHOS_COLUMNA[c] * 7) + 5 for c in "ABCDEF"),
-                        layout.alto_bloque_px(3))
+    if logo is not None:
+        ancho_logo = sum(round(layout.ANCHOS_COLUMNA[c] * 7) + 5 for c in "ABCDEF")
+        if not logo.exists():
+            avisos.append(f"logo: no existe {logo}; el acta sale sin logo.")
+        elif not insertar_imagen(ws, logo, "A", 1, ancho_logo, layout.alto_bloque_px(3)):
+            avisos.append(f"logo: no se pudo incrustar {logo.name}; formato no soportado.")
 
     st.escribir(ws, "G1:R3", layout.TITULO_FORMATO,
                 fuente=st.FUENTE_TITULO, alineacion=st.CENTRO_AJUSTADO,
@@ -176,7 +178,8 @@ def _rejilla_fotografica(ws, fotos: list[dict], raiz: Path, avisos: list[str]) -
 
 
 def _bloques_consumibles(ws, consumibles: list[dict], n_bloques_foto: int,
-                         raiz: Path, avisos: list[str]) -> None:
+                         raiz: Path, avisos: list[str],
+                         tipo_documento: str = "RECEPCION") -> None:
     if not consumibles:
         return
     fila_titulo = layout.fila_titulo_observaciones(n_bloques_foto)
@@ -199,7 +202,8 @@ def _bloques_consumibles(ws, consumibles: list[dict], n_bloques_foto: int,
                         fill=st.FILL_CABECERA)
             st.escribir(ws, f"{c0}{b['fila_imagen_inicio']}:{c1}{b['fila_imagen_fin']}", None)
             st.escribir(ws, f"{c0}{b['fila_rotulo']}:{c1}{b['fila_rotulo']}",
-                        cons.get(clave_texto) or textos.texto_consumible(cons, titulo),
+                        cons.get(clave_texto)
+                        or textos.texto_consumible(cons, titulo, tipo_documento),
                         fuente=st.FUENTE_ROTULO, alineacion=st.CENTRO_AJUSTADO,
                         fill=st.FILL_CABECERA)
             if cons.get(clave_foto):
@@ -211,10 +215,12 @@ def _bloques_consumibles(ws, consumibles: list[dict], n_bloques_foto: int,
                     )
 
         fila_rec = b["fila_recuperacion"]
-        st.escribir(ws, f"A{fila_rec}:Z{fila_rec}",
-                    textos.texto_recuperacion(cons, j + 1),
+        leyenda = textos.texto_recuperacion(cons, j + 1, tipo_documento)
+        # Sin recuperacion que declarar, la franja va vacia y en blanco: una
+        # banda amarilla sin texto se lee como un dato que falta.
+        st.escribir(ws, f"A{fila_rec}:Z{fila_rec}", leyenda,
                     fuente=st.FUENTE_ROTULO, alineacion=st.CENTRO_AJUSTADO,
-                    fill=st.FILL_RECUPERACION)
+                    fill=st.FILL_RECUPERACION if leyenda else None)
 
 
 # Bloques que caben en una hoja A4 vertical sin partirse.
@@ -260,9 +266,10 @@ def construir_hoja_reporte(wb: Workbook, manifiesto: dict, raiz: Path,
     fin = layout.ultima_fila(n_bloques, len(consumibles))
 
     _dimensionar(ws, fin, n_bloques, len(consumibles))
-    _cabecera(ws, manifiesto["encabezado"], raiz)
+    _cabecera(ws, manifiesto["encabezado"], raiz, avisos)
     _rejilla_fotografica(ws, fotos, raiz, avisos)
-    _bloques_consumibles(ws, consumibles, n_bloques, raiz, avisos)
+    _bloques_consumibles(ws, consumibles, n_bloques, raiz, avisos,
+                         manifiesto["encabezado"].get("tipo_documento", "RECEPCION"))
     _saltos_de_pagina(ws, n_bloques, len(consumibles))
     _configurar_pagina(ws, fin)
     return ws

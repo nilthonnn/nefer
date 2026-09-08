@@ -165,3 +165,28 @@ def test_cli_construir_y_validar(manifiesto, tmp_path):
     assert main(["validar", str(ruta), "--verificar-fotos"]) == 0
     assert main(["construir", str(ruta), "-o", str(tmp_path / "salida.xlsx")]) == 0
     assert (tmp_path / "salida.xlsx").exists()
+
+
+def test_logo_declarado_pero_inexistente_avisa(manifiesto, tmp_path):
+    """Un logo que no está no puede desaparecer en silencio."""
+    manifiesto["encabezado"]["logo"] = "fotos/no-existe.png"
+    _, avisos = build.construir(manifiesto, tmp_path / "acta.xlsx", raiz=tmp_path)
+    assert len(avisos) == 1 and "no existe" in avisos[0]
+
+
+def test_acta_de_despacho_deja_la_recepcion_en_blanco(manifiesto, tmp_path):
+    manifiesto["encabezado"]["tipo_documento"] = "DESPACHO"
+    manifiesto["consumibles"] = [{"descripcion": "EXTINTOR DE 6 KG", "cantidad": 1}]
+    assert schema.validar(manifiesto, tmp_path) == []
+
+    salida, _ = build.construir(manifiesto, tmp_path / "despacho.xlsx", raiz=tmp_path)
+    ws = openpyxl.load_workbook(salida)["REPORTE"]
+    bloque = layout.bloque_consumible(0, len(manifiesto["registro_fotografico"]) // 2)
+
+    izquierda = ws[f"{layout.PANEL_IZQ[0]}{bloque['fila_rotulo']}"].value
+    derecha = ws[f"{layout.PANEL_DER[0]}{bloque['fila_rotulo']}"].value
+    franja = ws[f"A{bloque['fila_recuperacion']}"].value
+    assert izquierda == "01 EXTINTOR DE 6 KG DESPACHADO"
+    assert not derecha, "el lado de recepción va en blanco hasta que el equipo vuelva"
+    assert not franja, "no hay recuperación que declarar en un despacho"
+    assert ws[layout.CELDA_MARCA_DESPACHO].value == "X"

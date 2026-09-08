@@ -109,12 +109,14 @@ Todo lo que identifica a la empresa vive en `encabezado` y es opcional:
 Si se omiten, el acta sale sin logo, sin razón social y con un código de
 formato genérico.
 
-Dos reglas que el validador hace cumplir porque de ellas depende una firma:
+Tres reglas que el validador hace cumplir porque de ellas depende una firma:
 
 - Un horómetro ilegible se declara `"REVISIÓN MANUAL REQUERIDA"`. Nunca se
   estima un valor aproximado.
 - Un componente `OBS` o `D` sin observación escrita es un error, no una
   advertencia.
+- Un acta de `DESPACHO` no puede declarar datos de recepción: el equipo todavía
+  no ha vuelto, y el acta no debe afirmar un retorno que no ocurrió.
 
 En `ejemplos/` hay dos manifiestos de referencia con datos ficticios. No
 incluyen fotografías; para probar el flujo completo, extráigalas de un acta
