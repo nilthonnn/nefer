@@ -320,3 +320,38 @@ def test_fotos_carpeta_inexistente(tmp_path, capsys):
 
     assert main(["fotos", str(tmp_path / "no-esta")]) == 1
     assert "No existe la carpeta" in capsys.readouterr().err
+
+
+def test_fotos_usa_las_pistas_del_nombre(tmp_path, capsys):
+    """Un nombre descriptivo manda sobre el orden alfabético."""
+    from nefer.cli import main
+
+    # 'panel' va antes que 'zz-frontal' alfabéticamente, pero cada una
+    # debe caer en la casilla que su nombre indica.
+    _carpeta_fotos(tmp_path, ["panel.png", "zz-frontal.png"])
+    assert main(["fotos", str(tmp_path / "fotos"), "-c", "grupo_electrogeno"]) == 0
+
+    bloque = json.loads(capsys.readouterr().out)["registro_fotografico"]
+    por_vista = {f["descripcion"]: f["archivo"].split("/")[-1] for f in bloque}
+    assert por_vista["VISTA FRONTAL"] == "zz-frontal.png"
+    assert por_vista["PANEL DE CONTROL"] == "panel.png"
+
+
+def test_fotos_rellena_los_huecos_con_las_opacas(tmp_path, capsys):
+    """Las que no dicen nada ocupan las casillas que quedaron libres."""
+    from nefer.cli import main
+
+    _carpeta_fotos(tmp_path, ["IMG_001.png", "IMG_002.png", "baterias.png"])
+    assert main(["fotos", str(tmp_path / "fotos"), "-c", "grupo_electrogeno"]) == 0
+
+    bloque = json.loads(capsys.readouterr().out)["registro_fotografico"]
+    por_vista = {f["descripcion"]: f["archivo"].split("/")[-1] for f in bloque}
+    assert por_vista["BATERÍAS"] == "baterias.png"
+    assert por_vista["VISTA FRONTAL"] == "IMG_001.png"
+    assert por_vista["VISTA POSTERIOR"] == "IMG_002.png"
+
+
+def test_vista_sugerida_ignora_tildes_y_mayusculas():
+    assert layout.vista_sugerida("05-HORÓMETRO.JPG") == "HORÓMETRO"
+    assert layout.vista_sugerida("Lat_Izq.jpeg") == "VISTA LATERAL IZQUIERDA"
+    assert layout.vista_sugerida("IMG_4471.JPG") is None

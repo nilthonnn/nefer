@@ -114,7 +114,26 @@ fotos/
 El prefijo numérico es lo único que importa: fija el orden. El resto del
 nombre es para que usted se entienda.
 
-### Paso 4 — Genere el manifiesto y cargue las fotos
+### Paso 4 — Cargue las fotos
+
+Hay dos caminos. Use el que le acomode; el resultado es el mismo.
+
+#### Con la herramienta visual (recomendado la primera vez)
+
+Abra **`herramientas/asignador-fotos.html`** en el navegador —basta doble clic,
+no necesita conexión ni instalar nada— y:
+
+1. Elija la familia del equipo.
+2. Arrastre la carpeta de fotos, o púlselas para cargarlas.
+3. La herramienta **propone** una asignación leyendo el nombre del archivo y la
+   fecha de captura EXIF. Las casillas propuestas quedan marcadas.
+4. Corrija lo que haga falta: arrastre una foto a otra casilla, o tóquela y
+   luego toque su destino. Funciona igual en tableta.
+5. Pulse **Copiar JSON** y péguelo en `acta.json`.
+
+Las fotos no salen de su equipo: todo ocurre en el navegador.
+
+#### Desde la terminal
 
 ```bash
 nefer plantilla -o acta.json
@@ -127,8 +146,10 @@ programa arme el bloque de fotografías:
 nefer fotos fotos/ -m acta.json
 ```
 
-Empareja cada archivo, en orden, con el rótulo que le toca según la categoría,
-escribe las rutas y avisa si encuentra formatos que Excel no puede incrustar:
+Usa las mismas reglas que la herramienta visual: primero coloca las fotos cuyo
+nombre delata la vista (`frontal`, `horometro`, `lat-izq`, `baterias`…), y las
+que no dicen nada rellenan los huecos en orden alfabético. Avisa si encuentra
+formatos que Excel no puede incrustar:
 
 ```
 10 fotos escritas en acta.json
@@ -319,6 +340,7 @@ vacíos: el formato en papel no los tenía.
 |---|---|
 | `nefer plantilla -o acta.json` | Manifiesto en blanco |
 | `nefer fotos fotos/ -m acta.json` | Carga la carpeta de fotos en el manifiesto |
+| `herramientas/asignador-fotos.html` | Asignación visual en el navegador, sin conexión |
 | `nefer validar acta.json` | Verifica el manifiesto y que las fotos existan |
 | `nefer validar acta.json --sin-verificar-fotos` | Solo el manifiesto, sin mirar el disco |
 | `nefer construir acta.json -o salida.xlsx` | Genera el Excel |

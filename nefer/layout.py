@@ -18,6 +18,9 @@ Las columnas se agrupan en dos paneles: A:L (izquierda) y M:Z (derecha).
 
 from __future__ import annotations
 
+import re
+import unicodedata
+
 # --- Paneles de columnas -----------------------------------------------------
 PANEL_IZQ = ("A", "L")
 PANEL_DER = ("M", "Z")
@@ -118,6 +121,46 @@ VISTAS_POR_CATEGORIA = {
         "HORÓMETRO", "PANEL DE CONTROL",
     ],
 }
+
+# Palabras del nombre de archivo que delatan la vista. El orden importa: una
+# entrada mas especifica ("lateral izquierda") debe evaluarse antes que la
+# generica que la contiene. La herramienta web usa esta misma tabla.
+PISTAS_NOMBRE = [
+    ("VISTA LATERAL IZQUIERDA", ("latizq", "lateralizquierda", "izquierda", "izq", "left")),
+    ("VISTA LATERAL DERECHA", ("latder", "lateralderecha", "derecha", "der", "right")),
+    ("VISTA FRONTAL DE MOTOR", ("motorfrente", "motorfrontal", "frentemotor", "enginefront")),
+    ("VISTA POSTERIOR DE MOTOR", ("motoratras", "motorposterior", "atrasmotor", "engineback")),
+    ("VISTA FRONTAL", ("frontal", "frente", "delante", "front")),
+    ("VISTA POSTERIOR", ("posterior", "atras", "trasera", "back", "rear")),
+    ("HORÓMETRO", ("horometro", "horimetro", "horas", "hourmeter", "hour")),
+    ("PANEL DE CONTROL", ("panel", "tablero", "controlpanel")),
+    ("MANDO DE CONTROL", ("mando", "joystick", "botonera")),
+    ("TANQUE DE COMBUSTIBLE", ("tanque", "combustible", "diesel", "fuel")),
+    ("BATERÍAS", ("bateria", "baterias", "battery")),
+    ("MÁSTIL Y WINCHE", ("mastil", "winche")),
+    ("FOCOS", ("foco", "focos", "luces", "lampara", "light")),
+    ("ESTABILIZADORES", ("estabilizador", "gato", "outrigger")),
+    ("PISO DE PLATAFORMA", ("piso", "plataforma", "canastilla")),
+    ("LLAVE DE CONTACTO", ("llave", "contacto", "ignicion")),
+    ("TACOS", ("taco", "tacos", "cuna")),
+    ("CABINA", ("cabina",)),
+    ("CUCHARÓN / HOJA", ("cucharon", "cuchara", "hoja", "balde", "bucket")),
+    ("SISTEMA HIDRÁULICO", ("hidraulico", "hidraulica", "manguera", "hydraulic")),
+    ("TREN DE RODAJE / LLANTAS", ("rodaje", "llanta", "oruga", "neumatico", "track")),
+    ("MOTOR", ("motor", "engine")),
+]
+
+
+def vista_sugerida(nombre: str) -> str | None:
+    """Vista que delata el nombre de archivo, o None si no dice nada."""
+    limpio = unicodedata.normalize("NFD", nombre.lower())
+    limpio = "".join(c for c in limpio if not unicodedata.combining(c))
+    limpio = re.sub(r"[^a-z0-9]", "", limpio)
+    for vista, claves in PISTAS_NOMBRE:
+        if any(clave in limpio for clave in claves):
+            return vista
+    return None
+
 
 # Equipos que llevan hoja de consumibles (equipos moviles / autopropulsados).
 CATEGORIAS_MOVILES = {"plataforma_elevacion", "maquinaria_amarilla", "torre_iluminacion"}

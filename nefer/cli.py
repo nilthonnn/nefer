@@ -111,14 +111,33 @@ def cmd_fotos(args) -> int:
 
     base = Path(args.manifiesto).parent if args.manifiesto else Path(".")
     vistas = layout.VISTAS_POR_CATEGORIA[categoria]
+
+    # Primero las fotos cuyo nombre delata la vista; el resto rellena los huecos
+    # en orden alfabetico, que es el orden en que se numeraron en campo.
+    asignadas: dict[int, Path] = {}
+    sueltas: list[Path] = []
+    for archivo in archivos:
+        vista = layout.vista_sugerida(archivo.name)
+        i = vistas.index(vista) if vista in vistas else -1
+        if i >= 0 and i not in asignadas:
+            asignadas[i] = archivo
+        else:
+            sueltas.append(archivo)
+    for archivo in sueltas:
+        hueco = next((i for i in range(len(vistas)) if i not in asignadas), None)
+        if hueco is None:
+            hueco = max(asignadas) + 1 if asignadas else 0
+        asignadas[hueco] = archivo
+
     registro = []
-    for i, archivo in enumerate(archivos):
+    for n, i in enumerate(sorted(asignadas)):
+        archivo = asignadas[i]
         try:
             relativa = archivo.resolve().relative_to(base.resolve())
         except ValueError:
             relativa = archivo
         registro.append({
-            "foto_id": i + 1,
+            "foto_id": n + 1,
             "descripcion": vistas[i] if i < len(vistas) else "",
             "archivo": relativa.as_posix(),
         })
