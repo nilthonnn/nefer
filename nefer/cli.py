@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
 import json
+import re
 import sys
 from pathlib import Path
 
-from . import __version__, build, extract, layout, pdf, schema
+from . import __version__, build, catalogo, extract, layout, pdf, schema
 
 
 def _imprimir_avisos(avisos: list[str]) -> None:
@@ -58,6 +60,100 @@ def cmd_construir(args) -> int:
 # Formatos que Excel sabe incrustar, y los que la gente trae de todos modos.
 EXT_VALIDAS = build.FORMATOS_IMAGEN
 EXT_PROBLEMA = {".heic", ".heif", ".tiff", ".tif", ".webp", ".dng", ".raw"}
+
+
+def _fecha_de_captura(archivos) -> str | None:
+    """Fecha mas temprana de las fotos, leida del EXIF. None si ninguna la trae."""
+    from PIL import Image
+
+    fechas = []
+    for archivo in archivos:
+        try:
+            with Image.open(archivo) as im:
+                exif = im.getexif()
+                bruto = exif.get(0x0132) or exif.get_ifd(0x8769).get(0x9003)
+        except Exception:
+            continue
+        if isinstance(bruto, str) and re.match(r"\d{4}:\d{2}:\d{2}", bruto):
+            fechas.append(bruto[:10].replace(":", "-"))
+    return min(fechas) if fechas else None
+
+
+def cmd_catalogo(args) -> int:
+    """Crea o inspecciona el maestro de clientes y equipos."""
+    if args.crear:
+        destino = Path(args.crear if isinstance(args.crear, str)
+                       else catalogo.NOMBRE_ARCHIVO)
+        if destino.exists():
+            print(f"Ya existe {destino}; no se sobreescribe.", file=sys.stderr)
+            return 1
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_text(
+            json.dumps(catalogo.PLANTILLA, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8")
+        print(f"Catalogo creado: {destino}")
+        print("Complete sus clientes y equipos y vuelva a usar `nefer acta`.")
+        return 0
+
+    try:
+        cat = catalogo.cargar(args.catalogo)
+    except catalogo.ErrorCatalogo as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    print(f"Catalogo: {cat['_ruta']}")
+    if cat.get("empresa"):
+        print(f"Empresa:  {cat['empresa']}")
+    print(f"\nEquipos ({len(cat.get('equipos', []))}):")
+    for e in cat.get("equipos", []):
+        print(f"  {e.get('codigo',''):<12} {e.get('categoria',''):<22} {e.get('modelo','')}")
+    print(f"\nClientes ({len(cat.get('clientes', []))}):")
+    for c in cat.get("clientes", []):
+        print(f"  {c.get('id',''):<12} {c.get('razon_social','')}")
+        for obra in c.get("obras", []):
+            print(f"  {'':<12}   · {obra}")
+    return 0
+
+
+def cmd_acta(args) -> int:
+    """Crea un acta con el encabezado ya lleno a partir del catalogo."""
+    try:
+        cat = catalogo.cargar(args.catalogo)
+        enc = catalogo.encabezado(cat, args.equipo, args.cliente,
+                                  args.tipo, args.obra)
+    except catalogo.ErrorCatalogo as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    enc["fecha"] = args.fecha or _dt.date.today().isoformat()
+    if args.acta:
+        enc["n_acta"] = args.acta
+    if args.guia:
+        enc["n_guia"] = args.guia
+
+    manifiesto = json.loads(json.dumps(schema.PLANTILLA_MANIFIESTO))
+    manifiesto["encabezado"] = enc
+
+    destino = Path(args.salida or "acta.json")
+    if destino.exists() and not args.forzar:
+        print(f"Ya existe {destino}. Use --forzar para sobreescribirlo.", file=sys.stderr)
+        return 1
+    destino.write_text(json.dumps(manifiesto, ensure_ascii=False, indent=2) + "\n",
+                       encoding="utf-8")
+
+    print(f"Acta creada: {destino}")
+    for campo in ("empresa", "tipo_documento", "cliente", "obra", "fecha",
+                  "codigo_equipo", "modelo_equipo", "categoria"):
+        if enc.get(campo):
+            print(f"  {campo:<16} {enc[campo]}")
+    print("\nFalta por llenar a mano:")
+    print("  horometro        léalo de la foto; si no se lee con certeza, "
+          "escriba REVISIÓN MANUAL REQUERIDA")
+    for campo in ("n_acta", "n_guia"):
+        if not enc.get(campo):
+            print(f"  {campo:<16} de la guía de remisión")
+    print("  resumen_ejecutivo  máximo 20 palabras")
+    return 0
 
 
 def cmd_fotos(args) -> int:
@@ -153,6 +249,10 @@ def cmd_fotos(args) -> int:
         return 0
 
     manifiesto["registro_fotografico"] = registro
+    fecha = _fecha_de_captura(archivos)
+    if fecha and not manifiesto.get("encabezado", {}).get("fecha"):
+        manifiesto.setdefault("encabezado", {})["fecha"] = fecha
+        print(f"Fecha tomada del EXIF de las fotos: {fecha}")
     Path(args.manifiesto).write_text(
         json.dumps(manifiesto, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"{len(registro)} fotos escritas en {args.manifiesto}")
@@ -259,6 +359,27 @@ def construir_parser() -> argparse.ArgumentParser:
     e.add_argument("--fotos", help="carpeta donde volcar las imagenes incrustadas")
     e.set_defaults(func=cmd_extraer)
 
+    a = sub.add_parser("acta",
+                       help="crear un acta con el encabezado lleno desde el catalogo")
+    a.add_argument("-e", "--equipo", required=True, help="codigo o modelo del equipo")
+    a.add_argument("-c", "--cliente", help="id o razon social del cliente")
+    a.add_argument("-t", "--tipo", default="DESPACHO",
+                   choices=["DESPACHO", "RECEPCION"])
+    a.add_argument("--obra", help="sobreescribe la obra que trae el cliente")
+    a.add_argument("--fecha", help="por defecto, hoy")
+    a.add_argument("--acta", help="N° de acta")
+    a.add_argument("--guia", help="N° de guia de remision")
+    a.add_argument("-o", "--salida", help="por defecto, acta.json")
+    a.add_argument("--catalogo", help="ruta del catalogo")
+    a.add_argument("--forzar", action="store_true", help="sobreescribir si ya existe")
+    a.set_defaults(func=cmd_acta)
+
+    k = sub.add_parser("catalogo", help="maestro de clientes y equipos")
+    k.add_argument("--crear", nargs="?", const=True,
+                   help="crear un catalogo en blanco (opcionalmente, en esta ruta)")
+    k.add_argument("--catalogo", help="ruta del catalogo a listar")
+    k.set_defaults(func=cmd_catalogo)
+
     f = sub.add_parser("fotos",
                        help="carpeta de fotos -> bloque registro_fotografico")
     f.add_argument("carpeta")
@@ -288,4 +409,12 @@ def construir_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = construir_parser().parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except BrokenPipeError:
+        # `nefer fotos | head` cierra la salida antes de tiempo; no es un error.
+        try:
+            sys.stdout.close()
+        except Exception:
+            pass
+        return 0

@@ -355,3 +355,125 @@ def test_vista_sugerida_ignora_tildes_y_mayusculas():
     assert layout.vista_sugerida("05-HORÓMETRO.JPG") == "HORÓMETRO"
     assert layout.vista_sugerida("Lat_Izq.jpeg") == "VISTA LATERAL IZQUIERDA"
     assert layout.vista_sugerida("IMG_4471.JPG") is None
+
+
+# --------------------------------------------------------------------------- #
+# Catalogo de clientes y equipos
+# --------------------------------------------------------------------------- #
+def _catalogo(tmp_path):
+    from nefer import catalogo
+
+    datos = {
+        "empresa": "Maquinarias del Sur S.A.C.",
+        "codigo_formato": "MDS-FO-001", "version_formato": "02",
+        "clientes": [
+            {"id": "andina", "razon_social": "CONSTRUCTORA ANDINA S.A.C.",
+             "obras": ["PLANTA CONCENTRADORA — FASE II"]},
+            {"id": "pacifico", "razon_social": "MONTAJES DEL PACÍFICO E.I.R.L.",
+             "obras": ["OBRA A", "OBRA B"]},
+        ],
+        "equipos": [
+            {"codigo": "GE110-02", "modelo": "GRUPO ELECTRÓGENO DE 110 KW",
+             "categoria": "grupo_electrogeno"},
+            {"codigo": "TI009-04", "modelo": "TORRE DE ILUMINACIÓN 4x1000 W",
+             "categoria": "torre_iluminacion"},
+        ],
+    }
+    ruta = tmp_path / "catalogo.json"
+    ruta.write_text(json.dumps(datos, ensure_ascii=False), encoding="utf-8")
+    return catalogo.cargar(ruta)
+
+
+def test_catalogo_llena_el_encabezado_entero(tmp_path):
+    from nefer import catalogo
+
+    enc = catalogo.encabezado(_catalogo(tmp_path), "GE110-02", "andina", "DESPACHO")
+    assert enc["empresa"] == "Maquinarias del Sur S.A.C."
+    assert enc["cliente"] == "CONSTRUCTORA ANDINA S.A.C."
+    assert enc["obra"] == "PLANTA CONCENTRADORA — FASE II"
+    assert enc["modelo_equipo"] == "GRUPO ELECTRÓGENO DE 110 KW"
+    assert enc["categoria"] == "grupo_electrogeno"
+    assert enc["codigo_formato"] == "MDS-FO-001"
+
+
+def test_catalogo_busca_por_fragmento_y_sin_tildes(tmp_path):
+    from nefer import catalogo
+
+    cat = _catalogo(tmp_path)
+    assert catalogo.equipo(cat, "ge110")["codigo"] == "GE110-02"
+    assert catalogo.equipo(cat, "torre")["codigo"] == "TI009-04"
+    assert catalogo.cliente(cat, "PACIFICO")["id"] == "pacifico"
+
+
+def test_catalogo_no_adivina_cuando_hay_varias_coincidencias(tmp_path):
+    from nefer import catalogo
+
+    cat = _catalogo(tmp_path)
+    cat["equipos"].append({"codigo": "GE110-99", "modelo": "OTRO",
+                           "categoria": "grupo_electrogeno"})
+    with pytest.raises(catalogo.ErrorCatalogo, match="varios"):
+        catalogo.equipo(cat, "GE110")
+
+
+def test_catalogo_dice_que_hay_disponible_si_no_encuentra(tmp_path):
+    from nefer import catalogo
+
+    with pytest.raises(catalogo.ErrorCatalogo, match="Disponibles"):
+        catalogo.equipo(_catalogo(tmp_path), "NO-EXISTE")
+
+
+def test_obra_no_se_adivina_si_el_cliente_tiene_varias(tmp_path):
+    from nefer import catalogo
+
+    enc = catalogo.encabezado(_catalogo(tmp_path), "GE110-02", "pacifico")
+    assert enc["obra"] == "", "con dos obras posibles no se elige ninguna"
+
+
+def test_cmd_acta_deja_un_manifiesto_casi_completo(tmp_path, monkeypatch, capsys):
+    from nefer.cli import main
+
+    _catalogo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    assert main(["acta", "-e", "ge110", "-c", "andina", "--acta", "004-001"]) == 0
+
+    m = json.loads((tmp_path / "acta.json").read_text(encoding="utf-8"))
+    enc = m["encabezado"]
+    assert enc["codigo_equipo"] == "GE110-02"
+    assert enc["n_acta"] == "004-001"
+    assert enc["fecha"]                      # hoy, por defecto
+    # Lo que el catálogo no puede saber queda pendiente y el aviso lo dice.
+    assert enc["horometro"] == 0.0
+    assert "REVISIÓN MANUAL REQUERIDA" in capsys.readouterr().out
+
+
+def test_cmd_acta_no_pisa_un_acta_existente(tmp_path, monkeypatch, capsys):
+    from nefer.cli import main
+
+    _catalogo(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "acta.json").write_text("{}", encoding="utf-8")
+    assert main(["acta", "-e", "ge110"]) == 1
+    assert "Ya existe" in capsys.readouterr().err
+    assert main(["acta", "-e", "ge110", "--forzar"]) == 0
+
+
+def test_fecha_sale_del_exif_de_las_fotos(manifiesto, tmp_path):
+    """La fecha del acta es la de captura, no la de generación."""
+    from PIL import Image
+    from nefer.cli import main
+
+    for nombre in ("a.png", "b.png"):
+        foto_falsa(tmp_path / "fotos" / nombre)
+    for nombre, cuando in (("c.jpg", "2026:07:14 07:30:00"),
+                           ("d.jpg", "2026:07:14 07:31:00")):
+        exif = Image.Exif()
+        exif[0x0132] = cuando
+        Image.new("RGB", (64, 48), (10, 20, 30)).save(tmp_path / "fotos" / nombre, exif=exif)
+
+    manifiesto["encabezado"]["fecha"] = ""
+    ruta = tmp_path / "acta.json"
+    ruta.write_text(json.dumps(manifiesto, ensure_ascii=False), encoding="utf-8")
+
+    assert main(["fotos", str(tmp_path / "fotos"), "-m", str(ruta)]) == 0
+    vuelta = json.loads(ruta.read_text(encoding="utf-8"))
+    assert vuelta["encabezado"]["fecha"] == "2026-07-14"

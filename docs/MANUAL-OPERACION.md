@@ -114,6 +114,40 @@ fotos/
 El prefijo numérico es lo único que importa: fija el orden. El resto del
 nombre es para que usted se entienda.
 
+### Paso 3b — Cree el acta desde el catálogo
+
+Si tiene el catálogo de clientes y equipos configurado, el encabezado se llena
+solo:
+
+```bash
+nefer acta -e GE110-02 -c andina --acta 004-001120 --guia T001-00019876
+```
+
+```
+Acta creada: acta.json
+  empresa          Maquinarias del Sur S.A.C.
+  tipo_documento   DESPACHO
+  cliente          CONSTRUCTORA ANDINA S.A.C.
+  obra             PLANTA CONCENTRADORA — FASE II
+  fecha            2026-09-08
+  codigo_equipo    GE110-02
+  modelo_equipo    GRUPO ELECTRÓGENO INSONORIZADO DE 110 KW (POT. CONTINUA)
+  categoria        grupo_electrogeno
+
+Falta por llenar a mano:
+  horometro        léalo de la foto; si no se lee con certeza, escriba
+                   REVISIÓN MANUAL REQUERIDA
+  resumen_ejecutivo  máximo 20 palabras
+```
+
+El catálogo se crea una sola vez con `nefer catalogo --crear` y se completa con
+sus clientes y su parque. Se busca junto al acta, en el directorio actual y en
+`~/.nefer/catalogo.json`, en ese orden: el último sirve como maestro compartido
+de toda la flota.
+
+`nefer catalogo` lo lista, y busca por fragmento: `-e ge110`, `-e torre`,
+`-c PACIFICO`. Si el fragmento coincide con varios, avisa en vez de adivinar.
+
 ### Paso 4 — Cargue las fotos
 
 Hay dos caminos. Use el que le acomode; el resultado es el mismo.
@@ -332,13 +366,56 @@ vacíos: el formato en papel no los tenía.
 
 ---
 
+## 4b. Qué se llena solo y qué no
+
+| Campo | Cómo | Fiabilidad |
+|---|---|---|
+| `empresa`, `logo`, código de formato | Catálogo | Determinista |
+| `cliente`, `obra` | Catálogo | Determinista |
+| `codigo_equipo`, `modelo_equipo`, `categoria` | Catálogo | Determinista |
+| `fecha` | EXIF de las fotos | Determinista |
+| `descripcion` de cada foto | Nombre de archivo + orden EXIF | Alta, se revisa |
+| `n_acta`, `n_guia` | A mano, de la guía de remisión | — |
+| `horometro` | **A mano, leyendo la foto** | — |
+| `resumen_ejecutivo` | A mano | — |
+
+### Por qué el horómetro no se lee automáticamente
+
+Se probó. Sobre la foto real de un panel InteliLite4 con reflejos —el caso
+normal en patio— se ejecutó Tesseract 5.3 con **48 combinaciones** de recorte,
+escalado, umbral y modo de segmentación. El valor real era **1548.7**:
+
+```
+4543.3   ← 6 combinaciones (la lectura más frecuente, y es falsa)
+1543.7   ← 4
+1542.7   ← 3
+1548.7   ← 2   ✓ la correcta
+```
+
+Un sistema por votación habría elegido `4543.3`: tres mil horas de error. Y el
+segundo candidato, `1543.7`, **parece una lectura perfectamente razonable**: no
+hay forma de que el operador note el fallo sin volver a mirar la foto, que es
+exactamente el trabajo que el OCR pretendía ahorrar.
+
+Las horas facturables salen de la diferencia de horómetro entre el despacho y
+la recepción. Un dígito mal es una factura mal. Por eso el horómetro se teclea
+mirando la foto, y si no se lee con certeza se declara
+`REVISIÓN MANUAL REQUERIDA`.
+
+Un modelo de visión con conexión leería ese panel mejor que Tesseract, pero
+sigue sin resolver lo esencial: en un documento que se firma, la lectura hay
+que confirmarla igual, y en patio muchas veces no hay señal.
+
 ## 5. Referencia
 
 ### Comandos
 
 | Comando | Qué hace |
 |---|---|
-| `nefer plantilla -o acta.json` | Manifiesto en blanco |
+| `nefer catalogo --crear` | Crea el maestro de clientes y equipos |
+| `nefer catalogo` | Lista lo que hay en el catálogo |
+| `nefer acta -e GE110-02 -c andina` | Acta con el encabezado ya lleno |
+| `nefer plantilla -o acta.json` | Manifiesto en blanco, sin catálogo |
 | `nefer fotos fotos/ -m acta.json` | Carga la carpeta de fotos en el manifiesto |
 | `herramientas/asignador-fotos.html` | Asignación visual en el navegador, sin conexión |
 | `nefer validar acta.json` | Verifica el manifiesto y que las fotos existan |
