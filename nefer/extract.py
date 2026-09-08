@@ -221,9 +221,15 @@ def _filas_encabezado_consumible(ws, n_bloques_foto: int) -> list[int]:
     insertadas que corren la rejilla hacia abajo.
     """
     inicio = layout.fila_titulo_observaciones(n_bloques_foto) + 1
+    # Las secciones pareadas de una recepcion usan los mismos rotulos DESPACHO /
+    # RECEPCION, asi que el barrido se detiene en su titulo: si no, cada bloque
+    # comparativo se leeria como un consumible mas.
+    finales = {layout.TITULO_COMPARATIVO.upper(), layout.TITULO_DANOS.upper()}
     filas = []
     for fila in range(inicio, ws.max_row + 1):
         izq = _texto(ws, f"{layout.PANEL_IZQ[0]}{fila}").upper()
+        if izq in finales:
+            break
         der = _texto(ws, f"{layout.PANEL_DER[0]}{fila}").upper()
         if izq == "DESPACHO" and der.startswith("RECEPCI"):
             filas.append(fila)

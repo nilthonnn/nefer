@@ -228,7 +228,9 @@ BLOQUES_FOTO_POR_PAGINA = 4
 BLOQUES_CONSUMIBLE_POR_PAGINA = 3
 
 
-def _saltos_de_pagina(ws, n_bloques_foto: int, n_consumibles: int) -> None:
+def _saltos_de_pagina(ws, n_bloques_foto: int, n_consumibles: int,
+                      plan: dict | None = None, n_comparativo: int = 0,
+                      n_danos: int = 0) -> None:
     """Fuerza los cortes de pagina para que ningun bloque quede partido."""
     filas = []
     for i in range(BLOQUES_FOTO_POR_PAGINA - 1, n_bloques_foto - 1,
@@ -239,8 +241,102 @@ def _saltos_de_pagina(ws, n_bloques_foto: int, n_consumibles: int) -> None:
         for j in range(BLOQUES_CONSUMIBLE_POR_PAGINA - 1, n_consumibles - 1,
                        BLOQUES_CONSUMIBLE_POR_PAGINA):
             filas.append(layout.bloque_consumible(j, n_bloques_foto)["fila_recuperacion"])
-    for fila in sorted(set(filas)):
+    for titulo, cuantos in ((plan and plan.get("fila_comparativo"), n_comparativo),
+                            (plan and plan.get("fila_danos"), n_danos)):
+        if not titulo or not cuantos:
+            continue
+        filas.append(titulo - 1)
+        for j in range(BLOQUES_CONSUMIBLE_POR_PAGINA - 1, cuantos - 1,
+                       BLOQUES_CONSUMIBLE_POR_PAGINA):
+            filas.append(layout.bloque_pareado(j, titulo)["fila_pie"])
+
+    for fila in sorted({f for f in filas if f > 0}):
         ws.row_breaks.append(Break(id=fila))
+
+
+def _seccion_pareada(ws, titulo: str, fila_titulo: int, entradas: list[dict],
+                     raiz: Path, avisos: list[str], resaltar_pie: bool = False) -> None:
+    """Imprime una seccion de bloques «lo que salio / lo que volvio».
+
+    Cada entrada es {rotulo, foto_izq, foto_der, texto_izq, texto_der, pie}.
+    """
+    if not entradas:
+        return
+    st.escribir(ws, f"A{fila_titulo}:Z{fila_titulo}", titulo, fuente=st.FUENTE_META)
+
+    izq, der = layout.PANEL_IZQ, layout.PANEL_DER
+    ancho = {izq[0]: layout.ancho_panel_px(izq), der[0]: layout.ancho_panel_px(der)}
+    alto = layout.alto_bloque_px()
+
+    for i, entrada in enumerate(entradas):
+        b = layout.bloque_pareado(i, fila_titulo)
+        for panel, cabecera, clave_foto, clave_texto in (
+            (izq, "DESPACHO", "foto_izq", "texto_izq"),
+            (der, "RECEPCIÓN", "foto_der", "texto_der"),
+        ):
+            c0, c1 = panel
+            st.escribir(ws, f"{c0}{b['fila_encabezado']}:{c1}{b['fila_encabezado']}",
+                        cabecera, fuente=st.FUENTE_ROTULO,
+                        alineacion=st.CENTRO_AJUSTADO, fill=st.FILL_CABECERA)
+            st.escribir(ws, f"{c0}{b['fila_imagen_inicio']}:{c1}{b['fila_imagen_fin']}", None)
+            st.escribir(ws, f"{c0}{b['fila_rotulo']}:{c1}{b['fila_rotulo']}",
+                        entrada.get(clave_texto) or entrada.get("rotulo", ""),
+                        fuente=st.FUENTE_ROTULO, alineacion=st.CENTRO_AJUSTADO,
+                        fill=st.FILL_CABECERA)
+            archivo = entrada.get(clave_foto)
+            if archivo:
+                ruta = raiz / archivo
+                if not insertar_imagen(ws, ruta, c0, b["fila_imagen_inicio"],
+                                       ancho[c0], alto):
+                    avisos.append(
+                        f"{titulo.lower()}: no se pudo incrustar {ruta.name}.")
+
+        pie = entrada.get("pie") or ""
+        st.escribir(ws, f"A{b['fila_pie']}:Z{b['fila_pie']}", pie,
+                    fuente=st.FUENTE_ROTULO, alineacion=st.CENTRO_AJUSTADO,
+                    fill=st.FILL_RECUPERACION if (pie and resaltar_pie) else None)
+
+
+def entradas_comparativo(manifiesto: dict) -> list[dict]:
+    """Vistas del equipo con foto de salida y de retorno, para compararlas."""
+    if manifiesto["encabezado"].get("tipo_documento") != "RECEPCION":
+        return []
+    entradas = []
+    for foto in manifiesto.get("registro_fotografico", []):
+        antes = foto.get("archivo_despacho")
+        if not antes:
+            continue
+        rotulo = foto.get("descripcion", "")
+        entradas.append({
+            "rotulo": rotulo,
+            "foto_izq": antes,
+            "foto_der": foto.get("archivo"),
+            "texto_izq": f"ANTES · {rotulo}",
+            "texto_der": f"DESPUÉS · {rotulo}",
+            "pie": foto.get("observacion") or "",
+        })
+    return entradas
+
+
+def entradas_danos(manifiesto: dict) -> list[dict]:
+    """Solo los componentes observados o dañados: lo que sustenta un cobro."""
+    if manifiesto["encabezado"].get("tipo_documento") != "RECEPCION":
+        return []
+    entradas = []
+    for item in manifiesto.get("inspeccion_componentes", []):
+        if item.get("estado") not in {"OBS", "D"}:
+            continue
+        nombre = item.get("item", "")
+        etiqueta = textos.LEYENDA_ESTADO.get(item.get("estado"), "")
+        entradas.append({
+            "rotulo": nombre.upper(),
+            "foto_izq": item.get("foto_despacho"),
+            "foto_der": item.get("foto_recepcion"),
+            "texto_izq": f"ANTES · {nombre.upper()}",
+            "texto_der": f"DESPUÉS · {nombre.upper()} — {etiqueta.upper()}",
+            "pie": item.get("observacion") or "",
+        })
+    return entradas
 
 
 def _configurar_pagina(ws, ultima_fila: int) -> None:
@@ -262,15 +358,25 @@ def construir_hoja_reporte(wb: Workbook, manifiesto: dict, raiz: Path,
     fotos = manifiesto.get("registro_fotografico", [])
     consumibles = manifiesto.get("consumibles", [])
 
+    comparativo = entradas_comparativo(manifiesto)
+    danos = entradas_danos(manifiesto)
+
     n_bloques = max(1, (len(fotos) + 1) // 2)
-    fin = layout.ultima_fila(n_bloques, len(consumibles))
+    plan = layout.plan_secciones(n_bloques, len(consumibles),
+                                 len(comparativo), len(danos))
+    fin = plan["ultima_fila"]
 
     _dimensionar(ws, fin, n_bloques, len(consumibles))
     _cabecera(ws, manifiesto["encabezado"], raiz, avisos)
     _rejilla_fotografica(ws, fotos, raiz, avisos)
     _bloques_consumibles(ws, consumibles, n_bloques, raiz, avisos,
                          manifiesto["encabezado"].get("tipo_documento", "RECEPCION"))
-    _saltos_de_pagina(ws, n_bloques, len(consumibles))
+    _seccion_pareada(ws, layout.TITULO_COMPARATIVO, plan["fila_comparativo"],
+                     comparativo, raiz, avisos)
+    _seccion_pareada(ws, layout.TITULO_DANOS, plan["fila_danos"],
+                     danos, raiz, avisos, resaltar_pie=True)
+    _saltos_de_pagina(ws, n_bloques, len(consumibles), plan,
+                      len(comparativo), len(danos))
     _configurar_pagina(ws, fin)
     return ws
 
