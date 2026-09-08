@@ -162,9 +162,41 @@ def test_cli_construir_y_validar(manifiesto, tmp_path):
 
     ruta = tmp_path / "acta.json"
     ruta.write_text(json.dumps(manifiesto, ensure_ascii=False), encoding="utf-8")
-    assert main(["validar", str(ruta), "--verificar-fotos"]) == 0
+    assert main(["validar", str(ruta)]) == 0
     assert main(["construir", str(ruta), "-o", str(tmp_path / "salida.xlsx")]) == 0
     assert (tmp_path / "salida.xlsx").exists()
+
+
+def test_validar_comprueba_las_fotos_por_defecto(manifiesto, tmp_path, capsys):
+    """Decir «válido» y que luego `construir` falle es peor que no validar."""
+    from nefer.cli import main
+
+    manifiesto["registro_fotografico"][0]["archivo"] = "fotos/no-esta.jpg"
+    ruta = tmp_path / "acta.json"
+    ruta.write_text(json.dumps(manifiesto, ensure_ascii=False), encoding="utf-8")
+
+    assert main(["validar", str(ruta)]) == 1
+    assert "no-esta.jpg" in capsys.readouterr().err
+    # El manifiesto sigue siendo correcto si no se mira el disco.
+    assert main(["validar", str(ruta), "--sin-verificar-fotos"]) == 0
+
+
+def test_json_corrupto_da_un_mensaje_no_una_traza(tmp_path, capsys):
+    from nefer.cli import main
+
+    ruta = tmp_path / "roto.json"
+    ruta.write_text("{ roto", encoding="utf-8")
+    assert main(["validar", str(ruta)]) == 1
+    salida = capsys.readouterr().err
+    assert "no es JSON valido" in salida and "linea 1" in salida
+    assert "Traceback" not in salida
+
+
+def test_manifiesto_inexistente_da_un_mensaje(tmp_path, capsys):
+    from nefer.cli import main
+
+    assert main(["validar", str(tmp_path / "no-existe.json")]) == 1
+    assert "No existe el manifiesto" in capsys.readouterr().err
 
 
 def test_logo_declarado_pero_inexistente_avisa(manifiesto, tmp_path):
@@ -190,3 +222,35 @@ def test_acta_de_despacho_deja_la_recepcion_en_blanco(manifiesto, tmp_path):
     assert not derecha, "el lado de recepción va en blanco hasta que el equipo vuelva"
     assert not franja, "no hay recuperación que declarar en un despacho"
     assert ws[layout.CELDA_MARCA_DESPACHO].value == "X"
+
+
+def test_ida_y_vuelta_recupera_las_fotos(manifiesto, tmp_path):
+    """El extractor debe leer las actas que genera este mismo paquete.
+
+    openpyxl declara el namespace de dibujo por defecto y escribe `<from>`,
+    mientras que Excel escribe `<xdr:from>`. Leer solo la variante con prefijo
+    dejaba el round-trip fotográfico en cero sin fallar ni avisar.
+    """
+    manifiesto["encabezado"]["logo"] = manifiesto["registro_fotografico"][0]["archivo"]
+    salida, _ = build.construir(manifiesto, tmp_path / "acta.xlsx", raiz=tmp_path)
+
+    destino = tmp_path / "recuperadas"
+    recuperado = extract.extraer(salida, destino)
+
+    fotos = recuperado["registro_fotografico"]
+    assert len(fotos) == len(manifiesto["registro_fotografico"])
+    assert all(f.get("archivo") for f in fotos), "toda foto debe volver con su archivo"
+    assert recuperado["consumibles"][0].get("foto_despacho")
+
+    # 6 fotos + 1 consumible. El logo va en la fila 1 y no es una vista del equipo.
+    assert len(list(destino.glob("*"))) == 7
+
+
+def test_las_anclas_se_leen_con_y_sin_prefijo_xdr(manifiesto, tmp_path):
+    import zipfile
+
+    salida, _ = build.construir(manifiesto, tmp_path / "acta.xlsx", raiz=tmp_path)
+    with zipfile.ZipFile(salida) as z:
+        anclas = extract._anclas_de_imagen(z)
+    assert len(anclas) == 7
+    assert all(isinstance(c, int) and isinstance(f, int) for c, f, _ in anclas)

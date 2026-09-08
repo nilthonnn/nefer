@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import re
+import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
 
@@ -93,12 +94,13 @@ EXT_FOTO = {".png", ".jpg", ".jpeg", ".gif", ".bmp"}
 # Las actas hechas a mano pegan las fotos desde Word y quedan como metarchivos.
 EXT_METARCHIVO = {".emf", ".wmf"}
 EXT_ANCLABLE = EXT_FOTO | EXT_METARCHIVO
-_RE_ANCLA = re.compile(
-    r"<xdr:(twoCellAnchor|oneCellAnchor)\b.*?</xdr:\1>", re.S)
-_RE_FROM = re.compile(
-    r"<xdr:from>.*?<xdr:col>(\d+)</xdr:col>.*?<xdr:row>(\d+)</xdr:row>.*?</xdr:from>", re.S)
-_RE_EMBED = re.compile(r'r:embed="([^"]+)"')
-_RE_REL = re.compile(r'Id="([^"]+)"[^>]*Target="([^"]+)"')
+NS_RELACIONES = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+CLASES_ANCLA = {"twoCellAnchor", "oneCellAnchor", "absoluteAnchor"}
+
+
+def _local(etiqueta: str) -> str:
+    """Nombre de la etiqueta sin su namespace."""
+    return etiqueta.rsplit("}", 1)[-1]
 
 
 def _anclas_de_imagen(z: zipfile.ZipFile) -> list[tuple[int, int, str]]:
@@ -106,6 +108,11 @@ def _anclas_de_imagen(z: zipfile.ZipFile) -> list[tuple[int, int, str]]:
 
     Se lee el XML de dibujo en vez de confiar en el orden de `xl/media/`: ese
     orden no tiene relacion con la posicion de la foto en la hoja.
+
+    El XML se recorre por nombre local de etiqueta, sin exigir el prefijo
+    `xdr:`: Excel lo escribe, openpyxl declara el mismo namespace por defecto
+    y lo omite. Atarse al prefijo dejaria de leer las actas que genera este
+    mismo paquete.
     """
     anclas = []
     for nombre in z.namelist():
@@ -113,22 +120,31 @@ def _anclas_de_imagen(z: zipfile.ZipFile) -> list[tuple[int, int, str]]:
             continue
         rels_nombre = nombre.replace("drawings/", "drawings/_rels/") + ".rels"
         try:
-            rels_xml = z.read(rels_nombre).decode("utf-8")
+            rels_xml = z.read(rels_nombre)
         except KeyError:
             continue
-        rels = dict(_RE_REL.findall(rels_xml))
-        xml = z.read(nombre).decode("utf-8")
-        for bloque in _RE_ANCLA.finditer(xml):
-            cuerpo = bloque.group(0)
-            embed = _RE_EMBED.search(cuerpo)
-            desde = _RE_FROM.search(cuerpo)
-            if not embed or not desde:
+        rels = {r.get("Id"): r.get("Target", "")
+                for r in ET.fromstring(rels_xml)}
+
+        for ancla in ET.fromstring(z.read(nombre)):
+            if _local(ancla.tag) not in CLASES_ANCLA:
                 continue
-            destino = rels.get(embed.group(1), "")
-            archivo = destino.split("/")[-1]
-            if _sufijo(archivo) not in EXT_ANCLABLE:
+            columna = fila = None
+            for hijo in ancla:
+                if _local(hijo.tag) != "from":
+                    continue
+                for campo in hijo:
+                    if _local(campo.tag) == "col":
+                        columna = int(campo.text or 0)
+                    elif _local(campo.tag) == "row":
+                        fila = int(campo.text or 0)
+            embed = next((el.get(f"{{{NS_RELACIONES}}}embed") for el in ancla.iter()
+                          if _local(el.tag) == "blip"), None)
+            if columna is None or fila is None or not embed:
                 continue
-            anclas.append((int(desde.group(1)), int(desde.group(2)), archivo))
+            archivo = rels.get(embed, "").split("/")[-1]
+            if _sufijo(archivo) in EXT_ANCLABLE:
+                anclas.append((columna, fila, archivo))
     anclas.sort(key=lambda a: (a[1], a[0]))
     return anclas
 

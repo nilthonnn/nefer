@@ -237,8 +237,16 @@ def validar(manifiesto, raiz: Path | None = None) -> list[str]:
 def cargar(ruta: str | Path, validar_rutas: bool = True) -> dict:
     """Lee y valida un manifiesto. Las rutas de imagen son relativas al JSON."""
     ruta = Path(ruta)
-    with ruta.open(encoding="utf-8") as fh:
-        manifiesto = json.load(fh)
+    try:
+        with ruta.open(encoding="utf-8") as fh:
+            manifiesto = json.load(fh)
+    except FileNotFoundError:
+        raise ErrorManifiesto(f"No existe el manifiesto {ruta}") from None
+    except json.JSONDecodeError as exc:
+        raise ErrorManifiesto(
+            f"{ruta}: el archivo no es JSON valido.\n"
+            f"  linea {exc.lineno}, columna {exc.colno}: {exc.msg}"
+        ) from None
     errores = validar(manifiesto, ruta.parent if validar_rutas else None)
     if errores:
         raise ErrorManifiesto(
