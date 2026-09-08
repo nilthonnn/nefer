@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Salidas generadas
+*.xlsx
+*.pdf
+salidas/
+
+# Fotografías de cliente: no se versionan.
+ejemplos/fotos*/
+fotos/

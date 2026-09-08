@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nefer"
+version = "1.0.0"
+description = "Automatiza el reporte RD-FO-DE-022 de despacho y recepción de equipos de RD Rental S.A."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "openpyxl>=3.1",
+    "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+nefer = "nefer.cli:main"
+
+[tool.setuptools]
+packages = ["nefer"]
+
+[tool.setuptools.package-data]
+nefer = ["recursos/*.png"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,109 @@
+{
+  "encabezado": {
+    "empresa": "RD Rental S.A.",
+    "tipo_documento": "RECEPCION",
+    "n_acta": "032-002147",
+    "n_guia": "EG07-00000019",
+    "cliente": "SERIC PERU E.I.R.L.",
+    "obra": "PROYECTO SERIC - LIMA",
+    "fecha": "2026-08-10",
+    "horometro": 1197.0,
+    "codigo_equipo": "PTE010-09",
+    "modelo_equipo": "PLATAFORMA DE ELEVACIÓN TIPO TIJERA ELÉCTRICA DE 10 M.",
+    "categoria": "plataforma_elevacion"
+  },
+  "inspeccion_componentes": [
+    {
+      "item": "Mando de control de plataforma",
+      "estado": "OK",
+      "observacion": ""
+    },
+    {
+      "item": "Pintura de estructura",
+      "estado": "D",
+      "observacion": "Daños en pintura no presentes al despacho."
+    },
+    {
+      "item": "Conos de señalización 28\"",
+      "estado": "D",
+      "observacion": "No retornaron; se factura recuperación."
+    }
+  ],
+  "registro_fotografico": [
+    {
+      "foto_id": 1,
+      "descripcion": "VISTA FRONTAL",
+      "celda_excel_destino": "A11"
+    },
+    {
+      "foto_id": 2,
+      "descripcion": "VISTA POSTERIOR",
+      "celda_excel_destino": "M11"
+    },
+    {
+      "foto_id": 3,
+      "descripcion": "VISTA LATERAL IZQUIERDA",
+      "celda_excel_destino": "A26"
+    },
+    {
+      "foto_id": 4,
+      "descripcion": "VISTA LATERAL DERECHA",
+      "celda_excel_destino": "M26"
+    },
+    {
+      "foto_id": 5,
+      "descripcion": "HOROMETRO",
+      "celda_excel_destino": "A41"
+    },
+    {
+      "foto_id": 6,
+      "descripcion": "PANEL DE CONTROL",
+      "celda_excel_destino": "M41"
+    },
+    {
+      "foto_id": 7,
+      "descripcion": "MANDO DE CONTROL",
+      "celda_excel_destino": "A56"
+    },
+    {
+      "foto_id": 8,
+      "descripcion": "PISO DE PLATAFORMA",
+      "celda_excel_destino": "M56"
+    },
+    {
+      "foto_id": 9,
+      "descripcion": "LLAVE DE CONTACTO",
+      "celda_excel_destino": "A71"
+    },
+    {
+      "foto_id": 10,
+      "descripcion": "BATERÍAS",
+      "celda_excel_destino": "M71"
+    },
+    {
+      "foto_id": 11,
+      "descripcion": "TACOS",
+      "celda_excel_destino": "A86"
+    }
+  ],
+  "consumibles": [
+    {
+      "descripcion": "PINTURA EN BUEN ESTADO   EN EL DESPACHO \nJUNTO CON EL EQUIPO",
+      "cantidad": 1,
+      "estado_recepcion": "OK",
+      "texto_despacho": "PINTURA EN BUEN ESTADO   EN EL DESPACHO \nJUNTO CON EL EQUIPO",
+      "texto_recepcion": "EL EQUIPO RETORNÓ CON DAÑOS EN LA PINTURA",
+      "recuperacion": "RECUPERACIÓN 01 : 01 DAÑOS EN LA PINTURA"
+    },
+    {
+      "descripcion": "CONOS DE 28\"",
+      "cantidad": 2,
+      "estado_recepcion": "NO_RETORNA",
+      "texto_despacho": "02 CONOS DE 28\" DESPACHADO",
+      "texto_recepcion": "EL EQUIPO RETORNÓ SIN 02 CONOS DE 28\"",
+      "recuperacion": "RECUPERACIÓN 2: 02 CONOS DE 28\""
+    }
+  ],
+  "control_consumibles": [],
+  "resumen_ejecutivo": "Plataforma operativa; retorna con daño en pintura y sin dos conos, se genera recuperacion."
+}
