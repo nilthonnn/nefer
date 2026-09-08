@@ -7,7 +7,7 @@
 <style>
   :root {
     --paper:#F3F4F2; --card:#FFFFFF; --card-2:#EAEDEB;
-    --ink:#16191B; --ink-2:#4E5860; --ink-3:#7F8B93;
+    --ink:#16191B; --ink-2:#4E5860; --ink-3:#5F6A72;
     --rule:#D6DCDA; --rule-2:#E6EAE8;
     --accent:#1E4B6B; --accent-soft:#E3ECF3;
     --ok:#1F6B4C; --ok-soft:#E1F0E9;
@@ -21,7 +21,7 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
-      --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#74838A;
+      --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
       --rule:#2F383D; --rule-2:#262E32;
       --accent:#6FA8CE; --accent-soft:#16303F;
       --ok:#6FC49B; --ok-soft:#143024;
@@ -32,7 +32,7 @@
   }
   :root[data-theme="dark"] {
     --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
-    --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#74838A;
+    --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
     --rule:#2F383D; --rule-2:#262E32;
     --accent:#6FA8CE; --accent-soft:#16303F;
     --ok:#6FC49B; --ok-soft:#143024;
@@ -178,10 +178,20 @@
     .par { padding:.55rem .6rem; }
     .seccion > h2 { font-size:1.08rem; }
   }
+  /* Objetivo táctil de 44 px: el mínimo para operar con guantes, de pie y
+     con el equipo delante. WCAG 2.2 exige 24; en patio eso no basta. */
+  button, select, input[type="text"], input[type="number"],
+  input[type="date"], .tile, .marco {
+    min-height: 44px;
+  }
+  button { padding-block: .5rem; }
+  .tile, .marco, .slot { min-height: 0; }
+  .estados button { min-height: 44px; }
+
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
 </style>
 
-<div class="wrap">
+<div class="wrap" lang="es">
 
   <header>
     <p class="kicker">nefer · acta de recepción</p>
@@ -276,7 +286,8 @@
         <span class="grow"></span>
         <span class="lb" id="copiado"></span>
       </div>
-      <textarea class="salida" id="salida" readonly spellcheck="false"></textarea>
+      <textarea class="salida" id="salida" readonly spellcheck="false"
+                aria-label="Acta de recepción en JSON, lista para copiar"></textarea>
     </section>
   </div>
 </div>
