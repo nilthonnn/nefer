@@ -126,14 +126,14 @@ def _anclas_de_imagen(z: zipfile.ZipFile) -> list[tuple[int, int, str]]:
                 continue
             destino = rels.get(embed.group(1), "")
             archivo = destino.split("/")[-1]
-            if pathlib_suffix(archivo) not in EXT_ANCLABLE:
+            if _sufijo(archivo) not in EXT_ANCLABLE:
                 continue
             anclas.append((int(desde.group(1)), int(desde.group(2)), archivo))
     anclas.sort(key=lambda a: (a[1], a[0]))
     return anclas
 
 
-def pathlib_suffix(nombre: str) -> str:
+def _sufijo(nombre: str) -> str:
     return Path(nombre).suffix.lower()
 
 

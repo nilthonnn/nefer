@@ -42,7 +42,14 @@ def convertir(xlsx: str | Path, salida_pdf: str | Path | None = None,
             "--convert-to", "pdf:calc_pdf_Export",
             "--outdir", tmp, str(xlsx),
         ]
-        proceso = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        try:
+            proceso = subprocess.run(cmd, capture_output=True, text=True,
+                                     timeout=timeout)
+        except subprocess.TimeoutExpired as exc:
+            raise ErrorPDF(
+                f"LibreOffice no respondio en {timeout} s al convertir {xlsx.name}. "
+                "Las actas con muchas fotos tardan mas: reintente con un timeout mayor."
+            ) from exc
         generado = Path(tmp) / (xlsx.stem + ".pdf")
         if not generado.exists():
             raise ErrorPDF(

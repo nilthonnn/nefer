@@ -74,3 +74,27 @@ def test_celdas_destino_siguen_la_rejilla():
         {"foto_id": 3, "descripcion": "LATERAL IZQUIERDA"},
     ])
     assert schema.celdas_destino(m) == {1: "A11", 2: "M11", 3: "A26"}
+
+
+def test_despacho_rechaza_datos_de_recepcion():
+    """El equipo no ha vuelto: declarar su retorno es una contradicción."""
+    m = manifiesto_minimo(consumibles=[
+        {"descripcion": "EXTINTOR 6 KG", "estado_recepcion": "NO_RETORNA"}])
+    m["encabezado"]["tipo_documento"] = "DESPACHO"
+    errores = schema.validar(m)
+    assert any("no puede declarar datos de recepcion" in e for e in errores)
+
+
+def test_recepcion_acepta_los_mismos_datos():
+    m = manifiesto_minimo(consumibles=[
+        {"descripcion": "EXTINTOR 6 KG", "estado_recepcion": "NO_RETORNA"}])
+    m["encabezado"]["tipo_documento"] = "RECEPCION"
+    assert schema.validar(m) == []
+
+
+def test_logo_inexistente_es_un_error(tmp_path):
+    m = manifiesto_minimo()
+    m["encabezado"]["logo"] = "marca/logo.png"
+    assert any("logo" in e for e in schema.validar(m, tmp_path))
+    # Sin raiz no se comprueba el disco: solo se valida el tipo.
+    assert schema.validar(m) == []
