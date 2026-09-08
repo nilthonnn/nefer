@@ -11,7 +11,7 @@
     --card-2:      #EAEDEB;
     --ink:         #16191B;
     --ink-2:       #4E5860;
-    --ink-3:       #7F8B93;
+    --ink-3:       #5F6A72;
     --rule:        #D6DCDA;
     --rule-2:      #E6EAE8;
     --accent:      #1E4B6B;
@@ -29,7 +29,7 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --paper: #14181A; --card: #1C2225; --card-2: #242B2F;
-      --ink: #E7ECEB; --ink-2: #A3AFB4; --ink-3: #74838A;
+      --ink: #E7ECEB; --ink-2: #A3AFB4; --ink-3: #96A7B0;
       --rule: #2F383D; --rule-2: #262E32;
       --accent: #6FA8CE; --accent-soft: #16303F;
       --ok: #6FC49B; --ok-soft: #143024;
@@ -39,7 +39,7 @@
   }
   :root[data-theme="dark"] {
     --paper: #14181A; --card: #1C2225; --card-2: #242B2F;
-    --ink: #E7ECEB; --ink-2: #A3AFB4; --ink-3: #74838A;
+    --ink: #E7ECEB; --ink-2: #A3AFB4; --ink-3: #96A7B0;
     --rule: #2F383D; --rule-2: #262E32;
     --accent: #6FA8CE; --accent-soft: #16303F;
     --ok: #6FC49B; --ok-soft: #143024;
@@ -218,10 +218,20 @@
     textarea { min-height: 8rem; font-size: .68rem; }
   }
 
+  /* Objetivo táctil de 44 px: el mínimo para operar con guantes, de pie y
+     con el equipo delante. WCAG 2.2 exige 24; en patio eso no basta. */
+  button, select, input[type="text"], input[type="number"],
+  input[type="date"], .tile, .marco {
+    min-height: 44px;
+  }
+  button { padding-block: .5rem; }
+  .tile, .marco, .slot { min-height: 0; }
+  .estados button { min-height: 44px; }
+
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
-<div class="wrap">
+<div class="wrap" lang="es">
 
   <header>
     <p class="kicker">nefer · reporte fotográfico de despacho y recepción</p>
@@ -251,7 +261,8 @@
       </select>
     </div>
     <button class="primary" id="btn-cargar" type="button">Cargar fotos…</button>
-    <input type="file" id="file" accept="image/*" multiple hidden>
+    <input type="file" id="file" accept="image/*" multiple hidden
+           aria-label="Seleccionar fotografías del equipo">
     <button id="btn-auto" type="button">Reasignar automáticamente</button>
     <button class="ghost" id="btn-ejemplo" type="button">ver con fotos de ejemplo</button>
     <span class="grow"></span>
@@ -295,7 +306,8 @@
       <span class="grow"></span>
       <span class="lb" id="copiado"></span>
     </div>
-    <textarea id="salida" readonly spellcheck="false"></textarea>
+    <textarea id="salida" readonly spellcheck="false"
+              aria-label="Bloque JSON resultante, listo para copiar al acta"></textarea>
   </section>
 
 </div>
@@ -502,6 +514,7 @@
       b.className = "tile" + (elegida === f.id ? " sel" : "");
       b.type = "button"; b.draggable = true; b.dataset.foto = f.id;
       b.title = f.nombre + (f.fecha ? " · " + f.fecha : "");
+      b.setAttribute("aria-label", "Foto " + f.nombre + ", sin asignar");
       b.innerHTML = '<img alt="' + escapar(f.nombre) + '" src="' + f.url + '">' +
                     '<span class="fn">' + escapar(f.nombre) + '</span>';
       tray.appendChild(b);
@@ -519,6 +532,8 @@
       var b = document.createElement("button");
       b.type = "button"; b.dataset.casilla = i;
       b.className = "slot" + (f ? " lleno" : "") + (f && propuestas[i] ? " propuesto" : "");
+      b.setAttribute("aria-label",
+        vista + (f ? ", ocupada" : ", vacía") + (f && propuestas[i] ? ", propuesta" : ""));
       b.innerHTML = (f
           ? '<img alt="" src="' + f.url + '">'
           : '<span class="ph">vacía</span>') +

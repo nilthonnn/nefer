@@ -88,6 +88,7 @@ python -m nefer pdf acta.xlsx                   # convertir un Excel ya generado
 | **[herramientas/asignador-fotos.html](herramientas/asignador-fotos.html)** | Asignación visual de fotos a las casillas del formato, en el navegador |
 | **[herramientas/asistente-recepcion.html](herramientas/asistente-recepcion.html)** | Convierte un acta de despacho en la de recepción, pareando antes y después |
 | **[docs/ESQUEMA-JSON.md](docs/ESQUEMA-JSON.md)** | Todos los campos del manifiesto |
+| **[docs/evaluacion-madurez.html](docs/evaluacion-madurez.html)** | Dónde está este proceso frente al estado del arte, y qué falta |
 | **[docs/GUIA-OPERADOR.md](docs/GUIA-OPERADOR.md)** | Procedimiento interno, también incluido en cada acta |
 | **[docs/GUIA-CLIENTE.md](docs/GUIA-CLIENTE.md)** | Condiciones de uso y devolución para el cliente |
 
