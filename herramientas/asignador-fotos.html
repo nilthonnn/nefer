@@ -1,4 +1,5 @@
 <title>Asignador de fotos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -90,7 +91,20 @@
   /* ---------- zona de trabajo ---------- */
   .work { display: grid; grid-template-columns: 15.5rem minmax(0,1fr); gap: 1rem;
           align-items: start; }
-  @media (max-width: 56rem) { .work { grid-template-columns: 1fr; } }
+  @media (max-width: 56rem) {
+    .work { grid-template-columns: 1fr; gap: .6rem; }
+    /* La bandeja se queda a la vista: se toca la foto arriba y se baja a su
+       casilla sin perderla de vista. */
+    .bandeja { position: sticky; top: 0; z-index: 5; }
+    .bandeja .panel-body { padding: .55rem .6rem; }
+    .bandeja .tray { display: flex; overflow-x: auto; gap: .4rem;
+                     margin-top: .5rem; padding-bottom: .25rem;
+                     scroll-snap-type: x proximity; }
+    .bandeja .tile { flex: 0 0 4.4rem; scroll-snap-align: start; }
+    .bandeja .drop { padding: .55rem .5rem; font-size: .78rem; }
+    .bandeja .vacia { padding: .35rem 0 0; font-size: .76rem; }
+    .bandeja.llena .drop { display: none; }
+  }
 
   .panel { background: var(--card); border: 1px solid var(--rule);
            border-radius: 7px; box-shadow: var(--lift); overflow: hidden; }
@@ -129,8 +143,8 @@
            padding: .8rem 0 .2rem; }
 
   /* ---------- rejilla del formato ---------- */
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
-  @media (max-width: 30rem) { .grid { grid-template-columns: 1fr; } }
+  .grid { display: grid; gap: .5rem;
+          grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); }
 
   .slot { border: 1px solid var(--rule); border-radius: 5px; overflow: hidden;
           background: var(--card-2); display: flex; flex-direction: column;
@@ -142,11 +156,12 @@
                           var(--rule-2) 7px, var(--rule-2) 8px); }
   .slot img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
   .slot .cap { font-family: var(--sans); font-size: .66rem; font-weight: 600;
-               text-transform: uppercase; letter-spacing: .02em;
+               text-transform: uppercase; letter-spacing: .02em; line-height: 1.25;
                padding: .28rem .4rem; background: var(--card-2);
                border-top: 1px solid var(--rule-2); color: var(--ink-2);
                display: flex; justify-content: space-between; gap: .3rem;
-               align-items: center; }
+               align-items: center; min-height: 2.35rem; }
+  .slot { align-self: stretch; }
   .slot .num { font-family: var(--mono); font-weight: 400; color: var(--ink-3);
                font-size: .6rem; flex: none; }
   .slot.lleno { border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
@@ -188,6 +203,20 @@
               border-top: 2px solid var(--rule); padding-top: .45rem; }
   .pasos .n { font-family: var(--mono); font-size: .68rem; color: var(--accent);
               flex: none; padding-top: .1rem; }
+
+  @media (max-width: 40rem) {
+    .wrap { padding: 1.1rem .7rem 3rem; }
+    header { padding-bottom: .7rem; margin-bottom: .8rem; }
+    .sub { font-size: .88rem; }
+    .pasos { display: none; }
+    .bar { padding: .55rem .6rem; gap: .45rem; margin-bottom: .7rem; }
+    .bar button, .bar select { font-size: .82rem; padding: .34rem .6rem; }
+    .panel > h2 { font-size: .98rem; padding: .5rem .6rem; }
+    .panel-body { padding: .6rem; }
+    .slot .cap { font-size: .58rem; padding: .22rem .3rem; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); }
+    textarea { min-height: 8rem; font-size: .68rem; }
+  }
 
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -231,7 +260,7 @@
 
   <div class="work">
 
-    <section class="panel">
+    <section class="panel bandeja" id="bandeja">
       <h2>Sin asignar <span class="tally" id="t-bandeja">0</span></h2>
       <div class="panel-body">
         <div class="drop" id="drop">
@@ -478,6 +507,7 @@
       tray.appendChild(b);
     });
     $("#t-bandeja").textContent = sueltas.length;
+    $("#bandeja").classList.toggle("llena", fotos.length > 0);
     $("#tray-vacia").textContent = fotos.length === 0
       ? "Aún no hay fotos cargadas."
       : (sueltas.length ? "Toque una foto y luego su casilla." : "Todas asignadas.");
