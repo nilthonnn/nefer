@@ -1,4 +1,4 @@
-"""Esquema del manifiesto JSON que alimenta el reporte RD-FO-DE-022.
+"""Esquema del manifiesto JSON que alimenta el reporte de despacho y recepcion.
 
 El manifiesto es la unica fuente de verdad: de el salen el Excel, el PDF y la
 hoja de consumibles. `validar()` devuelve una lista de errores legibles en
@@ -21,7 +21,7 @@ REVISION_MANUAL = "REVISIÓN MANUAL REQUERIDA"
 
 PLANTILLA_MANIFIESTO = {
     "encabezado": {
-        "empresa": "RD Rental S.A.",
+        "empresa": "",
         "tipo_documento": "DESPACHO",
         "n_acta": "",
         "n_guia": "",

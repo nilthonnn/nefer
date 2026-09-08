@@ -3,7 +3,7 @@
 
 ## 1. QUÉ ESTÁ RECIBIENDO
 
-Este documento (RD-FO-DE-022) es el estado fotográfico del equipo al momento de la entrega. Las fotos y el horómetro que aparecen aquí son la referencia contra la que se comparará el equipo cuando lo devuelva.
+Este documento es el estado fotográfico del equipo al momento de la entrega. Las fotos y el horómetro que aparecen aquí son la referencia contra la que se comparará el equipo cuando lo devuelva.
 
 
 ## 2. REVISE ANTES DE FIRMAR
@@ -19,11 +19,11 @@ Este documento (RD-FO-DE-022) es el estado fotográfico del equipo al momento de
 
 3.1 El equipo debe ser operado únicamente por personal capacitado y autorizado, con los EPP que exige la actividad.
 
-3.2 Mantener los niveles de combustible, aceite y refrigerante según la hoja CONSUMIBLES adjunta. Cualquier alarma en el panel de control debe reportarse de inmediato a RD Rental S.A.
+3.2 Mantener los niveles de combustible, aceite y refrigerante según la hoja CONSUMIBLES adjunta. Cualquier alarma en el panel de control debe reportarse de inmediato a la empresa.
 
 3.3 No retirar, prestar ni sustituir los accesorios entregados con el equipo.
 
-3.4 El mantenimiento correctivo lo ejecuta RD Rental S.A. No se autorizan intervenciones de terceros sobre el equipo.
+3.4 El mantenimiento correctivo lo ejecuta la empresa. No se autorizan intervenciones de terceros sobre el equipo.
 
 
 ## 4. AL DEVOLVER EL EQUIPO
@@ -37,4 +37,4 @@ Este documento (RD-FO-DE-022) es el estado fotográfico del equipo al momento de
 
 ## 5. CONTACTO
 
-Ante cualquier duda sobre este documento, comuníquese con la jefatura de operaciones de RD Rental S.A. indicando el N° de acta y el código del equipo.
+Ante cualquier duda sobre este documento, comuníquese con la jefatura de operaciones de la empresa indicando el N° de acta y el código del equipo.

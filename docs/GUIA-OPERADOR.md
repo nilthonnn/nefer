@@ -1,4 +1,4 @@
-# GUÍA RD RENTAL S.A. — DESPACHO Y RECEPCIÓN DE EQUIPOS (RD-FO-DE-022)
+# GUÍA DEL OPERADOR — DESPACHO Y RECEPCIÓN DE EQUIPOS
 
 
 ## 1. ANTES DE MOVILIZAR EL EQUIPO
@@ -32,7 +32,7 @@
 
 ## 4. CIERRE
 
-4.1 El acta se firma en sitio por el operador de RD Rental S.A. y por el responsable del cliente. Sin firma del cliente el acta no cierra.
+4.1 El acta se firma en sitio por el operador de la empresa y por el responsable del cliente. Sin firma del cliente el acta no cierra.
 
 4.2 El PDF se archiva el mismo día con el nombre CODIGO_TIPO_FECHA.pdf y se envía al cliente y a la jefatura de operaciones.
 

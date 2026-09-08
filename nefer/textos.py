@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 LEYENDA_ESTADO = {
     "OK": "Funcional",
     "OBS": "Observado",
@@ -92,12 +94,23 @@ def _subtitulo(partes: list[tuple[str, str]]) -> list[tuple[str, str]]:
     return [("s", "   |   ".join(llenas))] if llenas else []
 
 
-def guia_rd(manifiesto: dict) -> list[tuple[str, str]]:
-    """Guia interna del operador RD Rental para el acto de despacho/recepcion."""
+def _organizacion(enc: dict) -> str:
+    """Como nombrar a la empresa dentro del texto de las guias."""
+    return (enc.get("empresa") or "").strip() or "la empresa"
+
+
+def _normalizar(lineas: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Evita el punto doble cuando la razon social ya termina en punto (S.A.C.)."""
+    return [(nivel, re.sub(r"\.\.$", ".", texto)) for nivel, texto in lineas]
+
+
+def guia_operador(manifiesto: dict) -> list[tuple[str, str]]:
+    """Guia interna del operador para el acto de despacho/recepcion."""
     enc = _enc(manifiesto)
     tipo = enc.get("tipo_documento", "DESPACHO")
-    return [
-        ("t", "GUÍA RD RENTAL S.A. — DESPACHO Y RECEPCIÓN DE EQUIPOS (RD-FO-DE-022)"),
+    org = _organizacion(enc)
+    return _normalizar([
+        ("t", "GUÍA DEL OPERADOR — DESPACHO Y RECEPCIÓN DE EQUIPOS"),
         *_subtitulo([("Documento", tipo if enc else ""),
                      ("Equipo", enc.get("codigo_equipo", "")),
                      ("Cliente", (enc.get("cliente") or "").strip())]),
@@ -132,27 +145,28 @@ def guia_rd(manifiesto: dict) -> list[tuple[str, str]]:
               "calcula solo."),
         ("p", ""),
         ("s", "4. CIERRE"),
-        ("p", "4.1 El acta se firma en sitio por el operador de RD Rental S.A. y por el "
-              "responsable del cliente. Sin firma del cliente el acta no cierra."),
+        ("p", f"4.1 El acta se firma en sitio por el operador de {org} y por el responsable "
+              "del cliente. Sin firma del cliente el acta no cierra."),
         ("p", "4.2 El PDF se archiva el mismo día con el nombre "
               "CODIGO_TIPO_FECHA.pdf y se envía al cliente y a la jefatura de operaciones."),
         ("p", "4.3 Toda discrepancia sobre el horómetro o sobre un daño se escala a la "
               "jefatura de operaciones antes de retirar el equipo del sitio."),
-    ]
+    ])
 
 
 def guia_cliente(manifiesto: dict) -> list[tuple[str, str]]:
     """Guia que se entrega al cliente junto con el acta."""
     enc = _enc(manifiesto)
-    return [
+    org = _organizacion(enc)
+    return _normalizar([
         ("t", "GUÍA PARA EL CLIENTE — RECEPCIÓN Y DEVOLUCIÓN DEL EQUIPO ALQUILADO"),
         *_subtitulo([("Equipo", (enc.get("modelo_equipo") or "").strip()),
                      ("Código", enc.get("codigo_equipo", ""))]),
         ("p", ""),
         ("s", "1. QUÉ ESTÁ RECIBIENDO"),
-        ("p", "Este documento (RD-FO-DE-022) es el estado fotográfico del equipo al momento "
-              "de la entrega. Las fotos y el horómetro que aparecen aquí son la referencia "
-              "contra la que se comparará el equipo cuando lo devuelva."),
+        ("p", "Este documento es el estado fotográfico del equipo al momento de la entrega. "
+              "Las fotos y el horómetro que aparecen aquí son la referencia contra la que se "
+              "comparará el equipo cuando lo devuelva."),
         ("p", ""),
         ("s", "2. REVISE ANTES DE FIRMAR"),
         ("p", "2.1 Que el código del equipo y el horómetro coincidan con el equipo físico."),
@@ -168,9 +182,9 @@ def guia_cliente(manifiesto: dict) -> list[tuple[str, str]]:
               "autorizado, con los EPP que exige la actividad."),
         ("p", "3.2 Mantener los niveles de combustible, aceite y refrigerante según la hoja "
               "CONSUMIBLES adjunta. Cualquier alarma en el panel de control debe reportarse "
-              "de inmediato a RD Rental S.A."),
+              f"de inmediato a {org}."),
         ("p", "3.3 No retirar, prestar ni sustituir los accesorios entregados con el equipo."),
-        ("p", "3.4 El mantenimiento correctivo lo ejecuta RD Rental S.A. No se autorizan "
+        ("p", f"3.4 El mantenimiento correctivo lo ejecuta {org}. No se autorizan "
               "intervenciones de terceros sobre el equipo."),
         ("p", ""),
         ("s", "4. AL DEVOLVER EL EQUIPO"),
@@ -183,6 +197,6 @@ def guia_cliente(manifiesto: dict) -> list[tuple[str, str]]:
               "acta de despacho y la de recepción."),
         ("p", ""),
         ("s", "5. CONTACTO"),
-        ("p", "Ante cualquier duda sobre este documento, comuníquese con la jefatura de "
-              "operaciones de RD Rental S.A. indicando el N° de acta y el código del equipo."),
-    ]
+        ("p", f"Ante cualquier duda sobre este documento, comuníquese con la jefatura de "
+              f"operaciones de {org} indicando el N° de acta y el código del equipo."),
+    ])

@@ -1,6 +1,8 @@
-"""Automatizacion de informes de despacho y recepcion de RD Rental S.A.
+"""Automatizacion de informes de despacho y recepcion de maquinaria.
 
-Formato soportado: RD-FO-DE-022 "Reporte fotografico de despacho y recepcion".
+Genera el "Reporte fotografico de despacho y recepcion" a partir de un
+manifiesto JSON. La identidad del formato (empresa, logo, codigo, version) es
+configurable: el paquete no asume ninguna organizacion en particular.
 """
 
 __version__ = "1.0.0"

@@ -1,7 +1,8 @@
-"""Geometria del formato RD-FO-DE-022 "Reporte fotografico de despacho y recepcion".
+"""Geometria del formato "Reporte fotografico de despacho y recepcion".
 
-Todas las medidas se derivaron de reportes reales llenados a mano
-(GI074-17 y PTE010-09). El formato es una rejilla regular:
+Todas las medidas se derivaron de reportes reales llenados a mano, uno de un
+grupo electrogeno y otro de una plataforma de elevacion. El formato es una
+rejilla regular:
 
     filas 1-3    cabecera (logo | titulo | codigo/version/fecha)
     filas 4-9    datos del acta (acta, guia, fecha, cliente, equipo, codigo, horometro)
@@ -73,9 +74,11 @@ ALTO_FILA_ESTANDAR = 15.0
 ALTO_FILA_SEPARADOR = 10.5
 ALTO_FILA_ROTULO = 16.5
 
-CODIGO_FORMATO = "CÓDIGO: RD-FO-DE-022"
-VERSION_FORMATO = "VERSIÓN: 00"
-FECHA_FORMATO = "FECHA: 25/11/2024"
+# Bloque de control documental. Cada organizacion pone el suyo desde el
+# manifiesto: encabezado.codigo_formato, version_formato y fecha_formato.
+CODIGO_FORMATO = "FO-DR-001"
+VERSION_FORMATO = "00"
+FECHA_FORMATO = ""
 TITULO_FORMATO = " REPORTE FOTOGRÁFICO \nDE DESPACHO Y RECEPCIÓN"
 
 # Rotulos por defecto de la rejilla fotografica, por familia de equipo.

@@ -1,4 +1,4 @@
-"""Lee un RD-FO-DE-022 ya llenado y lo devuelve como manifiesto JSON.
+"""Lee un reporte ya llenado y lo devuelve como manifiesto JSON.
 
 Sirve para dos cosas: migrar el historico de actas hechas a mano y verificar
 que el generador reproduce fielmente un reporte real.
@@ -274,7 +274,7 @@ def extraer(xlsx: str | Path, dir_fotos: str | Path | None = None) -> dict:
 
     manifiesto = {
         "encabezado": {
-            "empresa": "RD Rental S.A.",
+            "empresa": "",
             "tipo_documento": _tipo_documento(ws),
             "n_acta": _texto(ws, layout.CELDA_ACTA),
             "n_guia": _texto(ws, layout.CELDA_GUIA),

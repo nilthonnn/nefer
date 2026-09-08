@@ -28,7 +28,7 @@ def manifiesto(tmp_path):
     foto_falsa(fotos / "extintor.png", (200, 30, 30))
     return {
         "encabezado": {
-            "empresa": "RD Rental S.A.",
+            "empresa": "Maquinarias del Sur S.A.C.",
             "tipo_documento": "RECEPCION",
             "n_acta": "031-004000",
             "n_guia": "EG07-00009999",
@@ -36,7 +36,7 @@ def manifiesto(tmp_path):
             "obra": "OBRA DEMO",
             "fecha": "2026-03-15",
             "horometro": 2450.5,
-            "codigo_equipo": "GI074-99",
+            "codigo_equipo": "GE074-99",
             "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW",
             "categoria": "grupo_electrogeno",
         },
@@ -69,14 +69,14 @@ def test_construye_las_hojas_esperadas(manifiesto, tmp_path):
     assert avisos == []
     wb = openpyxl.load_workbook(salida)
     assert wb.sheetnames == ["REPORTE", "INSPECCIÓN", "CONSUMIBLES",
-                             "GUÍA RD", "GUÍA CLIENTE"]
+                             "GUÍA OPERADOR", "GUÍA CLIENTE"]
 
 
 def test_cabecera_en_las_celdas_del_formato(manifiesto, tmp_path):
     salida, _ = build.construir(manifiesto, tmp_path / "acta.xlsx", raiz=tmp_path)
     ws = openpyxl.load_workbook(salida)["REPORTE"]
     assert ws[layout.CELDA_ACTA].value == "031-004000"
-    assert ws[layout.CELDA_CODIGO].value == "GI074-99"
+    assert ws[layout.CELDA_CODIGO].value == "GE074-99"
     assert ws[layout.CELDA_HOROMETRO].value == 2450.5
     # Es una recepcion: la "X" va en la casilla derecha, no en la de despacho.
     assert ws[layout.CELDA_MARCA_RECEPCION].value == "X"
@@ -86,11 +86,36 @@ def test_cabecera_en_las_celdas_del_formato(manifiesto, tmp_path):
 def test_las_fotos_quedan_ancladas_en_su_bloque(manifiesto, tmp_path):
     salida, _ = build.construir(manifiesto, tmp_path / "acta.xlsx", raiz=tmp_path)
     ws = openpyxl.load_workbook(salida)["REPORTE"]
-    # 6 fotos + 1 consumible + el logo del formato.
-    assert len(ws._images) == 8
+    # 6 fotos + 1 consumible. Sin logo: el manifiesto no declara ninguno.
+    assert len(ws._images) == 7
     filas = {img.anchor._from.row + 1 for img in ws._images}
     assert layout.bloque_foto(0)["fila_imagen_inicio"] in filas
     assert layout.bloque_foto(2)["fila_imagen_inicio"] in filas
+
+
+def test_el_logo_es_opcional_y_configurable(manifiesto, tmp_path):
+    """El paquete no trae logo: lo aporta quien usa la herramienta."""
+    salida, _ = build.construir(manifiesto, tmp_path / "sin-logo.xlsx", raiz=tmp_path)
+    assert len(openpyxl.load_workbook(salida)["REPORTE"]._images) == 7
+
+    foto_falsa(tmp_path / "fotos" / "logo.png", (10, 60, 140))
+    manifiesto["encabezado"]["logo"] = "fotos/logo.png"
+    salida, _ = build.construir(manifiesto, tmp_path / "con-logo.xlsx", raiz=tmp_path)
+    imagenes = openpyxl.load_workbook(salida)["REPORTE"]._images
+    assert len(imagenes) == 8
+    assert any(img.anchor._from.row == 0 for img in imagenes), "el logo va en la fila 1"
+
+
+def test_control_documental_configurable(manifiesto, tmp_path):
+    """Cada organizacion pone su propio codigo, version y fecha de formato."""
+    manifiesto["encabezado"].update(
+        {"codigo_formato": "PROC-045", "version_formato": "03",
+         "fecha_formato": "01/02/2026"})
+    salida, _ = build.construir(manifiesto, tmp_path / "acta.xlsx", raiz=tmp_path)
+    ws = openpyxl.load_workbook(salida)["REPORTE"]
+    assert ws["S1"].value == "CÓDIGO: PROC-045"
+    assert ws["S2"].value == "VERSIÓN: 03"
+    assert ws["S3"].value == "FECHA: 01/02/2026"
 
 
 def test_consumo_calculado_en_la_hoja_de_consumibles(manifiesto, tmp_path):

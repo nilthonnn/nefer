@@ -4,12 +4,12 @@ from nefer import schema
 def manifiesto_minimo(**cambios):
     base = {
         "encabezado": {
-            "empresa": "RD Rental S.A.",
+            "empresa": "Maquinarias del Sur S.A.C.",
             "tipo_documento": "DESPACHO",
             "cliente": "CLIENTE DEMO S.A.C.",
             "fecha": "2026-03-01",
             "horometro": 120.5,
-            "codigo_equipo": "GI074-17",
+            "codigo_equipo": "GE074-17",
             "modelo_equipo": "GRUPO ELECTRÓGENO 74 KW",
             "categoria": "grupo_electrogeno",
         },

@@ -1,14 +1,14 @@
 {
   "encabezado": {
-    "empresa": "RD Rental S.A.",
+    "empresa": "Maquinarias del Sur S.A.C.",
     "tipo_documento": "RECEPCION",
-    "n_acta": "032-002147",
-    "n_guia": "EG07-00000019",
-    "cliente": "SERIC PERU E.I.R.L.",
-    "obra": "PROYECTO SERIC - LIMA",
+    "n_acta": "002-000456",
+    "n_guia": "T001-00007890",
+    "cliente": "MONTAJES INDUSTRIALES DEL PACÍFICO E.I.R.L.",
+    "obra": "PLANTA INDUSTRIAL — LIMA SUR",
     "fecha": "2026-08-10",
     "horometro": 1197.0,
-    "codigo_equipo": "PTE010-09",
+    "codigo_equipo": "PLT010-02",
     "modelo_equipo": "PLATAFORMA DE ELEVACIÓN TIPO TIJERA ELÉCTRICA DE 10 M.",
     "categoria": "plataforma_elevacion"
   },

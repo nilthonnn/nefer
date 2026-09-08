@@ -1,27 +1,30 @@
-# nefer — actas de despacho y recepción, RD Rental S.A.
+# nefer — actas de despacho y recepción de maquinaria
 
-Automatiza el formato **RD-FO-DE-022 "Reporte fotográfico de despacho y
-recepción"** para grupos electrógenos, torres de iluminación, plataformas de
-elevación y maquinaria de construcción y minería.
+Automatiza el **reporte fotográfico de despacho y recepción** de equipos:
+grupos electrógenos, torres de iluminación, plataformas de elevación y
+maquinaria de construcción y minería.
+
+La herramienta es independiente de cualquier organización. El nombre de la
+empresa, el logo y el bloque de control documental (código, versión, fecha del
+formato) se declaran en el manifiesto; el paquete no trae ninguno por defecto.
 
 De un manifiesto JSON y una carpeta de fotos salen, en un solo paso, el Excel
-del acta, el PDF firmable, la hoja de consumibles y las dos guías (RD y
+del acta, el PDF firmable, la hoja de consumibles y las dos guías (operador y
 cliente).
 
 ```
 manifiesto.json  +  fotos/  ──►  acta.xlsx  ──►  acta.pdf
                                    │
-                                   ├─ REPORTE        rejilla fotográfica + observaciones
-                                   ├─ INSPECCIÓN     estado por componente (OK / OBS / D)
-                                   ├─ CONSUMIBLES    niveles de despacho y recepción
-                                   ├─ GUÍA RD        procedimiento del operador
-                                   └─ GUÍA CLIENTE   condiciones de uso y devolución
+                                   ├─ REPORTE         rejilla fotográfica + observaciones
+                                   ├─ INSPECCIÓN      estado por componente (OK / OBS / D)
+                                   ├─ CONSUMIBLES     niveles de despacho y recepción
+                                   ├─ GUÍA OPERADOR   procedimiento interno
+                                   └─ GUÍA CLIENTE    condiciones de uso y devolución
 ```
 
-La geometría del formato se derivó de actas reales llenadas a mano
-(`GI074-17` y `PTE010-09`): el Excel generado es indistinguible del que hoy se
-llena a mano, misma rejilla, mismos rótulos y misma franja amarilla de
-recuperación.
+La geometría se derivó de actas reales llenadas a mano: el Excel generado es
+indistinguible del que hoy se llena a mano, misma rejilla, mismos rótulos y
+misma franja amarilla de recuperación.
 
 ## Instalación
 
@@ -41,7 +44,7 @@ brew install --cask libreoffice           # macOS
 ### Generar un acta completa
 
 ```bash
-python -m nefer construir acta.json -o salidas/GI074-17.xlsx --pdf
+python -m nefer construir acta.json -o salidas/acta.xlsx --pdf
 ```
 
 `--pdf` acepta una ruta opcional. `--sin-guias` omite las dos hojas de guía.
@@ -62,7 +65,7 @@ de más de 20 palabras y rutas de imagen inexistentes.
 python -m nefer extraer acta-2025.xlsx -o acta-2025.json --fotos fotos-acta-2025
 ```
 
-Lee un RD-FO-DE-022 llenado a mano y devuelve el manifiesto equivalente, con las
+Lee un reporte llenado a mano y devuelve el manifiesto equivalente, con las
 fotos volcadas a disco y ya asociadas a su rótulo. Recupera también las
 fotografías pegadas desde Word, que quedan incrustadas como metarchivos EMF y
 que ninguna librería de Python lee directamente (ver `nefer/emf.py`).
@@ -71,7 +74,7 @@ que ninguna librería de Python lee directamente (ver `nefer/emf.py`).
 
 ```bash
 python -m nefer plantilla -o acta-nueva.json    # manifiesto en blanco
-python -m nefer guias -o docs/                  # guías RD y cliente en Markdown
+python -m nefer guias -o docs/                  # guías en Markdown
 python -m nefer pdf acta.xlsx                   # convertir un Excel ya generado
 ```
 
@@ -93,6 +96,19 @@ Documentado en **[docs/ESQUEMA-JSON.md](docs/ESQUEMA-JSON.md)**. En resumen:
 El orden de `registro_fotografico` es el orden de la rejilla: foto 1 arriba a la
 izquierda, foto 2 arriba a la derecha, y así. No hace falta calcular celdas.
 
+### Identidad de la organización
+
+Todo lo que identifica a la empresa vive en `encabezado` y es opcional:
+
+| Campo | Efecto |
+|---|---|
+| `empresa` | Aparece en las hojas auxiliares, en las firmas y en el texto de las guías |
+| `logo` | Ruta a la imagen que va en la esquina superior izquierda del acta |
+| `codigo_formato`, `version_formato`, `fecha_formato` | Bloque de control documental |
+
+Si se omiten, el acta sale sin logo, sin razón social y con un código de
+formato genérico.
+
 Dos reglas que el validador hace cumplir porque de ellas depende una firma:
 
 - Un horómetro ilegible se declara `"REVISIÓN MANUAL REQUERIDA"`. Nunca se
@@ -100,9 +116,9 @@ Dos reglas que el validador hace cumplir porque de ellas depende una firma:
 - Un componente `OBS` o `D` sin observación escrita es un error, no una
   advertencia.
 
-En `ejemplos/` hay dos manifiestos reales listos para usar como referencia. No
-incluyen las fotografías del cliente; para reproducirlas, extráigalas del acta
-original con `nefer extraer`.
+En `ejemplos/` hay dos manifiestos de referencia con datos ficticios. No
+incluyen fotografías; para probar el flujo completo, extráigalas de un acta
+propia con `nefer extraer`.
 
 ## Estructura
 

@@ -1,4 +1,4 @@
-"""Estilos reutilizables del formato RD-FO-DE-022."""
+"""Estilos reutilizables del formato de despacho y recepcion."""
 
 from __future__ import annotations
 

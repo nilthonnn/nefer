@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nefer"
 version = "1.0.0"
-description = "Automatiza el reporte RD-FO-DE-022 de despacho y recepción de equipos de RD Rental S.A."
+description = "Automatiza el reporte fotográfico de despacho y recepción de maquinaria."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -22,8 +22,6 @@ nefer = "nefer.cli:main"
 [tool.setuptools]
 packages = ["nefer"]
 
-[tool.setuptools.package-data]
-nefer = ["recursos/*.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
