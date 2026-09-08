@@ -1,0 +1,161 @@
+{
+  "encabezado": {
+    "empresa": "RD Rental S.A.",
+    "tipo_documento": "RECEPCION",
+    "n_acta": "031-003943",
+    "n_guia": "EG07-00005942",
+    "cliente": "ECHEVERRIA IZQUIERDO MONTAJES INDUSTRIALES PERU S.A.C",
+    "obra": "OBRA MINA TOROMOCHO - MOROCOCHA",
+    "fecha": "2026-08-26",
+    "horometro": 1548.7,
+    "codigo_equipo": "GI074-17",
+    "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW (POT. CONTINUA)",
+    "categoria": "grupo_electrogeno"
+  },
+  "inspeccion_componentes": [
+    {
+      "item": "Módulo de control DeepSea",
+      "estado": "OK",
+      "observacion": "Sin códigos de falla en pantalla."
+    },
+    {
+      "item": "Breaker principal y bornera",
+      "estado": "OK",
+      "observacion": ""
+    },
+    {
+      "item": "Barra de puesta a tierra",
+      "estado": "D",
+      "observacion": "No retornó con el equipo; se factura recuperación."
+    },
+    {
+      "item": "Nivel de combustible",
+      "estado": "OBS",
+      "observacion": "Tanque al 35%, requiere rellenado previo a nuevo despacho."
+    }
+  ],
+  "registro_fotografico": [
+    {
+      "foto_id": 1,
+      "descripcion": "VISTA FRONTAL",
+      "celda_excel_destino": "A11"
+    },
+    {
+      "foto_id": 2,
+      "descripcion": "VISTA POSTERIOR",
+      "celda_excel_destino": "M11"
+    },
+    {
+      "foto_id": 3,
+      "descripcion": "VISTA LATERAL IZQUIERDA",
+      "celda_excel_destino": "A26"
+    },
+    {
+      "foto_id": 4,
+      "descripcion": "VISTA LATERAL DERECHA",
+      "celda_excel_destino": "M26"
+    },
+    {
+      "foto_id": 5,
+      "descripcion": "HORÓMETRO",
+      "celda_excel_destino": "A41"
+    },
+    {
+      "foto_id": 6,
+      "descripcion": "PANEL DE CONTROL",
+      "celda_excel_destino": "M41"
+    },
+    {
+      "foto_id": 7,
+      "descripcion": "VISTA FRONTAL DE MOTOR",
+      "celda_excel_destino": "A56"
+    },
+    {
+      "foto_id": 8,
+      "descripcion": "VISTA POSTERIOR DE MOTOR",
+      "celda_excel_destino": "M56"
+    },
+    {
+      "foto_id": 9,
+      "descripcion": "BATERÍAS",
+      "celda_excel_destino": "A71"
+    }
+  ],
+  "consumibles": [
+    {
+      "descripcion": "EXTINTOR DE 6 KG",
+      "cantidad": 1,
+      "estado_recepcion": "OK",
+      "texto_despacho": "01 EXTINTOR DE 6 KG EN DESPACHO",
+      "texto_recepcion": "EL EQUIPO RETORNÓ CON 01 EXTINTOR DE 6 KG",
+      "recuperacion": "RECUPERACIÓN N°1 : 01 EXTINTOR DE 6 KG"
+    },
+    {
+      "descripcion": "BARRA PUESTA A TIERRA",
+      "cantidad": 1,
+      "estado_recepcion": "NO_RETORNA",
+      "texto_despacho": "BARRA PUESTA A TIERRA   EN DESPACHADO",
+      "texto_recepcion": "EL EQUIPO RETORNÓ SIN BARRA PUESTA A TIERRA",
+      "recuperacion": "RECUPERACIÓN N° 3  : BARRA PUESTA A TIERRA"
+    },
+    {
+      "descripcion": "BANDEJA A.D 5.00X0.1.90 MTS  EN  BUE ESTADO",
+      "cantidad": 1,
+      "estado_recepcion": "D",
+      "texto_despacho": "01 BANDEJA A.D 5.00X0.1.90 MTS  EN  BUE ESTADO   EN DESPACHADO",
+      "texto_recepcion": "EL EQUIPO RETORNÓ  CON 01 BANDEJA A.D 5.00X0.1.90 MTS DAÑADA",
+      "recuperacion": "RECUPERACIÓN N° 4  : 01 BANDEJA A.D 5.00X0.1.90 MTS"
+    },
+    {
+      "descripcion": "EXTINTOR DE 6 KG",
+      "cantidad": 1,
+      "estado_recepcion": "NO_RETORNA",
+      "texto_despacho": "01 EXTINTOR DE 6 KG EN DESPACHO",
+      "texto_recepcion": "EL EQUIPO RETORNÓ SIN 01 EXTINTOR 6 KG",
+      "recuperacion": "RECUPERACION N° 5 : 01 EXTINTOR 6 KG"
+    },
+    {
+      "descripcion": "BANDEJA METALICA AD 5.00X1.80 MTS",
+      "cantidad": 1,
+      "estado_recepcion": "NO_RETORNA",
+      "texto_despacho": "01  BANDEJA METALICA AD 5.00X1.80 MTS  DESPACHADO",
+      "texto_recepcion": "EL EQUIPO RETORNÓ SIN 01  BANDEJA METALICA AD 5.00X1.80 MTS",
+      "recuperacion": "RECUPERACION N° 1 : 01  BANDEJA METALICA AD 5.00X1.80 MTS"
+    }
+  ],
+  "control_consumibles": [
+    {
+      "consumible": "Combustible diésel",
+      "unidad": "%",
+      "despacho": 100,
+      "recepcion": 35,
+      "estado": "OBS",
+      "observacion": "Rellenar antes del próximo despacho."
+    },
+    {
+      "consumible": "Aceite de motor",
+      "unidad": "%",
+      "despacho": 100,
+      "recepcion": 90,
+      "estado": "OK",
+      "observacion": ""
+    },
+    {
+      "consumible": "Refrigerante",
+      "unidad": "%",
+      "despacho": 100,
+      "recepcion": 95,
+      "estado": "OK",
+      "observacion": ""
+    },
+    {
+      "consumible": "Estado de baterías",
+      "unidad": "OK/OBS",
+      "despacho": "OK",
+      "recepcion": "OK",
+      "estado": "OK",
+      "observacion": ""
+    }
+  ],
+  "resumen_ejecutivo": "Equipo operativo; retorna sin barra de tierra y con bandeja dañada, se genera recuperacion."
+}
