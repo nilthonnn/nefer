@@ -1,0 +1,712 @@
+<title>Asignador de fotos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --paper:       #F3F4F2;
+    --card:        #FFFFFF;
+    --card-2:      #EAEDEB;
+    --ink:         #16191B;
+    --ink-2:       #4E5860;
+    --ink-3:       #7F8B93;
+    --rule:        #D6DCDA;
+    --rule-2:      #E6EAE8;
+    --accent:      #1E4B6B;
+    --accent-soft: #E3ECF3;
+    --ok:          #1F6B4C;
+    --ok-soft:     #E1F0E9;
+    --alert:       #8A5A00;
+    --alert-soft:  #F8EFDB;
+    --alert-rule:  #E0C894;
+    --lift:        0 1px 2px rgba(22,25,27,.05), 0 10px 26px -16px rgba(22,25,27,.28);
+    --cond: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+    --sans: "Barlow", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14181A; --card: #1C2225; --card-2: #242B2F;
+      --ink: #E7ECEB; --ink-2: #A3AFB4; --ink-3: #74838A;
+      --rule: #2F383D; --rule-2: #262E32;
+      --accent: #6FA8CE; --accent-soft: #16303F;
+      --ok: #6FC49B; --ok-soft: #143024;
+      --alert: #D9A24E; --alert-soft: #2C2417; --alert-rule: #4C3F23;
+      --lift: 0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14181A; --card: #1C2225; --card-2: #242B2F;
+    --ink: #E7ECEB; --ink-2: #A3AFB4; --ink-3: #74838A;
+    --rule: #2F383D; --rule-2: #262E32;
+    --accent: #6FA8CE; --accent-soft: #16303F;
+    --ok: #6FC49B; --ok-soft: #143024;
+    --alert: #D9A24E; --alert-soft: #2C2417; --alert-rule: #4C3F23;
+    --lift: 0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+         font-family: var(--sans); font-size: 15px; line-height: 1.55;
+         -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 74rem; margin: 0 auto; padding: 2rem 1.1rem 4rem; }
+
+  /* ---------- cabecera ---------- */
+  header { border-bottom: 3px solid var(--ink); padding-bottom: 1rem; margin-bottom: 1.25rem; }
+  .kicker { font-family: var(--mono); font-size: .68rem; letter-spacing: .16em;
+            text-transform: uppercase; color: var(--accent); margin: 0 0 .5rem; }
+  h1 { font-family: var(--cond); font-size: clamp(2rem, 1.4rem + 2.6vw, 3rem);
+       font-weight: 700; line-height: .98; text-transform: uppercase;
+       margin: 0 0 .5rem; }
+  .sub { margin: 0; color: var(--ink-2); max-width: 44rem; font-size: .96rem; }
+
+  /* ---------- barra de control ---------- */
+  .bar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center;
+         padding: .75rem .85rem; background: var(--card); border: 1px solid var(--rule);
+         border-radius: 7px; box-shadow: var(--lift); margin-bottom: 1.1rem; }
+  .field { display: flex; align-items: center; gap: .45rem; }
+  label.lb { font-family: var(--mono); font-size: .66rem; letter-spacing: .1em;
+             text-transform: uppercase; color: var(--ink-3); }
+  select, input[type="text"] {
+    font-family: var(--sans); font-size: .88rem; color: var(--ink);
+    background: var(--card-2); border: 1px solid var(--rule);
+    border-radius: 5px; padding: .34rem .5rem; }
+  select:focus-visible, input:focus-visible, button:focus-visible,
+  .slot:focus-visible, .tile:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  button { font-family: var(--sans); font-size: .86rem; font-weight: 600;
+           padding: .4rem .8rem; border-radius: 5px; cursor: pointer;
+           border: 1px solid var(--rule); background: var(--card-2); color: var(--ink); }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+  button.primary:hover { filter: brightness(1.12); color: var(--paper); }
+  button.ghost { background: transparent; border-color: transparent; color: var(--ink-3);
+                 text-decoration: underline; text-underline-offset: 2px; }
+  button.ghost:hover { color: var(--accent); }
+  .grow { flex: 1; }
+
+  /* ---------- zona de trabajo ---------- */
+  .work { display: grid; grid-template-columns: 15.5rem minmax(0,1fr); gap: 1rem;
+          align-items: start; }
+  @media (max-width: 56rem) { .work { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--card); border: 1px solid var(--rule);
+           border-radius: 7px; box-shadow: var(--lift); overflow: hidden; }
+  .panel > h2 { font-family: var(--cond); font-size: 1.1rem; font-weight: 600;
+                text-transform: uppercase; letter-spacing: .02em; margin: 0;
+                padding: .6rem .85rem; border-bottom: 1px solid var(--rule-2);
+                display: flex; justify-content: space-between; align-items: baseline;
+                gap: .6rem; }
+  .panel > h2 .tally { font-family: var(--mono); font-size: .7rem; font-weight: 400;
+                       color: var(--ink-3); text-transform: none; letter-spacing: 0; }
+  .panel-body { padding: .8rem .85rem; }
+
+  /* ---------- bandeja ---------- */
+  .drop { border: 2px dashed var(--rule); border-radius: 6px; padding: 1.1rem .8rem;
+          text-align: center; color: var(--ink-3); font-size: .85rem; }
+  .drop.hot { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+  .tray { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.6rem, 1fr));
+          gap: .45rem; margin-top: .7rem; }
+  @media (max-width: 56rem) { .tray { grid-template-columns: repeat(auto-fill, minmax(5.2rem,1fr)); } }
+
+  .tile { position: relative; border: 1px solid var(--rule); border-radius: 5px;
+          overflow: hidden; background: var(--card-2); cursor: grab; padding: 0;
+          aspect-ratio: 4/3; display: block; width: 100%; }
+  .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .tile .fn { position: absolute; left: 0; right: 0; bottom: 0;
+              background: rgba(0,0,0,.62); color: #fff; font-family: var(--mono);
+              font-size: .55rem; padding: .12rem .2rem; white-space: nowrap;
+              overflow: hidden; text-overflow: ellipsis; }
+  .tile.sel { outline: 3px solid var(--accent); outline-offset: -1px; }
+  .tile.sel::after { content: "elegida"; position: absolute; top: .2rem; left: .2rem;
+                     background: var(--accent); color: var(--paper);
+                     font-family: var(--mono); font-size: .5rem; padding: .1rem .25rem;
+                     border-radius: 3px; }
+
+  .vacia { color: var(--ink-3); font-size: .82rem; text-align: center;
+           padding: .8rem 0 .2rem; }
+
+  /* ---------- rejilla del formato ---------- */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+  @media (max-width: 30rem) { .grid { grid-template-columns: 1fr; } }
+
+  .slot { border: 1px solid var(--rule); border-radius: 5px; overflow: hidden;
+          background: var(--card-2); display: flex; flex-direction: column;
+          text-align: left; padding: 0; cursor: pointer; width: 100%;
+          font-family: inherit; color: inherit; }
+  .slot .ph { aspect-ratio: 4/3; display: grid; place-items: center;
+              color: var(--ink-3); font-family: var(--mono); font-size: .62rem;
+              background: repeating-linear-gradient(45deg, transparent, transparent 7px,
+                          var(--rule-2) 7px, var(--rule-2) 8px); }
+  .slot img { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; }
+  .slot .cap { font-family: var(--sans); font-size: .66rem; font-weight: 600;
+               text-transform: uppercase; letter-spacing: .02em;
+               padding: .28rem .4rem; background: var(--card-2);
+               border-top: 1px solid var(--rule-2); color: var(--ink-2);
+               display: flex; justify-content: space-between; gap: .3rem;
+               align-items: center; }
+  .slot .num { font-family: var(--mono); font-weight: 400; color: var(--ink-3);
+               font-size: .6rem; flex: none; }
+  .slot.lleno { border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+  .slot.lleno .cap { background: var(--ok-soft); color: var(--ok); }
+  .slot.hot { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); }
+  .slot.propuesto .cap::after { content: "propuesta"; font-family: var(--mono);
+                                font-size: .52rem; color: var(--alert);
+                                background: var(--alert-soft); padding: .05rem .2rem;
+                                border-radius: 3px; font-weight: 400; }
+
+  /* ---------- consumibles ---------- */
+  .cons { display: flex; flex-direction: column; gap: .5rem; }
+  .cons-row { display: grid; grid-template-columns: 1fr 6.5rem auto; gap: .45rem;
+              align-items: center; }
+  @media (max-width: 34rem) { .cons-row { grid-template-columns: 1fr auto; }
+                              .cons-row .mini { grid-column: 1 / -1; } }
+  .mini { display: flex; gap: .35rem; align-items: center; }
+  .mini .slot { width: 5.2rem; }
+  .mini .slot .ph { font-size: .5rem; }
+  .mini .slot .cap { display: none; }
+
+  /* ---------- salida ---------- */
+  .out { margin-top: 1.1rem; }
+  textarea { width: 100%; min-height: 11rem; font-family: var(--mono); font-size: .72rem;
+             line-height: 1.6; color: var(--ink); background: var(--card);
+             border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+             border-radius: 5px; padding: .7rem .8rem; resize: vertical; }
+  .aviso { margin: 0 0 .7rem; padding: .6rem .8rem; border-radius: 5px;
+           border: 1px solid var(--alert-rule); background: var(--alert-soft);
+           font-size: .85rem; color: var(--ink-2); }
+  .aviso b { color: var(--ink); }
+  .ok-msg { border-color: color-mix(in srgb, var(--ok) 45%, transparent);
+            background: var(--ok-soft); }
+
+  .pasos { margin: 1.25rem 0 0; padding: 0; list-style: none;
+           display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem,1fr));
+           gap: .55rem; }
+  .pasos li { display: flex; gap: .55rem; font-size: .85rem; color: var(--ink-2);
+              border-top: 2px solid var(--rule); padding-top: .45rem; }
+  .pasos .n { font-family: var(--mono); font-size: .68rem; color: var(--accent);
+              flex: none; padding-top: .1rem; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="kicker">nefer · reporte fotográfico de despacho y recepción</p>
+    <h1>Asignador de fotos</h1>
+    <p class="sub">
+      Coloque cada fotografía en su casilla del formato y copie el bloque
+      <code>registro_fotografico</code> listo para pegar en el acta. Funciona sin
+      conexión: las fotos no salen de su equipo.
+    </p>
+    <ol class="pasos">
+      <li><span class="n">01</span> Elija la familia del equipo</li>
+      <li><span class="n">02</span> Cargue la carpeta de fotos</li>
+      <li><span class="n">03</span> Revise y corrija la propuesta</li>
+      <li><span class="n">04</span> Copie el JSON al acta</li>
+    </ol>
+  </header>
+
+  <div class="bar">
+    <div class="field">
+      <label class="lb" for="cat">Familia</label>
+      <select id="cat">
+        <option value="grupo_electrogeno">Grupo electrógeno</option>
+        <option value="torre_iluminacion">Torre de iluminación</option>
+        <option value="plataforma_elevacion">Plataforma de elevación</option>
+        <option value="maquinaria_amarilla">Maquinaria amarilla</option>
+        <option value="generico">Genérico</option>
+      </select>
+    </div>
+    <button class="primary" id="btn-cargar" type="button">Cargar fotos…</button>
+    <input type="file" id="file" accept="image/*" multiple hidden>
+    <button id="btn-auto" type="button">Reasignar automáticamente</button>
+    <button class="ghost" id="btn-ejemplo" type="button">ver con fotos de ejemplo</button>
+    <span class="grow"></span>
+    <button class="ghost" id="btn-limpiar" type="button">vaciar todo</button>
+  </div>
+
+  <div class="work">
+
+    <section class="panel">
+      <h2>Sin asignar <span class="tally" id="t-bandeja">0</span></h2>
+      <div class="panel-body">
+        <div class="drop" id="drop">
+          Arrastre las fotos aquí<br>o pulse <b>Cargar fotos…</b>
+        </div>
+        <div class="tray" id="tray"></div>
+        <p class="vacia" id="tray-vacia">Toque una foto y luego su casilla.</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Rejilla del formato <span class="tally" id="t-rejilla">0 / 0</span></h2>
+      <div class="panel-body">
+        <div class="grid" id="grid"></div>
+
+        <h2 style="border:0;padding:.9rem 0 .35rem;font-size:.95rem">Accesorios y consumibles</h2>
+        <p class="vacia" style="text-align:left;padding:0 0 .5rem">
+          Extintor, conos, barra de tierra, tacos. Van en <code>consumibles</code>,
+          no en la rejilla.
+        </p>
+        <div class="cons" id="cons"></div>
+        <button id="btn-cons" type="button" style="margin-top:.5rem">+ Añadir accesorio</button>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="out">
+    <div class="aviso" id="estado"><b>Cargue las fotos</b> para empezar.</div>
+    <div class="bar" style="margin-bottom:.6rem">
+      <button class="primary" id="btn-copiar" type="button">Copiar JSON</button>
+      <span class="grow"></span>
+      <span class="lb" id="copiado"></span>
+    </div>
+    <textarea id="salida" readonly spellcheck="false"></textarea>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var VISTAS = {
+    grupo_electrogeno: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
+      "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL","VISTA FRONTAL DE MOTOR",
+      "VISTA POSTERIOR DE MOTOR","BATERÍAS","TANQUE DE COMBUSTIBLE"],
+    torre_iluminacion: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
+      "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL","MÁSTIL Y WINCHE","FOCOS",
+      "ESTABILIZADORES","BATERÍAS"],
+    plataforma_elevacion: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
+      "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL","MANDO DE CONTROL",
+      "PISO DE PLATAFORMA","LLAVE DE CONTACTO","BATERÍAS","TACOS"],
+    maquinaria_amarilla: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
+      "VISTA LATERAL DERECHA","HORÓMETRO","CABINA","CUCHARÓN / HOJA","SISTEMA HIDRÁULICO",
+      "TREN DE RODAJE / LLANTAS","MOTOR"],
+    generico: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
+      "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL"]
+  };
+
+  // Palabras del nombre de archivo que delatan la vista. El orden importa:
+  // "lateral izquierda" debe ganar a "lateral" a secas.
+  var PISTAS = [
+    ["VISTA LATERAL IZQUIERDA", ["latizq","lateralizquierda","lateralizq","izquierda","izq","left"]],
+    ["VISTA LATERAL DERECHA",   ["latder","lateralderecha","latder","derecha","der","right"]],
+    ["VISTA FRONTAL DE MOTOR",  ["motorfrente","motorfrontal","frentemotor","enginefront"]],
+    ["VISTA POSTERIOR DE MOTOR",["motoratras","motorposterior","atrasmotor","engineback"]],
+    ["VISTA FRONTAL",           ["frontal","frente","delante","front"]],
+    ["VISTA POSTERIOR",         ["posterior","atras","trasera","back","rear"]],
+    ["HORÓMETRO",               ["horometro","horimetro","horas","hourmeter","hour"]],
+    ["PANEL DE CONTROL",        ["panel","tablero","controlpanel"]],
+    ["MANDO DE CONTROL",        ["mando","joystick","botonera"]],
+    ["TANQUE DE COMBUSTIBLE",   ["tanque","combustible","diesel","fuel"]],
+    ["BATERÍAS",                ["bateria","baterias","battery"]],
+    ["MÁSTIL Y WINCHE",         ["mastil","winche","torre"]],
+    ["FOCOS",                   ["foco","focos","luces","lampara","light"]],
+    ["ESTABILIZADORES",         ["estabilizador","gato","outrigger"]],
+    ["PISO DE PLATAFORMA",      ["piso","plataforma","canastilla"]],
+    ["LLAVE DE CONTACTO",       ["llave","contacto","ignicion"]],
+    ["TACOS",                   ["taco","tacos","cuna"]],
+    ["CABINA",                  ["cabina","cab"]],
+    ["CUCHARÓN / HOJA",         ["cucharon","cuchara","hoja","balde","bucket"]],
+    ["SISTEMA HIDRÁULICO",      ["hidraulico","hidraulica","manguera","hydraulic"]],
+    ["TREN DE RODAJE / LLANTAS",["rodaje","llanta","oruga","neumatico","track"]],
+    ["MOTOR",                   ["motor","engine"]]
+  ];
+
+  var fotos = [];        // {id, nombre, url, fecha, sugerida}
+  var casillas = [];     // fotoId o null, paralelo a las vistas
+  var propuestas = [];   // true si la casilla la llenó la propuesta automática
+  var accesorios = [];   // {nombre, fotoId}
+  var elegida = null;    // id de la foto seleccionada por toque
+  var siguienteId = 1;
+
+  var $ = function (s) { return document.querySelector(s); };
+  var normal = function (t) {
+    return t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]/g, "");
+  };
+
+  // ---------- EXIF: sólo la fecha de captura, que es lo único que usamos ----------
+  function fechaExif(buffer) {
+    try {
+      var v = new DataView(buffer);
+      if (v.getUint16(0) !== 0xFFD8) return null;          // no es JPEG
+      var pos = 2, fin = v.byteLength;
+      while (pos < fin - 4) {
+        if (v.getUint8(pos) !== 0xFF) break;
+        var marca = v.getUint8(pos + 1), largo = v.getUint16(pos + 2);
+        if (marca === 0xE1) {
+          var base = pos + 10;                              // tras "Exif\0\0"
+          if (v.getUint32(pos + 4) !== 0x45786966) break;
+          var le = v.getUint16(base) === 0x4949;
+          var ifd = base + v.getUint32(base + 4, le);
+          var texto = buscarFecha(v, base, ifd, le);
+          if (texto) return texto;
+          break;
+        }
+        pos += 2 + largo;
+      }
+    } catch (e) { /* EXIF ausente o malformado: da igual, hay respaldo */ }
+    return null;
+  }
+
+  function buscarFecha(v, base, ifd, le) {
+    var n = v.getUint16(ifd, le), sub = null;
+    for (var i = 0; i < n; i++) {
+      var e = ifd + 2 + i * 12, tag = v.getUint16(e, le);
+      if (tag === 0x9003 || tag === 0x0132) {               // DateTimeOriginal / DateTime
+        var off = base + v.getUint32(e + 8, le), s = "";
+        for (var k = 0; k < 19; k++) s += String.fromCharCode(v.getUint8(off + k));
+        if (/^\d{4}:\d{2}:\d{2}/.test(s)) return s;
+      }
+      if (tag === 0x8769) sub = base + v.getUint32(e + 8, le);   // ExifIFD
+    }
+    return sub ? buscarFecha(v, base, sub, le) : null;
+  }
+
+  function sugerir(nombre) {
+    var n = normal(nombre);
+    for (var i = 0; i < PISTAS.length; i++) {
+      var vista = PISTAS[i][0], claves = PISTAS[i][1];
+      for (var k = 0; k < claves.length; k++) {
+        if (n.indexOf(claves[k]) !== -1) return vista;
+      }
+    }
+    return null;
+  }
+
+  // ---------- carga ----------
+  function agregar(archivos) {
+    var pendientes = Array.prototype.filter.call(archivos, function (f) {
+      return /^image\//.test(f.type) || /\.(jpe?g|png|gif|bmp)$/i.test(f.name);
+    });
+    var rechazados = Array.prototype.filter.call(archivos, function (f) {
+      return /\.(heic|heif|tiff?|webp|dng)$/i.test(f.name);
+    });
+    if (!pendientes.length && !rechazados.length) return;
+
+    var restan = pendientes.length;
+    if (!restan) { pintarEstado(rechazados); return; }
+
+    pendientes.forEach(function (f) {
+      var foto = {
+        id: siguienteId++, nombre: f.name, url: URL.createObjectURL(f),
+        fecha: null, respaldo: f.lastModified || 0, sugerida: sugerir(f.name)
+      };
+      fotos.push(foto);
+      var fr = new FileReader();
+      fr.onload = function () {
+        foto.fecha = fechaExif(fr.result);
+        if (--restan === 0) { autoAsignar(); pintar(); pintarEstado(rechazados); }
+      };
+      fr.onerror = function () {
+        if (--restan === 0) { autoAsignar(); pintar(); pintarEstado(rechazados); }
+      };
+      fr.readAsArrayBuffer(f.slice(0, 131072));   // la cabecera basta para el EXIF
+    });
+  }
+
+  function ordenCaptura(a, b) {
+    if (a.fecha && b.fecha && a.fecha !== b.fecha) return a.fecha < b.fecha ? -1 : 1;
+    if (a.respaldo !== b.respaldo) return a.respaldo - b.respaldo;
+    return a.nombre.localeCompare(b.nombre, "es", { numeric: true });
+  }
+
+  // Propuesta: primero lo que el nombre delata, luego el resto por orden de captura.
+  function autoAsignar() {
+    var vistas = VISTAS[$("#cat").value];
+    casillas = vistas.map(function () { return null; });
+    propuestas = vistas.map(function () { return false; });
+    accesorios.forEach(function (a) { a.fotoId = a.fotoId; });
+
+    var libres = fotos.slice().sort(ordenCaptura);
+    var usadas = {};
+
+    libres.forEach(function (f) {
+      if (!f.sugerida) return;
+      var i = vistas.indexOf(f.sugerida);
+      if (i !== -1 && casillas[i] === null) {
+        casillas[i] = f.id; propuestas[i] = true; usadas[f.id] = true;
+      }
+    });
+    libres.forEach(function (f) {
+      if (usadas[f.id]) return;
+      for (var i = 0; i < casillas.length; i++) {
+        if (casillas[i] === null) {
+          casillas[i] = f.id; propuestas[i] = true; usadas[f.id] = true; return;
+        }
+      }
+    });
+  }
+
+  // ---------- pintado ----------
+  function porId(id) {
+    for (var i = 0; i < fotos.length; i++) if (fotos[i].id === id) return fotos[i];
+    return null;
+  }
+  function asignadas() {
+    var s = {};
+    casillas.forEach(function (id) { if (id !== null) s[id] = true; });
+    accesorios.forEach(function (a) { if (a.fotoId) s[a.fotoId] = true; });
+    return s;
+  }
+
+  function pintar() {
+    var vistas = VISTAS[$("#cat").value];
+    if (casillas.length !== vistas.length) {
+      casillas = vistas.map(function (_, i) { return casillas[i] !== undefined ? casillas[i] : null; });
+      propuestas = vistas.map(function (_, i) { return !!propuestas[i]; });
+    }
+    var usadas = asignadas();
+
+    // bandeja
+    var tray = $("#tray"); tray.textContent = "";
+    var sueltas = fotos.filter(function (f) { return !usadas[f.id]; }).sort(ordenCaptura);
+    sueltas.forEach(function (f) {
+      var b = document.createElement("button");
+      b.className = "tile" + (elegida === f.id ? " sel" : "");
+      b.type = "button"; b.draggable = true; b.dataset.foto = f.id;
+      b.title = f.nombre + (f.fecha ? " · " + f.fecha : "");
+      b.innerHTML = '<img alt="' + escapar(f.nombre) + '" src="' + f.url + '">' +
+                    '<span class="fn">' + escapar(f.nombre) + '</span>';
+      tray.appendChild(b);
+    });
+    $("#t-bandeja").textContent = sueltas.length;
+    $("#tray-vacia").textContent = fotos.length === 0
+      ? "Aún no hay fotos cargadas."
+      : (sueltas.length ? "Toque una foto y luego su casilla." : "Todas asignadas.");
+
+    // rejilla
+    var grid = $("#grid"); grid.textContent = "";
+    vistas.forEach(function (vista, i) {
+      var id = casillas[i], f = id !== null ? porId(id) : null;
+      var b = document.createElement("button");
+      b.type = "button"; b.dataset.casilla = i;
+      b.className = "slot" + (f ? " lleno" : "") + (f && propuestas[i] ? " propuesto" : "");
+      b.innerHTML = (f
+          ? '<img alt="" src="' + f.url + '">'
+          : '<span class="ph">vacía</span>') +
+        '<span class="cap"><span>' + escapar(vista) + '</span>' +
+        '<span class="num">' + (i + 1) + '</span></span>';
+      grid.appendChild(b);
+    });
+    var llenas = casillas.filter(function (x) { return x !== null; }).length;
+    $("#t-rejilla").textContent = llenas + " / " + vistas.length;
+
+    pintarAccesorios();
+    pintarSalida();
+  }
+
+  function pintarAccesorios() {
+    var cont = $("#cons"); cont.textContent = "";
+    accesorios.forEach(function (a, i) {
+      var fila = document.createElement("div");
+      fila.className = "cons-row";
+      var f = a.fotoId ? porId(a.fotoId) : null;
+      fila.innerHTML =
+        '<input type="text" data-acc-nombre="' + i + '" placeholder="EXTINTOR DE 6 KG" value="' +
+          escapar(a.nombre) + '">' +
+        '<span class="mini"><button type="button" class="slot" data-acc="' + i + '">' +
+          (f ? '<img alt="" src="' + f.url + '">' : '<span class="ph">foto</span>') +
+        '</button></span>' +
+        '<button type="button" class="ghost" data-acc-quitar="' + i + '">quitar</button>';
+      cont.appendChild(fila);
+    });
+  }
+
+  function escapar(t) {
+    return String(t).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  function pintarSalida() {
+    var vistas = VISTAS[$("#cat").value];
+    var registro = [], n = 0;
+    casillas.forEach(function (id, i) {
+      if (id === null) return;
+      registro.push({ foto_id: ++n, descripcion: vistas[i],
+                      archivo: "fotos/" + porId(id).nombre });
+    });
+    var salida = { registro_fotografico: registro };
+    var cons = accesorios.filter(function (a) { return a.nombre.trim() && a.fotoId; })
+      .map(function (a) {
+        return { descripcion: a.nombre.trim().toUpperCase(), cantidad: 1,
+                 foto_despacho: "fotos/" + porId(a.fotoId).nombre };
+      });
+    if (cons.length) salida.consumibles = cons;
+    $("#salida").value = JSON.stringify(salida, null, 2);
+
+    var huecos = casillas.filter(function (x) { return x === null; }).length;
+    var quedan = fotos.length - Object.keys(asignadas()).length;
+    var caja = $("#estado");
+    if (!fotos.length) {
+      caja.className = "aviso";
+      caja.innerHTML = "<b>Cargue las fotos</b> para empezar.";
+    } else if (huecos || quedan) {
+      caja.className = "aviso";
+      caja.innerHTML = "<b>" + huecos + "</b> casilla(s) vacía(s) y <b>" + quedan +
+        "</b> foto(s) sin asignar. El acta se puede generar igual: las casillas " +
+        "vacías simplemente no se imprimen.";
+    } else {
+      caja.className = "aviso ok-msg";
+      caja.innerHTML = "<b>Todo asignado.</b> Revise que cada foto esté bajo su " +
+        "rótulo, copie el JSON y péguelo en <code>acta.json</code>.";
+    }
+  }
+
+  function pintarEstado(rechazados) {
+    if (!rechazados || !rechazados.length) return;
+    var caja = $("#estado");
+    caja.className = "aviso";
+    caja.innerHTML = "<b>" + rechazados.length + " archivo(s) que Excel no puede " +
+      "incrustar</b> (" + escapar(rechazados.slice(0, 3).map(function (f) { return f.name; }).join(", ")) +
+      "). Conviértalos a JPG. En el iPhone, Ajustes → Cámara → Formatos → " +
+      "«Más compatible» lo evita de raíz.";
+  }
+
+  // ---------- interacción ----------
+  function colocar(fotoId, casilla) {
+    for (var i = 0; i < casillas.length; i++) if (casillas[i] === fotoId) casillas[i] = null;
+    accesorios.forEach(function (a) { if (a.fotoId === fotoId) a.fotoId = null; });
+    casillas[casilla] = fotoId;
+    propuestas[casilla] = false;
+    elegida = null;
+    pintar();
+  }
+
+  $("#tray").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-foto]");
+    if (!t) return;
+    var id = +t.dataset.foto;
+    elegida = elegida === id ? null : id;
+    pintar();
+  });
+
+  $("#grid").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-casilla]");
+    if (!t) return;
+    var i = +t.dataset.casilla;
+    if (elegida !== null) { colocar(elegida, i); return; }
+    if (casillas[i] !== null) { casillas[i] = null; propuestas[i] = false; pintar(); }
+  });
+
+  // arrastrar y soltar
+  document.addEventListener("dragstart", function (e) {
+    var t = e.target.closest("[data-foto]");
+    if (!t) return;
+    e.dataTransfer.setData("text/plain", t.dataset.foto);
+    e.dataTransfer.effectAllowed = "move";
+  });
+  document.addEventListener("dragover", function (e) {
+    var t = e.target.closest("[data-casilla],[data-acc]");
+    if (!t) return;
+    e.preventDefault(); t.classList.add("hot");
+  });
+  document.addEventListener("dragleave", function (e) {
+    var t = e.target.closest("[data-casilla],[data-acc]");
+    if (t) t.classList.remove("hot");
+  });
+  document.addEventListener("drop", function (e) {
+    var t = e.target.closest("[data-casilla],[data-acc]");
+    if (!t) return;
+    e.preventDefault(); t.classList.remove("hot");
+    var id = +e.dataTransfer.getData("text/plain");
+    if (!id) return;
+    if (t.dataset.casilla !== undefined) colocar(id, +t.dataset.casilla);
+    else { accesorios[+t.dataset.acc].fotoId = id; elegida = null; pintar(); }
+  });
+
+  // accesorios
+  $("#cons").addEventListener("click", function (e) {
+    var quitar = e.target.closest("[data-acc-quitar]");
+    if (quitar) { accesorios.splice(+quitar.dataset.accQuitar, 1); pintar(); return; }
+    var caja = e.target.closest("[data-acc]");
+    if (!caja) return;
+    var i = +caja.dataset.acc;
+    if (elegida !== null) {
+      for (var k = 0; k < casillas.length; k++) if (casillas[k] === elegida) casillas[k] = null;
+      accesorios[i].fotoId = elegida; elegida = null;
+    } else { accesorios[i].fotoId = null; }
+    pintar();
+  });
+  $("#cons").addEventListener("input", function (e) {
+    var campo = e.target.closest("[data-acc-nombre]");
+    if (campo) { accesorios[+campo.dataset.accNombre].nombre = campo.value; pintarSalida(); }
+  });
+  $("#btn-cons").addEventListener("click", function () {
+    accesorios.push({ nombre: "", fotoId: null }); pintar();
+  });
+
+  // barra
+  $("#btn-cargar").addEventListener("click", function () { $("#file").click(); });
+  $("#file").addEventListener("change", function (e) { agregar(e.target.files); e.target.value = ""; });
+  $("#cat").addEventListener("change", function () { autoAsignar(); pintar(); });
+  $("#btn-auto").addEventListener("click", function () { autoAsignar(); pintar(); });
+  $("#btn-limpiar").addEventListener("click", function () {
+    fotos.forEach(function (f) { URL.revokeObjectURL(f.url); });
+    fotos = []; accesorios = []; elegida = null; autoAsignar(); pintar();
+  });
+
+  var drop = $("#drop");
+  ["dragenter", "dragover"].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("hot"); });
+  });
+  ["dragleave", "drop"].forEach(function (ev) {
+    drop.addEventListener(ev, function () { drop.classList.remove("hot"); });
+  });
+  drop.addEventListener("drop", function (e) {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files.length) agregar(e.dataTransfer.files);
+  });
+
+  $("#btn-copiar").addEventListener("click", function () {
+    var area = $("#salida"), aviso = $("#copiado");
+    function hecho(ok) {
+      aviso.textContent = ok ? "copiado" : "seleccione y copie a mano";
+      setTimeout(function () { aviso.textContent = ""; }, 2600);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(area.value).then(function () { hecho(true); },
+                                                     function () { area.select(); hecho(false); });
+    } else { area.select(); hecho(false); }
+  });
+
+  // ---------- ejemplo, para que la página muestre el mecanismo al abrirse ----------
+  function svgDemo(texto, color) {
+    var s = '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240">' +
+      '<rect width="320" height="240" fill="' + color + '"/>' +
+      '<rect x="10" y="10" width="300" height="220" fill="none" stroke="#f0f0f0" stroke-width="3"/>' +
+      '<text x="24" y="126" font-family="monospace" font-size="15" fill="#f5f5f5">' +
+      texto + '</text></svg>';
+    return "data:image/svg+xml;utf8," + encodeURIComponent(s);
+  }
+  $("#btn-ejemplo").addEventListener("click", function () {
+    fotos.forEach(function (f) { URL.revokeObjectURL(f.url); });
+    fotos = []; accesorios = []; elegida = null; siguienteId = 1;
+    var demo = [["01-frontal.jpg","FRONTAL","#5a6470"],["02-posterior.jpg","POSTERIOR","#616b78"],
+      ["03-lat-izq.jpg","LAT IZQ","#525d69"],["04-lat-der.jpg","LAT DER","#5d6874"],
+      ["05-horometro.jpg","HOROMETRO","#232529"],["06-panel.jpg","PANEL","#2c3036"],
+      ["07-motor-frente.jpg","MOTOR FR","#6a4a3c"],["08-motor-atras.jpg","MOTOR PO","#60443a"],
+      ["09-baterias.jpg","BATERIAS","#464e56"],["10-tanque.jpg","TANQUE","#505860"]];
+    demo.forEach(function (d, i) {
+      fotos.push({ id: siguienteId++, nombre: d[0], url: svgDemo(d[1], d[2]),
+                   fecha: null, respaldo: i, sugerida: sugerir(d[0]) });
+    });
+    accesorios.push({ nombre: "EXTINTOR DE 6 KG", fotoId: null });
+    autoAsignar(); pintar();
+    $("#estado").className = "aviso";
+    $("#estado").innerHTML = "<b>Fotos de ejemplo.</b> Pruebe a arrastrarlas entre " +
+      "casillas, o toque una y luego su destino. Pulse <b>vaciar todo</b> y cargue las suyas.";
+  });
+
+  autoAsignar();
+  pintar();
+})();
+</script>
