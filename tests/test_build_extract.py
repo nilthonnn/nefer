@@ -254,3 +254,69 @@ def test_las_anclas_se_leen_con_y_sin_prefijo_xdr(manifiesto, tmp_path):
         anclas = extract._anclas_de_imagen(z)
     assert len(anclas) == 7
     assert all(isinstance(c, int) and isinstance(f, int) for c, f, _ in anclas)
+
+
+def _carpeta_fotos(tmp_path, nombres):
+    carpeta = tmp_path / "fotos"
+    carpeta.mkdir(exist_ok=True)
+    for n in nombres:
+        foto_falsa(carpeta / n)
+    return carpeta
+
+
+def test_fotos_empareja_por_orden_de_nombre(tmp_path, capsys):
+    """El orden alfabético del archivo es el orden de la rejilla."""
+    from nefer.cli import main
+
+    _carpeta_fotos(tmp_path, ["03-c.png", "01-a.png", "02-b.png"])
+    assert main(["fotos", str(tmp_path / "fotos"), "-c", "grupo_electrogeno"]) == 0
+
+    bloque = json.loads(capsys.readouterr().out)["registro_fotografico"]
+    assert [f["archivo"].split("/")[-1] for f in bloque] == \
+           ["01-a.png", "02-b.png", "03-c.png"]
+    assert [f["descripcion"] for f in bloque][:2] == ["VISTA FRONTAL", "VISTA POSTERIOR"]
+    assert [f["foto_id"] for f in bloque] == [1, 2, 3]
+
+
+def test_fotos_escribe_en_el_manifiesto_y_usa_su_categoria(manifiesto, tmp_path):
+    from nefer.cli import main
+
+    manifiesto["encabezado"]["categoria"] = "plataforma_elevacion"
+    ruta = tmp_path / "acta.json"
+    ruta.write_text(json.dumps(manifiesto, ensure_ascii=False), encoding="utf-8")
+    _carpeta_fotos(tmp_path, ["a.png", "b.png"])
+
+    assert main(["fotos", str(tmp_path / "fotos"), "-m", str(ruta)]) == 0
+    vuelta = json.loads(ruta.read_text(encoding="utf-8"))
+    bloque = vuelta["registro_fotografico"]
+    # Rótulos de plataforma, y rutas relativas al manifiesto.
+    assert bloque[0]["descripcion"] == "VISTA FRONTAL"
+    assert bloque[0]["archivo"] == "fotos/a.png"
+    assert schema.validar(vuelta, tmp_path) == []
+
+
+def test_fotos_avisa_de_los_formatos_que_excel_no_incrusta(tmp_path, capsys):
+    """Un HEIC de iPhone se detecta antes de generar, no después."""
+    from nefer.cli import main
+
+    carpeta = _carpeta_fotos(tmp_path, ["a.png"])
+    (carpeta / "IMG_0042.HEIC").write_bytes(b"no importa")
+
+    assert main(["fotos", str(carpeta), "-c", "generico"]) == 0
+    err = capsys.readouterr().err
+    assert "IMG_0042.HEIC" in err and "Mas compatible" in err
+
+
+def test_fotos_avisa_cuando_sobran_fotos(tmp_path, capsys):
+    from nefer.cli import main
+
+    _carpeta_fotos(tmp_path, [f"{i:02d}.png" for i in range(8)])
+    assert main(["fotos", str(tmp_path / "fotos"), "-c", "generico"]) == 0
+    assert "solo 6 rotulos" in capsys.readouterr().err
+
+
+def test_fotos_carpeta_inexistente(tmp_path, capsys):
+    from nefer.cli import main
+
+    assert main(["fotos", str(tmp_path / "no-esta")]) == 1
+    assert "No existe la carpeta" in capsys.readouterr().err

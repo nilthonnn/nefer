@@ -77,25 +77,76 @@ conos, barra de puesta a tierra, bandejas, tacos.
 > foto es el que se transcribe. Si no se lee con certeza, no lo estime: se
 > declara `REVISIÓN MANUAL REQUERIDA` y se levanta en patio.
 
-### Paso 2 — Prepare la carpeta
+### Paso 2 — Pase las fotos del teléfono al computador
+
+Cualquiera de estas vías sirve; use la que ya use su gente:
+
+| Vía | Cómo |
+|---|---|
+| **Cable USB** | Conecte el teléfono, acepte «Transferir archivos» y copie desde `DCIM/Camera` |
+| **WhatsApp o Telegram** | Envíese las fotos a usted mismo y descárguelas desde el escritorio |
+| **Google Drive o Dropbox** | Si el teléfono sincroniza solo, las fotos ya están |
+| **Correo** | Adjúntelas y descárguelas. Cuide que no las comprima |
+
+> **iPhone: revise el formato antes de salir a patio.** Por defecto toma en
+> HEIC, que Excel no sabe incrustar. En **Ajustes → Cámara → Formatos**
+> elija **«Más compatible»** y desde ahí grabará en JPG. Es un cambio de una
+> sola vez que ahorra convertir fotos cada acta.
+
+### Paso 3 — Ordene las fotos en la carpeta
 
 ```bash
 mkdir -p ~/actas/TI009-04-despacho/fotos
 cd ~/actas/TI009-04-despacho
 ```
 
-Descargue las fotos a `fotos/` con nombres que se entiendan:
-`frontal.jpg`, `posterior.jpg`, `horometro.jpg`, `extintor.jpg`.
+Copie las fotos a `fotos/` y **numérelas en el orden de la rejilla del
+formato**: primero la frontal, luego la posterior, después las laterales, y así.
 
-### Paso 3 — Genere el manifiesto
+```
+fotos/
+  01-frontal.jpg      05-horometro.jpg     09-baterias.jpg
+  02-posterior.jpg    06-panel.jpg         10-tanque.jpg
+  03-lat-izq.jpg      07-motor-frente.jpg  extintor.jpg
+  04-lat-der.jpg      08-motor-atras.jpg   barra-tierra.jpg
+```
+
+El prefijo numérico es lo único que importa: fija el orden. El resto del
+nombre es para que usted se entienda.
+
+### Paso 4 — Genere el manifiesto y cargue las fotos
 
 ```bash
 nefer plantilla -o acta.json
 ```
 
-### Paso 4 — Llénelo
+Abra `acta.json`, escriba la `categoria` del equipo y luego deje que el
+programa arme el bloque de fotografías:
 
-Abra `acta.json` en cualquier editor de texto.
+```bash
+nefer fotos fotos/ -m acta.json
+```
+
+Empareja cada archivo, en orden, con el rótulo que le toca según la categoría,
+escribe las rutas y avisa si encuentra formatos que Excel no puede incrustar:
+
+```
+10 fotos escritas en acta.json
+   1. VISTA FRONTAL              fotos/01-frontal.jpg
+   2. VISTA POSTERIOR            fotos/02-posterior.jpg
+   3. VISTA LATERAL IZQUIERDA    fotos/03-lat-izq.jpg
+   ...
+Revise que cada rotulo corresponda a su foto antes de construir.
+```
+
+**Revise esa lista.** Si una foto quedó bajo el rótulo equivocado, corrija el
+nombre del archivo y vuelva a ejecutar el comando, o cambie la `descripcion` a
+mano en el JSON.
+
+Las fotos de accesorios (extintor, conos, barra) **no** van en este bloque:
+van en `consumibles`, como `foto_despacho`.
+
+### Paso 5 — Complete el resto del manifiesto
 
 **El orden de `registro_fotografico` es el orden de la rejilla del formato:**
 la foto 1 va arriba a la izquierda, la 2 arriba a la derecha, la 3 debajo a la
@@ -138,7 +189,7 @@ izquierda, y así. No hay que calcular celdas.
 
 Detalle completo de cada campo en [ESQUEMA-JSON.md](ESQUEMA-JSON.md).
 
-### Paso 5 — Valide
+### Paso 6 — Valide
 
 ```bash
 nefer validar acta.json
@@ -147,7 +198,7 @@ nefer validar acta.json
 Devuelve **todos** los errores de una vez, no el primero. Corrija y repita
 hasta leer `manifiesto valido.`
 
-### Paso 6 — Genere el acta
+### Paso 7 — Genere el acta
 
 ```bash
 nefer construir acta.json -o salidas/TI009-04-DESPACHO.xlsx --pdf
@@ -156,7 +207,7 @@ nefer construir acta.json -o salidas/TI009-04-DESPACHO.xlsx --pdf
 Un acta de diez fotos y dos consumibles tarda unos cinco segundos y sale en
 siete páginas A4.
 
-### Paso 7 — Revise el PDF
+### Paso 8 — Revise el PDF
 
 No firme nada sin pasar esta lista:
 
@@ -170,7 +221,7 @@ No firme nada sin pasar esta lista:
 - [ ] La hoja `CONSUMIBLES` tiene los niveles de despacho y espacio para dos firmas
 - [ ] Ningún bloque fotográfico queda partido entre dos páginas
 
-### Paso 8 — Compare con el acta manual
+### Paso 9 — Compare con el acta manual
 
 Ponga lado a lado el PDF generado y el acta del mismo equipo hecha a mano.
 
@@ -184,7 +235,7 @@ que el formato en papel no tenía.
 > tabla de fluidos por familia de equipo. Son secciones nuevas y sus contenidos
 > por defecto son una propuesta, no una lista oficial.
 
-### Paso 9 — Cierre el ciclo
+### Paso 10 — Cierre el ciclo
 
 Cuando el equipo regrese, levante la recepción del mismo equipo. Solo entonces
 habrá probado el sistema completo: es en la recepción donde aparecen las
@@ -192,7 +243,7 @@ recuperaciones y el consumo calculado.
 
 ### Criterios para dar el piloto por bueno
 
-1. El acta de despacho pasa la lista del paso 7 sin retoques a mano.
+1. El acta de despacho pasa la lista del paso 8 sin retoques a mano.
 2. El acta de recepción refleja correctamente lo que faltó o volvió dañado.
 3. El cliente firma sin pedir aclaraciones sobre el documento.
 4. El operador levanta el acta sin consultar este manual más de una vez.
@@ -267,6 +318,7 @@ vacíos: el formato en papel no los tenía.
 | Comando | Qué hace |
 |---|---|
 | `nefer plantilla -o acta.json` | Manifiesto en blanco |
+| `nefer fotos fotos/ -m acta.json` | Carga la carpeta de fotos en el manifiesto |
 | `nefer validar acta.json` | Verifica el manifiesto y que las fotos existan |
 | `nefer validar acta.json --sin-verificar-fotos` | Solo el manifiesto, sin mirar el disco |
 | `nefer construir acta.json -o salida.xlsx` | Genera el Excel |
@@ -343,7 +395,19 @@ Todo opcional, en `encabezado`:
 ### El PDF sale bien pero una foto no aparece
 
 Excel solo incrusta PNG, JPG, GIF y BMP. Un HEIC de iPhone o un TIFF no entran.
-El generador avisa y deja el bloque vacío en vez de fallar en silencio.
+Tanto `nefer fotos` como el generador avisan y dejan el bloque vacío en vez de
+fallar en silencio.
+
+Para convertir lo que ya tomó:
+
+```bash
+sudo apt-get install libheif-examples imagemagick
+for f in fotos/*.HEIC; do heif-convert "$f" "${f%.HEIC}.jpg"; done
+mogrify -format jpg fotos/*.tif        # para TIFF
+```
+
+Mejor todavía, evítelo de raíz: en el iPhone, **Ajustes → Cámara → Formatos →
+«Más compatible»**.
 
 ### El acta sale sin logo y sin decir por qué
 
