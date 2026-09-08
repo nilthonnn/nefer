@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import __version__, build, extract, pdf, schema
+from . import __version__, build, extract, layout, pdf, schema
 
 
 def _imprimir_avisos(avisos: list[str]) -> None:
@@ -52,6 +52,95 @@ def cmd_construir(args) -> int:
         except pdf.ErrorPDF as exc:
             print(str(exc), file=sys.stderr)
             return 2
+    return 0
+
+
+# Formatos que Excel sabe incrustar, y los que la gente trae de todos modos.
+EXT_VALIDAS = build.FORMATOS_IMAGEN
+EXT_PROBLEMA = {".heic", ".heif", ".tiff", ".tif", ".webp", ".dng", ".raw"}
+
+
+def cmd_fotos(args) -> int:
+    """Arma el bloque `registro_fotografico` a partir de una carpeta de fotos.
+
+    Las fotos se emparejan con los rotulos de la categoria en el orden en que
+    aparecen ordenadas por nombre, que es el orden de la rejilla del formato.
+    """
+    carpeta = Path(args.carpeta)
+    if not carpeta.is_dir():
+        print(f"No existe la carpeta {carpeta}", file=sys.stderr)
+        return 1
+
+    manifiesto = None
+    if args.manifiesto:
+        ruta_m = Path(args.manifiesto)
+        try:
+            with ruta_m.open(encoding="utf-8") as fh:
+                manifiesto = json.load(fh)
+        except FileNotFoundError:
+            print(f"No existe el manifiesto {ruta_m}", file=sys.stderr)
+            return 1
+        except json.JSONDecodeError as exc:
+            print(f"{ruta_m}: no es JSON valido (linea {exc.lineno}).", file=sys.stderr)
+            return 1
+
+    categoria = args.categoria
+    if not categoria and manifiesto:
+        categoria = manifiesto.get("encabezado", {}).get("categoria")
+    categoria = categoria or "generico"
+    if categoria not in layout.VISTAS_POR_CATEGORIA:
+        print(f"Categoria desconocida: {categoria!r}. Use una de "
+              f"{sorted(layout.VISTAS_POR_CATEGORIA)}.", file=sys.stderr)
+        return 1
+
+    archivos = sorted(p for p in carpeta.iterdir()
+                      if p.is_file() and p.suffix.lower() in EXT_VALIDAS)
+    rechazadas = sorted(p for p in carpeta.iterdir()
+                        if p.is_file() and p.suffix.lower() in EXT_PROBLEMA)
+
+    if rechazadas:
+        print(f"  aviso: {len(rechazadas)} archivo(s) que Excel no puede incrustar: "
+              + ", ".join(p.name for p in rechazadas[:4])
+              + ("…" if len(rechazadas) > 4 else ""), file=sys.stderr)
+        print("  aviso: conviertalos a JPG antes de continuar. En el iPhone, "
+              "Ajustes > Camara > Formatos > 'Mas compatible' evita el problema "
+              "de raiz.", file=sys.stderr)
+    if not archivos:
+        print(f"No hay imagenes utilizables en {carpeta}", file=sys.stderr)
+        return 1
+
+    base = Path(args.manifiesto).parent if args.manifiesto else Path(".")
+    vistas = layout.VISTAS_POR_CATEGORIA[categoria]
+    registro = []
+    for i, archivo in enumerate(archivos):
+        try:
+            relativa = archivo.resolve().relative_to(base.resolve())
+        except ValueError:
+            relativa = archivo
+        registro.append({
+            "foto_id": i + 1,
+            "descripcion": vistas[i] if i < len(vistas) else "",
+            "archivo": relativa.as_posix(),
+        })
+
+    if len(archivos) > len(vistas):
+        print(f"  aviso: hay {len(archivos)} fotos y solo {len(vistas)} rotulos "
+              f"para '{categoria}'; complete a mano las ultimas descripciones.",
+              file=sys.stderr)
+
+    if manifiesto is None:
+        print(json.dumps({"registro_fotografico": registro},
+                         ensure_ascii=False, indent=2))
+        return 0
+
+    manifiesto["registro_fotografico"] = registro
+    Path(args.manifiesto).write_text(
+        json.dumps(manifiesto, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print(f"{len(registro)} fotos escritas en {args.manifiesto}")
+    for foto in registro:
+        print(f"  {foto['foto_id']:>2}. {foto['descripcion'] or '(sin rotulo)':<26} "
+              f"{foto['archivo']}")
+    print("\nRevise que cada rotulo corresponda a su foto antes de construir.")
     return 0
 
 
@@ -150,6 +239,15 @@ def construir_parser() -> argparse.ArgumentParser:
     e.add_argument("-o", "--salida", help="ruta del .json de salida")
     e.add_argument("--fotos", help="carpeta donde volcar las imagenes incrustadas")
     e.set_defaults(func=cmd_extraer)
+
+    f = sub.add_parser("fotos",
+                       help="carpeta de fotos -> bloque registro_fotografico")
+    f.add_argument("carpeta")
+    f.add_argument("-m", "--manifiesto",
+                   help="escribir el bloque dentro de este acta.json")
+    f.add_argument("-c", "--categoria",
+                   help="familia del equipo; por defecto, la del manifiesto")
+    f.set_defaults(func=cmd_fotos)
 
     d = sub.add_parser("pdf", help="Excel -> PDF")
     d.add_argument("xlsx")
