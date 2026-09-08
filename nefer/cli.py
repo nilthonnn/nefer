@@ -100,7 +100,7 @@ def cmd_guias(args) -> int:
     destino = Path(args.salida or ".")
     destino.mkdir(parents=True, exist_ok=True)
     for nombre, lineas in (
-        ("GUIA-RD-DESPACHO-RECEPCION.md", textos.guia_rd(manifiesto)),
+        ("GUIA-OPERADOR.md", textos.guia_operador(manifiesto)),
         ("GUIA-CLIENTE.md", textos.guia_cliente(manifiesto)),
     ):
         ruta = destino / nombre
@@ -122,8 +122,8 @@ def cmd_plantilla(args) -> int:
 def construir_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="nefer",
-        description="Automatiza el reporte RD-FO-DE-022 de despacho y recepcion "
-                    "de equipos de RD Rental S.A.",
+        description="Automatiza el reporte fotografico de despacho y recepcion "
+                    "de maquinaria.",
     )
     p.add_argument("--version", action="version", version=f"nefer {__version__}")
     sub = p.add_subparsers(dest="comando", required=True)
@@ -134,7 +134,7 @@ def construir_parser() -> argparse.ArgumentParser:
     c.add_argument("--pdf", nargs="?", const=True, default=False,
                    help="exportar tambien a PDF (opcionalmente indique la ruta)")
     c.add_argument("--sin-guias", action="store_true",
-                   help="no incluir las hojas GUIA RD y GUIA CLIENTE")
+                   help="no incluir las hojas GUIA OPERADOR y GUIA CLIENTE")
     c.set_defaults(func=cmd_construir)
 
     v = sub.add_parser("validar", help="verificar un manifiesto contra el esquema")
@@ -154,7 +154,7 @@ def construir_parser() -> argparse.ArgumentParser:
     d.add_argument("-o", "--salida")
     d.set_defaults(func=cmd_pdf)
 
-    g = sub.add_parser("guias", help="exportar las guias RD y cliente en Markdown")
+    g = sub.add_parser("guias", help="exportar las guias de operador y cliente en Markdown")
     g.add_argument("-o", "--salida", help="carpeta de destino (por defecto, la actual)")
     g.add_argument("-m", "--manifiesto",
                    help="acta de la que tomar equipo y cliente para encabezar la guia")

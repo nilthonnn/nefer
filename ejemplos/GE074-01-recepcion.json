@@ -1,14 +1,14 @@
 {
   "encabezado": {
-    "empresa": "RD Rental S.A.",
+    "empresa": "Maquinarias del Sur S.A.C.",
     "tipo_documento": "RECEPCION",
-    "n_acta": "031-003943",
-    "n_guia": "EG07-00005942",
-    "cliente": "ECHEVERRIA IZQUIERDO MONTAJES INDUSTRIALES PERU S.A.C",
-    "obra": "OBRA MINA TOROMOCHO - MOROCOCHA",
+    "n_acta": "001-000123",
+    "n_guia": "T001-00004567",
+    "cliente": "CONSTRUCTORA ANDINA S.A.C.",
+    "obra": "PROYECTO DE AMPLIACIÓN — UNIDAD MINERA NORTE",
     "fecha": "2026-08-26",
     "horometro": 1548.7,
-    "codigo_equipo": "GI074-17",
+    "codigo_equipo": "GE074-01",
     "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW (POT. CONTINUA)",
     "categoria": "grupo_electrogeno"
   },

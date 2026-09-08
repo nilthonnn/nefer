@@ -1,4 +1,4 @@
-"""Genera el libro Excel RD-FO-DE-022 a partir de un manifiesto JSON."""
+"""Genera el libro Excel del reporte a partir de un manifiesto JSON."""
 
 from __future__ import annotations
 
@@ -69,7 +69,7 @@ def insertar_imagen(ws, ruta: Path, columna: str, fila: int,
 
 
 # --------------------------------------------------------------------------- #
-# Hoja principal: RD-FO-DE-022
+# Hoja principal: reporte fotografico
 # --------------------------------------------------------------------------- #
 def _dimensionar(ws, ultima_fila: int, n_bloques_foto: int, n_consumibles: int) -> None:
     for col, ancho in layout.ANCHOS_COLUMNA.items():
@@ -87,20 +87,15 @@ def _dimensionar(ws, ultima_fila: int, n_bloques_foto: int, n_consumibles: int) 
             ws.row_dimensions[bloque[clave]].height = layout.ALTO_FILA_ROTULO
 
 
-LOGO_POR_DEFECTO = Path(__file__).resolve().parent / "recursos" / "logo-rd-rental.png"
-
-
-def _ruta_logo(enc: dict, raiz: Path) -> Path:
-    """El manifiesto puede sobreescribir el logo; si no, se usa el del paquete."""
-    if enc.get("logo"):
-        return raiz / enc["logo"]
-    return LOGO_POR_DEFECTO
+def _ruta_logo(enc: dict, raiz: Path) -> Path | None:
+    """Logo de la organizacion, si el manifiesto declara uno."""
+    return raiz / enc["logo"] if enc.get("logo") else None
 
 
 def _cabecera(ws, enc: dict, raiz: Path) -> None:
     logo = _ruta_logo(enc, raiz)
     st.escribir(ws, "A1:F3", None)
-    if logo.exists():
+    if logo and logo.exists():
         insertar_imagen(ws, logo, "A", 1,
                         sum(round(layout.ANCHOS_COLUMNA[c] * 7) + 5 for c in "ABCDEF"),
                         layout.alto_bloque_px(3))
@@ -108,9 +103,14 @@ def _cabecera(ws, enc: dict, raiz: Path) -> None:
     st.escribir(ws, "G1:R3", layout.TITULO_FORMATO,
                 fuente=st.FUENTE_TITULO, alineacion=st.CENTRO_AJUSTADO,
                 fill=st.FILL_CABECERA)
-    st.escribir(ws, "S1:Z1", layout.CODIGO_FORMATO, fuente=st.FUENTE_META, alineacion=st.IZQUIERDA)
-    st.escribir(ws, "S2:Z2", layout.VERSION_FORMATO, fuente=st.FUENTE_META, alineacion=st.IZQUIERDA)
-    st.escribir(ws, "S3:Z3", layout.FECHA_FORMATO, fuente=st.FUENTE_META, alineacion=st.IZQUIERDA)
+    control = (
+        ("S1:Z1", "CÓDIGO", enc.get("codigo_formato", layout.CODIGO_FORMATO)),
+        ("S2:Z2", "VERSIÓN", enc.get("version_formato", layout.VERSION_FORMATO)),
+        ("S3:Z3", "FECHA", enc.get("fecha_formato", layout.FECHA_FORMATO)),
+    )
+    for rango, etiqueta, valor in control:
+        texto = f"{etiqueta}: {valor}" if str(valor).strip() else f"{etiqueta}:"
+        st.escribir(ws, rango, texto, fuente=st.FUENTE_META, alineacion=st.IZQUIERDA)
 
     etiquetas = [
         ("A4:F4", "N° ACTA:", "G4:Z4", enc.get("n_acta", "")),
@@ -275,7 +275,8 @@ def _cabecera_auxiliar(ws, manifiesto: dict, titulo: str, n_columnas: int) -> in
     """Encabezado de hoja auxiliar. Devuelve la fila donde empieza la tabla."""
     enc = manifiesto["encabezado"]
     ultima = get_column_letter(n_columnas)
-    st.escribir(ws, f"A1:{ultima}1", f"{titulo} — {enc.get('empresa', 'RD Rental S.A.')}",
+    empresa = (enc.get("empresa") or "").strip()
+    st.escribir(ws, f"A1:{ultima}1", f"{titulo} — {empresa}" if empresa else titulo,
                 fuente=st.FUENTE_META, fill=st.FILL_CABECERA)
     detalle = (
         f"ACTA {enc.get('n_acta', '')}   |   {enc.get('tipo_documento', '')}   |   "
@@ -359,7 +360,9 @@ def construir_hoja_consumibles(wb: Workbook, manifiesto: dict):
         filas, [5, 34, 12, 12, 12, 12, 10, 46],
     )
     fila_firma = len(filas) + 7
-    ws.cell(row=fila_firma, column=2, value="FIRMA OPERADOR RD RENTAL S.A.").font = st.FUENTE_ETIQUETA
+    empresa = (manifiesto["encabezado"].get("empresa") or "").strip()
+    rotulo_operador = f"FIRMA OPERADOR {empresa}".strip() if empresa else "FIRMA DEL OPERADOR"
+    ws.cell(row=fila_firma, column=2, value=rotulo_operador).font = st.FUENTE_ETIQUETA
     ws.cell(row=fila_firma, column=5, value="FIRMA / V°B° CLIENTE").font = st.FUENTE_ETIQUETA
     for col in (2, 5):
         ws.cell(row=fila_firma + 3, column=col, value="_______________________________")
@@ -368,7 +371,7 @@ def construir_hoja_consumibles(wb: Workbook, manifiesto: dict):
 
 def construir_hojas_guia(wb: Workbook, manifiesto: dict):
     for titulo, lineas in (
-        ("GUÍA RD", textos.guia_rd(manifiesto)),
+        ("GUÍA OPERADOR", textos.guia_operador(manifiesto)),
         ("GUÍA CLIENTE", textos.guia_cliente(manifiesto)),
     ):
         ws = wb.create_sheet(titulo)

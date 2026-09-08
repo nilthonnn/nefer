@@ -15,15 +15,15 @@ python -m nefer validar acta.json --verificar-fotos
 ```json
 {
   "encabezado": {
-    "empresa": "RD Rental S.A.",
+    "empresa": "Maquinarias del Sur S.A.C.",
     "tipo_documento": "DESPACHO",
-    "n_acta": "031-003943",
-    "n_guia": "EG07-00005942",
-    "cliente": "ECHEVERRIA IZQUIERDO MONTAJES INDUSTRIALES PERU S.A.C",
-    "obra": "OBRA MINA TOROMOCHO - MOROCOCHA",
+    "n_acta": "001-000123",
+    "n_guia": "T001-00004567",
+    "cliente": "CONSTRUCTORA ANDINA S.A.C.",
+    "obra": "PROYECTO DE AMPLIACIÓN — UNIDAD MINERA NORTE",
     "fecha": "2026-08-26",
     "horometro": 1548.7,
-    "codigo_equipo": "GI074-17",
+    "codigo_equipo": "GE074-01",
     "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW (POT. CONTINUA)",
     "categoria": "grupo_electrogeno"
   },
@@ -68,7 +68,7 @@ python -m nefer validar acta.json --verificar-fotos
 
 | Campo | Obligatorio | Reglas |
 |---|---|---|
-| `empresa` | no | Por defecto `RD Rental S.A.` |
+| `empresa` | no | Razón social. Si se omite, el acta sale sin ella |
 | `tipo_documento` | **sí** | `DESPACHO` o `RECEPCION`. Decide en qué casilla va la **X** |
 | `n_acta` | no | Número correlativo del acta |
 | `n_guia` | no | Guía de remisión. Sin guía el equipo no sale de patio |
@@ -76,10 +76,13 @@ python -m nefer validar acta.json --verificar-fotos
 | `obra` | no | Sitio de entrega o recepción |
 | `fecha` | **sí** | `YYYY-MM-DD`. Se imprime como `DD/MM/YYYY` |
 | `horometro` | **sí** | Número de horas, o la cadena `REVISIÓN MANUAL REQUERIDA` si la lectura es ilegible |
-| `codigo_equipo` | **sí** | Código interno RD (`GI074-17`, `PTE010-09`) |
+| `codigo_equipo` | **sí** | Código interno del equipo (`GE074-01`, `PLT010-02`) |
 | `modelo_equipo` | **sí** | Descripción del equipo tal como va en el acta |
 | `categoria` | no | Define los rótulos sugeridos y la tabla de consumibles |
-| `logo` | no | Ruta a un logo alternativo; si se omite se usa el del formato |
+| `logo` | no | Ruta al logo de la organización; si se omite, el acta sale sin logo |
+| `codigo_formato` | no | Bloque de control documental. Por defecto `FO-DR-001` |
+| `version_formato` | no | Por defecto `00` |
+| `fecha_formato` | no | Fecha de emisión del formato. Vacía por defecto |
 
 Categorías: `grupo_electrogeno`, `torre_iluminacion`, `plataforma_elevacion`,
 `maquinaria_amarilla`, `generico`.

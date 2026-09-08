@@ -15,12 +15,12 @@ def test_bloques_fotograficos_cada_quince_filas():
 
 
 def test_observaciones_tras_cinco_bloques():
-    # Acta GI074-17: cinco filas de fotos y OBSERVACION en la fila 86.
+    # Acta de referencia: cinco filas de fotos y OBSERVACION en la fila 86.
     assert layout.fila_titulo_observaciones(5) == 86
 
 
 def test_bloques_de_consumible_de_diecisiete_filas():
-    # Acta GI074-17: primer bloque en 87, segundo en 104.
+    # Acta de referencia: primer bloque en 87, segundo en 104.
     primero = layout.bloque_consumible(0, 5)
     assert primero == {
         "fila_encabezado": 87, "fila_imagen_inicio": 88, "fila_imagen_fin": 101,
