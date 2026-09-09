@@ -105,7 +105,7 @@ def texto_recuperacion(cons: dict, numero: int,
     # el simbolo de numero.
     if cons.get("estado_recepcion") in {"NO_RETORNA", "D", "OBS"}:
         return f"RECUPERACIÓN {numero} : {cantidad:02d} {descripcion}"
-    return f"CONFORME N° {numero} : {cantidad:02d} {descripcion} — SIN RECUPERACIÓN"
+    return f"CONFORME {numero} : {cantidad:02d} {descripcion} — SIN RECUPERACIÓN"
 
 
 def _enc(manifiesto: dict) -> dict:

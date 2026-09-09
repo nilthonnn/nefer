@@ -94,7 +94,7 @@ cámara— contra un navegador de verdad:
 ```bash
 pip install -e ".[navegador]"
 python -m playwright install chromium
-python -m pytest                       # ahora son 111
+python -m pytest                       # ahora son 114
 ```
 
 Las **27 pruebas** de `tests/test_app_navegador.py` abren el selector de
@@ -480,6 +480,21 @@ Las fotos del retorno entran **por las mismas vías que en despacho** —cámara
 integrada, cámara del sistema, galería y carpeta—, en una barra con la misma
 forma. Y como en despacho, **tocar un recuadro «DESPUÉS» vacío dispara la
 cámara para esa vista**: la foto entra donde toca, sin pasar por la bandeja.
+
+**Accesorios: la tabla del formato, en pantalla.** Cada accesorio es un bloque
+con la misma forma que en el Excel:
+
+| | |
+|---|---|
+| **DESPACHO** | **RECEPCIÓN** |
+| foto — se toca y se fotografía | foto — se toca y se fotografía |
+| `02 CONOS DE 28" DESPACHADO` | `EL EQUIPO RETORNÓ SIN 02 CONOS DE 28"` |
+| **RECUPERACIÓN 1 : 02 CONOS DE 28"** — franja amarilla, editable ||
+
+Las dos celdas cargan foto por cámara o galería. Los rótulos se redactan solos
+a partir del nombre, la cantidad y el estado. La franja va **amarilla cuando hay
+algo que recuperar** y en blanco cuando no, y se puede reescribir: la redacción
+automática es un punto de partida, no la última palabra del que firma.
 
 Los accesorios se añaden con **+ Añadir accesorio**, que ofrece el catálogo de
 los que aparecen en las actas reales —conos, barra puesta a tierra, base de

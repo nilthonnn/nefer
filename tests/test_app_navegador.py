@@ -1086,3 +1086,133 @@ def test_la_casilla_llena_de_recepcion_se_vacia_al_tocarla(servidor):
         # Y la foto vuelve a la bandeja, no se pierde.
         assert int(pg.inner_text("#r-t-tira")) == 1
         nav.close()
+
+def test_observaciones_tiene_la_forma_de_la_tabla_del_formato(servidor):
+    """Cabecera DESPACHO|RECEPCION, dos fotos, rotulos y franja de recuperacion."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        pg.wait_for_timeout(600)
+        _empezar_recepcion(pg)
+
+        pg.click("#r-add-cons")
+        pg.wait_for_timeout(400)
+        pg.fill("#r-consumibles [data-cons-nombre]", 'CONOS DE SEGURIDAD DE 28"')
+        pg.wait_for_timeout(300)
+        pg.fill("#r-consumibles [data-cons-cant]", "2")
+        pg.wait_for_timeout(300)
+
+        cabecera = pg.eval_on_selector_all("#r-consumibles .obs-cab span",
+                                           "n => n.map(x => x.textContent)")
+        assert cabecera == ["DESPACHO", "RECEPCIÓN"], cabecera
+
+        celdas = pg.eval_on_selector_all("#r-consumibles .obs-fotos > *",
+                                         "n => n.map(x => x.tagName)")
+        assert celdas == ["LABEL", "LABEL"], celdas
+
+        # Conforme: la franja va en blanco, que una banda amarilla sin nada
+        # que recuperar se lee como un dato que falta.
+        franja = pg.eval_on_selector("#r-consumibles .obs-recuperacion",
+                                     "n => getComputedStyle(n).backgroundColor")
+        assert franja != "rgb(255, 255, 0)", franja
+
+        pg.click("#r-consumibles .estados button[data-e='NO_RETORNA']")
+        pg.wait_for_timeout(400)
+
+        rotulos = pg.eval_on_selector_all("#r-consumibles .obs-rotulos span",
+                                          "n => n.map(x => x.textContent)")
+        assert rotulos[0] == '02 CONOS DE SEGURIDAD DE 28" DESPACHADO', rotulos
+        assert rotulos[1] == 'EL EQUIPO RETORNÓ SIN 02 CONOS DE SEGURIDAD DE 28"', rotulos
+
+        franja = pg.eval_on_selector("#r-consumibles .obs-recuperacion",
+                                     "n => getComputedStyle(n).backgroundColor")
+        assert franja == "rgb(255, 255, 0)", franja
+        valor = pg.input_value("#r-consumibles [data-cons-recup]")
+        assert valor == 'RECUPERACIÓN 1 : 02 CONOS DE SEGURIDAD DE 28"', valor
+        nav.close()
+
+
+def test_las_dos_celdas_de_observaciones_cargan_foto(servidor, tmp_path):
+    """La de despacho tambien: sin ella la tabla queda coja."""
+    from nefer import schema
+
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        ctx = _contexto(nav, movil=True, camara=True, descargas=True)
+        pg = ctx.new_page()
+        pg.goto(servidor)
+        pg.wait_for_timeout(600)
+        _empezar_recepcion(pg)
+
+        pg.click("#r-add-cons")
+        pg.wait_for_timeout(400)
+        pg.fill("#r-consumibles [data-cons-nombre]", "BARRA PUESTA A TIERRA")
+        pg.wait_for_timeout(300)
+        pg.click("#r-consumibles .estados button[data-e='D']")
+        pg.wait_for_timeout(300)
+
+        for selector in ("[data-destino='consAntes']", "[data-destino='cons']"):
+            pg.click("#r-consumibles " + selector)
+            pg.wait_for_function(
+                "() => document.querySelector('#cam-video').videoWidth > 0", timeout=15000)
+            pg.click("#cam-disparar")
+            pg.wait_for_timeout(1300)
+            pg.click("#cam-cerrar")
+            pg.wait_for_timeout(600)
+
+        assert pg.eval_on_selector_all("#r-consumibles .obs-fotos img", "n => n.length") == 2
+
+        acta = json.loads(pg.input_value("#r-salida"))
+        cons = acta["consumibles"][0]
+        assert cons["foto_despacho"].startswith("fotos/despacho/"), cons
+        assert cons["foto_recepcion"].startswith("fotos/"), cons
+
+        for campo, valor in (("#r-acta", "000-000003"), ("#r-horometro", "10"),
+                             ("#r-cliente", "CLIENTE DE PRUEBA S.A.C."),
+                             ("#r-codigo_equipo", "C000-00"),
+                             ("#r-modelo_equipo", "COMPRESOR DE PRUEBA"),
+                             ("#r-resumen", "Barra de tierra dañada.")):
+            pg.fill(campo, valor)
+        pg.wait_for_timeout(400)
+        with pg.expect_download(timeout=90000) as espera:
+            pg.click("#r-zip")
+        paquete = tmp_path / espera.value.suggested_filename
+        espera.value.save_as(paquete)
+        nav.close()
+
+    # Las dos fotos viajan en el paquete y el acta las encuentra.
+    carpeta = tmp_path / "abierto"
+    with zipfile.ZipFile(paquete) as z:
+        z.extractall(carpeta)
+        nombres = z.namelist()
+    assert any(n.startswith("fotos/despacho/") for n in nombres), nombres
+    manifiesto = json.loads((carpeta / "acta.json").read_text(encoding="utf-8"))
+    assert schema.validar(manifiesto, carpeta) == []
+
+
+def test_la_recuperacion_escrita_a_mano_manda(servidor):
+    """La redaccion automatica es un punto de partida, no la ultima palabra."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        _sin_camara(pg)
+        pg.goto(servidor)
+        pg.wait_for_timeout(600)
+        _empezar_recepcion(pg)
+
+        pg.click("#r-add-cons")
+        pg.wait_for_timeout(400)
+        pg.fill("#r-consumibles [data-cons-nombre]", "GATA DE TIRO")
+        pg.wait_for_timeout(300)
+        pg.click("#r-consumibles .estados button[data-e='D']")
+        pg.wait_for_timeout(300)
+
+        pg.fill("#r-consumibles [data-cons-recup]",
+                "RECUPERACIÓN 1 : 01 GATA — POR EVALUAR POR PLANTA")
+        pg.wait_for_timeout(400)
+
+        acta = json.loads(pg.input_value("#r-salida"))
+        assert acta["consumibles"][0]["recuperacion"] == \
+            "RECUPERACIÓN 1 : 01 GATA — POR EVALUAR POR PLANTA"
+        nav.close()
