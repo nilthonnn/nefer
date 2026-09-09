@@ -34,6 +34,19 @@ cd nefer
 pip install -e .
 ```
 
+### Si algo no carga
+
+La pestaña **Guía** de la aplicación termina con una **comprobación del
+dispositivo**: dice si la página va dentro de otra aplicación, si hay acceso a
+la cámara, si el selector de archivos devuelve algo y si la foto que devolvió se
+pudo abrir. El botón *copiar informe* deja ese texto listo para pegarlo en un
+mensaje. Es lo primero que hay que mirar antes de suponer nada.
+
+La causa más común es abrir el archivo desde el visor interno de una aplicación
+de mensajería en vez de un navegador: ahí ni el selector ni la cámara se
+conceden. Abra el archivo con **Chrome** o **Safari**, o instale la app en la
+pantalla de inicio.
+
 ### En el celular
 
 La computadora genera el Excel y el PDF; el celular es donde se levanta el acta,
@@ -177,11 +190,21 @@ aparato tiene, y sólo esas:
 
 | Vía | Dónde | Para qué |
 |---|---|---|
-| Tocar la casilla vacía | celular | Dispara la cámara y la foto entra **en esa casilla**. La de menos errores: el rótulo está a la vista mientras fotografía y no hay que asignar nada después. |
-| **Tomar foto** | celular | Dispara y la foto cae en la bandeja, para colocarla luego |
+| **Cámara** | donde haya una | Abre la cámara **dentro de la app** y recorre las casillas vacías en orden: se dispara diez veces y cada foto cae en la suya, con el rótulo en pantalla mientras apunta. La de menos errores, porque no hay paso de asignación donde equivocarse. |
+| Tocar una casilla vacía | donde haya cámara | Lo mismo, para esa casilla sola |
 | **Galería / Cargar fotos** | ambos | Las que ya tomó, de una vez |
+| **Cámara del sistema** | celular | La cámara normal del teléfono; la foto cae en la bandeja |
 | **Carpeta** o arrastrarla | computadora | La carpeta entera de un tirón, subcarpetas incluidas |
 | Pegar con `Ctrl+V` | computadora | Cuando la foto ya está en el portapapeles |
+
+La cámara de la app no usa el selector de archivos: pide la cámara directamente.
+Es la ruta que queda cuando el navegador o el visor donde se abrió la página no
+dejan abrir el selector. Si tampoco se concede, la app lo dice, ofrece la galería
+en el momento y deja de interponerse.
+
+Ninguna de las vías filtra por extensión: los selectores de Android y de iOS
+entregan a menudo nombres y tipos vacíos, y filtrar por ellos escondía la
+fototeca o hacía desaparecer fotos. Vale lo que el navegador sepa abrir.
 
 Vale cualquier archivo que **el navegador sepa abrir**, se llame como se llame:
 los selectores de Android entregan a menudo nombres sin extensión y sin tipo, y

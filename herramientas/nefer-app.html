@@ -219,6 +219,40 @@
      sin esta regla, ocultar con el atributo no hace nada. */
   [hidden] { display:none !important; }
 
+  /* ---------- cámara dentro de la app ----------
+     No usa el selector de archivos: pide la cámara directamente. Es la ruta
+     que queda cuando el navegador no deja abrir el selector. */
+  .camara { position:fixed; inset:0; z-index:60; background:#000;
+            display:flex; flex-direction:column; }
+  .camara video { flex:1; width:100%; height:100%; object-fit:cover;
+                  background:#000; min-height:0; }
+  .cam-alto { position:absolute; top:0; left:0; right:0;
+              padding:calc(env(safe-area-inset-top) + .7rem) .9rem .9rem;
+              background:linear-gradient(rgba(0,0,0,.88), rgba(0,0,0,.55) 60%, transparent); }
+  .cam-destino { margin:0; color:#fff; font-family:var(--cond); font-size:1.25rem;
+                 font-weight:700; text-transform:uppercase; letter-spacing:.02em;
+                 line-height:1.1; text-shadow:0 1px 4px rgba(0,0,0,.9); }
+  .cam-cuenta { display:block; font-family:var(--mono); font-size:.7rem;
+                font-weight:400; letter-spacing:.1em; color:#B9C6CC;
+                text-transform:none; margin-top:.15rem; }
+  .cam-mandos { position:absolute; left:0; right:0; bottom:0;
+                display:flex; align-items:center; justify-content:space-between;
+                gap:1rem; padding:1rem 1.2rem calc(1rem + env(safe-area-inset-bottom));
+                background:linear-gradient(transparent, rgba(0,0,0,.55) 40%, rgba(0,0,0,.88)); }
+  /* Casi opacos a propósito: el fondo es vídeo, y sobre una toma clara un
+     relleno translúcido dejaría el texto ilegible justo cuando hay sol. */
+  .cam-mandos button { background:rgba(12,14,16,.85); border:1px solid rgba(255,255,255,.45);
+                       color:#fff; min-height:48px; padding:.55rem .9rem; }
+  .cam-mandos button:hover { border-color:#fff; color:#fff; background:rgba(12,14,16,.95); }
+  .obturador { width:74px; height:74px; min-height:74px; border-radius:50%;
+               background:#fff !important; border:5px solid rgba(255,255,255,.45) !important;
+               padding:0; flex:none; }
+  .obturador:active { transform:scale(.94); }
+  .cam-aviso { position:absolute; left:1rem; right:1rem; top:50%; transform:translateY(-50%);
+               background:var(--card); color:var(--ink); border:1px solid var(--rule);
+               border-radius:7px; padding:.9rem 1rem; font-size:.9rem; }
+  .cam-aviso b { display:block; margin-bottom:.3rem; }
+
   /* Objetivo táctil de 44 px: el mínimo para operar con guantes, de pie y con
      el equipo delante. WCAG 2.2 exige 24; en patio eso no basta. */
   button, select, input[type="text"], input[type="number"], input[type="date"] {
@@ -515,11 +549,11 @@
           <option value="maquinaria_amarilla">Maquinaria amarilla</option>
           <option value="generico">Genérico</option>
         </select>
+        <button type="button" class="primary ruta" id="d-camara-app" hidden>Cámara</button>
         <input type="file" id="d-camara" class="archivo" accept="image/*"
-               capture="environment" aria-label="Tomar una fotografía con la cámara">
-        <label class="boton primary ruta" id="d-camara-lb" for="d-camara" hidden>Tomar foto</label>
+               capture="environment" aria-label="Tomar una fotografía con la cámara del sistema">
+        <label class="boton ruta" id="d-camara-lb" for="d-camara" hidden>Cámara del sistema</label>
         <input type="file" id="d-file" class="archivo" multiple
-               accept="image/*,.jpg,.jpeg,.png,.heic,.heif"
                aria-label="Elegir fotografías del equipo">
         <label class="boton primary" for="d-file" id="d-file-lb">Cargar fotos…</label>
         <input type="file" id="d-carpeta" class="archivo" multiple webkitdirectory
@@ -567,7 +601,7 @@
           <h2>Sin asignar <span class="tally" id="d-t-bandeja">0</span></h2>
           <div class="panel-body">
                 <div class="drop" id="d-drop"></div>
-            <input type="file" id="d-slot" class="archivo" accept="image/*"
+            <input type="file" id="d-slot" class="archivo"
                    aria-label="Fotografía para la casilla elegida">
             <p class="progreso lb" id="d-progreso" hidden></p>
             <div class="tray" id="d-tray"></div>
@@ -639,8 +673,7 @@
           <h2><span class="n">02</span> Fotos del despacho</h2>
           <p>La carpeta <code>fotos/</code> de ese mismo despacho.</p>
           <input type="file" id="r-f2" class="archivo" multiple
-                 accept="image/*,.jpg,.jpeg,.png,.heic,.heif"
-                 aria-label="Seleccionar fotos del despacho">
+                   aria-label="Seleccionar fotos del despacho">
           <label class="boton" for="r-f2">Cargar fotos…</label>
           <input type="file" id="r-carpeta" class="archivo" multiple webkitdirectory
                  aria-label="Elegir la carpeta de fotos del despacho">
@@ -650,12 +683,12 @@
         <div class="carga" id="r-c3">
           <h2><span class="n">03</span> Fotos del retorno</h2>
           <p>Las que acaba de tomar al recibir el equipo.</p>
+          <button type="button" class="primary ruta" id="r-camara-app" hidden>Cámara</button>
           <input type="file" id="r-camara" class="archivo" accept="image/*"
                  capture="environment" aria-label="Fotografiar el equipo que retorna">
-          <label class="boton primary ruta" id="r-camara-lb" for="r-camara" hidden>Tomar foto</label>
+          <label class="boton ruta" id="r-camara-lb" for="r-camara" hidden>Cámara del sistema</label>
           <input type="file" id="r-f3" class="archivo" multiple
-                 accept="image/*,.jpg,.jpeg,.png,.heic,.heif"
-                 aria-label="Seleccionar fotos del retorno">
+                   aria-label="Seleccionar fotos del retorno">
           <label class="boton" for="r-f3">Cargar fotos…</label>
           <span class="estado" id="r-e3"></span>
         </div>
@@ -753,20 +786,27 @@
       <h2 class="rot">Cómo entran las fotos</h2>
       <p class="nota" id="g-rutas" style="margin:0 0 .6rem"></p>
       <ol class="pasos">
-        <li><span class="n">01</span><span><b>Tocar la casilla vacía.</b> Se abre
-            la cámara y la foto entra en <em>esa</em> casilla, con el rótulo a la
-            vista mientras dispara. Es la vía con menos errores: no hay que
-            asignar nada después.</span></li>
-        <li><span class="n">02</span><span><b>Tomar foto.</b> Dispara y la foto cae
-            en la bandeja, para colocarla luego.</span></li>
+        <li><span class="n">01</span><span><b>Cámara.</b> Abre la cámara dentro de
+            la app y recorre las casillas vacías en orden: se dispara diez veces
+            y cada foto cae en la suya, con el rótulo en pantalla mientras
+            apunta. Es la vía con menos errores, porque no hay paso de asignación
+            donde equivocarse. <b>Saltar</b> pasa a la siguiente casilla.</span></li>
+        <li><span class="n">02</span><span><b>Tocar una casilla vacía.</b> Lo
+            mismo, pero sólo para esa casilla.</span></li>
         <li><span class="n">03</span><span><b>Galería.</b> Las que ya tomó, de una
             vez. La app propone dónde va cada una.</span></li>
-        <li><span class="n">04</span><span><b>Carpeta.</b> En la computadora, la
-            carpeta entera de un tirón; también arrastrándola sobre el
+        <li><span class="n">04</span><span><b>Cámara del sistema.</b> La cámara
+            normal del teléfono; la foto cae en la bandeja.</span></li>
+        <li><span class="n">05</span><span><b>Carpeta</b> y <b>pegar con Ctrl+V</b>,
+            en la computadora. La carpeta también se puede arrastrar sobre el
             recuadro.</span></li>
-        <li><span class="n">05</span><span><b>Pegar.</b> En la computadora, Ctrl+V
-            si la foto ya está en el portapapeles.</span></li>
       </ol>
+      <p class="nota" style="margin:.6rem 0 0">
+        Si la cámara no se concede —pasa cuando la página se abre dentro de otra
+        aplicación, como el visor de un mensaje— la app lo dice, ofrece la
+        galería en el momento y deja de ponerse en medio: a partir de ahí las
+        casillas vacías abren el selector de fotos directamente.
+      </p>
       <p class="nota">
         Al entrar, cada foto se reduce a 1600 px por su lado mayor. Una foto de
         celular pasa de unos 4 MB a menos de 1, el paquete cabe en un mensaje y
@@ -811,6 +851,20 @@ nefer construir acta.json -o ACTA.xlsx --pdf</textarea>
         genera el Excel con el formato y el PDF para firmar.
       </p>
 
+      <h2 class="rot">Comprobación del dispositivo</h2>
+      <p class="nota" style="margin:0 0 .6rem">
+        Si algo no carga, esto dice exactamente qué permite este navegador.
+        Pruebe a cargar una foto desde aquí: la comprobación registra lo que pasó.
+      </p>
+      <div class="bar">
+        <input type="file" id="dx-file" class="archivo" aria-label="Foto de prueba">
+        <label class="boton primary" for="dx-file">Probar carga de una foto</label>
+        <button type="button" id="dx-camara">Probar cámara</button>
+        <button type="button" id="dx-copiar" class="ghost">copiar informe</button>
+      </div>
+      <textarea class="salida" id="dx-informe" readonly rows="10" spellcheck="false"
+                aria-label="Informe de comprobación del dispositivo"></textarea>
+
       <h2 class="rot">Privacidad</h2>
       <p class="nota">
         La app no envía nada a ningún servidor. Las fotos se leen desde el teléfono,
@@ -820,6 +874,22 @@ nefer construir acta.json -o ACTA.xlsx --pdf</textarea>
     </section>
 
   </main>
+
+  <div class="camara" id="camara" hidden aria-modal="true" role="dialog"
+       aria-label="Cámara">
+    <video id="cam-video" playsinline autoplay muted></video>
+    <div class="cam-aviso" id="cam-aviso" hidden></div>
+    <div class="cam-alto">
+      <p class="cam-destino"><span id="cam-rotulo">Foto libre</span>
+        <span class="cam-cuenta" id="cam-cuenta"></span></p>
+    </div>
+    <div class="cam-mandos">
+      <button type="button" id="cam-saltar">Saltar</button>
+      <button type="button" id="cam-disparar" class="obturador"
+              aria-label="Tomar la fotografía"></button>
+      <button type="button" id="cam-cerrar">Cerrar</button>
+    </div>
+  </div>
 
   <nav class="tabs" role="tablist" aria-label="Secciones de la aplicación">
     <button type="button" id="tab-inicio" role="tab" aria-selected="true"
@@ -1317,6 +1387,152 @@ var NEFER = (function () {
     return (bytes / 1048576).toFixed(1) + " MB";
   }
 
+  /* ================================================================
+     CÁMARA EN LA APP · pide la cámara directamente, sin pasar por el
+     selector de archivos. Es la ruta que queda cuando el navegador o el
+     visor donde se abrió la página no dejan abrir el selector.
+     ================================================================ */
+  var camara = (function () {
+    var flujo = null, pendientes = [], puntero = 0, alTomar = null, alFallar = null;
+    // null = no se ha probado. Una vez que falla, no se vuelve a interponer
+    // entre el operador y el selector de archivos.
+    var sirve = null;
+
+    function hay() {
+      return sirve !== false &&
+             !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    }
+    function utilizable() { return sirve; }
+
+    function decir(titulo, cuerpo) {
+      var caja = $("#cam-aviso");
+      caja.hidden = false;
+      caja.innerHTML = "<b>" + esc(titulo) + "</b>" + cuerpo +
+        '<p style="margin:.7rem 0 0"><button type="button" id="cam-galeria" ' +
+        'class="primary">Elegir de la galería</button></p>';
+      var b = $("#cam-galeria");
+      if (b) b.addEventListener("click", function () {
+        var salida = alFallar;
+        cerrar();
+        if (salida) salida();
+      });
+    }
+
+    function pintarDestino() {
+      var d = pendientes[puntero] || null;
+      $("#cam-rotulo").textContent = d ? d.rotulo : "Foto libre";
+      $("#cam-cuenta").textContent = pendientes.length
+        ? (d ? "quedan " + (pendientes.length - puntero) + " por fotografiar"
+             : "todas las casillas llenas · sigue a la bandeja")
+        : "va a la bandeja";
+      $("#cam-saltar").hidden = !d;
+    }
+
+    function cerrar() {
+      if (flujo) { flujo.getTracks().forEach(function (t) { t.stop(); }); flujo = null; }
+      $("#cam-video").srcObject = null;
+      $("#camara").hidden = true;
+      alTomar = null;
+      alFallar = null;
+    }
+
+    function abrir(opciones) {
+      pendientes = (opciones && opciones.pendientes) || [];
+      puntero = 0;
+      alTomar = opciones && opciones.tomar;
+      alFallar = opciones && opciones.respaldo;
+      $("#cam-aviso").hidden = true;
+      $("#camara").hidden = false;
+      pintarDestino();
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        sirve = false;
+        decir("Este navegador no da acceso a la cámara.",
+              "Use <b>Galer\u00eda</b> para elegir fotos ya tomadas, o abra la app " +
+              "instalada en la pantalla de inicio.");
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" },
+                 width: { ideal: 1920 }, height: { ideal: 1440 } },
+        audio: false
+      }).then(function (f) {
+        sirve = true;
+        flujo = f;
+        var v = $("#cam-video");
+        v.srcObject = f;
+        var p = v.play();
+        if (p && p.catch) p.catch(function () { /* algunos navegadores ya la reproducen */ });
+      }, function (err) {
+        sirve = false;                 // no volver a interponerse
+        var nombre = err && err.name;
+        if (nombre === "NotAllowedError" || nombre === "SecurityError") {
+          decir("La cámara está bloqueada aquí.",
+                "Si abrió esta página dentro de otra aplicación (el visor de un " +
+                "mensaje, por ejemplo), la cámara no se concede. \u00c1brala en " +
+                "<b>Chrome</b> o <b>Safari</b>, o instale la app en la pantalla de inicio.");
+        } else if (nombre === "NotFoundError" || nombre === "OverconstrainedError") {
+          decir("No se encontró ninguna cámara.", "Use <b>Galería</b> para elegir " +
+                "fotos ya tomadas.");
+        } else {
+          decir("No se pudo abrir la cámara.",
+                esc(nombre || "motivo desconocido") + ". Use <b>Galería</b>.");
+        }
+      });
+    }
+
+    function disparar() {
+      var v = $("#cam-video");
+      if (!flujo || !v.videoWidth) return;
+      var w = v.videoWidth, h = v.videoHeight, mayor = Math.max(w, h);
+      var f = mayor > MAX_LADO ? MAX_LADO / mayor : 1;
+      var c = document.createElement("canvas");
+      c.width = Math.round(w * f); c.height = Math.round(h * f);
+      c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+
+      var destino = pendientes[puntero] || null;
+      var sello = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+      var base = destino
+        ? String(destino.indice + 1).padStart(2, "0") + "-" +
+          destino.rotulo.toLowerCase().normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+        : "foto-" + sello;
+
+      c.toBlob(function (b) {
+        if (!b) return;
+        var archivo;
+        try { archivo = new File([b], base + ".jpg", { type: "image/jpeg" }); }
+        catch (e) { return; }
+        if (alTomar) alTomar(archivo, destino);
+        if (destino) { puntero++; pintarDestino(); }
+        destello();
+      }, "image/jpeg", 0.85);
+    }
+
+    // Un parpadeo blanco: sin él no se sabe si el disparo ocurrió.
+    function destello() {
+      var v = $("#cam-video");
+      v.style.transition = "none";
+      v.style.opacity = "0.25";
+      setTimeout(function () { v.style.transition = "opacity .25s"; v.style.opacity = "1"; }, 60);
+    }
+
+    function conectar() {
+      var d = $("#cam-disparar"), x = $("#cam-cerrar"), sa = $("#cam-saltar");
+      if (d) d.addEventListener("click", disparar);
+      if (x) x.addEventListener("click", cerrar);
+      if (sa) sa.addEventListener("click", function () {
+        if (puntero < pendientes.length) { puntero++; pintarDestino(); }
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !$("#camara").hidden) cerrar();
+      });
+    }
+
+    return { hay: hay, utilizable: utilizable, abrir: abrir, cerrar: cerrar,
+             conectar: conectar };
+  })();
+
   /* ---------- entrega del paquete ----------
      Compartir primero: en el celular es el camino que lleva el archivo a
      WhatsApp o al correo sin pasar por la carpeta de descargas. */
@@ -1416,6 +1632,7 @@ var NEFER = (function () {
   function hoy() { return new Date().toISOString().slice(0, 10); }
 
   function arrancar() {
+    camara.conectar();
     ordenarCabecera();
     declararApp();
     tema();
@@ -1427,7 +1644,8 @@ var NEFER = (function () {
         ? "En este teléfono hay <b>cámara</b> y <b>galería</b>. Pegar y elegir una " +
           "carpeta son cosas de computadora, y por eso no aparecen aquí."
         : "En esta computadora hay <b>archivos</b>, <b>carpeta entera</b>, " +
-          "<b>arrastre</b> y <b>pegado</b>. La cámara aparece en el teléfono.";
+          "<b>arrastre</b> y <b>pegado</b>" +
+          (camara.hay() ? ", y también <b>cámara</b> si tiene una conectada." : ".");
     }
     var previa = null;
     try { previa = localStorage.getItem("nefer.vista"); } catch (e) { /* da igual */ }
@@ -1439,7 +1657,7 @@ var NEFER = (function () {
     armarZip: armarZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
     incrustada: incrustada,
-    RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo,
+    RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo, camara: camara,
     archivosArrastrados: archivosArrastrados, imagenesPegadas: imagenesPegadas,
     pesoLegible: pesoLegible, MAX_LADO: MAX_LADO
   };
@@ -1939,6 +2157,12 @@ var NEFER = (function () {
       return;
     }
     if (casillas[i] !== null) { casillas[i] = null; propuestas[i] = false; pintar(); return; }
+    if (NEFER.camara.hay()) {
+      e.preventDefault();             // no abrir el selector: se usa la cámara
+      casillaObjetivo = i;            // por si hay que caer al selector
+      abrirCamara(i);
+      return;
+    }
     casillaObjetivo = i;              // vacía: la foto que venga es para aquí
   });
 
@@ -2008,11 +2232,56 @@ var NEFER = (function () {
 
   // Se muestran sólo las rutas que este aparato tiene. Un botón de cámara en
   // una computadora de escritorio abre un diálogo de archivos y desconcierta.
+  // La cámara de la app es la ruta principal donde exista: no depende del
+  // selector de archivos, que es lo que falla dentro de visores incrustados.
+  if (NEFER.camara.hay()) {
+    $("#d-camara-app").hidden = false;
+    $("#d-file-lb").classList.remove("primary");
+    $("#d-file-lb").textContent = "Galería…";
+  }
+  // La del sistema queda como respaldo en aparatos táctiles.
   if (NEFER.RUTAS.camara) {
     $("#d-camara-lb").hidden = false;
     $("#d-file-lb").classList.remove("primary");
     $("#d-file-lb").textContent = "Galería…";
   }
+
+  // Recorre las casillas vacías en orden: se abre la cámara una vez y se
+  // dispara diez veces, cada foto a su casilla, sin salir de la app.
+  function casillasPendientes() {
+    var vistas = VISTAS[$("#d-cat").value], lista = [];
+    casillas.forEach(function (id, i) {
+      if (id === null) lista.push({ indice: i, rotulo: vistas[i] });
+    });
+    return lista;
+  }
+
+  function abrirCamara(soloEsta) {
+    NEFER.camara.abrir({
+      pendientes: soloEsta !== undefined && soloEsta !== null
+        ? [{ indice: soloEsta, rotulo: VISTAS[$("#d-cat").value][soloEsta] }]
+        : casillasPendientes(),
+      tomar: function (archivo, destino) {
+        agregar([archivo], { casilla: destino ? destino.indice : null });
+      },
+      // Si la cámara no se concede, el operador sale por la galería sin
+      // haber perdido la casilla a la que apuntaba.
+      respaldo: function () {
+        casillaObjetivo = (soloEsta !== undefined && soloEsta !== null) ? soloEsta : null;
+        $("#d-slot").click();
+      }
+    });
+    // Comprobado que no sirve, el botón sobra: la galería pasa a ser la
+    // ruta principal y la casilla vacía vuelve a abrir el selector.
+    setTimeout(function () {
+      if (NEFER.camara.utilizable() === false) {
+        $("#d-camara-app").hidden = true;
+        $("#d-file-lb").classList.add("primary");
+      }
+    }, 1200);
+  }
+
+  $("#d-camara-app").addEventListener("click", function () { abrirCamara(); });
   if (NEFER.RUTAS.carpeta) $("#d-carpeta-lb").hidden = false;
   $("#d-max-lado").textContent = NEFER.MAX_LADO;
 
@@ -2313,6 +2582,35 @@ var NEFER = (function () {
 
   if (NEFER.RUTAS.camara) $("#r-camara-lb").hidden = false;
   if (NEFER.RUTAS.carpeta) $("#r-carpeta-lb").hidden = false;
+  if (NEFER.camara.hay()) $("#r-camara-app").hidden = false;
+
+  // En el retorno la cámara recorre las vistas que aún no tienen foto de vuelta.
+  $("#r-camara-app").addEventListener("click", function () {
+    NEFER.camara.abrir({
+      pendientes: vistas.reduce(function (a, v, i) {
+        if (!v.fotoId) a.push({ indice: i, rotulo: v.rotulo });
+        return a;
+      }, []),
+      tomar: function (archivo, destino) {
+        NEFER.admitir([archivo], { reducir: false }).then(function (r) {
+          if (!r.aceptadas.length) return;
+          var x = r.aceptadas[0];
+          var foto = { id: sig++, nombre: x.archivo.name, url: x.url, archivo: x.archivo };
+          retorno.push(foto);
+          if (destino) {
+            [vistas, cons, insp].forEach(function (c) {
+              c.forEach(function (y) { if (y.fotoId === foto.id) y.fotoId = null; });
+            });
+            vistas[destino.indice].fotoId = foto.id;
+          }
+          $("#r-c3").classList.add("lista");
+          $("#r-e3").textContent = retorno.length + " foto(s)";
+          $("#r-e3").style.color = "var(--ok)";
+          pintar();
+        });
+      }
+    });
+  });
 
   // Arrastrar la carpeta del despacho sobre su tarjeta.
   [["r-c2", "antes", "r-e2"], ["r-c3", "retorno", "r-e3"]].forEach(function (t) {
@@ -2693,6 +2991,73 @@ var NEFER = (function () {
       if (typeof v.campos[id] === "string") $("#" + id).value = v.campos[id];
     });
   });
+})();
+
+/* ================================================================
+   COMPROBACIÓN · qué permite realmente este navegador.
+   ================================================================ */
+(function () {
+  "use strict";
+  var $ = NEFER.$;
+  var notas = [];
+
+  function informar() {
+    var l = [];
+    l.push("navegador: " + navigator.userAgent);
+    l.push("dentro de otra página (marco): " + (NEFER.incrustada ? "sí" : "no"));
+    l.push("origen: " + location.protocol + " " + (location.host || "(archivo local)"));
+    l.push("instalada en pantalla de inicio: " +
+      ((window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+       navigator.standalone ? "sí" : "no"));
+    l.push("puntero grueso (táctil): " + (NEFER.RUTAS.tactil ? "sí" : "no"));
+    l.push("acceso a cámara disponible: " + (NEFER.camara.hay() ? "sí" : "no"));
+    l.push("elegir carpeta: " + (NEFER.RUTAS.carpeta ? "sí" : "no"));
+    try {
+      localStorage.setItem("nefer.dx", "1"); localStorage.removeItem("nefer.dx");
+      l.push("memoria del navegador: sí");
+    } catch (e) { l.push("memoria del navegador: no (" + (e.name || "?") + ")"); }
+    l.push("descarga por el anfitrión: " + (window.claude ? "sí" : "no"));
+    notas.forEach(function (n) { l.push(n); });
+    $("#dx-informe").value = l.join("\n");
+  }
+
+  $("#dx-file").addEventListener("change", function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (!f) {
+      notas.push("prueba de carga: el selector no devolvió nada");
+      informar(); return;
+    }
+    notas.push("prueba de carga: llegó \"" + f.name + "\", tipo \"" +
+               (f.type || "(vacío)") + "\", " + NEFER.pesoLegible(f.size));
+    NEFER.admitir([f], { reducir: false }).then(function (r) {
+      notas.push("prueba de carga: " + (r.aceptadas.length
+        ? "la imagen se abrió correctamente"
+        : "NO se pudo abrir — " + NEFER.motivoRechazo(f)));
+      informar();
+    });
+    e.target.value = "";
+  });
+
+  $("#dx-camara").addEventListener("click", function () {
+    if (!NEFER.camara.hay()) {
+      notas.push("prueba de cámara: este navegador no ofrece acceso a la cámara");
+      informar(); return;
+    }
+    navigator.mediaDevices.getUserMedia({ video: true }).then(function (f) {
+      f.getTracks().forEach(function (t) { t.stop(); });
+      notas.push("prueba de cámara: concedida");
+      informar();
+    }, function (err) {
+      notas.push("prueba de cámara: denegada (" + (err && err.name) + ")");
+      informar();
+    });
+  });
+
+  $("#dx-copiar").addEventListener("click", function () {
+    NEFER.copiar($("#dx-informe").value, function () {}, $("#dx-informe"));
+  });
+
+  informar();
 })();
 
 NEFER.arrancar();
