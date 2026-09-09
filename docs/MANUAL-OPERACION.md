@@ -170,14 +170,37 @@ Hay dos caminos. Use el que le acomode; el resultado es el mismo.
 #### Con la aplicación de campo (recomendado la primera vez)
 
 Abra **`herramientas/nefer-app.html`** —basta doble clic en la computadora, o
-instalarla en la pantalla de inicio del celular— y entre en **Despacho**:
+instalarla en la pantalla de inicio del celular— y entre en **Despacho**.
+
+**Las cinco vías por las que entra una foto.** La aplicación ofrece las que este
+aparato tiene, y sólo esas:
+
+| Vía | Dónde | Para qué |
+|---|---|---|
+| Tocar la casilla vacía | celular | Dispara la cámara y la foto entra **en esa casilla**. La de menos errores: el rótulo está a la vista mientras fotografía y no hay que asignar nada después. |
+| **Tomar foto** | celular | Dispara y la foto cae en la bandeja, para colocarla luego |
+| **Galería / Cargar fotos** | ambos | Las que ya tomó, de una vez |
+| **Carpeta** o arrastrarla | computadora | La carpeta entera de un tirón, subcarpetas incluidas |
+| Pegar con `Ctrl+V` | computadora | Cuando la foto ya está en el portapapeles |
+
+Vale cualquier archivo que **el navegador sepa abrir**, se llame como se llame:
+los selectores de Android entregan a menudo nombres sin extensión y sin tipo, y
+esos también entran. Lo que no se puede abrir se nombra con su motivo — HEIC del
+iPhone, RAW, vídeo — para que nunca desaparezca nada en silencio.
+
+Al entrar, cada foto se reduce a **1600 px** por su lado mayor. Una foto de
+celular baja de unos 4 MB a menos de 1: el paquete cabe en un mensaje y el Excel
+la imprime igual, porque en el formato ocupa un tercio de esa resolución.
+Desmarque **Reducir** antes de cargar si necesita los originales.
+
+Luego:
 
 1. Elija la familia del equipo.
-2. Arrastre la carpeta de fotos, o púlselas para cargarlas.
+2. Cargue las fotos por cualquiera de las vías de arriba.
 3. La aplicación **propone** una asignación leyendo el nombre del archivo y la
    fecha de captura EXIF. Las casillas propuestas quedan marcadas.
 4. Corrija lo que haga falta: arrastre una foto a otra casilla, o tóquela y
-   luego toque su destino. Funciona igual con el dedo.
+   luego toque su destino. Cargar más fotos **no deshace** lo que ya colocó.
 5. Rellene **Datos del acta** (va plegado, con el contador de lo que falta).
 6. Pulse **Guardar paquete .zip**: sale un archivo con `acta.json` y la carpeta
    `fotos/` ya nombrada como el acta espera. Descomprímalo y siga en el paso 5.

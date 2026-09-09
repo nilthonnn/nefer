@@ -144,6 +144,16 @@
              overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
   .archivo:focus-visible + .boton { outline:2px solid var(--accent); outline-offset:2px; }
 
+  /* La casilla mide 24 px, el mínimo de WCAG 2.2; el objetivo real que se
+     pulsa es la fila entera, de 44, porque la etiqueta la envuelve. */
+  .reducir { display:flex; align-items:center; gap:.5rem; margin-top:.5rem;
+             min-height:44px; padding:.2rem 0;
+             font-size:.78rem; color:var(--ink-3); line-height:1.35; cursor:pointer; }
+  .reducir input { width:24px; height:24px; min-height:24px; flex:none;
+                   accent-color:var(--accent); }
+  .reducir em { font-style:normal; color:var(--ok); }
+  .progreso { display:block; margin:.5rem 0 0; text-align:center; }
+
   input[type="text"], input[type="number"], input[type="date"], select, textarea {
     font-family:var(--sans); font-size:.86rem; color:var(--ink);
     background:var(--card-2); border:1px solid var(--rule);
@@ -205,6 +215,9 @@
                     border-left:3px solid var(--accent); }
 
   .oculto { display:none !important; }
+  /* Una clase que declara display gana al estilo del navegador para [hidden]:
+     sin esta regla, ocultar con el atributo no hace nada. */
+  [hidden] { display:none !important; }
 
   /* Objetivo táctil de 44 px: el mínimo para operar con guantes, de pie y con
      el equipo delante. WCAG 2.2 exige 24; en patio eso no basta. */
@@ -272,7 +285,8 @@
           text-align:left; padding:0; cursor:pointer; width:100%;
           font-family:inherit; color:inherit; align-self:stretch; }
   .slot .ph { aspect-ratio:4/3; display:grid; place-items:center; color:var(--ink-3);
-              font-family:var(--mono); font-size:.6rem;
+              font-family:var(--mono); font-size:.6rem; text-align:center;
+              white-space:pre-line; line-height:1.35; padding:.2rem;
               background:repeating-linear-gradient(45deg,transparent,transparent 7px,
                         var(--rule-2) 7px,var(--rule-2) 8px); }
   .slot img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; }
@@ -287,6 +301,8 @@
   .slot.lleno { border-color:color-mix(in srgb,var(--ok) 50%,transparent); }
   .slot.lleno .cap { background:var(--ok-soft); color:var(--ok); }
   .slot.hot { border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent); }
+  label.slot { cursor:pointer; }
+  label.slot:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .slot.propuesto .cap::after { content:"propuesta"; font-family:var(--mono);
                                 font-size:.5rem; color:var(--obs);
                                 background:var(--obs-soft); padding:.05rem .2rem;
@@ -499,10 +515,16 @@
           <option value="maquinaria_amarilla">Maquinaria amarilla</option>
           <option value="generico">Genérico</option>
         </select>
+        <input type="file" id="d-camara" class="archivo" accept="image/*"
+               capture="environment" aria-label="Tomar una fotografía con la cámara">
+        <label class="boton primary ruta" id="d-camara-lb" for="d-camara" hidden>Tomar foto</label>
         <input type="file" id="d-file" class="archivo" multiple
                accept="image/*,.jpg,.jpeg,.png,.heic,.heif"
-               aria-label="Seleccionar fotografías del equipo">
-        <label class="boton primary" for="d-file">Cargar fotos…</label>
+               aria-label="Elegir fotografías del equipo">
+        <label class="boton primary" for="d-file" id="d-file-lb">Cargar fotos…</label>
+        <input type="file" id="d-carpeta" class="archivo" multiple webkitdirectory
+               aria-label="Elegir una carpeta completa de fotografías">
+        <label class="boton ruta" id="d-carpeta-lb" for="d-carpeta" hidden>Carpeta…</label>
         <button id="d-auto" type="button">Reasignar</button>
         <button class="ghost" id="d-ejemplo" type="button">ver ejemplo</button>
         <span class="grow"></span>
@@ -544,11 +566,17 @@
         <section class="panel bandeja" id="d-bandeja">
           <h2>Sin asignar <span class="tally" id="d-t-bandeja">0</span></h2>
           <div class="panel-body">
-            <div class="drop" id="d-drop">
-              Arrastre las fotos aquí<br>o pulse <b>Cargar fotos…</b>
-            </div>
+                <div class="drop" id="d-drop"></div>
+            <input type="file" id="d-slot" class="archivo" accept="image/*"
+                   aria-label="Fotografía para la casilla elegida">
+            <p class="progreso lb" id="d-progreso" hidden></p>
             <div class="tray" id="d-tray"></div>
             <p class="vacia" id="d-tray-vacia">Toque una foto y luego su casilla.</p>
+            <label class="reducir">
+              <input type="checkbox" id="d-reducir" checked>
+              <span>Reducir a <span id="d-max-lado">1600</span> px al cargar
+                    <em id="d-ahorro"></em></span>
+            </label>
           </div>
         </section>
 
@@ -614,11 +642,17 @@
                  accept="image/*,.jpg,.jpeg,.png,.heic,.heif"
                  aria-label="Seleccionar fotos del despacho">
           <label class="boton" for="r-f2">Cargar fotos…</label>
+          <input type="file" id="r-carpeta" class="archivo" multiple webkitdirectory
+                 aria-label="Elegir la carpeta de fotos del despacho">
+          <label class="boton ruta" id="r-carpeta-lb" for="r-carpeta" hidden>Carpeta…</label>
           <span class="estado" id="r-e2"></span>
         </div>
         <div class="carga" id="r-c3">
           <h2><span class="n">03</span> Fotos del retorno</h2>
           <p>Las que acaba de tomar al recibir el equipo.</p>
+          <input type="file" id="r-camara" class="archivo" accept="image/*"
+                 capture="environment" aria-label="Fotografiar el equipo que retorna">
+          <label class="boton primary ruta" id="r-camara-lb" for="r-camara" hidden>Tomar foto</label>
           <input type="file" id="r-f3" class="archivo" multiple
                  accept="image/*,.jpg,.jpeg,.png,.heic,.heif"
                  aria-label="Seleccionar fotos del retorno">
@@ -715,6 +749,30 @@
             Ajustes → Cámara → Formatos → «Más compatible». El formato HEIC no se
             puede incrustar en el Excel.</span></li>
       </ol>
+
+      <h2 class="rot">Cómo entran las fotos</h2>
+      <p class="nota" id="g-rutas" style="margin:0 0 .6rem"></p>
+      <ol class="pasos">
+        <li><span class="n">01</span><span><b>Tocar la casilla vacía.</b> Se abre
+            la cámara y la foto entra en <em>esa</em> casilla, con el rótulo a la
+            vista mientras dispara. Es la vía con menos errores: no hay que
+            asignar nada después.</span></li>
+        <li><span class="n">02</span><span><b>Tomar foto.</b> Dispara y la foto cae
+            en la bandeja, para colocarla luego.</span></li>
+        <li><span class="n">03</span><span><b>Galería.</b> Las que ya tomó, de una
+            vez. La app propone dónde va cada una.</span></li>
+        <li><span class="n">04</span><span><b>Carpeta.</b> En la computadora, la
+            carpeta entera de un tirón; también arrastrándola sobre el
+            recuadro.</span></li>
+        <li><span class="n">05</span><span><b>Pegar.</b> En la computadora, Ctrl+V
+            si la foto ya está en el portapapeles.</span></li>
+      </ol>
+      <p class="nota">
+        Al entrar, cada foto se reduce a 1600 px por su lado mayor. Una foto de
+        celular pasa de unos 4 MB a menos de 1, el paquete cabe en un mensaje y
+        el Excel la imprime igual de bien: en el formato ocupa un tercio de eso.
+        Si necesita el original, desmarque <b>Reducir</b> antes de cargar.
+      </p>
 
       <h2 class="rot">Al fotografiar</h2>
       <ol class="pasos">
@@ -1063,6 +1121,202 @@ var NEFER = (function () {
     });
   }
 
+  /* ================================================================
+     INGESTA DE FOTOS · las rutas por las que una foto entra a la app.
+     Cámara, galería, carpeta entera, arrastre y portapapeles. Lo que el
+     dispositivo no ofrece, no se muestra.
+     ================================================================ */
+
+  var MAX_LADO = 1600;      // suficiente para el formato impreso
+  var CALIDAD = 0.82;
+
+  // Qué rutas existen en este aparato. Se pregunta una vez y se usa para no
+  // ofrecer botones que no llevan a ninguna parte.
+  var RUTAS = (function () {
+    var prueba = document.createElement("input");
+    prueba.type = "file";
+    var grueso = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    var tactil = grueso || (!window.matchMedia && navigator.maxTouchPoints > 0);
+    return {
+      tactil: tactil,
+      camara: tactil,
+      carpeta: !tactil && "webkitdirectory" in prueba,
+      pegar: "onpaste" in window,
+      arrastre: "draggable" in document.createElement("div")
+    };
+  })();
+
+  // La prueba de que un archivo es una foto es que el navegador la decodifique,
+  // no su nombre ni su tipo: los selectores móviles entregan a menudo ambos
+  // vacíos, y filtrar por ellos hacía desaparecer fotos sin aviso.
+  function decodificar(archivo) {
+    return new Promise(function (ok) {
+      var url = URL.createObjectURL(archivo);
+      var img = new Image(), cerrado = false;
+      function fin(vale) {
+        if (cerrado) return;
+        cerrado = true;
+        if (!vale) { URL.revokeObjectURL(url); ok(null); }
+        else ok({ url: url, img: img });
+      }
+      img.onload = function () { fin(img.naturalWidth > 0); };
+      img.onerror = function () { fin(false); };
+      setTimeout(function () { fin(false); }, 20000);   // no dejar la carga colgada
+      img.src = url;
+    });
+  }
+
+  function nombreJpg(nombre) {
+    var base = String(nombre || "foto").replace(/\.[^.]*$/, "");
+    return (base || "foto") + ".jpg";
+  }
+
+  // Una foto de celular pesa entre 3 y 8 MB. Diez de ellas no caben en un
+  // mensaje y el Excel las imprime a un tercio de esa resolución igualmente.
+  function reducir(archivo, img) {
+    return new Promise(function (ok) {
+      var w = img.naturalWidth, h = img.naturalHeight, mayor = Math.max(w, h);
+      var lienzo = document.createElement("canvas");
+      if (!mayor || mayor <= MAX_LADO || !lienzo.toBlob) { ok(null); return; }
+      var f = MAX_LADO / mayor;
+      lienzo.width = Math.round(w * f);
+      lienzo.height = Math.round(h * f);
+      try { lienzo.getContext("2d").drawImage(img, 0, 0, lienzo.width, lienzo.height); }
+      catch (e) { ok(null); return; }
+      lienzo.toBlob(function (b) {
+        // Si no mejora, se queda el original: reducir nunca debe empeorar.
+        if (!b || b.size >= archivo.size) { ok(null); return; }
+        try { ok(new File([b], nombreJpg(archivo.name), { type: "image/jpeg" })); }
+        catch (e) { ok(null); }
+      }, "image/jpeg", CALIDAD);
+    });
+  }
+
+  function motivoRechazo(f) {
+    if (/\.(heic|heif)$/i.test(f.name || "") || /heic|heif/i.test(f.type || "")) {
+      return "formato HEIC del iPhone";
+    }
+    if (/\.(tiff?|dng|raw|cr2|nef|arw)$/i.test(f.name || "")) return "formato RAW o TIFF";
+    if (/\.(mov|mp4|avi|3gp)$/i.test(f.name || "") || /^video\//.test(f.type || "")) {
+      return "es un vídeo";
+    }
+    if (!f.size) return "el archivo llegó vacío";
+    return "el navegador no pudo abrirla";
+  }
+
+  // De dos en dos: un teléfono decodificando diez fotos de 8 MP a la vez se
+  // queda sin memoria y el navegador descarta la pestaña.
+  function enTanda(lista, tarea, alAvanzar) {
+    return new Promise(function (fin) {
+      var salida = new Array(lista.length), siguiente = 0, vivos = 0, hechos = 0;
+      if (!lista.length) { fin(salida); return; }
+      function lanzar() {
+        while (vivos < 2 && siguiente < lista.length) {
+          (function (i) {
+            vivos++; siguiente++;
+            tarea(lista[i], i).then(function (r) {
+              salida[i] = r; vivos--; hechos++;
+              if (alAvanzar) alAvanzar(hechos, lista.length);
+              if (hechos === lista.length) fin(salida); else lanzar();
+            });
+          })(siguiente);
+        }
+      }
+      lanzar();
+    });
+  }
+
+  /* Admite una lista de archivos: decodifica, reduce si procede y separa lo
+     que no se pudo abrir, con su motivo. Nunca descarta nada en silencio. */
+  function admitir(archivos, opciones) {
+    var lista = Array.prototype.slice.call(archivos || []);
+    var reducirTambien = !opciones || opciones.reducir !== false;
+    var avance = opciones && opciones.avance;
+
+    return enTanda(lista, function (f) {
+      return decodificar(f).then(function (d) {
+        if (!d) return { archivo: f, ok: false };
+        if (!reducirTambien) return { archivo: f, url: d.url, ok: true };
+        return reducir(f, d.img).then(function (chico) {
+          if (!chico) return { archivo: f, url: d.url, ok: true };
+          URL.revokeObjectURL(d.url);            // el original ya no hace falta
+          return { archivo: chico, url: URL.createObjectURL(chico),
+                   original: f, ok: true };
+        });
+      });
+    }, avance).then(function (res) {
+      var aceptadas = [], rechazadas = [];
+      res.forEach(function (x) { (x.ok ? aceptadas : rechazadas).push(x); });
+      return { aceptadas: aceptadas, rechazadas: rechazadas.map(function (x) { return x.archivo; }),
+               entraron: lista.length };
+    });
+  }
+
+  /* Arrastrar una carpeta entera desde el escritorio: el navegador entrega
+     entradas de directorio, no archivos, y hay que recorrerlas. */
+  function archivosArrastrados(dt) {
+    var items = dt && dt.items;
+    if (!items || !items.length || !items[0].webkitGetAsEntry) {
+      return Promise.resolve(Array.prototype.slice.call((dt && dt.files) || []));
+    }
+    var raices = [];
+    for (var i = 0; i < items.length; i++) {
+      var e = items[i].webkitGetAsEntry && items[i].webkitGetAsEntry();
+      if (e) raices.push(e);
+    }
+    if (!raices.length) return Promise.resolve(Array.prototype.slice.call(dt.files || []));
+
+    function recorrer(entrada) {
+      if (entrada.isFile) {
+        return new Promise(function (ok) {
+          entrada.file(function (f) { ok([f]); }, function () { ok([]); });
+        });
+      }
+      if (!entrada.isDirectory) return Promise.resolve([]);
+      var lector = entrada.createReader(), reunidos = [];
+      return new Promise(function (ok) {
+        (function siguiente() {
+          lector.readEntries(function (lote) {
+            if (!lote.length) {
+              Promise.all(reunidos.map(recorrer)).then(function (partes) {
+                ok(partes.reduce(function (a, b) { return a.concat(b); }, []));
+              });
+              return;
+            }
+            reunidos = reunidos.concat(lote);
+            siguiente();                      // readEntries entrega de 100 en 100
+          }, function () { ok([]); });
+        })();
+      });
+    }
+
+    return Promise.all(raices.map(recorrer)).then(function (partes) {
+      return partes.reduce(function (a, b) { return a.concat(b); }, []);
+    });
+  }
+
+  function imagenesPegadas(evento) {
+    var datos = evento.clipboardData;
+    if (!datos) return [];
+    var salida = [];
+    Array.prototype.forEach.call(datos.files || [], function (f) { salida.push(f); });
+    if (!salida.length) {
+      Array.prototype.forEach.call(datos.items || [], function (it) {
+        if (it.kind === "file") {
+          var f = it.getAsFile();
+          if (f) salida.push(f);
+        }
+      });
+    }
+    return salida;
+  }
+
+  function pesoLegible(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1048576) return Math.round(bytes / 1024) + " KB";
+    return (bytes / 1048576).toFixed(1) + " MB";
+  }
+
   /* ---------- entrega del paquete ----------
      Compartir primero: en el celular es el camino que lleva el archivo a
      WhatsApp o al correo sin pasar por la carpeta de descargas. */
@@ -1167,6 +1421,14 @@ var NEFER = (function () {
     tema();
     pestanas();
     instalacion();
+    var rutas = $("#g-rutas");
+    if (rutas) {
+      rutas.innerHTML = RUTAS.tactil
+        ? "En este teléfono hay <b>cámara</b> y <b>galería</b>. Pegar y elegir una " +
+          "carpeta son cosas de computadora, y por eso no aparecen aquí."
+        : "En esta computadora hay <b>archivos</b>, <b>carpeta entera</b>, " +
+          "<b>arrastre</b> y <b>pegado</b>. La cámara aparece en el teléfono.";
+    }
     var previa = null;
     try { previa = localStorage.getItem("nefer.vista"); } catch (e) { /* da igual */ }
     if (previa && VISTAS[previa] && previa !== "inicio") ir(previa);
@@ -1176,7 +1438,10 @@ var NEFER = (function () {
     $: $, esc: esc, ir: ir, arrancar: arrancar,
     armarZip: armarZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
-    incrustada: incrustada
+    incrustada: incrustada,
+    RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo,
+    archivosArrastrados: archivosArrastrados, imagenesPegadas: imagenesPegadas,
+    pesoLegible: pesoLegible, MAX_LADO: MAX_LADO
   };
 })();
 </script>
@@ -1242,6 +1507,10 @@ var NEFER = (function () {
   var elegida = null;
   var siguienteId = 1;
   var guardar = function () {};
+
+  // Lo que dice una casilla vacía: en el celular se toca y se dispara la
+  // cámara; en la computadora abre el selector para esa casilla.
+  var PISTA_VACIA = NEFER.RUTAS.tactil ? "tocar para\nfotografiar" : "vacía · elegir";
 
   var normal = function (t) {
     return String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -1317,87 +1586,87 @@ var NEFER = (function () {
     return mapa;
   }
 
-  /* ---------- carga ---------- */
   /* ---------- carga ----------
-     La prueba es si el navegador decodifica la imagen, no cómo se llama ni qué
-     tipo declara: los selectores de Android entregan a menudo `type` vacío y
-     nombres sin extensión, y filtrar por nombre hacía desaparecer esas fotos
-     sin un solo aviso. Lo que no decodifica se nombra y se explica. */
-  function decodifica(archivo) {
-    return new Promise(function (ok) {
-      var url = URL.createObjectURL(archivo);
-      var img = new Image();
-      var cerrado = false;
-      function fin(vale) {
-        if (cerrado) return;
-        cerrado = true;
-        if (!vale) URL.revokeObjectURL(url);
-        ok(vale ? url : null);
+     Todas las rutas —cámara, galería, carpeta, arrastre, pegado— terminan
+     aquí con una lista de archivos. Lo que el navegador sabe abrir entra;
+     lo que no, se nombra con su motivo. */
+  function agregar(archivos, opciones) {
+    opciones = opciones || {};
+    var lista = Array.prototype.slice.call(archivos || []);
+    if (!lista.length) { sinArchivos(opciones.origen); return; }
+
+    var antes = lista.reduce(function (a, f) { return a + (f.size || 0); }, 0);
+    var barra = $("#d-progreso");
+    barra.hidden = false;
+    barra.textContent = "abriendo 0 de " + lista.length + "\u2026";
+
+    NEFER.admitir(lista, {
+      reducir: $("#d-reducir").checked,
+      avance: function (hechos, total) {
+        barra.textContent = "abriendo " + hechos + " de " + total + "\u2026";
       }
-      img.onload = function () { fin(img.naturalWidth > 0); };
-      img.onerror = function () { fin(false); };
-      // Un archivo enorme o un formato que el navegador ni intenta no puede
-      // dejar la carga colgada para siempre.
-      setTimeout(function () { fin(false); }, 15000);
-      img.src = url;
-    });
-  }
-
-  function motivoRechazo(f) {
-    if (/\.(heic|heif)$/i.test(f.name) || /heic|heif/i.test(f.type || "")) {
-      return "formato HEIC del iPhone";
-    }
-    if (/\.(tiff?|dng|raw|cr2|nef)$/i.test(f.name)) return "formato RAW o TIFF";
-    if (/\.(mov|mp4|avi)$/i.test(f.name) || /^video\//.test(f.type || "")) return "es un vídeo";
-    if (!f.size) return "el archivo llegó vacío";
-    return "el navegador no pudo abrirla";
-  }
-
-  function agregar(archivos) {
-    var lista = Array.prototype.slice.call(archivos);
-    if (!lista.length) { diagnostico(0, 0, []); return; }
-
-    var caja = $("#d-estado");
-    caja.className = "aviso";
-    caja.innerHTML = "Abriendo " + lista.length + " archivo(s)…";
-
-    Promise.all(lista.map(function (f) {
-      return decodifica(f).then(function (url) { return { archivo: f, url: url }; });
-    })).then(function (resultados) {
-      var aceptados = [], rechazados = [];
-      resultados.forEach(function (x) {
-        if (!x.url) { rechazados.push(x.archivo); return; }
-        var foto = {
-          id: siguienteId++, nombre: x.archivo.name || ("foto-" + siguienteId + ".jpg"),
+    }).then(function (r) {
+      barra.hidden = true;
+      var despues = 0;
+      r.aceptadas.forEach(function (x) {
+        despues += x.archivo.size || 0;
+        fotos.push({
+          id: siguienteId++,
+          nombre: x.archivo.name || ("foto-" + siguienteId + ".jpg"),
           url: x.url, archivo: x.archivo, fecha: null,
-          respaldo: x.archivo.lastModified || 0,
+          respaldo: (x.original || x.archivo).lastModified || 0,
           sugerida: sugerir(x.archivo.name || "")
-        };
-        fotos.push(foto);
-        aceptados.push(foto);
+        });
       });
+      mostrarAhorro(antes, despues);
 
-      if (!aceptados.length) {
-        autoAsignar(); pintar();
-        diagnostico(lista.length, 0, rechazados);
+      if (!r.aceptadas.length) {
+        pintar();
+        diagnostico(r.entraron, 0, r.rechazadas);
         return;
       }
-
-      // La fecha EXIF sólo ordena la propuesta: si falla, no se pierde la foto.
-      var restan = aceptados.length;
-      aceptados.forEach(function (foto) {
-        var fr = new FileReader();
-        function listo() {
-          if (--restan) return;
-          autoAsignar(); pintar();
-          diagnostico(lista.length, aceptados.length, rechazados);
+      var nuevas = fotos.slice(-r.aceptadas.length);
+      leerFechas(r.aceptadas.length, function () {
+        // Una foto pedida para una casilla concreta va ahí y a ningún otro
+        // sitio: es el único caso en que el operador ya dijo dónde quiere.
+        if (opciones.casilla !== undefined && opciones.casilla !== null) {
+          colocar(nuevas[0].id, opciones.casilla);
+        } else {
+          completar(); pintar();
         }
-        fr.onload = function () { foto.fecha = fechaExif(fr.result); listo(); };
-        fr.onerror = listo;
-        try { fr.readAsArrayBuffer(foto.archivo.slice(0, 131072)); }  // basta la cabecera
-        catch (e) { listo(); }
+        diagnostico(r.entraron, r.aceptadas.length, r.rechazadas);
       });
     });
+  }
+
+  // La fecha EXIF sólo ordena la propuesta: si falla, la foto no se pierde.
+  // Se lee del archivo tal como quedó, que es el que viaja en el paquete.
+  function leerFechas(cuantas, terminar) {
+    var pendientes = fotos.slice(-cuantas), restan = pendientes.length;
+    pendientes.forEach(function (foto) {
+      var fr = new FileReader();
+      function listo() { if (!--restan) terminar(); }
+      fr.onload = function () { foto.fecha = fechaExif(fr.result); listo(); };
+      fr.onerror = listo;
+      try { fr.readAsArrayBuffer(foto.archivo.slice(0, 131072)); }  // basta la cabecera
+      catch (e) { listo(); }
+    });
+  }
+
+  function mostrarAhorro(antes, despues) {
+    var n = $("#d-ahorro");
+    if (!antes || despues >= antes) { n.textContent = ""; return; }
+    n.textContent = "\u00b7 " + NEFER.pesoLegible(antes) + " \u2192 " + NEFER.pesoLegible(despues);
+  }
+
+  function sinArchivos(origen) {
+    var caja = $("#d-estado");
+    caja.className = "aviso";
+    caja.innerHTML = origen === "pegar"
+      ? "<b>En el portapapeles no hab\u00eda ninguna imagen.</b> Copie la foto, no su enlace."
+      : "<b>El selector no devolvi\u00f3 ning\u00fan archivo.</b> Si no lleg\u00f3 a " +
+        "abrirse, arrastre las fotos al recuadro, o abra la app instalada en la " +
+        "pantalla de inicio en vez de esta p\u00e1gina.";
   }
 
   function ordenCaptura(a, b) {
@@ -1406,25 +1675,39 @@ var NEFER = (function () {
     return a.nombre.localeCompare(b.nombre, "es", { numeric: true });
   }
 
-  // Propuesta: primero lo que el nombre delata, luego el resto por orden de captura.
+  // Reasignar desde cero: borra la propuesta anterior y la vuelve a hacer.
+  // Sólo se llama desde el botón y al cambiar de familia.
   function autoAsignar() {
     var vistas = VISTAS[$("#d-cat").value];
     casillas = vistas.map(function () { return null; });
     propuestas = vistas.map(function () { return false; });
+    completar();
+  }
 
-    var libres = fotos.slice().sort(ordenCaptura), usadas = {};
-    libres.forEach(function (f) {
-      if (!f.sugerida) return;
+  // Rellenar los huecos con lo que quede suelto, sin mover nada de lo ya
+  // colocado: cargar más fotos no puede deshacer lo que el operador ordenó.
+  function completar() {
+    var vistas = VISTAS[$("#d-cat").value];
+    if (casillas.length !== vistas.length) {
+      casillas = vistas.map(function (_, i) { return casillas[i] !== undefined ? casillas[i] : null; });
+      propuestas = vistas.map(function (_, i) { return !!propuestas[i]; });
+    }
+    var usadas = asignadas();
+    var libres = fotos.filter(function (f) { return !usadas[f.id]; }).sort(ordenCaptura);
+
+    // Primero lo que el nombre del archivo delata.
+    libres = libres.filter(function (f) {
+      if (!f.sugerida) return true;
       var i = vistas.indexOf(f.sugerida);
-      if (i !== -1 && casillas[i] === null) {
-        casillas[i] = f.id; propuestas[i] = true; usadas[f.id] = true;
-      }
+      if (i === -1 || casillas[i] !== null) return true;
+      casillas[i] = f.id; propuestas[i] = true;
+      return false;
     });
+    // El resto, en orden de captura, en los huecos que queden.
     libres.forEach(function (f) {
-      if (usadas[f.id]) return;
       for (var i = 0; i < casillas.length; i++) {
         if (casillas[i] === null) {
-          casillas[i] = f.id; propuestas[i] = true; usadas[f.id] = true; return;
+          casillas[i] = f.id; propuestas[i] = true; return;
         }
       }
     });
@@ -1471,13 +1754,25 @@ var NEFER = (function () {
     var grid = $("#d-grid"); grid.textContent = "";
     vistas.forEach(function (vista, i) {
       var id = casillas[i], f = id !== null ? porId(id) : null;
-      var b = document.createElement("button");
-      b.type = "button"; b.dataset.casilla = i;
+      var b;
+      if (f) {
+        b = document.createElement("button");
+        b.type = "button";
+        b.setAttribute("aria-label",
+          vista + ", ocupada" + (propuestas[i] ? ", propuesta" : ""));
+      } else {
+        // Vacía: es la etiqueta del selector de fotos. Si hay una foto elegida
+        // en la bandeja, el manejador cancela esa apertura y la coloca aquí.
+        b = document.createElement("label");
+        b.setAttribute("for", "d-slot");
+        b.setAttribute("role", "button");
+        b.setAttribute("tabindex", "0");
+        b.setAttribute("aria-label", vista + ", vacía, tocar para añadir una foto");
+      }
+      b.dataset.casilla = i;
       b.className = "slot" + (f ? " lleno" : "") + (f && propuestas[i] ? " propuesto" : "");
-      b.setAttribute("aria-label",
-        vista + (f ? ", ocupada" : ", vacía") + (f && propuestas[i] ? ", propuesta" : ""));
       b.innerHTML = (f ? '<img alt="" src="' + f.url + '">'
-                       : '<span class="ph">vacía</span>') +
+                       : '<span class="ph">' + PISTA_VACIA + '</span>') +
         '<span class="cap"><span>' + esc(vista) + '</span>' +
         '<span class="num">' + (i + 1) + '</span></span>';
       grid.appendChild(b);
@@ -1598,17 +1893,10 @@ var NEFER = (function () {
   // entraron ocho, tiene que ver cuáles faltan y por qué.
   function diagnostico(entraron, aceptados, rechazados) {
     var caja = $("#d-estado");
-    if (!entraron) {
-      caja.className = "aviso";
-      caja.innerHTML = "<b>El selector no devolvió ningún archivo.</b> Si no llegó a " +
-        "abrirse, arrastre las fotos al recuadro, o abra la app instalada en la " +
-        "pantalla de inicio en vez de esta página.";
-      return;
-    }
     if (!rechazados.length) { pintarSalida(); return; }
 
     var detalle = rechazados.slice(0, 4).map(function (f) {
-      return esc(f.name || "sin nombre") + " — " + motivoRechazo(f);
+      return esc(f.name || "sin nombre") + " — " + NEFER.motivoRechazo(f);
     }).join("; ");
     var heic = rechazados.some(function (f) {
       return /\.(heic|heif)$/i.test(f.name) || /heic|heif/i.test(f.type || "");
@@ -1645,8 +1933,23 @@ var NEFER = (function () {
     var t = e.target.closest("[data-casilla]");
     if (!t) return;
     var i = +t.dataset.casilla;
-    if (elegida !== null) { colocar(elegida, i); return; }
-    if (casillas[i] !== null) { casillas[i] = null; propuestas[i] = false; pintar(); }
+    if (elegida !== null) {
+      e.preventDefault();             // cancela la apertura del selector
+      colocar(elegida, i);
+      return;
+    }
+    if (casillas[i] !== null) { casillas[i] = null; propuestas[i] = false; pintar(); return; }
+    casillaObjetivo = i;              // vacía: la foto que venga es para aquí
+  });
+
+  // La etiqueta no responde al teclado por sí sola.
+  $("#d-grid").addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var t = e.target.closest("label[data-casilla]");
+    if (!t) return;
+    e.preventDefault();
+    casillaObjetivo = +t.dataset.casilla;
+    $("#d-slot").click();
   });
 
   raiz.addEventListener("dragstart", function (e) {
@@ -1694,7 +1997,52 @@ var NEFER = (function () {
     accesorios.push({ nombre: "", fotoId: null }); pintar();
   });
 
-  $("#d-file").addEventListener("change", function (e) { agregar(e.target.files); e.target.value = ""; });
+  /* ---------- las rutas de entrada ---------- */
+  ["d-file", "d-camara", "d-carpeta"].forEach(function (id) {
+    $("#" + id).addEventListener("change", function (e) {
+      var archivos = Array.prototype.slice.call(e.target.files);
+      e.target.value = "";
+      agregar(archivos);
+    });
+  });
+
+  // Se muestran sólo las rutas que este aparato tiene. Un botón de cámara en
+  // una computadora de escritorio abre un diálogo de archivos y desconcierta.
+  if (NEFER.RUTAS.camara) {
+    $("#d-camara-lb").hidden = false;
+    $("#d-file-lb").classList.remove("primary");
+    $("#d-file-lb").textContent = "Galería…";
+  }
+  if (NEFER.RUTAS.carpeta) $("#d-carpeta-lb").hidden = false;
+  $("#d-max-lado").textContent = NEFER.MAX_LADO;
+
+  $("#d-drop").innerHTML = NEFER.RUTAS.tactil
+    ? "Toque <b>Tomar foto</b> para fotografiar, o <b>Galería…</b> para las que ya tomó."
+    : "Arrastre aquí las fotos <b>o la carpeta entera</b><br>" +
+      "también puede pegar con <b>Ctrl+V</b>";
+
+  // Pegar: en la computadora es la vía más rápida cuando la foto llega por
+  // mensajería y ya está en el portapapeles.
+  document.addEventListener("paste", function (e) {
+    if (!raiz.classList.contains("activa")) return;
+    var imgs = NEFER.imagenesPegadas(e);
+    if (!imgs.length) return;
+    e.preventDefault();
+    agregar(imgs, { origen: "pegar" });
+  });
+
+  // Foto directa a una casilla: se toca la casilla vacía y la foto entra ahí,
+  // sin pasar por la bandeja. Es donde menos se equivoca uno, porque el
+  // rótulo está a la vista mientras se dispara.
+  var casillaObjetivo = null;
+  $("#d-slot").addEventListener("change", function (e) {
+    var destino = casillaObjetivo;
+    casillaObjetivo = null;
+    var archivos = Array.prototype.slice.call(e.target.files);  // la FileList es viva
+    e.target.value = "";
+    agregar(archivos, { casilla: destino });
+  });
+
   $("#d-cat").addEventListener("change", function () { autoAsignar(); pintar(); });
   $("#d-auto").addEventListener("click", function () { autoAsignar(); pintar(); });
   $("#d-limpiar").addEventListener("click", function () {
@@ -1716,7 +2064,7 @@ var NEFER = (function () {
   });
   drop.addEventListener("drop", function (e) {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files.length) agregar(e.dataTransfer.files);
+    NEFER.archivosArrastrados(e.dataTransfer).then(function (lista) { agregar(lista); });
   });
 
   /* ---------- salida ---------- */
@@ -1867,7 +2215,11 @@ var NEFER = (function () {
   /* ---------- carga ---------- */
   $("#r-f1").addEventListener("change", function (e) {
     var f = e.target.files[0];
-    if (!f) return;
+    if (!f) {
+      $("#r-e1").textContent = "el selector no devolvió nada";
+      $("#r-e1").style.color = "var(--obs)";
+      return;
+    }
     var fr = new FileReader();
     fr.onload = function () {
       var leido;
@@ -1908,61 +2260,72 @@ var NEFER = (function () {
     adoptar(puente.acta);
   });
 
-  // Igual que en despacho: vale la foto que el navegador sabe decodificar, no
-  // la que trae la extensión correcta. Y lo descartado se cuenta a la vista.
-  function decodifica(archivo) {
-    return new Promise(function (ok) {
-      var url = URL.createObjectURL(archivo);
-      var img = new Image(), cerrado = false;
-      function fin(vale) {
-        if (cerrado) return;
-        cerrado = true;
-        if (!vale) URL.revokeObjectURL(url);
-        ok(vale ? url : null);
-      }
-      img.onload = function () { fin(img.naturalWidth > 0); };
-      img.onerror = function () { fin(false); };
-      setTimeout(function () { fin(false); }, 15000);
-      img.src = url;
-    });
-  }
-
+  /* Las mismas rutas que en despacho: cámara para el retorno, galería,
+     carpeta entera en la computadora y arrastre. Nada se descarta callando. */
   function cargarFotos(files, destino, avisoId, tarjetaId) {
-    var lista = Array.prototype.slice.call(files);
+    var lista = Array.prototype.slice.call(files || []);
     var aviso = $("#" + avisoId);
     if (!lista.length) {
       aviso.textContent = "el selector no devolvió nada";
       aviso.style.color = "var(--obs)";
       return;
     }
-    aviso.textContent = "abriendo " + lista.length + "…";
+    aviso.textContent = "abriendo 0 de " + lista.length + "\u2026";
     aviso.style.color = "var(--ink-3)";
 
-    Promise.all(lista.map(function (f) {
-      return decodifica(f).then(function (url) { return { archivo: f, url: url }; });
-    })).then(function (res) {
-      var malas = 0;
-      res.forEach(function (x) {
-        if (!x.url) { malas++; return; }
+    NEFER.admitir(lista, {
+      reducir: true,
+      avance: function (h, t) { aviso.textContent = "abriendo " + h + " de " + t + "\u2026"; }
+    }).then(function (r) {
+      r.aceptadas.forEach(function (x) {
         var nombre = x.archivo.name || ("foto-" + sig + ".jpg");
         if (destino === "antes") antes[nombre] = { url: x.url, archivo: x.archivo };
         else retorno.push({ id: sig++, nombre: nombre, url: x.url, archivo: x.archivo });
       });
       var n = destino === "antes" ? Object.keys(antes).length : retorno.length;
       $("#" + tarjetaId).classList.toggle("lista", n > 0);
-      aviso.textContent = n + " foto(s)" + (malas ? " · " + malas + " no se pudo abrir" : "");
-      aviso.style.color = malas ? "var(--obs)" : "var(--ok)";
+      aviso.textContent = n + " foto(s)" + (r.rechazadas.length
+        ? " · " + r.rechazadas.length + " no se pudo abrir (" +
+          NEFER.motivoRechazo(r.rechazadas[0]) + ")"
+        : "");
+      aviso.style.color = r.rechazadas.length ? "var(--obs)" : "var(--ok)";
       pintar();
     });
   }
 
   $("#r-f2").addEventListener("change", function (e) {
-    cargarFotos(e.target.files, "antes", "r-e2", "r-c2");
+    var archivos = Array.prototype.slice.call(e.target.files);
     e.target.value = "";
+    cargarFotos(archivos, "antes", "r-e2", "r-c2");
   });
-  $("#r-f3").addEventListener("change", function (e) {
-    cargarFotos(e.target.files, "retorno", "r-e3", "r-c3");
+  ["r-f3", "r-camara"].forEach(function (id) {
+    $("#" + id).addEventListener("change", function (e) {
+      var archivos = Array.prototype.slice.call(e.target.files);
+      e.target.value = "";
+      cargarFotos(archivos, "retorno", "r-e3", "r-c3");
+    });
+  });
+  $("#r-carpeta").addEventListener("change", function (e) {
+    var archivos = Array.prototype.slice.call(e.target.files);
     e.target.value = "";
+    cargarFotos(archivos, "antes", "r-e2", "r-c2");
+  });
+
+  if (NEFER.RUTAS.camara) $("#r-camara-lb").hidden = false;
+  if (NEFER.RUTAS.carpeta) $("#r-carpeta-lb").hidden = false;
+
+  // Arrastrar la carpeta del despacho sobre su tarjeta.
+  [["r-c2", "antes", "r-e2"], ["r-c3", "retorno", "r-e3"]].forEach(function (t) {
+    var caja = $("#" + t[0]);
+    ["dragenter", "dragover"].forEach(function (ev) {
+      caja.addEventListener(ev, function (e) { e.preventDefault(); caja.classList.add("lista"); });
+    });
+    caja.addEventListener("drop", function (e) {
+      e.preventDefault();
+      NEFER.archivosArrastrados(e.dataTransfer).then(function (lista) {
+        cargarFotos(lista, t[1], t[2], t[0]);
+      });
+    });
   });
 
   /* ---------- preparar desde el acta de despacho ---------- */
