@@ -23,7 +23,7 @@ pytest.importorskip("playwright.sync_api", reason="Playwright no esta instalado"
 from playwright.sync_api import sync_playwright  # noqa: E402
 from PIL import Image  # noqa: E402
 
-APP = Path(__file__).resolve().parents[1] / "herramientas" / "nefer-app.html"
+APP = Path(__file__).resolve().parents[1] / "docs" / "app" / "index.html"
 
 CHROME = next(
     (r for r in (
@@ -163,8 +163,7 @@ def _contexto(nav, *, movil=False, camara=False, descargas=False):
     opciones = {"viewport": {"width": 390, "height": 844}, "locale": "es-PE"}
     if movil:
         opciones.update(has_touch=True, is_mobile=True, user_agent=UA_ANDROID)
-    if camara:
-        opciones["permissions"] = ["camera"]
+    opciones["permissions"] = ["camera"] if camara else []
     if descargas:
         opciones["accept_downloads"] = True
     return nav.new_context(**opciones)
@@ -399,12 +398,12 @@ def test_galeria_funciona_dentro_de_un_marco_con_sandbox(fotos, tmp_path):
 # CAMARA
 # ==========================================================================
 
-def test_camara_recorre_las_casillas_y_cada_foto_cae_en_la_suya():
+def test_camara_recorre_las_casillas_y_cada_foto_cae_en_la_suya(servidor):
     """El disparo entra en la casilla que el panel anuncia, y avanza sola."""
     with sync_playwright() as pw:
         nav = _lanzar(pw, camara=True)
         pg = _contexto(nav, movil=True, camara=True).new_page()
-        pg.goto(APP.as_uri())
+        pg.goto(servidor)
         app = App(pg).despacho()
 
         pg.click("#d-camara-app")
@@ -443,11 +442,11 @@ def test_camara_recorre_las_casillas_y_cada_foto_cae_en_la_suya():
         nav.close()
 
 
-def test_camara_saltar_deja_la_casilla_vacia():
+def test_camara_saltar_deja_la_casilla_vacia(servidor):
     with sync_playwright() as pw:
         nav = _lanzar(pw, camara=True)
         pg = _contexto(nav, movil=True, camara=True).new_page()
-        pg.goto(APP.as_uri())
+        pg.goto(servidor)
         app = App(pg).despacho()
 
         pg.click("#d-camara-app")
@@ -467,12 +466,12 @@ def test_camara_saltar_deja_la_casilla_vacia():
         nav.close()
 
 
-def test_camara_desde_una_casilla_concreta():
+def test_camara_desde_una_casilla_concreta(servidor):
     """Tocar una casilla vacia fotografia solo para esa casilla."""
     with sync_playwright() as pw:
         nav = _lanzar(pw, camara=True)
         pg = _contexto(nav, movil=True, camara=True).new_page()
-        pg.goto(APP.as_uri())
+        pg.goto(servidor)
         app = App(pg).despacho()
 
         casillas = pg.query_selector_all("#d-grid .slot")
@@ -495,7 +494,7 @@ def test_camara_desde_una_casilla_concreta():
         nav.close()
 
 
-def test_camara_denegada_ofrece_la_galeria_sin_perder_la_casilla(fotos):
+def test_camara_denegada_ofrece_la_galeria_sin_perder_la_casilla(fotos, servidor):
     """Si la camara no se concede, el operador sale por la galeria."""
     with sync_playwright() as pw:
         nav = _lanzar(pw)
@@ -505,7 +504,7 @@ def test_camara_denegada_ofrece_la_galeria_sin_perder_la_casilla(fotos):
             getUserMedia: () => Promise.reject(
               Object.assign(new Error('x'), {name: 'NotAllowedError'}))}});
         """)
-        pg.goto(APP.as_uri())
+        pg.goto(servidor)
         app = App(pg).despacho()
 
         casillas = pg.query_selector_all("#d-grid .slot")
@@ -515,7 +514,8 @@ def test_camara_denegada_ofrece_la_galeria_sin_perder_la_casilla(fotos):
         assert pg.is_visible("#cam-aviso")
         aviso = " ".join(pg.inner_text("#cam-aviso").split())
         assert "bloqueada" in aviso
-        assert "Chrome" in aviso and "Safari" in aviso
+        # Servida y de primer nivel, el motivo es el permiso del navegador.
+        assert "permiso" in aviso and "Cámara" in aviso
 
         with pg.expect_file_chooser(timeout=10000) as fc:
             pg.click("#cam-galeria")
@@ -596,6 +596,189 @@ def test_camara_en_marco_con_sandbox_no_deja_al_operador_sin_salida(fotos, tmp_p
 
 
 # ==========================================================================
+# SERVIDA POR HTTP: es la unica forma de que el telefono conceda la camara
+# ==========================================================================
+
+@pytest.fixture(scope="session")
+def servidor():
+    """Sirve docs/app por http, como lo hara GitHub Pages."""
+    import functools
+    import http.server
+    import socketserver
+    import threading
+
+    raiz = APP.parent
+    manejador = functools.partial(http.server.SimpleHTTPRequestHandler,
+                                  directory=str(raiz))
+    manejador.log_message = lambda *a, **k: None
+
+    class Silencioso(socketserver.TCPServer):
+        allow_reuse_address = True
+
+    srv = Silencioso(("127.0.0.1", 0), manejador)
+    puerto = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{puerto}/"
+    srv.shutdown()
+
+
+SONDA_ORIGEN = """async () => {
+  const r = {seguro: window.isSecureContext, protocolo: location.protocol};
+  try {
+    const p = await navigator.permissions.query({name: 'camera'});
+    r.permiso = p.state;
+  } catch (e) { r.permiso = 'no consultable'; }
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({video: true});
+    s.getTracks().forEach(t => t.stop());
+    r.camara = 'concedida';
+  } catch (e) { r.camara = 'rechazada:' + e.name; }
+  return r;
+}"""
+
+
+def test_desde_un_archivo_local_la_camara_no_puede_concederse():
+    """El motivo de fondo: a `file://` el navegador le niega la camara.
+
+    Sin --use-fake-ui, el permiso hay que concederlo, y a un origen local no
+    se le puede conceder. Esta prueba fija el porque de todo lo demas.
+    """
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch(executable_path=CHROME,
+                                 args=["--use-fake-device-for-media-stream"])
+        # permissions=[] deniega sin preguntar: sin esto el dialogo se queda
+        # abierto y la promesa nunca se resuelve.
+        ctx = nav.new_context(viewport={"width": 390, "height": 844},
+                              has_touch=True, is_mobile=True,
+                              user_agent=UA_ANDROID, permissions=[])
+        pg = ctx.new_page()
+        pg.goto(APP.as_uri())
+        pg.wait_for_timeout(400)
+
+        r = pg.evaluate(SONDA_ORIGEN)
+        assert r["protocolo"] == "file:"
+        assert r["camara"].startswith("rechazada"), r
+        nav.close()
+
+
+def test_servida_por_http_la_camara_se_concede(servidor):
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch(executable_path=CHROME,
+                                 args=["--use-fake-device-for-media-stream"])
+        ctx = nav.new_context(viewport={"width": 390, "height": 844},
+                              has_touch=True, is_mobile=True,
+                              user_agent=UA_ANDROID, permissions=["camera"])
+        pg = ctx.new_page()
+        pg.goto(servidor)
+        pg.wait_for_timeout(400)
+
+        r = pg.evaluate(SONDA_ORIGEN)
+        assert r["camara"] == "concedida", r
+        assert r["permiso"] == "granted", r
+        nav.close()
+
+
+def test_servida_declara_manifiesto_externo_y_registra_el_trabajador(servidor):
+    """Servida es una aplicacion instalable de verdad, y guarda para sin senal."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        pg.goto(servidor)
+        pg.wait_for_timeout(600)
+
+        manifiesto = pg.get_attribute('head link[rel="manifest"]', "href")
+        assert manifiesto == "manifest.webmanifest", manifiesto
+
+        cdp = pg.context.new_cdp_session(pg)
+        datos = cdp.send("Page.getAppManifest")
+        assert datos.get("errors") == [], datos.get("errors")
+        leido = json.loads(datos["data"])
+        assert leido["display"] == "standalone"
+        assert len(leido["icons"]) == 3
+
+        registrado = pg.evaluate("""async () => {
+          const r = await navigator.serviceWorker.getRegistration();
+          return !!r;
+        }""")
+        assert registrado, "el trabajador de servicio no se registro"
+        nav.close()
+
+
+def test_servida_abre_sin_conexion(servidor):
+    """Cortada la red, la app tiene que seguir abriendo: es el caso del patio."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        ctx = _contexto(nav, movil=True)
+        pg = ctx.new_page()
+        pg.goto(servidor)
+        pg.wait_for_function("""async () => {
+          const r = await navigator.serviceWorker.getRegistration();
+          return !!(r && r.active);
+        }""", timeout=15000)
+        pg.wait_for_timeout(600)
+
+        ctx.set_offline(True)
+        pg.goto(servidor)
+        pg.wait_for_timeout(800)
+
+        assert pg.is_visible("#tab-despacho")
+        assert pg.inner_text("h1") != ""
+        pg.click("#tab-despacho")
+        assert pg.eval_on_selector_all("#d-grid .slot", "n => n.length") == 10
+        nav.close()
+
+
+def test_desde_archivo_local_avisa_de_que_la_camara_no_puede_abrirse():
+    """El operador tiene que saberlo antes de estar en el patio."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        pg.goto(APP.as_uri())
+        pg.wait_for_timeout(500)
+
+        assert pg.is_visible("#aviso-contexto")
+        aviso = " ".join(pg.inner_text("#aviso-contexto").split())
+        assert "no puede abrirse" in aviso
+        assert "github.io" in aviso
+        # Y el boton de camara no se ofrece donde no puede funcionar.
+        pg.click("#tab-despacho")
+        assert pg.is_hidden("#d-camara-app")
+        assert pg.is_visible("#aviso-contexto-d")
+        nav.close()
+
+
+def test_servida_muestra_los_acentos_bien(servidor):
+    """Sin <meta charset> el servidor no dice la codificacion y el navegador
+    adivina mal: la app entera sale con HORÃ“METRO y DAÃ‘OS."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        pg.goto(servidor)
+        pg.wait_for_timeout(400)
+        pg.click("#tab-despacho")
+
+        rotulos = pg.eval_on_selector_all("#d-grid .cap span:first-child",
+                                          "n => n.map(x => x.textContent)")
+        assert "HORÓMETRO" in rotulos, rotulos
+        assert "VISTA LATERAL IZQUIERDA" in rotulos, rotulos
+        assert not any("Ã" in r for r in rotulos), rotulos
+        nav.close()
+
+
+def test_servida_no_muestra_el_aviso_y_ofrece_la_camara(servidor):
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        pg.wait_for_timeout(600)
+
+        assert pg.is_hidden("#aviso-contexto")
+        pg.click("#tab-despacho")
+        assert pg.is_visible("#d-camara-app")
+        nav.close()
+
+
+# ==========================================================================
 # DE LA CAMARA AL ACTA IMPRESA
 # ==========================================================================
 
@@ -615,14 +798,14 @@ def _guardar_paquete(pg, destino: Path) -> Path:
     return ruta
 
 
-def test_de_la_camara_al_acta_valida(tmp_path):
+def test_de_la_camara_al_acta_valida(tmp_path, servidor):
     """El paquete que sale de la camara pasa `nefer validar` y genera el acta."""
     from nefer import build, schema
 
     with sync_playwright() as pw:
         nav = _lanzar(pw, camara=True)
         pg = _contexto(nav, movil=True, camara=True, descargas=True).new_page()
-        pg.goto(APP.as_uri())
+        pg.goto(servidor)
         app = App(pg).despacho()
 
         pg.click("#d-camara-app")

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>nefer · actas de despacho y recepción</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#16191B">
+<link rel="icon" type="image/png" sizes="192x192" href="app/icono-192.png">
+<style>
+  :root { color-scheme: light dark;
+          --papel:#F3F4F2; --tinta:#16191B; --tinta2:#4E5860; --regla:#D6DCDA;
+          --acento:#1E4B6B; --tarjeta:#FFFFFF; }
+  @media (prefers-color-scheme: dark) {
+    :root { --papel:#14181A; --tinta:#E7ECEB; --tinta2:#A3AFB4; --regla:#2F383D;
+            --acento:#6FA8CE; --tarjeta:#1C2225; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--papel); color:var(--tinta);
+         font:16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+         padding:2.5rem 1.2rem 4rem; }
+  main { max-width:38rem; margin:0 auto; }
+  h1 { font-size:clamp(1.8rem,1.4rem+2vw,2.6rem); line-height:1.05; margin:0 0 .6rem;
+       text-transform:uppercase; letter-spacing:.01em; }
+  p { color:var(--tinta2); margin:0 0 1rem; }
+  .cta { display:flex; align-items:center; gap:.9rem; text-decoration:none;
+         background:var(--tarjeta); border:1px solid var(--regla);
+         border-left:4px solid var(--acento); border-radius:8px;
+         padding:1rem 1.1rem; color:inherit; margin:1.6rem 0; }
+  .cta img { width:52px; height:52px; border-radius:10px; flex:none; }
+  .cta strong { display:block; font-size:1.15rem; }
+  .cta span { color:var(--tinta2); font-size:.9rem; }
+  ul { color:var(--tinta2); padding-left:1.1rem; }
+  li { margin:.35rem 0; }
+  code { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.9em; }
+  a { color:var(--acento); }
+  footer { margin-top:2.5rem; padding-top:1rem; border-top:1px solid var(--regla);
+           font-size:.85rem; color:var(--tinta2); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Actas de campo</h1>
+  <p>
+    Reporte fotográfico de despacho y recepción de equipos: grupos electrógenos,
+    torres de iluminación, plataformas de elevación y maquinaria de construcción
+    y minería.
+  </p>
+
+  <a class="cta" href="app/">
+    <img src="app/icono-192.png" alt="">
+    <span>
+      <strong>Abrir la aplicación</strong>
+      <span>Instálela desde aquí en la pantalla de inicio</span>
+    </span>
+  </a>
+
+  <p><strong>Ábrala desde esta dirección, no desde un archivo descargado.</strong>
+     Un archivo local no puede pedir la cámara del teléfono: el navegador se la
+     deniega siempre. Servida desde aquí, sí.</p>
+
+  <ul>
+    <li><strong>Android:</strong> menú ⋮ → <em>Instalar aplicación</em></li>
+    <li><strong>iPhone:</strong> Compartir → <em>Añadir a inicio</em></li>
+    <li>Una vez instalada abre sin señal. Las fotos no salen del teléfono.</li>
+  </ul>
+
+  <footer>
+    El código y la herramienta de escritorio que genera el Excel y el PDF están en
+    <a href="https://github.com/nilthonnn/nefer">github.com/nilthonnn/nefer</a>.
+  </footer>
+</main>
+</body>
+</html>

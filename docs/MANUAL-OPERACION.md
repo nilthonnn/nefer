@@ -42,22 +42,38 @@ la cámara, si el selector de archivos devuelve algo y si la foto que devolvió 
 pudo abrir. El botón *copiar informe* deja ese texto listo para pegarlo en un
 mensaje. Es lo primero que hay que mirar antes de suponer nada.
 
-La causa más común es abrir el archivo desde el visor interno de una aplicación
-de mensajería en vez de un navegador: ahí ni el selector ni la cámara se
-conceden. Abra el archivo con **Chrome** o **Safari**, o instale la app en la
-pantalla de inicio.
+Dos causas cubren casi todo:
+
+- **La app se abrió como archivo local.** Medido: desde `file://` el permiso de
+  cámara sale `denied` y no se puede conceder, aunque el teléfono tenga cámara.
+  Abra **https://nilthonnn.github.io/nefer/app/**.
+- **La app se abrió dentro del visor interno de una aplicación de mensajería.**
+  Ahí no se conceden ni el selector ni la cámara. Abra el enlace con **Chrome**
+  o **Safari**.
+
+La propia aplicación lo detecta y lo dice en un aviso, con la dirección
+correcta, antes de que lo descubra en el patio.
 
 ### En el celular
 
 La computadora genera el Excel y el PDF; el celular es donde se levanta el acta,
 con el equipo delante. Para tenerlo ahí:
 
-1. Abra `herramientas/nefer-app.html` en el celular —enviándoselo por correo o
-   por WhatsApp y tocando el archivo, o desde la dirección donde lo publique—.
+1. Abra **https://nilthonnn.github.io/nefer/app/** en el navegador del celular.
 2. **Android:** menú ⋮ del navegador → *Instalar aplicación*.
    **iPhone:** botón Compartir → *Añadir a inicio*.
 3. Queda un icono en la pantalla de inicio. Desde ahí abre a pantalla completa
-   y **sin conexión**: es un solo archivo, sin nada del otro lado.
+   y **sin conexión**: un trabajador de servicio guarda la aplicación en el
+   teléfono la primera vez.
+
+**Tiene que ser esa dirección, no un archivo descargado.** A una página abierta
+como archivo local (`file://`) el navegador le deniega la cámara siempre —el
+permiso sale `denied` y no hay forma de concederlo— y algunos visores tampoco
+le abren el selector de fotos. Servida por `https` funcionan las dos cosas.
+
+Para publicar esa dirección en el repositorio: **Settings → Pages → Source:
+Deploy from a branch → Branch: `main`, carpeta `/docs` → Save**. En un par de
+minutos la aplicación queda en `/app/`.
 
 En el patio no hace falta señal. El acta sale del teléfono como un paquete
 `.zip` que se envía o se pasa por cable cuando haya cobertura.
@@ -78,14 +94,16 @@ cámara— contra un navegador de verdad:
 ```bash
 pip install -e ".[navegador]"
 python -m playwright install chromium
-python -m pytest                       # ahora son 81
+python -m pytest                       # ahora son 88
 ```
 
-Las **17 pruebas** de `tests/test_app_navegador.py` abren el selector de
+Las **24 pruebas** de `tests/test_app_navegador.py` abren el selector de
 archivos real, disparan una cámara simulada y comprueban que cada foto cae en
 su casilla, que lo que no se puede abrir se nombra con su motivo y que el
-paquete resultante genera el acta. Sin Playwright instalado se saltan solas y
-la suite sigue en 64.
+paquete resultante genera el acta. Seis de ellas sirven la app por HTTP para
+fijar lo que sólo ahí funciona: que la cámara se conceda, que el manifiesto y
+el trabajador de servicio se registren, y que abra sin conexión. Sin Playwright
+instalado se saltan solas y la suite sigue en 64.
 
 ```bash
 nefer --version        # nefer 1.0.0
@@ -197,8 +215,8 @@ Hay dos caminos. Use el que le acomode; el resultado es el mismo.
 
 #### Con la aplicación de campo (recomendado la primera vez)
 
-Abra **`herramientas/nefer-app.html`** —basta doble clic en la computadora, o
-instalarla en la pantalla de inicio del celular— y entre en **Despacho**.
+Abra la aplicación —en el celular desde **https://nilthonnn.github.io/nefer/app/**, en la computadora también
+sirve abrir `docs/app/index.html` con doble clic— y entre en **Despacho**.
 
 **Las cinco vías por las que entra una foto.** La aplicación ofrece las que este
 aparato tiene, y sólo esas:
@@ -519,7 +537,7 @@ que confirmarla igual, y en patio muchas veces no hay señal.
 | `nefer acta -e GE110-02 -c andina` | Acta con el encabezado ya lleno |
 | `nefer plantilla -o acta.json` | Manifiesto en blanco, sin catálogo |
 | `nefer fotos fotos/ -m acta.json` | Carga la carpeta de fotos en el manifiesto |
-| `herramientas/nefer-app.html` | Aplicación de campo: despacho y recepción, sin conexión |
+| `docs/app/` | Aplicación de campo: despacho y recepción, sin conexión |
 | `nefer validar acta.json` | Verifica el manifiesto y que las fotos existan |
 | `nefer validar acta.json --sin-verificar-fotos` | Solo el manifiesto, sin mirar el disco |
 | `nefer construir acta.json -o salida.xlsx` | Genera el Excel |
