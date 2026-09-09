@@ -1,0 +1,2189 @@
+<title>Nefer · Actas de campo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Levanta el acta fotográfica de despacho y de recepción de equipos, sin conexión y desde el celular.">
+<meta name="theme-color" content="#16191B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nefer">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  /* ============================================================
+     Nefer · una sola aplicación para despacho y recepción.
+     Todo el procesamiento ocurre en el teléfono: ninguna foto,
+     ningún dato de cliente sale del dispositivo.
+     ============================================================ */
+
+  :root {
+    --paper:#F3F4F2; --card:#FFFFFF; --card-2:#EAEDEB;
+    --ink:#16191B; --ink-2:#4E5860; --ink-3:#5F6A72;
+    --rule:#D6DCDA; --rule-2:#E6EAE8;
+    --accent:#1E4B6B; --accent-soft:#E3ECF3;
+    --ok:#1F6B4C; --ok-soft:#E1F0E9;
+    --obs:#8A5A00; --obs-soft:#F8EFDB; --obs-rule:#E0C894;
+    --mal:#96341F; --mal-soft:#F7E6E0; --mal-rule:#E0B2A2;
+    --barra:#16191B; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(22,25,27,.05), 0 10px 26px -16px rgba(22,25,27,.28);
+    --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+    --sans:"Barlow",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+      --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+      --rule:#2F383D; --rule-2:#262E32;
+      --accent:#6FA8CE; --accent-soft:#16303F;
+      --ok:#6FC49B; --ok-soft:#143024;
+      --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+      --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+      --barra:#0E1113; --barra-ink:#E7ECEB;
+      --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+    --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+    --rule:#2F383D; --rule-2:#262E32;
+    --accent:#6FA8CE; --accent-soft:#16303F;
+    --ok:#6FC49B; --ok-soft:#143024;
+    --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+    --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+    --barra:#0E1113; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+         font-family:var(--sans); font-size:15px; line-height:1.55;
+         -webkit-font-smoothing:antialiased;
+         overscroll-behavior-y: none; }
+
+  /* ---------- armazón: cabecera fija, contenido, pestañas abajo ---------- */
+  .app { display:flex; flex-direction:column; min-height:100%; min-height:100dvh; }
+
+  .top { position:sticky; top:0; z-index:20; background:var(--barra);
+         color:var(--barra-ink); padding-top:env(safe-area-inset-top);
+         border-bottom:1px solid rgba(255,255,255,.09); }
+  .top-in { display:flex; align-items:center; gap:.6rem;
+            padding:.5rem .8rem; max-width:74rem; margin:0 auto; }
+  .marca { display:flex; align-items:center; gap:.5rem; min-width:0; }
+  .marca .glifo { width:26px; height:26px; border-radius:6px; flex:none;
+                  display:grid; grid-template-columns:1fr 1fr; gap:2px;
+                  padding:4px; background:#000; }
+  .marca .glifo i { border-radius:2px; background:#6FA8CE; }
+  .marca .glifo i:nth-child(1) { background:#E7ECEB; }
+  .marca .glifo i:nth-child(4) { background:none; box-shadow:inset 0 0 0 1.5px #D9A24E; }
+  .marca .txt { font-family:var(--cond); font-size:1.15rem; font-weight:700;
+                text-transform:uppercase; letter-spacing:.02em; line-height:1; }
+  .marca .sec { font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+                text-transform:uppercase; color:#8FA3AD; display:block; }
+  .top .grow { flex:1; }
+  .top button { background:transparent; border:1px solid rgba(255,255,255,.16);
+                color:var(--barra-ink); font-size:.75rem; padding:.35rem .55rem;
+                border-radius:5px; min-height:44px; }
+  .top button:hover { border-color:#6FA8CE; color:#6FA8CE; }
+
+  main { flex:1; }
+  .vista { display:none; max-width:74rem; margin:0 auto; width:100%;
+           padding:1rem .8rem calc(5.5rem + env(safe-area-inset-bottom)); }
+  .vista.activa { display:block; }
+  @media (min-width:56rem) { .vista { padding:1.5rem 1.1rem 3rem; } }
+
+  .tabs { position:fixed; left:0; right:0; bottom:0; z-index:30;
+          display:grid; grid-template-columns:repeat(4,1fr);
+          background:var(--barra); border-top:1px solid rgba(255,255,255,.09);
+          padding-bottom:env(safe-area-inset-bottom); }
+  .tabs button { background:none; border:0; color:#8FA3AD; cursor:pointer;
+                 font-family:var(--sans); font-size:.68rem; font-weight:600;
+                 letter-spacing:.03em; text-transform:uppercase;
+                 padding:.5rem .2rem .55rem; min-height:56px;
+                 display:flex; flex-direction:column; align-items:center; gap:.15rem;
+                 border-top:2px solid transparent; }
+  .tabs button svg { width:20px; height:20px; stroke:currentColor; fill:none;
+                     stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+  .tabs button[aria-selected="true"] { color:#FFFFFF; border-top-color:#6FA8CE; }
+  .tabs .aviso-pin { position:absolute; top:.35rem; right:22%; width:7px; height:7px;
+                     border-radius:50%; background:#D9A24E; }
+
+  /* ---------- tipografía de sección ---------- */
+  .encab { border-bottom:3px solid var(--ink); padding-bottom:.7rem; margin-bottom:.9rem; }
+  .kicker { font-family:var(--mono); font-size:.65rem; letter-spacing:.15em;
+            text-transform:uppercase; color:var(--accent); margin:0 0 .35rem; }
+  h1 { font-family:var(--cond); font-size:clamp(1.7rem,1.3rem + 2.2vw,2.6rem);
+       font-weight:700; line-height:1; text-transform:uppercase; margin:0 0 .4rem; }
+  .sub { margin:0; color:var(--ink-2); max-width:44rem; font-size:.9rem; }
+
+  /* ---------- controles compartidos ---------- */
+  button { font-family:var(--sans); font-size:.85rem; font-weight:600;
+           padding:.4rem .75rem; border-radius:5px; cursor:pointer;
+           border:1px solid var(--rule); background:var(--card-2); color:var(--ink); }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  button.primary { background:var(--accent); border-color:var(--accent); color:var(--paper); }
+  button.primary:hover { filter:brightness(1.12); color:var(--paper); }
+  button.ghost { background:none; border-color:transparent; color:var(--ink-3);
+                 text-decoration:underline; text-underline-offset:2px; }
+  button.ghost:hover { color:var(--accent); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+
+  input[type="text"], input[type="number"], input[type="date"], select, textarea {
+    font-family:var(--sans); font-size:.86rem; color:var(--ink);
+    background:var(--card-2); border:1px solid var(--rule);
+    border-radius:5px; padding:.34rem .5rem; width:100%; }
+  select { width:auto; }
+  textarea { resize:vertical; min-height:3.2rem; }
+  button:focus-visible, input:focus-visible, select:focus-visible,
+  textarea:focus-visible, .marco:focus-visible, .tile:focus-visible,
+  .slot:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .lb { font-family:var(--mono); font-size:.65rem; letter-spacing:.1em;
+        text-transform:uppercase; color:var(--ink-3); }
+  .grow { flex:1; }
+
+  .bar { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center;
+         padding:.65rem .75rem; background:var(--card); border:1px solid var(--rule);
+         border-radius:7px; box-shadow:var(--lift); margin-bottom:.9rem; }
+
+  .panel { background:var(--card); border:1px solid var(--rule);
+           border-radius:7px; box-shadow:var(--lift); overflow:hidden;
+           margin-bottom:.7rem; }
+  .panel > h2 { font-family:var(--cond); font-size:1.05rem; font-weight:600;
+                text-transform:uppercase; letter-spacing:.02em; margin:0;
+                padding:.55rem .8rem; border-bottom:1px solid var(--rule-2);
+                display:flex; justify-content:space-between; align-items:baseline; gap:.5rem; }
+  .panel > h2 .tally { font-family:var(--mono); font-size:.7rem; font-weight:400;
+                       color:var(--ink-3); text-transform:none; letter-spacing:0; }
+  .panel-body { padding:.7rem .8rem; }
+
+  /* Panel plegable: el formulario del encabezado no debe empujar la rejilla
+     fotográfica fuera de la pantalla, que es donde está el trabajo. */
+  .plegable > summary { font-family:var(--cond); font-size:1.05rem; font-weight:600;
+                        text-transform:uppercase; letter-spacing:.02em;
+                        padding:.7rem .8rem; cursor:pointer; list-style:none;
+                        display:flex; align-items:center; gap:.5rem; min-height:48px; }
+  .plegable > summary::-webkit-details-marker { display:none; }
+  .plegable > summary::after { content:"\25BE"; font-family:var(--sans); font-size:.9rem;
+                               color:var(--ink-3); }
+  .plegable[open] > summary { border-bottom:1px solid var(--rule-2); }
+  .plegable[open] > summary::after { content:"\25B4"; }
+  .plegable > summary .tally { font-family:var(--mono); font-size:.68rem; font-weight:400;
+                               text-transform:none; letter-spacing:0; margin-left:auto;
+                               color:var(--obs); }
+  .plegable > summary .tally.ok { color:var(--ok); }
+
+  .aviso { padding:.6rem .75rem; border-radius:5px; border:1px solid var(--obs-rule);
+           background:var(--obs-soft); font-size:.85rem; color:var(--ink-2);
+           margin-bottom:.75rem; }
+  .aviso.ok, .aviso.ok-msg {
+    border-color:color-mix(in srgb,var(--ok) 45%,transparent); background:var(--ok-soft); }
+  .aviso.malo { border-color:var(--mal-rule); background:var(--mal-soft); }
+  .aviso b { color:var(--ink); }
+  .aviso code, .sub code, p code { font-family:var(--mono); font-size:.85em; }
+
+  .vacia { color:var(--ink-3); font-size:.8rem; text-align:center; padding:.7rem 0 .2rem; }
+
+  textarea.salida { min-height:9rem; font-family:var(--mono); font-size:.7rem;
+                    line-height:1.6; background:var(--card);
+                    border-left:3px solid var(--accent); }
+
+  .oculto { display:none !important; }
+
+  /* Objetivo táctil de 44 px: el mínimo para operar con guantes, de pie y con
+     el equipo delante. WCAG 2.2 exige 24; en patio eso no basta. */
+  button, select, input[type="text"], input[type="number"], input[type="date"] {
+    min-height:44px; }
+  button { padding-block:.5rem; }
+  .tabs button { min-height:56px; }
+  .top button { min-height:44px; }
+  .tile, .marco, .slot { min-height:0; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+
+<style>
+  /* ============================================================
+     Estilos propios de cada módulo. Van con el prefijo de su vista
+     porque .tile y .bandeja significan cosas distintas en cada una.
+     ============================================================ */
+
+  /* ---------- DESPACHO: bandeja + rejilla del formato ---------- */
+  #v-despacho .work { display:grid; grid-template-columns:15.5rem minmax(0,1fr);
+                      gap:1rem; align-items:start; }
+  @media (max-width:56rem) {
+    #v-despacho .work { grid-template-columns:1fr; gap:.55rem; }
+    /* La bandeja se queda a la vista: se toca la foto arriba y se baja a su
+       casilla sin perderla de vista. */
+    #v-despacho .bandeja { position:sticky; top:3.1rem; z-index:10; }
+    #v-despacho .bandeja .panel-body { padding:.5rem .55rem; }
+    #v-despacho .bandeja .tray { display:flex; overflow-x:auto; gap:.4rem;
+                                 margin-top:.45rem; padding-bottom:.2rem;
+                                 scroll-snap-type:x proximity; }
+    #v-despacho .bandeja .tile { flex:0 0 4.4rem; scroll-snap-align:start; }
+    #v-despacho .bandeja .drop { padding:.5rem; font-size:.78rem; }
+    #v-despacho .bandeja .vacia { padding:.3rem 0 0; font-size:.75rem; }
+    #v-despacho .bandeja.llena .drop { display:none; }
+  }
+
+  #v-despacho .drop { border:2px dashed var(--rule); border-radius:6px;
+                      padding:1rem .8rem; text-align:center; color:var(--ink-3);
+                      font-size:.84rem; }
+  #v-despacho .drop.hot { border-color:var(--accent); background:var(--accent-soft);
+                          color:var(--accent); }
+  #v-despacho .tray { display:grid; gap:.4rem;
+                      grid-template-columns:repeat(auto-fill,minmax(5.2rem,1fr));
+                      margin-top:.6rem; }
+  #v-despacho .tile { position:relative; border:1px solid var(--rule);
+                      border-radius:5px; overflow:hidden; background:var(--card-2);
+                      cursor:grab; padding:0; aspect-ratio:4/3; display:block; width:100%; }
+  #v-despacho .tile img { width:100%; height:100%; object-fit:cover; display:block; }
+  #v-despacho .tile.sel { outline:3px solid var(--accent); outline-offset:-1px; }
+  #v-despacho .tile.sel::after { content:"elegida"; position:absolute; top:.2rem; left:.2rem;
+                                 background:var(--accent); color:var(--paper);
+                                 font-family:var(--mono); font-size:.5rem;
+                                 padding:.1rem .25rem; border-radius:3px; }
+  .fn { position:absolute; left:0; right:0; bottom:0; background:rgba(0,0,0,.62);
+        color:#fff; font-family:var(--mono); font-size:.52rem; padding:.1rem .2rem;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .grid { display:grid; gap:.45rem;
+          grid-template-columns:repeat(auto-fill,minmax(9rem,1fr)); }
+  @media (min-width:56rem) { .grid { grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr)); } }
+
+  .slot { border:1px solid var(--rule); border-radius:5px; overflow:hidden;
+          background:var(--card-2); display:flex; flex-direction:column;
+          text-align:left; padding:0; cursor:pointer; width:100%;
+          font-family:inherit; color:inherit; align-self:stretch; }
+  .slot .ph { aspect-ratio:4/3; display:grid; place-items:center; color:var(--ink-3);
+              font-family:var(--mono); font-size:.6rem;
+              background:repeating-linear-gradient(45deg,transparent,transparent 7px,
+                        var(--rule-2) 7px,var(--rule-2) 8px); }
+  .slot img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; }
+  .slot .cap { font-family:var(--sans); font-size:.64rem; font-weight:600;
+               text-transform:uppercase; letter-spacing:.02em; line-height:1.25;
+               padding:.26rem .35rem; background:var(--card-2);
+               border-top:1px solid var(--rule-2); color:var(--ink-2);
+               display:flex; justify-content:space-between; gap:.3rem;
+               align-items:center; min-height:2.3rem; }
+  .slot .num { font-family:var(--mono); font-weight:400; color:var(--ink-3);
+               font-size:.58rem; flex:none; }
+  .slot.lleno { border-color:color-mix(in srgb,var(--ok) 50%,transparent); }
+  .slot.lleno .cap { background:var(--ok-soft); color:var(--ok); }
+  .slot.hot { border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent); }
+  .slot.propuesto .cap::after { content:"propuesta"; font-family:var(--mono);
+                                font-size:.5rem; color:var(--obs);
+                                background:var(--obs-soft); padding:.05rem .2rem;
+                                border-radius:3px; font-weight:400; }
+
+  .cons { display:flex; flex-direction:column; gap:.45rem; }
+  .cons-row { display:grid; grid-template-columns:1fr 6rem auto; gap:.4rem;
+              align-items:center; }
+  @media (max-width:34rem) {
+    .cons-row { grid-template-columns:1fr auto; }
+    .cons-row .mini { grid-column:1 / -1; }
+  }
+  .mini { display:flex; gap:.35rem; align-items:center; }
+  .mini .slot { width:5rem; }
+  .mini .slot .ph { font-size:.5rem; }
+  .mini .slot .cap { display:none; }
+
+  /* ---------- RECEPCIÓN: cargas, pares antes/después ---------- */
+  #v-recepcion .cargas { display:grid; gap:.55rem; margin-bottom:.9rem;
+                         grid-template-columns:repeat(auto-fit,minmax(14rem,1fr)); }
+  #v-recepcion .carga { background:var(--card); border:1px solid var(--rule);
+                        border-radius:7px; box-shadow:var(--lift);
+                        padding:.7rem .75rem; display:flex; flex-direction:column;
+                        gap:.4rem; }
+  #v-recepcion .carga.lista { border-color:color-mix(in srgb,var(--ok) 50%,transparent); }
+  #v-recepcion .carga h2 { font-family:var(--cond); font-size:.98rem; font-weight:600;
+                           text-transform:uppercase; letter-spacing:.02em; margin:0;
+                           display:flex; gap:.45rem; align-items:baseline; }
+  #v-recepcion .carga h2 .n { font-family:var(--mono); font-size:.66rem; color:var(--accent); }
+  #v-recepcion .carga p { margin:0; font-size:.78rem; color:var(--ink-3); }
+  #v-recepcion .carga .estado { font-family:var(--mono); font-size:.7rem; color:var(--ok); }
+
+  #v-recepcion .bandeja { position:sticky; top:3.1rem; z-index:10; background:var(--card);
+                          border:1px solid var(--rule); border-radius:7px;
+                          box-shadow:var(--lift); padding:.5rem .6rem; margin-bottom:.9rem; }
+  #v-recepcion .bandeja h2 { font-family:var(--cond); font-size:.95rem; font-weight:600;
+                             text-transform:uppercase; margin:0 0 .35rem;
+                             display:flex; justify-content:space-between; align-items:baseline; }
+  #v-recepcion .bandeja .tally { font-family:var(--mono); font-size:.68rem;
+                                 font-weight:400; color:var(--ink-3); text-transform:none; }
+  #v-recepcion .tira { display:flex; gap:.35rem; overflow-x:auto; padding-bottom:.2rem; }
+  #v-recepcion .tile { position:relative; flex:0 0 4.2rem; aspect-ratio:4/3;
+                       border:1px solid var(--rule); border-radius:4px; overflow:hidden;
+                       background:var(--card-2); padding:0; cursor:pointer; }
+  #v-recepcion .tile img { width:100%; height:100%; object-fit:cover; display:block; }
+  #v-recepcion .tile.sel { outline:3px solid var(--accent); outline-offset:-1px; }
+
+  .campos { display:grid; gap:.5rem;
+            grid-template-columns:repeat(auto-fit,minmax(10.5rem,1fr)); }
+  .campo { display:flex; flex-direction:column; gap:.2rem; }
+
+  .seccion { margin-top:1.4rem; }
+  .seccion > h2 { font-family:var(--cond); font-size:1.15rem; font-weight:600;
+                  text-transform:uppercase; letter-spacing:.02em; margin:0 0 .2rem;
+                  display:flex; justify-content:space-between; align-items:baseline;
+                  gap:.5rem; border-bottom:2px solid var(--rule); padding-bottom:.3rem; }
+  .seccion > h2 .tally { font-family:var(--mono); font-size:.7rem; font-weight:400;
+                         color:var(--ink-3); text-transform:none; letter-spacing:0; }
+  .seccion > p { margin:.45rem 0 .7rem; font-size:.83rem; color:var(--ink-3); }
+
+  .par { background:var(--card); border:1px solid var(--rule); border-radius:7px;
+         box-shadow:var(--lift); padding:.6rem .7rem; margin-bottom:.55rem; }
+  .par.pendiente { border-left:3px solid var(--obs); }
+  .par.resuelto  { border-left:3px solid var(--ok); }
+  .par-top { display:flex; justify-content:space-between; align-items:baseline;
+             gap:.5rem; margin-bottom:.5rem; }
+  .par-top h3 { font-size:.9rem; font-weight:700; margin:0; flex:1; }
+  .par-top .idx { font-family:var(--mono); font-size:.66rem; color:var(--ink-3); }
+
+  .dupla { display:grid; grid-template-columns:1fr 1fr; gap:.45rem; }
+  .lado { display:flex; flex-direction:column; gap:.28rem; }
+  .lado .tag { font-family:var(--mono); font-size:.58rem; letter-spacing:.1em;
+               text-transform:uppercase; color:var(--ink-3); }
+  .marco { aspect-ratio:4/3; border:1px solid var(--rule); border-radius:5px;
+           overflow:hidden; background:var(--card-2); display:grid; place-items:center;
+           width:100%; padding:0; cursor:pointer; }
+  .marco img { width:100%; height:100%; object-fit:cover; display:block; }
+  .marco .vacio { font-family:var(--mono); font-size:.58rem; color:var(--ink-3);
+                  padding:.35rem; text-align:center; }
+  .marco.fija { cursor:default; }
+  .marco.hot { border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent); }
+
+  .estados { display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.5rem; }
+  .estados button { font-size:.76rem; padding:.3rem .55rem; font-weight:600; min-height:44px; }
+  .estados button[aria-pressed="true"][data-e="OK"] {
+    background:var(--ok-soft); border-color:var(--ok); color:var(--ok); }
+  .estados button[aria-pressed="true"][data-e="OBS"] {
+    background:var(--obs-soft); border-color:var(--obs); color:var(--obs); }
+  .estados button[aria-pressed="true"][data-e="D"],
+  .estados button[aria-pressed="true"][data-e="NO_RETORNA"] {
+    background:var(--mal-soft); border-color:var(--mal); color:var(--mal); }
+  .obs-campo { margin-top:.4rem; }
+
+  /* ---------- INICIO y GUÍA ---------- */
+  .tarjetas { display:grid; gap:.6rem; grid-template-columns:1fr; margin:1rem 0; }
+  @media (min-width:40rem) { .tarjetas { grid-template-columns:1fr 1fr; } }
+  .tarjeta { display:block; width:100%; text-align:left; background:var(--card);
+             border:1px solid var(--rule); border-left:3px solid var(--accent);
+             border-radius:7px; box-shadow:var(--lift); padding:.85rem .9rem;
+             cursor:pointer; font-family:inherit; color:inherit; }
+  .tarjeta:hover { border-color:var(--accent); }
+  .tarjeta h3 { font-family:var(--cond); font-size:1.25rem; font-weight:700;
+                text-transform:uppercase; margin:0 0 .2rem; letter-spacing:.02em; }
+  .tarjeta p { margin:0; font-size:.85rem; color:var(--ink-2); }
+  .tarjeta .paso { font-family:var(--mono); font-size:.62rem; letter-spacing:.12em;
+                   text-transform:uppercase; color:var(--accent); display:block;
+                   margin-bottom:.25rem; }
+
+  .pasos { margin:0; padding:0; list-style:none; }
+  .pasos li { display:flex; gap:.6rem; font-size:.88rem; color:var(--ink-2);
+              border-top:1px solid var(--rule); padding:.55rem 0; }
+  .pasos .n { font-family:var(--mono); font-size:.68rem; color:var(--accent);
+              flex:none; padding-top:.15rem; min-width:1.4rem; }
+  .pasos b { color:var(--ink); }
+
+  .nota { font-size:.82rem; color:var(--ink-3); margin:.6rem 0 0; }
+  h2.rot { font-family:var(--cond); font-size:1.3rem; font-weight:700;
+           text-transform:uppercase; letter-spacing:.02em; margin:1.5rem 0 .5rem;
+           padding-bottom:.3rem; border-bottom:2px solid var(--rule); }
+</style>
+
+<div class="app" lang="es">
+
+  <header class="top">
+    <div class="top-in">
+      <div class="marca">
+        <span class="glifo" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="txt">Nefer<span class="sec" id="sec-actual">actas de campo</span></span>
+      </div>
+      <span class="grow"></span>
+      <button type="button" id="btn-tema" aria-label="Cambiar entre tema claro y oscuro">
+        <span id="tema-txt">Claro</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ================= INICIO ================= -->
+    <section class="vista activa" id="v-inicio" role="tabpanel" aria-labelledby="tab-inicio">
+      <div class="encab">
+        <p class="kicker">reporte fotográfico de equipos</p>
+        <h1>Actas de campo</h1>
+        <p class="sub">
+          Levanta el acta de despacho y la de recepción desde el celular, con el
+          equipo delante. Funciona sin señal: las fotos y los datos del cliente
+          no salen de este teléfono.
+        </p>
+      </div>
+
+      <div class="tarjetas">
+        <button class="tarjeta" type="button" data-ir="despacho">
+          <span class="paso">salida de equipo</span>
+          <h3>Despacho</h3>
+          <p>Coloca cada foto en su casilla del formato y arma el acta de salida.</p>
+        </button>
+        <button class="tarjeta" type="button" data-ir="recepcion">
+          <span class="paso">retorno de equipo</span>
+          <h3>Recepción</h3>
+          <p>Compara foto a foto contra el despacho y registra estados y daños.</p>
+        </button>
+      </div>
+
+      <div class="aviso" id="pista-instalar">
+        <b>Instálala en la pantalla de inicio</b> para abrirla como aplicación, a
+        pantalla completa y sin barra del navegador.
+        <span id="como-instalar"></span>
+      </div>
+      <div class="bar" id="bar-instalar" style="display:none">
+        <button class="primary" type="button" id="btn-instalar">Instalar aplicación</button>
+        <span class="lb">se añade a la pantalla de inicio</span>
+      </div>
+
+      <h2 class="rot">Cómo encaja con el resto</h2>
+      <ol class="pasos">
+        <li><span class="n">01</span><span>En el patio, con el equipo delante, se
+            arma el acta aquí y se guarda el <b>paquete .zip</b>: lleva el
+            <code>acta.json</code> y la carpeta <code>fotos/</code>.</span></li>
+        <li><span class="n">02</span><span>El paquete se envía por WhatsApp o correo
+            a quien tiene la computadora — o se pasa por cable al llegar.</span></li>
+        <li><span class="n">03</span><span>Ahí se descomprime y se ejecuta
+            <code>nefer construir acta.json -o ACTA.xlsx --pdf</code>. Sale el Excel
+            con el formato y el PDF para firmar.</span></li>
+      </ol>
+      <p class="nota">
+        El teléfono no genera el Excel: eso necesita la herramienta de escritorio.
+        Lo que el teléfono resuelve es lo difícil de hacer después — que cada foto
+        esté bajo su rótulo correcto y que ningún estado quede sin registrar.
+      </p>
+    </section>
+
+    <!-- ================= DESPACHO ================= -->
+    <section class="vista" id="v-despacho" role="tabpanel" aria-labelledby="tab-despacho">
+      <div class="encab">
+        <p class="kicker">acta de salida</p>
+        <h1>Despacho</h1>
+        <p class="sub">
+          Cada fotografía en su casilla del formato. La app propone una colocación
+          leyendo el nombre del archivo y la hora de captura; usted corrige lo que
+          haga falta.
+        </p>
+      </div>
+
+      <div class="bar">
+        <label class="lb" for="d-cat" style="align-self:center">Familia</label>
+        <select id="d-cat">
+          <option value="grupo_electrogeno">Grupo electrógeno</option>
+          <option value="torre_iluminacion">Torre de iluminación</option>
+          <option value="plataforma_elevacion">Plataforma de elevación</option>
+          <option value="maquinaria_amarilla">Maquinaria amarilla</option>
+          <option value="generico">Genérico</option>
+        </select>
+        <button class="primary" id="d-cargar" type="button">Cargar fotos…</button>
+        <input type="file" id="d-file" accept="image/*" multiple hidden
+               aria-label="Seleccionar fotografías del equipo">
+        <button id="d-auto" type="button">Reasignar</button>
+        <button class="ghost" id="d-ejemplo" type="button">ver ejemplo</button>
+        <span class="grow"></span>
+        <button class="ghost" id="d-limpiar" type="button">vaciar</button>
+      </div>
+
+      <details class="panel plegable" id="d-datos">
+        <summary>Datos del acta <span class="tally" id="d-t-datos"></span></summary>
+        <div class="panel-body">
+          <div class="campos">
+            <label class="campo"><span class="lb">Cliente</span>
+              <input type="text" id="d-cliente" placeholder="MINERA EJEMPLO S.A.C."></label>
+            <label class="campo"><span class="lb">Obra</span>
+              <input type="text" id="d-obra" placeholder="PROYECTO NORTE"></label>
+            <label class="campo"><span class="lb">Código de equipo</span>
+              <input type="text" id="d-equipo" placeholder="GE-0142"></label>
+            <label class="campo"><span class="lb">Modelo</span>
+              <input type="text" id="d-modelo" placeholder="C90D5 / 90 kVA"></label>
+            <label class="campo"><span class="lb">Empresa (opcional)</span>
+              <input type="text" id="d-empresa" placeholder="razón social que emite"></label>
+            <label class="campo"><span class="lb">N° acta</span>
+              <input type="text" id="d-acta" placeholder="004-001155"></label>
+            <label class="campo"><span class="lb">N° guía</span>
+              <input type="text" id="d-guia" placeholder="T001-00020144"></label>
+            <label class="campo"><span class="lb">Fecha</span>
+              <input type="date" id="d-fecha"></label>
+            <label class="campo"><span class="lb">Horómetro de salida</span>
+              <input type="text" id="d-horometro" placeholder="1548.7" inputmode="decimal"></label>
+          </div>
+          <p class="nota">
+            El horómetro se teclea mirando la foto. Si no se lee con certeza,
+            escriba <code>REVISIÓN MANUAL REQUERIDA</code>: nunca lo estime — de esa
+            cifra salen las horas facturables.
+          </p>
+        </div>
+      </details>
+
+      <div class="work">
+        <section class="panel bandeja" id="d-bandeja">
+          <h2>Sin asignar <span class="tally" id="d-t-bandeja">0</span></h2>
+          <div class="panel-body">
+            <div class="drop" id="d-drop">
+              Arrastre las fotos aquí<br>o pulse <b>Cargar fotos…</b>
+            </div>
+            <div class="tray" id="d-tray"></div>
+            <p class="vacia" id="d-tray-vacia">Toque una foto y luego su casilla.</p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Rejilla del formato <span class="tally" id="d-t-rejilla">0 / 0</span></h2>
+          <div class="panel-body">
+            <div class="grid" id="d-grid"></div>
+
+            <h2 style="border:0;padding:.9rem 0 .3rem;font-size:.92rem;font-family:var(--cond);
+                       text-transform:uppercase;margin:0">Accesorios y consumibles</h2>
+            <p class="vacia" style="text-align:left;padding:0 0 .45rem">
+              Extintor, conos, barra de tierra, tacos. Van en <code>consumibles</code>,
+              no en la rejilla.
+            </p>
+            <div class="cons" id="d-cons"></div>
+            <button id="d-add-cons" type="button" style="margin-top:.45rem">+ Añadir accesorio</button>
+          </div>
+        </section>
+      </div>
+
+      <section class="seccion">
+        <h2>Resultado</h2>
+        <label class="campo" style="margin-bottom:.6rem">
+          <span class="lb">Resumen ejecutivo · máximo 20 palabras</span>
+          <input type="text" id="d-resumen"
+                 placeholder="Grupo electrógeno sale operativo, con extintor y tacos; sin observaciones."></label>
+        <div class="aviso" id="d-estado"><b>Cargue las fotos</b> para empezar.</div>
+        <div class="bar">
+          <button class="primary" id="d-zip" type="button">Guardar paquete .zip</button>
+          <button id="d-copiar" type="button">Copiar JSON</button>
+          <span class="grow"></span>
+          <span class="lb" id="d-copiado"></span>
+        </div>
+        <textarea class="salida" id="d-salida" readonly spellcheck="false"
+                  aria-label="Acta de despacho en JSON, lista para copiar"></textarea>
+      </section>
+    </section>
+
+    <!-- ================= RECEPCIÓN ================= -->
+    <section class="vista" id="v-recepcion" role="tabpanel" aria-labelledby="tab-recepcion">
+      <div class="encab">
+        <p class="kicker">acta de retorno</p>
+        <h1>Recepción</h1>
+        <p class="sub">
+          Parte del acta de despacho y la convierte en la de recepción, poniendo
+          cada foto de salida al lado de la de retorno.
+        </p>
+      </div>
+
+      <div class="cargas">
+        <div class="carga" id="r-c1">
+          <h2><span class="n">01</span> Acta de despacho</h2>
+          <p>El <code>acta.json</code> del despacho de este equipo.</p>
+          <button class="primary" id="r-b1" type="button">Cargar acta.json…</button>
+          <input type="file" id="r-f1" accept=".json,application/json" hidden>
+          <span class="estado" id="r-e1"></span>
+        </div>
+        <div class="carga" id="r-c2">
+          <h2><span class="n">02</span> Fotos del despacho</h2>
+          <p>La carpeta <code>fotos/</code> de ese mismo despacho.</p>
+          <button id="r-b2" type="button">Cargar fotos…</button>
+          <input type="file" id="r-f2" accept="image/*" multiple hidden>
+          <span class="estado" id="r-e2"></span>
+        </div>
+        <div class="carga" id="r-c3">
+          <h2><span class="n">03</span> Fotos del retorno</h2>
+          <p>Las que acaba de tomar al recibir el equipo.</p>
+          <button id="r-b3" type="button">Cargar fotos…</button>
+          <input type="file" id="r-f3" accept="image/*" multiple hidden>
+          <span class="estado" id="r-e3"></span>
+        </div>
+      </div>
+
+      <p class="nota" id="r-puente" style="margin-bottom:.9rem">
+        ¿El despacho lo armó en este mismo teléfono? Púlselo aquí:
+        <button class="ghost" type="button" id="r-desde-despacho">usar el acta de la pestaña Despacho</button>
+      </p>
+
+      <div id="r-trabajo" class="oculto">
+
+        <div class="bandeja">
+          <h2>Fotos del retorno sin usar <span class="tally" id="r-t-tira">0</span></h2>
+          <div class="tira" id="r-tira"></div>
+          <p class="lb" id="r-pista" style="margin:.35rem 0 0">
+            Toque una foto y luego el recuadro «DESPUÉS» donde va.
+          </p>
+        </div>
+
+        <section class="bar">
+          <div class="campos" style="width:100%">
+            <label class="campo"><span class="lb">N° acta</span>
+              <input type="text" id="r-acta" placeholder="004-001155"></label>
+            <label class="campo"><span class="lb">N° guía</span>
+              <input type="text" id="r-guia" placeholder="T001-00020144"></label>
+            <label class="campo"><span class="lb">Fecha de recepción</span>
+              <input type="date" id="r-fecha"></label>
+            <label class="campo"><span class="lb">Horómetro de retorno</span>
+              <input type="text" id="r-horometro" placeholder="1731.2" inputmode="decimal"></label>
+          </div>
+        </section>
+        <div class="aviso" id="r-aviso-horo">
+          <b>El horómetro se teclea mirando la foto.</b> Si no se lee con certeza,
+          escriba <code>REVISIÓN MANUAL REQUERIDA</code>: nunca lo estime.
+          Las horas facturables salen de la diferencia con el despacho.
+        </div>
+
+        <section class="seccion">
+          <h2>Vistas del equipo <span class="tally" id="r-t-vistas">0 / 0</span></h2>
+          <p>La foto de salida ya está. Ponga al lado la del retorno, con la misma toma.</p>
+          <div id="r-vistas"></div>
+        </section>
+
+        <section class="seccion">
+          <h2>Accesorios <span class="tally" id="r-t-cons">0 / 0</span></h2>
+          <p>Qué volvió y en qué estado. Lo que no retorna genera recuperación.</p>
+          <div id="r-consumibles"></div>
+        </section>
+
+        <section class="seccion">
+          <h2>Componentes <span class="tally" id="r-t-insp">0 / 0</span></h2>
+          <p>Marque el estado de cada uno. Los observados o dañados van a la sección
+             DAÑOS del acta y necesitan una observación escrita.</p>
+          <div id="r-inspeccion"></div>
+          <button id="r-add-comp" type="button" style="margin-top:.4rem">+ Añadir componente</button>
+        </section>
+
+        <section class="seccion">
+          <h2>Resultado</h2>
+          <div class="aviso" id="r-estado-final"></div>
+          <label class="campo" style="margin-bottom:.6rem">
+            <span class="lb">Resumen ejecutivo · máximo 20 palabras</span>
+            <input type="text" id="r-resumen"
+                   placeholder="Grupo retorna operativo; junta de escape rota, se factura el cambio."></label>
+          <div class="bar">
+            <button class="primary" id="r-zip" type="button">Guardar paquete .zip</button>
+            <button id="r-copiar" type="button">Copiar JSON</button>
+            <span class="grow"></span>
+            <span class="lb" id="r-copiado"></span>
+          </div>
+          <textarea class="salida" id="r-salida" readonly spellcheck="false"
+                    aria-label="Acta de recepción en JSON, lista para copiar"></textarea>
+        </section>
+      </div>
+    </section>
+
+    <!-- ================= GUÍA ================= -->
+    <section class="vista" id="v-guia" role="tabpanel" aria-labelledby="tab-guia">
+      <div class="encab">
+        <p class="kicker">cómo se usa</p>
+        <h1>Guía rápida</h1>
+        <p class="sub">Lo mínimo para levantar un acta correcta la primera vez.</p>
+      </div>
+
+      <h2 class="rot">Antes de salir al patio</h2>
+      <ol class="pasos">
+        <li><span class="n">01</span><span><b>Instale la app</b> en la pantalla de
+            inicio. Una vez instalada abre sin señal.</span></li>
+        <li><span class="n">02</span><span><b>Ponga la cámara en JPG.</b> En iPhone:
+            Ajustes → Cámara → Formatos → «Más compatible». El formato HEIC no se
+            puede incrustar en el Excel.</span></li>
+      </ol>
+
+      <h2 class="rot">Al fotografiar</h2>
+      <ol class="pasos">
+        <li><span class="n">01</span><span>Tome las fotos <b>en el orden del formato</b>:
+            frontal, posterior, lateral izquierda, lateral derecha, horómetro, panel…
+            La app usa la hora de captura para proponer la colocación.</span></li>
+        <li><span class="n">02</span><span>Si puede renombrar, mejor todavía:
+            <code>03-lat-izq.jpg</code>, <code>05-horometro.jpg</code>. La app lee el
+            nombre y acierta la casilla.</span></li>
+        <li><span class="n">03</span><span>La foto del <b>horómetro</b> debe leerse sin
+            dudar. Acérquese, sin reflejo. Es la única cifra que se factura.</span></li>
+        <li><span class="n">04</span><span>Cada golpe, rayadura o fuga: <b>una foto
+            aparte</b>. Lo que no se fotografía en la salida se discute en el
+            retorno.</span></li>
+      </ol>
+
+      <h2 class="rot">Al armar el acta</h2>
+      <ol class="pasos">
+        <li><span class="n">01</span><span>Revise la propuesta casilla por casilla.
+            Las marcadas <b>propuesta</b> las colocó la app, no usted.</span></li>
+        <li><span class="n">02</span><span>Izquierda y derecha son el error más común y
+            el más caro. Mírelas dos veces.</span></li>
+        <li><span class="n">03</span><span>Pulse <b>Guardar paquete .zip</b>. Ese archivo
+            lleva el acta y las fotos juntas, con los nombres que el acta
+            espera.</span></li>
+      </ol>
+
+      <h2 class="rot">Qué hace la computadora</h2>
+      <p class="nota" style="margin-bottom:.6rem">Al descomprimir el paquete quedan
+        <code>acta.json</code> y <code>fotos/</code> en la misma carpeta. Entonces:</p>
+      <textarea class="salida" readonly rows="3" aria-label="Comandos para generar el acta"
+        style="min-height:0">nefer validar acta.json
+nefer construir acta.json -o ACTA.xlsx --pdf</textarea>
+      <p class="nota">
+        <code>validar</code> avisa de lo que falta antes de imprimir; <code>construir</code>
+        genera el Excel con el formato y el PDF para firmar.
+      </p>
+
+      <h2 class="rot">Privacidad</h2>
+      <p class="nota">
+        La app no envía nada a ningún servidor. Las fotos se leen desde el teléfono,
+        se muestran y se empaquetan ahí mismo. Si la abre sin conexión funciona
+        igual: es la prueba de que no hay nada del otro lado.
+      </p>
+    </section>
+
+  </main>
+
+  <nav class="tabs" role="tablist" aria-label="Secciones de la aplicación">
+    <button type="button" id="tab-inicio" role="tab" aria-selected="true"
+            aria-controls="v-inicio" data-ir="inicio">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>
+      Inicio
+    </button>
+    <button type="button" id="tab-despacho" role="tab" aria-selected="false"
+            aria-controls="v-despacho" data-ir="despacho">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.4"/><path d="M8.5 6l1.3-2h4.4L15.5 6"/></svg>
+      Despacho
+    </button>
+    <button type="button" id="tab-recepcion" role="tab" aria-selected="false"
+            aria-controls="v-recepcion" data-ir="recepcion">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-.7 4.2"/><path d="M20 5v6h-6"/></svg>
+      Recepción
+    </button>
+    <button type="button" id="tab-guia" role="tab" aria-selected="false"
+            aria-controls="v-guia" data-ir="guia">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h9a3 3 0 0 1 3 3V20a2.5 2.5 0 0 0-2.5-2.5H5z"/><path d="M17 7.5h2v12h-3.5"/></svg>
+      Guía
+    </button>
+  </nav>
+
+</div>
+
+<script>
+/* ================================================================
+   NÚCLEO · pestañas, tema, instalación, empaquetado y persistencia.
+   ================================================================ */
+var NEFER = (function () {
+  "use strict";
+
+  var $ = function (s, raiz) { return (raiz || document).querySelector(s); };
+
+  function esc(t) {
+    return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) {
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c];
+    });
+  }
+
+  /* ---------- la cabecera ----------
+     El archivo se puede abrir tal cual (el navegador crea el <head> y mete ahí
+     las etiquetas de arriba) o incrustado en una página, donde caen en el
+     cuerpo. En ese segundo caso hay que subirlas a mano: si el manifiesto no
+     está en el <head>, el navegador no ofrece instalar. */
+  function ordenarCabecera() {
+    var cab = document.head;
+    if (!cab) return;
+    var sueltas = document.body
+      ? document.body.querySelectorAll("meta, link[rel], title")
+      : [];
+    Array.prototype.forEach.call(sueltas, function (n) { cab.appendChild(n); });
+  }
+
+  var ICONO_192 = "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";
+  var ICONO_512 = "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";
+  var ICONO_180 = "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";
+
+  function declararApp() {
+    var cab = document.head;
+    if (!cab) return;
+
+    function poner(rel, href, extra) {
+      var l = document.createElement("link");
+      l.rel = rel; l.href = href;
+      if (extra) Object.keys(extra).forEach(function (k) { l.setAttribute(k, extra[k]); });
+      cab.appendChild(l);
+      return l;
+    }
+
+    poner("icon", "data:image/png;base64," + ICONO_192, { type: "image/png", sizes: "192x192" });
+    poner("apple-touch-icon", "data:image/png;base64," + ICONO_180, { sizes: "180x180" });
+
+    // El manifiesto se arma aquí para poder fijar start_url a la dirección real
+    // desde la que se abrió: un manifiesto en data: no tiene base para resolver
+    // rutas relativas.
+    var manifiesto = {
+      name: "Nefer · Actas de campo",
+      short_name: "Nefer",
+      description: "Acta fotográfica de despacho y recepción de equipos, sin conexión.",
+      start_url: location.href,
+      scope: location.href,
+      display: "standalone",
+      orientation: "portrait-primary",
+      background_color: "#16191B",
+      theme_color: "#16191B",
+      lang: "es",
+      dir: "ltr",
+      icons: [
+        { src: "data:image/png;base64," + ICONO_192, sizes: "192x192",
+          type: "image/png", purpose: "any" },
+        { src: "data:image/png;base64," + ICONO_512, sizes: "512x512",
+          type: "image/png", purpose: "any" },
+        { src: "data:image/png;base64," + ICONO_512, sizes: "512x512",
+          type: "image/png", purpose: "maskable" }
+      ]
+    };
+    poner("manifest",
+          "data:application/manifest+json;charset=utf-8," +
+          encodeURIComponent(JSON.stringify(manifiesto)));
+  }
+
+  /* ---------- tema ---------- */
+  function tema() {
+    var raiz = document.documentElement;
+    var guardado = null;
+    try { guardado = localStorage.getItem("nefer.tema"); } catch (e) { /* sin permiso */ }
+    if (guardado === "claro" || guardado === "oscuro") {
+      raiz.setAttribute("data-theme", guardado === "claro" ? "light" : "dark");
+    }
+    function oscuroAhora() {
+      var t = raiz.getAttribute("data-theme");
+      if (t === "dark") return true;
+      if (t === "light") return false;
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    function rotular() {
+      var t = $("#tema-txt");
+      if (t) t.textContent = oscuroAhora() ? "Claro" : "Oscuro";
+    }
+    var b = $("#btn-tema");
+    if (b) b.addEventListener("click", function () {
+      var aOscuro = !oscuroAhora();
+      raiz.setAttribute("data-theme", aOscuro ? "dark" : "light");
+      try { localStorage.setItem("nefer.tema", aOscuro ? "oscuro" : "claro"); }
+      catch (e) { /* modo privado: el tema dura lo que la sesión */ }
+      rotular();
+    });
+    rotular();
+  }
+
+  /* ---------- pestañas ---------- */
+  var VISTAS = {
+    inicio:    ["Actas de campo",  "actas de campo"],
+    despacho:  ["Despacho",        "salida de equipo"],
+    recepcion: ["Recepción",       "retorno de equipo"],
+    guia:      ["Guía rápida",     "cómo se usa"]
+  };
+  var actual = "inicio";
+
+  function ir(nombre) {
+    if (!VISTAS[nombre]) return;
+    actual = nombre;
+    Object.keys(VISTAS).forEach(function (k) {
+      var v = $("#v-" + k), t = $("#tab-" + k);
+      if (v) v.classList.toggle("activa", k === nombre);
+      if (t) t.setAttribute("aria-selected", String(k === nombre));
+    });
+    var sec = $("#sec-actual");
+    if (sec) sec.textContent = VISTAS[nombre][1];
+    window.scrollTo(0, 0);
+    try { localStorage.setItem("nefer.vista", nombre); } catch (e) { /* da igual */ }
+  }
+
+  function pestanas() {
+    document.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-ir]");
+      if (b) ir(b.dataset.ir);
+    });
+  }
+
+  /* ---------- instalación ---------- */
+  function instalacion() {
+    var pendiente = null;
+    var bar = $("#bar-instalar"), boton = $("#btn-instalar");
+
+    window.addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault();
+      pendiente = e;
+      if (bar) bar.style.display = "";
+    });
+    if (boton) boton.addEventListener("click", function () {
+      if (!pendiente) return;
+      pendiente.prompt();
+      pendiente.userChoice.then(function () { pendiente = null; if (bar) bar.style.display = "none"; });
+    });
+    window.addEventListener("appinstalled", function () {
+      if (bar) bar.style.display = "none";
+      var p = $("#pista-instalar");
+      if (p) { p.className = "aviso ok"; p.innerHTML = "<b>Instalada.</b> Ábrala desde su icono en la pantalla de inicio."; }
+    });
+
+    // Instrucciones concretas según el navegador: en iOS no existe el diálogo
+    // de instalación y hay que decir dónde está el botón.
+    var ua = navigator.userAgent || "";
+    var esIOS = /iPad|iPhone|iPod/.test(ua) ||
+                (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    var txt = $("#como-instalar");
+    if (txt) {
+      txt.innerHTML = esIOS
+        ? " En este teléfono: botón <b>Compartir</b> (el cuadro con la flecha) → " +
+          "<b>Añadir a inicio</b>."
+        : " En este teléfono: menú <b>⋮</b> del navegador → <b>Instalar aplicación</b> " +
+          "o <b>Añadir a pantalla principal</b>.";
+    }
+
+    var yaInstalada = window.matchMedia &&
+      window.matchMedia("(display-mode: standalone)").matches;
+    if (yaInstalada || navigator.standalone) {
+      var p = $("#pista-instalar");
+      if (p) p.classList.add("oculto");
+    }
+  }
+
+  /* ---------- ZIP sin compresión ----------
+     Se guarda «almacenado», sin comprimir: las fotos ya son JPG y comprimirlas
+     otra vez no ahorra nada. Así el empaquetado no necesita ninguna librería
+     externa, que es lo que permite que la app funcione sin conexión. */
+  var TABLA_CRC = (function () {
+    var t = new Uint32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(u8) {
+    var c = 0xFFFFFFFF;
+    for (var i = 0; i < u8.length; i++) c = TABLA_CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function fechaDos(d) {
+    return {
+      hora: (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1),
+      dia: ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()
+    };
+  }
+
+  function armarZip(entradas) {
+    var partes = [], central = [], desplazamiento = 0, f = fechaDos(new Date());
+    var codificar = new TextEncoder();
+
+    entradas.forEach(function (e) {
+      var nombre = codificar.encode(e.nombre);
+      var datos = e.datos, n = datos.length, crc = crc32(datos);
+
+      var lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true);
+      lh.setUint16(4, 20, true);
+      lh.setUint16(6, 0x0800, true);        // nombres en UTF-8
+      lh.setUint16(8, 0, true);             // método 0: almacenado
+      lh.setUint16(10, f.hora, true);
+      lh.setUint16(12, f.dia, true);
+      lh.setUint32(14, crc, true);
+      lh.setUint32(18, n, true);
+      lh.setUint32(22, n, true);
+      lh.setUint16(26, nombre.length, true);
+      lh.setUint16(28, 0, true);
+      partes.push(new Uint8Array(lh.buffer), nombre, datos);
+
+      var cd = new DataView(new ArrayBuffer(46));
+      cd.setUint32(0, 0x02014b50, true);
+      cd.setUint16(4, 20, true);
+      cd.setUint16(6, 20, true);
+      cd.setUint16(8, 0x0800, true);
+      cd.setUint16(10, 0, true);
+      cd.setUint16(12, f.hora, true);
+      cd.setUint16(14, f.dia, true);
+      cd.setUint32(16, crc, true);
+      cd.setUint32(20, n, true);
+      cd.setUint32(24, n, true);
+      cd.setUint16(28, nombre.length, true);
+      cd.setUint16(30, 0, true);
+      cd.setUint16(32, 0, true);
+      cd.setUint16(34, 0, true);
+      cd.setUint16(36, 0, true);
+      cd.setUint32(38, 0, true);
+      cd.setUint32(42, desplazamiento, true);
+      central.push(new Uint8Array(cd.buffer), nombre);
+
+      desplazamiento += 30 + nombre.length + n;
+    });
+
+    var tamCentral = central.reduce(function (a, p) { return a + p.length; }, 0);
+    var fin = new DataView(new ArrayBuffer(22));
+    fin.setUint32(0, 0x06054b50, true);
+    fin.setUint16(4, 0, true);
+    fin.setUint16(6, 0, true);
+    fin.setUint16(8, entradas.length, true);
+    fin.setUint16(10, entradas.length, true);
+    fin.setUint32(12, tamCentral, true);
+    fin.setUint32(16, desplazamiento, true);
+    fin.setUint16(20, 0, true);
+
+    return new Blob(partes.concat(central, [new Uint8Array(fin.buffer)]),
+                    { type: "application/zip" });
+  }
+
+  function leerBytes(archivo) {
+    return new Promise(function (ok, mal) {
+      var fr = new FileReader();
+      fr.onload = function () { ok(new Uint8Array(fr.result)); };
+      fr.onerror = function () { mal(fr.error); };
+      fr.readAsArrayBuffer(archivo);
+    });
+  }
+
+  /* ---------- entrega del paquete ----------
+     Compartir primero: en el celular es el camino que lleva el archivo a
+     WhatsApp o al correo sin pasar por la carpeta de descargas. */
+  var incrustada = (function () {
+    try { return window.self !== window.top; } catch (e) { return true; }
+  })();
+
+  function entregar(blob, nombre, avisar) {
+    var archivo = null;
+    try { archivo = new File([blob], nombre, { type: "application/zip" }); } catch (e) { /* File viejo */ }
+
+    if (archivo && navigator.canShare && navigator.share &&
+        navigator.canShare({ files: [archivo] })) {
+      navigator.share({ files: [archivo], title: nombre }).then(
+        function () { avisar("compartido"); },
+        function (err) {
+          if (err && err.name === "AbortError") { avisar(""); return; }
+          descargar(blob, nombre, avisar);
+        });
+      return;
+    }
+    descargar(blob, nombre, avisar);
+  }
+
+  function descargar(blob, nombre, avisar) {
+    if (incrustada) {
+      avisar("descarga bloqueada aquí — abra la app instalada");
+      return;
+    }
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 4000);
+    avisar("guardado: " + nombre);
+  }
+
+  function copiar(texto, avisar, area) {
+    function fin(ok) { avisar(ok ? "copiado" : "seleccione y copie a mano"); }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(function () { fin(true); },
+        function () { if (area) area.select(); fin(false); });
+    } else { if (area) area.select(); fin(false); }
+  }
+
+  function avisador(sel) {
+    return function (texto) {
+      var n = $(sel);
+      if (!n) return;
+      n.textContent = texto;
+      if (texto) setTimeout(function () { if (n.textContent === texto) n.textContent = ""; }, 4000);
+    };
+  }
+
+  /* ---------- memoria de lo tecleado ----------
+     El teléfono se bloquea, entra una llamada, el navegador descarta la
+     pestaña. Lo escrito se recupera; las fotos no, porque viven en memoria. */
+  function recordar(clave, leer, escribir) {
+    var k = "nefer." + clave;
+    try {
+      var crudo = localStorage.getItem(k);
+      if (crudo) escribir(JSON.parse(crudo));
+    } catch (e) { /* dato viejo o sin permiso: se empieza limpio */ }
+    var pendiente = null;
+    return function () {
+      if (pendiente) clearTimeout(pendiente);
+      pendiente = setTimeout(function () {
+        try { localStorage.setItem(k, JSON.stringify(leer())); } catch (e) { /* lleno o privado */ }
+      }, 400);
+    };
+  }
+
+  function hoy() { return new Date().toISOString().slice(0, 10); }
+
+  function arrancar() {
+    ordenarCabecera();
+    declararApp();
+    tema();
+    pestanas();
+    instalacion();
+    var previa = null;
+    try { previa = localStorage.getItem("nefer.vista"); } catch (e) { /* da igual */ }
+    if (previa && VISTAS[previa] && previa !== "inicio") ir(previa);
+  }
+
+  return {
+    $: $, esc: esc, ir: ir, arrancar: arrancar,
+    armarZip: armarZip, leerBytes: leerBytes, entregar: entregar,
+    copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
+    incrustada: incrustada
+  };
+})();
+</script>
+
+<script>
+/* ================================================================
+   DESPACHO · cada foto en su casilla del formato.
+   ================================================================ */
+(function () {
+  "use strict";
+  var raiz = document.getElementById("v-despacho");
+  var $ = function (s) { return raiz.querySelector(s); };
+  var esc = NEFER.esc;
+
+  var VISTAS = {
+    grupo_electrogeno: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
+      "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL","VISTA FRONTAL DE MOTOR",
+      "VISTA POSTERIOR DE MOTOR","BATERÍAS","TANQUE DE COMBUSTIBLE"],
+    torre_iluminacion: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
+      "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL","MÁSTIL Y WINCHE","FOCOS",
+      "ESTABILIZADORES","BATERÍAS"],
+    plataforma_elevacion: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
+      "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL","MANDO DE CONTROL",
+      "PISO DE PLATAFORMA","LLAVE DE CONTACTO","BATERÍAS","TACOS"],
+    maquinaria_amarilla: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
+      "VISTA LATERAL DERECHA","HORÓMETRO","CABINA","CUCHARÓN / HOJA","SISTEMA HIDRÁULICO",
+      "TREN DE RODAJE / LLANTAS","MOTOR"],
+    generico: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
+      "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL"]
+  };
+
+  // Palabras del nombre de archivo que delatan la vista. El orden importa:
+  // "lateral izquierda" debe ganar a "lateral" a secas.
+  var PISTAS = [
+    ["VISTA LATERAL IZQUIERDA", ["latizq","lateralizquierda","lateralizq","izquierda","izq","left"]],
+    ["VISTA LATERAL DERECHA",   ["latder","lateralderecha","derecha","der","right"]],
+    ["VISTA FRONTAL DE MOTOR",  ["motorfrente","motorfrontal","frentemotor","enginefront"]],
+    ["VISTA POSTERIOR DE MOTOR",["motoratras","motorposterior","atrasmotor","engineback"]],
+    ["VISTA FRONTAL",           ["frontal","frente","delante","front"]],
+    ["VISTA POSTERIOR",         ["posterior","atras","trasera","back","rear"]],
+    ["HORÓMETRO",               ["horometro","horimetro","horas","hourmeter","hour"]],
+    ["PANEL DE CONTROL",        ["panel","tablero","controlpanel"]],
+    ["MANDO DE CONTROL",        ["mando","joystick","botonera"]],
+    ["TANQUE DE COMBUSTIBLE",   ["tanque","combustible","diesel","fuel"]],
+    ["BATERÍAS",                ["bateria","baterias","battery"]],
+    ["MÁSTIL Y WINCHE",         ["mastil","winche","torre"]],
+    ["FOCOS",                   ["foco","focos","luces","lampara","light"]],
+    ["ESTABILIZADORES",         ["estabilizador","gato","outrigger"]],
+    ["PISO DE PLATAFORMA",      ["piso","plataforma","canastilla"]],
+    ["LLAVE DE CONTACTO",       ["llave","contacto","ignicion"]],
+    ["TACOS",                   ["taco","tacos","cuna"]],
+    ["CABINA",                  ["cabina","cab"]],
+    ["CUCHARÓN / HOJA",         ["cucharon","cuchara","hoja","balde","bucket"]],
+    ["SISTEMA HIDRÁULICO",      ["hidraulico","hidraulica","manguera","hydraulic"]],
+    ["TREN DE RODAJE / LLANTAS",["rodaje","llanta","oruga","neumatico","track"]],
+    ["MOTOR",                   ["motor","engine"]]
+  ];
+
+  var fotos = [];        // {id, nombre, url, archivo, fecha, respaldo, sugerida}
+  var casillas = [];     // fotoId o null, paralelo a las vistas
+  var propuestas = [];   // true si la casilla la llenó la propuesta automática
+  var accesorios = [];   // {nombre, fotoId}
+  var elegida = null;
+  var siguienteId = 1;
+  var guardar = function () {};
+
+  var normal = function (t) {
+    return String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]/g, "");
+  };
+
+  /* ---------- EXIF: sólo la fecha de captura, que es lo único que usamos ---------- */
+  function fechaExif(buffer) {
+    try {
+      var v = new DataView(buffer);
+      if (v.getUint16(0) !== 0xFFD8) return null;          // no es JPEG
+      var pos = 2, fin = v.byteLength;
+      while (pos < fin - 4) {
+        if (v.getUint8(pos) !== 0xFF) break;
+        var marca = v.getUint8(pos + 1), largo = v.getUint16(pos + 2);
+        if (marca === 0xE1) {
+          var base = pos + 10;                              // tras "Exif\0\0"
+          if (v.getUint32(pos + 4) !== 0x45786966) break;
+          var le = v.getUint16(base) === 0x4949;
+          var ifd = base + v.getUint32(base + 4, le);
+          var texto = buscarFecha(v, base, ifd, le);
+          if (texto) return texto;
+          break;
+        }
+        pos += 2 + largo;
+      }
+    } catch (e) { /* EXIF ausente o malformado: da igual, hay respaldo */ }
+    return null;
+  }
+
+  function buscarFecha(v, base, ifd, le) {
+    var n = v.getUint16(ifd, le), sub = null;
+    for (var i = 0; i < n; i++) {
+      var e = ifd + 2 + i * 12, tag = v.getUint16(e, le);
+      if (tag === 0x9003 || tag === 0x0132) {               // DateTimeOriginal / DateTime
+        var off = base + v.getUint32(e + 8, le), s = "";
+        for (var k = 0; k < 19; k++) s += String.fromCharCode(v.getUint8(off + k));
+        if (/^\d{4}:\d{2}:\d{2}/.test(s)) return s;
+      }
+      if (tag === 0x8769) sub = base + v.getUint32(e + 8, le);   // ExifIFD
+    }
+    return sub ? buscarFecha(v, base, sub, le) : null;
+  }
+
+  function sugerir(nombre) {
+    var n = normal(nombre);
+    for (var i = 0; i < PISTAS.length; i++) {
+      for (var k = 0; k < PISTAS[i][1].length; k++) {
+        if (n.indexOf(PISTAS[i][1][k]) !== -1) return PISTAS[i][0];
+      }
+    }
+    return null;
+  }
+
+  /* ---------- nombres dentro del paquete ----------
+     El acta nombra fotos/<archivo>; si dos fotos llegan con el mismo nombre —
+     cosa habitual al mezclar cámaras — el acta apuntaría dos veces al mismo
+     archivo. Se renombra aquí, una sola vez, para que JSON y ZIP coincidan. */
+  function nombresDelPaquete() {
+    var usados = {}, mapa = {};
+    fotos.forEach(function (f) {
+      var base = String(f.nombre).split(/[\\/]/).pop().replace(/[^\w.\- ]+/g, "_");
+      if (!base) base = "foto.jpg";
+      var nombre = base, n = 1;
+      while (usados[nombre.toLowerCase()]) {
+        var punto = base.lastIndexOf(".");
+        nombre = punto > 0 ? base.slice(0, punto) + "-" + (++n) + base.slice(punto)
+                           : base + "-" + (++n);
+      }
+      usados[nombre.toLowerCase()] = true;
+      mapa[f.id] = nombre;
+    });
+    return mapa;
+  }
+
+  /* ---------- carga ---------- */
+  function agregar(archivos) {
+    var pendientes = Array.prototype.filter.call(archivos, function (f) {
+      return /^image\//.test(f.type) || /\.(jpe?g|png|gif|bmp)$/i.test(f.name);
+    });
+    var rechazados = Array.prototype.filter.call(archivos, function (f) {
+      return /\.(heic|heif|tiff?|webp|dng)$/i.test(f.name);
+    });
+    if (!pendientes.length) { avisarRechazo(rechazados); return; }
+
+    var restan = pendientes.length;
+    pendientes.forEach(function (f) {
+      var foto = {
+        id: siguienteId++, nombre: f.name, url: URL.createObjectURL(f), archivo: f,
+        fecha: null, respaldo: f.lastModified || 0, sugerida: sugerir(f.name)
+      };
+      fotos.push(foto);
+      var fr = new FileReader();
+      function listo() {
+        if (--restan === 0) { autoAsignar(); pintar(); avisarRechazo(rechazados); }
+      }
+      fr.onload = function () { foto.fecha = fechaExif(fr.result); listo(); };
+      fr.onerror = listo;
+      fr.readAsArrayBuffer(f.slice(0, 131072));   // la cabecera basta para el EXIF
+    });
+  }
+
+  function ordenCaptura(a, b) {
+    if (a.fecha && b.fecha && a.fecha !== b.fecha) return a.fecha < b.fecha ? -1 : 1;
+    if (a.respaldo !== b.respaldo) return a.respaldo - b.respaldo;
+    return a.nombre.localeCompare(b.nombre, "es", { numeric: true });
+  }
+
+  // Propuesta: primero lo que el nombre delata, luego el resto por orden de captura.
+  function autoAsignar() {
+    var vistas = VISTAS[$("#d-cat").value];
+    casillas = vistas.map(function () { return null; });
+    propuestas = vistas.map(function () { return false; });
+
+    var libres = fotos.slice().sort(ordenCaptura), usadas = {};
+    libres.forEach(function (f) {
+      if (!f.sugerida) return;
+      var i = vistas.indexOf(f.sugerida);
+      if (i !== -1 && casillas[i] === null) {
+        casillas[i] = f.id; propuestas[i] = true; usadas[f.id] = true;
+      }
+    });
+    libres.forEach(function (f) {
+      if (usadas[f.id]) return;
+      for (var i = 0; i < casillas.length; i++) {
+        if (casillas[i] === null) {
+          casillas[i] = f.id; propuestas[i] = true; usadas[f.id] = true; return;
+        }
+      }
+    });
+  }
+
+  /* ---------- pintado ---------- */
+  function porId(id) {
+    for (var i = 0; i < fotos.length; i++) if (fotos[i].id === id) return fotos[i];
+    return null;
+  }
+  function asignadas() {
+    var s = {};
+    casillas.forEach(function (id) { if (id !== null) s[id] = true; });
+    accesorios.forEach(function (a) { if (a.fotoId) s[a.fotoId] = true; });
+    return s;
+  }
+
+  function pintar() {
+    var vistas = VISTAS[$("#d-cat").value];
+    if (casillas.length !== vistas.length) {
+      casillas = vistas.map(function (_, i) { return casillas[i] !== undefined ? casillas[i] : null; });
+      propuestas = vistas.map(function (_, i) { return !!propuestas[i]; });
+    }
+    var usadas = asignadas();
+
+    var tray = $("#d-tray"); tray.textContent = "";
+    var sueltas = fotos.filter(function (f) { return !usadas[f.id]; }).sort(ordenCaptura);
+    sueltas.forEach(function (f) {
+      var b = document.createElement("button");
+      b.className = "tile" + (elegida === f.id ? " sel" : "");
+      b.type = "button"; b.draggable = true; b.dataset.foto = f.id;
+      b.title = f.nombre + (f.fecha ? " · " + f.fecha : "");
+      b.setAttribute("aria-label", "Foto " + f.nombre + ", sin asignar");
+      b.innerHTML = '<img alt="' + esc(f.nombre) + '" src="' + f.url + '">' +
+                    '<span class="fn">' + esc(f.nombre) + '</span>';
+      tray.appendChild(b);
+    });
+    $("#d-t-bandeja").textContent = sueltas.length;
+    $("#d-bandeja").classList.toggle("llena", fotos.length > 0);
+    $("#d-tray-vacia").textContent = fotos.length === 0
+      ? "Aún no hay fotos cargadas."
+      : (sueltas.length ? "Toque una foto y luego su casilla." : "Todas asignadas.");
+
+    var grid = $("#d-grid"); grid.textContent = "";
+    vistas.forEach(function (vista, i) {
+      var id = casillas[i], f = id !== null ? porId(id) : null;
+      var b = document.createElement("button");
+      b.type = "button"; b.dataset.casilla = i;
+      b.className = "slot" + (f ? " lleno" : "") + (f && propuestas[i] ? " propuesto" : "");
+      b.setAttribute("aria-label",
+        vista + (f ? ", ocupada" : ", vacía") + (f && propuestas[i] ? ", propuesta" : ""));
+      b.innerHTML = (f ? '<img alt="" src="' + f.url + '">'
+                       : '<span class="ph">vacía</span>') +
+        '<span class="cap"><span>' + esc(vista) + '</span>' +
+        '<span class="num">' + (i + 1) + '</span></span>';
+      grid.appendChild(b);
+    });
+    $("#d-t-rejilla").textContent =
+      casillas.filter(function (x) { return x !== null; }).length + " / " + vistas.length;
+
+    pintarAccesorios();
+    pintarSalida();
+  }
+
+  function pintarAccesorios() {
+    var cont = $("#d-cons"); cont.textContent = "";
+    accesorios.forEach(function (a, i) {
+      var fila = document.createElement("div");
+      fila.className = "cons-row";
+      var f = a.fotoId ? porId(a.fotoId) : null;
+      fila.innerHTML =
+        '<input type="text" data-acc-nombre="' + i + '" placeholder="EXTINTOR DE 6 KG" value="' +
+          esc(a.nombre) + '" aria-label="Nombre del accesorio ' + (i + 1) + '">' +
+        '<span class="mini"><button type="button" class="slot" data-acc="' + i + '" ' +
+          'aria-label="Foto del accesorio ' + (i + 1) + '">' +
+          (f ? '<img alt="" src="' + f.url + '">' : '<span class="ph">foto</span>') +
+        '</button></span>' +
+        '<button type="button" class="ghost" data-acc-quitar="' + i + '">quitar</button>';
+      cont.appendChild(fila);
+    });
+  }
+
+  /* ---------- el acta ---------- */
+  function encabezado() {
+    var h = $("#d-horometro").value.trim();
+    var enc = {
+      tipo_documento: "DESPACHO",
+      n_acta: $("#d-acta").value.trim(),
+      n_guia: $("#d-guia").value.trim(),
+      cliente: $("#d-cliente").value.trim(),
+      obra: $("#d-obra").value.trim(),
+      fecha: $("#d-fecha").value,
+      horometro: /^[0-9]+([.,][0-9]+)?$/.test(h) ? parseFloat(h.replace(",", "."))
+                                                 : (h || 0),
+      codigo_equipo: $("#d-equipo").value.trim(),
+      modelo_equipo: $("#d-modelo").value.trim(),
+      categoria: $("#d-cat").value
+    };
+    var empresa = $("#d-empresa").value.trim();
+    if (empresa) enc.empresa = empresa;
+    return enc;
+  }
+
+  function acta() {
+    var vistas = VISTAS[$("#d-cat").value], nombres = nombresDelPaquete();
+    var registro = [], n = 0;
+    casillas.forEach(function (id, i) {
+      if (id === null) return;
+      registro.push({ foto_id: ++n, descripcion: vistas[i],
+                      archivo: "fotos/" + nombres[id] });
+    });
+    var consumibles = accesorios
+      .filter(function (a) { return a.nombre.trim(); })
+      .map(function (a) {
+        var c = { descripcion: a.nombre.trim().toUpperCase(), cantidad: 1 };
+        if (a.fotoId) c.foto_despacho = "fotos/" + nombres[a.fotoId];
+        return c;
+      });
+    return {
+      encabezado: encabezado(),
+      inspeccion_componentes: [],
+      registro_fotografico: registro,
+      consumibles: consumibles,
+      control_consumibles: [],
+      resumen_ejecutivo: $("#d-resumen").value.trim()
+    };
+  }
+
+  function pintarSalida() {
+    var a = acta();
+    $("#d-salida").value = JSON.stringify(a, null, 2);
+
+    // Lo que falta se mide contra las mismas reglas que aplica `nefer validar`,
+    // para que nadie llegue a la computadora con un acta que será rechazada.
+    var falta = [], enc = a.encabezado, cabecera = 0;
+    if (!enc.cliente) { falta.push("el cliente"); cabecera++; }
+    if (!enc.codigo_equipo) { falta.push("el código de equipo"); cabecera++; }
+    if (!enc.modelo_equipo) { falta.push("el modelo"); cabecera++; }
+    if (!enc.fecha) { falta.push("la fecha"); cabecera++; }
+    if (!$("#d-horometro").value.trim()) { falta.push("el horómetro"); cabecera++; }
+    if (!a.registro_fotografico.length) falta.push("al menos una foto colocada");
+
+    // El panel de datos va plegado; el contador es lo único que se ve de él.
+    var marca = $("#d-t-datos");
+    marca.textContent = cabecera ? "faltan " + cabecera : "completo";
+    marca.classList.toggle("ok", cabecera === 0);
+    var palabras = a.resumen_ejecutivo ? a.resumen_ejecutivo.split(/\s+/).length : 0;
+    if (!palabras) falta.push("el resumen ejecutivo");
+    else if (palabras > 20) falta.push("recortar el resumen a 20 palabras (tiene " + palabras + ")");
+
+    var huecos = casillas.filter(function (x) { return x === null; }).length;
+    var sueltas = fotos.length - Object.keys(asignadas()).length;
+    var caja = $("#d-estado");
+
+    if (falta.length) {
+      caja.className = "aviso";
+      caja.innerHTML = "<b>Falta:</b> " + esc(falta.join(" · ")) +
+        ". Se puede guardar igual, pero <code>nefer validar</code> lo rechazará.";
+    } else if (huecos || sueltas) {
+      caja.className = "aviso ok";
+      caja.innerHTML = "<b>Acta válida.</b> Quedan " + huecos + " casilla(s) vacía(s) y " +
+        sueltas + " foto(s) sin asignar; las casillas vacías simplemente no se imprimen.";
+    } else {
+      caja.className = "aviso ok";
+      caja.innerHTML = "<b>Acta completa.</b> Guarde el paquete y páselo a la computadora.";
+    }
+    guardar();
+  }
+
+  function avisarRechazo(rechazados) {
+    if (!rechazados || !rechazados.length) return;
+    var caja = $("#d-estado");
+    caja.className = "aviso malo";
+    caja.innerHTML = "<b>" + rechazados.length + " archivo(s) que Excel no puede " +
+      "incrustar</b> (" + esc(rechazados.slice(0, 3).map(function (f) { return f.name; }).join(", ")) +
+      "). Conviértalos a JPG. En el iPhone, Ajustes → Cámara → Formatos → " +
+      "«Más compatible» lo evita de raíz.";
+  }
+
+  /* ---------- interacción ---------- */
+  function colocar(fotoId, casilla) {
+    for (var i = 0; i < casillas.length; i++) if (casillas[i] === fotoId) casillas[i] = null;
+    accesorios.forEach(function (a) { if (a.fotoId === fotoId) a.fotoId = null; });
+    casillas[casilla] = fotoId;
+    propuestas[casilla] = false;
+    elegida = null;
+    pintar();
+  }
+
+  $("#d-tray").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-foto]");
+    if (!t) return;
+    var id = +t.dataset.foto;
+    elegida = elegida === id ? null : id;
+    pintar();
+  });
+
+  $("#d-grid").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-casilla]");
+    if (!t) return;
+    var i = +t.dataset.casilla;
+    if (elegida !== null) { colocar(elegida, i); return; }
+    if (casillas[i] !== null) { casillas[i] = null; propuestas[i] = false; pintar(); }
+  });
+
+  raiz.addEventListener("dragstart", function (e) {
+    var t = e.target.closest("[data-foto]");
+    if (!t) return;
+    e.dataTransfer.setData("text/plain", t.dataset.foto);
+    e.dataTransfer.effectAllowed = "move";
+  });
+  raiz.addEventListener("dragover", function (e) {
+    var t = e.target.closest("[data-casilla],[data-acc]");
+    if (!t) return;
+    e.preventDefault(); t.classList.add("hot");
+  });
+  raiz.addEventListener("dragleave", function (e) {
+    var t = e.target.closest("[data-casilla],[data-acc]");
+    if (t) t.classList.remove("hot");
+  });
+  raiz.addEventListener("drop", function (e) {
+    var t = e.target.closest("[data-casilla],[data-acc]");
+    if (!t) return;
+    e.preventDefault(); t.classList.remove("hot");
+    var id = +e.dataTransfer.getData("text/plain");
+    if (!id) return;
+    if (t.dataset.casilla !== undefined) colocar(id, +t.dataset.casilla);
+    else { accesorios[+t.dataset.acc].fotoId = id; elegida = null; pintar(); }
+  });
+
+  $("#d-cons").addEventListener("click", function (e) {
+    var quitar = e.target.closest("[data-acc-quitar]");
+    if (quitar) { accesorios.splice(+quitar.dataset.accQuitar, 1); pintar(); return; }
+    var caja = e.target.closest("[data-acc]");
+    if (!caja) return;
+    var i = +caja.dataset.acc;
+    if (elegida !== null) {
+      for (var k = 0; k < casillas.length; k++) if (casillas[k] === elegida) casillas[k] = null;
+      accesorios[i].fotoId = elegida; elegida = null;
+    } else { accesorios[i].fotoId = null; }
+    pintar();
+  });
+  $("#d-cons").addEventListener("input", function (e) {
+    var campo = e.target.closest("[data-acc-nombre]");
+    if (campo) { accesorios[+campo.dataset.accNombre].nombre = campo.value; pintarSalida(); }
+  });
+  $("#d-add-cons").addEventListener("click", function () {
+    accesorios.push({ nombre: "", fotoId: null }); pintar();
+  });
+
+  $("#d-cargar").addEventListener("click", function () { $("#d-file").click(); });
+  $("#d-file").addEventListener("change", function (e) { agregar(e.target.files); e.target.value = ""; });
+  $("#d-cat").addEventListener("change", function () { autoAsignar(); pintar(); });
+  $("#d-auto").addEventListener("click", function () { autoAsignar(); pintar(); });
+  $("#d-limpiar").addEventListener("click", function () {
+    fotos.forEach(function (f) { URL.revokeObjectURL(f.url); });
+    fotos = []; accesorios = []; elegida = null; autoAsignar(); pintar();
+  });
+
+  ["d-cliente","d-obra","d-equipo","d-modelo","d-empresa","d-acta","d-guia",
+   "d-fecha","d-horometro","d-resumen"].forEach(function (id) {
+    $("#" + id).addEventListener("input", pintarSalida);
+  });
+
+  var drop = $("#d-drop");
+  ["dragenter","dragover"].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("hot"); });
+  });
+  ["dragleave","drop"].forEach(function (ev) {
+    drop.addEventListener(ev, function () { drop.classList.remove("hot"); });
+  });
+  drop.addEventListener("drop", function (e) {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files.length) agregar(e.dataTransfer.files);
+  });
+
+  /* ---------- salida ---------- */
+  var avisar = NEFER.avisador("#d-copiado");
+
+  $("#d-copiar").addEventListener("click", function () {
+    NEFER.copiar($("#d-salida").value, avisar, $("#d-salida"));
+  });
+
+  $("#d-zip").addEventListener("click", function () {
+    var a = acta(), nombres = nombresDelPaquete();
+    var usadas = asignadas();
+    var incluir = fotos.filter(function (f) { return usadas[f.id]; });
+
+    if (!incluir.length) { avisar("no hay fotos colocadas"); return; }
+    if (!a.encabezado.cliente || !a.encabezado.codigo_equipo || !a.encabezado.modelo_equipo) {
+      $("#d-datos").open = true;   // el hueco está ahí dentro: hay que verlo
+    }
+    var sinArchivo = incluir.filter(function (f) { return !f.archivo; });
+    if (sinArchivo.length) { avisar("las fotos de ejemplo aún se están generando"); return; }
+
+    avisar("empaquetando…");
+    var entradas = [{ nombre: "acta.json",
+                      datos: new TextEncoder().encode(JSON.stringify(a, null, 2)) }];
+    Promise.all(incluir.map(function (f) {
+      return NEFER.leerBytes(f.archivo).then(function (bytes) {
+        entradas.push({ nombre: "fotos/" + nombres[f.id], datos: bytes });
+      });
+    })).then(function () {
+      var etiqueta = (a.encabezado.codigo_equipo || "EQUIPO").replace(/[^\w.-]+/g, "-");
+      var fecha = a.encabezado.fecha || NEFER.hoy();
+      NEFER.entregar(NEFER.armarZip(entradas),
+                     "DESPACHO-" + etiqueta + "-" + fecha + ".zip", avisar);
+    }, function () { avisar("no se pudo leer alguna foto"); });
+  });
+
+  /* ---------- ejemplo ----------
+     Genera imágenes reales, no marcadores: así el paquete de prueba se puede
+     llevar a la computadora y recorrer el proceso entero sin salir al patio. */
+  function imagenDemo(texto, color) {
+    return new Promise(function (ok) {
+      var c = document.createElement("canvas");
+      c.width = 320; c.height = 240;
+      var g = c.getContext("2d");
+      g.fillStyle = color; g.fillRect(0, 0, 320, 240);
+      g.strokeStyle = "rgba(255,255,255,.55)"; g.lineWidth = 3;
+      g.strokeRect(10, 10, 300, 220);
+      g.fillStyle = "#F5F5F5"; g.font = "600 17px monospace";
+      g.fillText(texto, 26, 128);
+      g.font = "12px monospace"; g.fillStyle = "rgba(255,255,255,.7)";
+      g.fillText("foto de ejemplo", 26, 152);
+      c.toBlob(function (b) { ok(b); }, "image/png");
+    });
+  }
+
+  $("#d-ejemplo").addEventListener("click", function () {
+    var demo = [["01-frontal.png","FRONTAL","#5a6470"],["02-posterior.png","POSTERIOR","#616b78"],
+      ["03-lat-izq.png","LAT IZQ","#525d69"],["04-lat-der.png","LAT DER","#5d6874"],
+      ["05-horometro.png","HOROMETRO","#232529"],["06-panel.png","PANEL","#2c3036"],
+      ["07-motor-frente.png","MOTOR FR","#6a4a3c"],["08-motor-atras.png","MOTOR PO","#60443a"],
+      ["09-baterias.png","BATERIAS","#464e56"],["10-tanque.png","TANQUE","#505860"]];
+
+    fotos.forEach(function (f) { URL.revokeObjectURL(f.url); });
+    fotos = []; accesorios = [{ nombre: "EXTINTOR DE 6 KG", fotoId: null }];
+    elegida = null; siguienteId = 1;
+
+    Promise.all(demo.map(function (d, i) {
+      return imagenDemo(d[1], d[2]).then(function (blob) {
+        var archivo = new File([blob], d[0], { type: "image/png" });
+        fotos.push({ id: siguienteId++, nombre: d[0], url: URL.createObjectURL(archivo),
+                     archivo: archivo, fecha: null, respaldo: i, sugerida: sugerir(d[0]) });
+      });
+    })).then(function () {
+      fotos.sort(function (a, b) { return a.id - b.id; });
+      if (!$("#d-cliente").value) $("#d-cliente").value = "MINERA EJEMPLO S.A.C.";
+      if (!$("#d-obra").value) $("#d-obra").value = "PROYECTO NORTE";
+      if (!$("#d-equipo").value) $("#d-equipo").value = "GE-0142";
+      if (!$("#d-modelo").value) $("#d-modelo").value = "C90D5 / 90 kVA";
+      if (!$("#d-acta").value) $("#d-acta").value = "004-001155";
+      if (!$("#d-guia").value) $("#d-guia").value = "T001-00020144";
+      if (!$("#d-horometro").value) $("#d-horometro").value = "1548.7";
+      if (!$("#d-resumen").value) {
+        $("#d-resumen").value = "Grupo sale operativo con extintor; sin observaciones.";
+      }
+      autoAsignar(); pintar();
+      avisar("ejemplo cargado");
+    });
+  });
+
+  /* ---------- memoria ---------- */
+  var CAMPOS = ["d-cliente","d-obra","d-equipo","d-modelo","d-empresa","d-acta",
+                "d-guia","d-fecha","d-horometro","d-resumen"];
+  guardar = NEFER.recordar("despacho.v1", function () {
+    var v = { cat: $("#d-cat").value, campos: {},
+              accesorios: accesorios.map(function (a) { return a.nombre; }) };
+    CAMPOS.forEach(function (id) { v.campos[id] = $("#" + id).value; });
+    return v;
+  }, function (v) {
+    if (!v) return;
+    if (v.cat && VISTAS[v.cat]) $("#d-cat").value = v.cat;
+    if (v.campos) CAMPOS.forEach(function (id) {
+      if (typeof v.campos[id] === "string") $("#" + id).value = v.campos[id];
+    });
+    if (Array.isArray(v.accesorios)) {
+      accesorios = v.accesorios.map(function (n) { return { nombre: n, fotoId: null }; });
+    }
+  });
+
+  if (!$("#d-fecha").value) $("#d-fecha").value = NEFER.hoy();
+
+  /* ---------- puente hacia recepción ---------- */
+  NEFER.puenteDespacho = function () {
+    if (!fotos.length) return null;
+    var nombres = nombresDelPaquete(), mapa = {};
+    fotos.forEach(function (f) { mapa[nombres[f.id]] = { url: f.url, archivo: f.archivo }; });
+    return { acta: acta(), fotos: mapa };
+  };
+
+  autoAsignar();
+  pintar();
+})();
+</script>
+
+<script>
+/* ================================================================
+   RECEPCIÓN · la foto de salida al lado de la de retorno.
+   ================================================================ */
+(function () {
+  "use strict";
+  var raiz = document.getElementById("v-recepcion");
+  var $ = function (s) { return raiz.querySelector(s); };
+  var esc = NEFER.esc;
+
+  var despacho = null;          // manifiesto de despacho
+  var antes = {};               // nombre de archivo -> {url, archivo} del despacho
+  var retorno = [];             // {id, nombre, url, archivo}
+  var elegida = null;
+  var vistas = [];              // {rotulo, archivo_despacho, fotoId, observacion}
+  var cons = [];                // {descripcion, cantidad, foto_despacho, fotoId, estado}
+  var insp = [];                // {item, estado, observacion, foto_despacho, fotoId}
+  var sig = 1;
+  var guardar = function () {};
+
+  var ESTADOS_CONS = [["OK","Conforme"],["OBS","Observado"],["D","Dañado"],
+                      ["NO_RETORNA","No retornó"]];
+  var ESTADOS_INSP = [["OK","Funcional"],["OBS","Observado"],["D","Dañado"]];
+
+  /* ---------- carga ---------- */
+  $("#r-b1").addEventListener("click", function () { $("#r-f1").click(); });
+  $("#r-b2").addEventListener("click", function () { $("#r-f2").click(); });
+  $("#r-b3").addEventListener("click", function () { $("#r-f3").click(); });
+
+  $("#r-f1").addEventListener("change", function (e) {
+    var f = e.target.files[0];
+    if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function () {
+      var leido;
+      try { leido = JSON.parse(fr.result); }
+      catch (err) {
+        $("#r-e1").textContent = "no es JSON válido";
+        $("#r-e1").style.color = "var(--mal)";
+        return;
+      }
+      adoptar(leido);
+    };
+    fr.readAsText(f);
+    e.target.value = "";
+  });
+
+  function adoptar(manifiesto) {
+    despacho = manifiesto;
+    prepararDesdeDespacho();
+    $("#r-c1").classList.add("lista");
+    var enc = despacho.encabezado || {};
+    $("#r-e1").textContent = (enc.codigo_equipo || "?") + " · " + (enc.tipo_documento || "?");
+    $("#r-e1").style.color = "var(--ok)";
+    pintar();
+  }
+
+  // El despacho armado en este mismo teléfono: se toma tal cual, con sus fotos
+  // ya cargadas en memoria. Ahorra volver a buscar la carpeta en la galería.
+  $("#r-desde-despacho").addEventListener("click", function () {
+    var puente = NEFER.puenteDespacho ? NEFER.puenteDespacho() : null;
+    if (!puente) {
+      $("#r-e1").textContent = "la pestaña Despacho aún no tiene fotos";
+      $("#r-e1").style.color = "var(--obs)";
+      return;
+    }
+    Object.keys(puente.fotos).forEach(function (n) { antes[n] = puente.fotos[n]; });
+    $("#r-c2").classList.add("lista");
+    $("#r-e2").textContent = Object.keys(antes).length + " foto(s)";
+    adoptar(puente.acta);
+  });
+
+  function cargarFotos(files, destino) {
+    Array.prototype.forEach.call(files, function (f) {
+      if (!/^image\//.test(f.type) && !/\.(jpe?g|png|gif|bmp)$/i.test(f.name)) return;
+      var url = URL.createObjectURL(f);
+      if (destino === "antes") antes[f.name] = { url: url, archivo: f };
+      else retorno.push({ id: sig++, nombre: f.name, url: url, archivo: f });
+    });
+  }
+
+  $("#r-f2").addEventListener("change", function (e) {
+    cargarFotos(e.target.files, "antes");
+    var n = Object.keys(antes).length;
+    $("#r-c2").classList.toggle("lista", n > 0);
+    $("#r-e2").textContent = n + " foto(s)";
+    pintar(); e.target.value = "";
+  });
+  $("#r-f3").addEventListener("change", function (e) {
+    cargarFotos(e.target.files, "retorno");
+    $("#r-c3").classList.toggle("lista", retorno.length > 0);
+    $("#r-e3").textContent = retorno.length + " foto(s)";
+    pintar(); e.target.value = "";
+  });
+
+  /* ---------- preparar desde el acta de despacho ---------- */
+  function prepararDesdeDespacho() {
+    var d = despacho || {};
+    vistas = (d.registro_fotografico || []).map(function (f) {
+      return { rotulo: f.descripcion || "", archivo_despacho: f.archivo || null,
+               fotoId: null, observacion: "" };
+    });
+    cons = (d.consumibles || []).map(function (c) {
+      return { descripcion: c.descripcion || "", cantidad: c.cantidad || 1,
+               foto_despacho: c.foto_despacho || null, fotoId: null, estado: null };
+    });
+    insp = (d.inspeccion_componentes || []).map(function (i) {
+      return { item: i.item || "", estado: null, observacion: "",
+               foto_despacho: i.foto_despacho || null, fotoId: null };
+    });
+    if (!$("#r-fecha").value) $("#r-fecha").value = NEFER.hoy();
+    if (!$("#r-guia").value) $("#r-guia").value = "";
+    $("#r-trabajo").classList.remove("oculto");
+    $("#r-puente").classList.add("oculto");
+  }
+
+  /* ---------- pintado ---------- */
+  function usadas() {
+    var s = {};
+    [vistas, cons, insp].forEach(function (col) {
+      col.forEach(function (x) { if (x.fotoId) s[x.fotoId] = true; });
+    });
+    return s;
+  }
+  function porId(id) {
+    for (var i = 0; i < retorno.length; i++) if (retorno[i].id === id) return retorno[i];
+    return null;
+  }
+  function baseDe(ruta) { return String(ruta).split(/[\\/]/).pop(); }
+
+  function urlAntes(ruta) {
+    if (!ruta) return null;
+    var f = antes[baseDe(ruta)];
+    return f ? f.url : null;
+  }
+
+  // Sólo se puede citar en el acta la foto de despacho que además viaje dentro
+  // del paquete; si no está, el acta apuntaría a un archivo inexistente y
+  // `nefer validar` la rechazaría en la computadora.
+  function archivoAntes(ruta) {
+    if (!ruta) return null;
+    var f = antes[baseDe(ruta)];
+    return f && f.archivo ? f.archivo : null;
+  }
+  function rutaAntes(ruta) {
+    return archivoAntes(ruta) ? "fotos/despacho/" + baseDe(ruta) : null;
+  }
+
+  function marco(url, textoVacio, attrs) {
+    return '<button type="button" class="marco' + (url ? "" : " vacia") + '" ' +
+      (attrs || "") + '>' +
+      (url ? '<img alt="" src="' + url + '">'
+           : '<span class="vacio">' + esc(textoVacio) + '</span>') + '</button>';
+  }
+
+  // El lado «antes» sólo se mira: no se toca, no se enfoca y su descripción
+  // vive en el texto alternativo de la imagen.
+  function marcoFijo(url, textoVacio, descripcion) {
+    return '<div class="marco fija' + (url ? "" : " vacia") + '">' +
+      (url ? '<img alt="Foto de despacho de ' + esc(descripcion) + '" src="' + url + '">'
+           : '<span class="vacio">' + esc(textoVacio) + '</span>') + '</div>';
+  }
+
+  function filaPar(clase, i, titulo, urlIzq, urlDer, extra) {
+    return '<div class="par ' + (urlDer ? "resuelto" : "pendiente") + '">' +
+      '<div class="par-top"><h3>' + esc(titulo) + '</h3>' +
+      '<span class="idx">' + (i + 1) + '</span></div>' +
+      '<div class="dupla">' +
+        '<div class="lado"><span class="tag">Antes · despacho</span>' +
+          marcoFijo(urlIzq, "sin foto de despacho", titulo) + '</div>' +
+        '<div class="lado"><span class="tag">Después · retorno</span>' +
+          marco(urlDer, "toque para asignar",
+                'data-destino="' + clase + '" data-i="' + i + '" ' +
+                'aria-label="Foto de retorno de ' + esc(titulo) + '"') + '</div>' +
+      '</div>' + (extra || "") + '</div>';
+  }
+
+  function botonesEstado(lista, actual, clase, i) {
+    return '<div class="estados" data-estados="' + clase + '" data-i="' + i + '">' +
+      lista.map(function (e) {
+        return '<button type="button" data-e="' + e[0] + '" aria-pressed="' +
+          (actual === e[0]) + '">' + esc(e[1]) + '</button>';
+      }).join("") + '</div>';
+  }
+
+  function pintar() {
+    if (!despacho) return;
+
+    var u = usadas();
+    var libres = retorno.filter(function (f) { return !u[f.id]; });
+    $("#r-tira").innerHTML = libres.map(function (f) {
+      return '<button type="button" class="tile' + (elegida === f.id ? " sel" : "") +
+        '" data-foto="' + f.id + '" title="' + esc(f.nombre) + '" ' +
+        'aria-label="Foto de retorno ' + esc(f.nombre) + '">' +
+        '<img alt="" src="' + f.url + '"><span class="fn">' + esc(f.nombre) + '</span></button>';
+    }).join("");
+    $("#r-t-tira").textContent = libres.length;
+
+    $("#r-vistas").innerHTML = vistas.map(function (v, i) {
+      var extra = '<div class="obs-campo"><input type="text" data-obs="vistas" data-i="' +
+        i + '" placeholder="observación (opcional)" value="' + esc(v.observacion) +
+        '" aria-label="Observación de ' + esc(v.rotulo) + '"></div>';
+      return filaPar("vistas", i, v.rotulo, urlAntes(v.archivo_despacho),
+                     v.fotoId ? porId(v.fotoId).url : null, extra);
+    }).join("");
+    $("#r-t-vistas").textContent =
+      vistas.filter(function (v) { return v.fotoId; }).length + " / " + vistas.length;
+
+    $("#r-consumibles").innerHTML = cons.map(function (c, i) {
+      var necesita = c.estado === "OBS" || c.estado === "D" || c.estado === "NO_RETORNA";
+      return filaPar("cons", i,
+        String(c.cantidad).padStart(2, "0") + " " + c.descripcion,
+        urlAntes(c.foto_despacho), c.fotoId ? porId(c.fotoId).url : null,
+        botonesEstado(ESTADOS_CONS, c.estado, "cons", i) +
+        (necesita ? '<p class="lb" style="margin:.4rem 0 0;color:var(--obs)">' +
+                    'genera recuperación en el acta</p>' : ""));
+    }).join("") || '<p class="lb">El despacho no llevaba accesorios.</p>';
+    $("#r-t-cons").textContent =
+      cons.filter(function (c) { return c.estado; }).length + " / " + cons.length;
+
+    $("#r-inspeccion").innerHTML = insp.map(function (c, i) {
+      var necesita = c.estado === "OBS" || c.estado === "D";
+      var extra = botonesEstado(ESTADOS_INSP, c.estado, "insp", i) +
+        (necesita
+          ? '<div class="obs-campo"><textarea data-obs="insp" data-i="' + i +
+            '" placeholder="qué tiene — obligatorio para OBS y Dañado" ' +
+            'aria-label="Observación del componente ' + (i + 1) + '">' +
+            esc(c.observacion) + '</textarea></div>'
+          : "");
+      return '<div class="par ' + (c.estado ? "resuelto" : "pendiente") + '">' +
+        '<div class="par-top"><h3><input type="text" data-item="' + i +
+        '" value="' + esc(c.item) + '" placeholder="componente" ' +
+        'aria-label="Nombre del componente ' + (i + 1) + '"></h3>' +
+        '<span class="idx">' + (i + 1) + '</span></div>' +
+        (necesita
+          ? '<div class="dupla">' +
+            '<div class="lado"><span class="tag">Antes · despacho</span>' +
+              marcoFijo(urlAntes(c.foto_despacho), "sin foto", c.item || "el componente") +
+            '</div><div class="lado"><span class="tag">Después · retorno</span>' +
+              marco(c.fotoId ? porId(c.fotoId).url : null, "toque para asignar",
+                    'data-destino="insp" data-i="' + i + '" aria-label="Foto del daño"') +
+            '</div></div>'
+          : "") +
+        extra + '</div>';
+    }).join("");
+    $("#r-t-insp").textContent =
+      insp.filter(function (c) { return c.estado; }).length + " / " + insp.length;
+
+    pintarSalida();
+  }
+
+  /* ---------- el acta ---------- */
+  function nombresDelPaquete() {
+    var usados = {}, mapa = {};
+    retorno.forEach(function (f) {
+      var base = String(f.nombre).split(/[\\/]/).pop().replace(/[^\w.\- ]+/g, "_");
+      if (!base) base = "foto.jpg";
+      var nombre = base, n = 1;
+      while (usados[nombre.toLowerCase()]) {
+        var punto = base.lastIndexOf(".");
+        nombre = punto > 0 ? base.slice(0, punto) + "-" + (++n) + base.slice(punto)
+                           : base + "-" + (++n);
+      }
+      usados[nombre.toLowerCase()] = true;
+      mapa[f.id] = nombre;
+    });
+    return mapa;
+  }
+
+  function acta() {
+    var nombres = nombresDelPaquete();
+    var enc = JSON.parse(JSON.stringify((despacho || {}).encabezado || {}));
+    enc.tipo_documento = "RECEPCION";
+    enc.n_acta = $("#r-acta").value.trim();
+    enc.n_guia = $("#r-guia").value.trim();
+    enc.fecha = $("#r-fecha").value;
+    var h = $("#r-horometro").value.trim();
+    enc.horometro = /^[0-9]+([.,][0-9]+)?$/.test(h) ? parseFloat(h.replace(",", "."))
+                                                    : (h || 0);
+
+    var registro = [], n = 0;
+    vistas.forEach(function (v) {
+      if (!v.fotoId) return;
+      var f = { foto_id: ++n, descripcion: v.rotulo,
+                archivo: "fotos/" + nombres[v.fotoId] };
+      var previa = rutaAntes(v.archivo_despacho);
+      if (previa) f.archivo_despacho = previa;
+      if (v.observacion.trim()) f.observacion = v.observacion.trim();
+      registro.push(f);
+    });
+
+    var consumibles = cons.filter(function (c) { return c.estado; }).map(function (c) {
+      var o = { descripcion: c.descripcion, cantidad: c.cantidad,
+                estado_recepcion: c.estado };
+      var previa = rutaAntes(c.foto_despacho);
+      if (previa) o.foto_despacho = previa;
+      if (c.fotoId) o.foto_recepcion = "fotos/" + nombres[c.fotoId];
+      return o;
+    });
+
+    var componentes = insp.filter(function (c) { return c.item.trim() && c.estado; })
+      .map(function (c) {
+        var o = { item: c.item.trim(), estado: c.estado,
+                  observacion: c.observacion.trim() };
+        var previa = rutaAntes(c.foto_despacho);
+        if (previa) o.foto_despacho = previa;
+        if (c.fotoId) o.foto_recepcion = "fotos/" + nombres[c.fotoId];
+        return o;
+      });
+
+    return { encabezado: enc, inspeccion_componentes: componentes,
+             registro_fotografico: registro, consumibles: consumibles,
+             control_consumibles: (despacho || {}).control_consumibles || [],
+             resumen_ejecutivo: $("#r-resumen").value.trim() };
+  }
+
+  function pintarSalida() {
+    var a = acta();
+    $("#r-salida").value = JSON.stringify(a, null, 2);
+
+    var falta = [];
+    if (!a.encabezado.n_acta) falta.push("el N° de acta");
+    if (!$("#r-horometro").value.trim()) falta.push("el horómetro de retorno");
+    var sinFoto = vistas.filter(function (v) { return !v.fotoId; }).length;
+    if (sinFoto) falta.push(sinFoto + " vista(s) sin foto de retorno");
+    var sinEstado = cons.filter(function (c) { return !c.estado; }).length;
+    if (sinEstado) falta.push(sinEstado + " accesorio(s) sin estado");
+    var sinObs = insp.filter(function (c) {
+      return (c.estado === "OBS" || c.estado === "D") && !c.observacion.trim();
+    }).length;
+    if (sinObs) falta.push(sinObs + " componente(s) dañado(s) sin observación escrita");
+    var palabras = a.resumen_ejecutivo ? a.resumen_ejecutivo.split(/\s+/).length : 0;
+    if (!palabras) falta.push("el resumen ejecutivo");
+    else if (palabras > 20) falta.push("recortar el resumen a 20 palabras (tiene " + palabras + ")");
+
+    var caja = $("#r-estado-final");
+    if (falta.length) {
+      caja.className = "aviso";
+      caja.innerHTML = "<b>Falta:</b> " + esc(falta.join(" · ")) +
+        ". Se puede guardar igual, pero <code>nefer validar</code> lo rechazará.";
+    } else {
+      caja.className = "aviso ok";
+      caja.innerHTML = "<b>Acta completa.</b> Guarde el paquete y páselo a la computadora.";
+    }
+    guardar();
+  }
+
+  /* ---------- interacción ---------- */
+  $("#r-tira").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-foto]");
+    if (!t) return;
+    var id = +t.dataset.foto;
+    elegida = elegida === id ? null : id;
+    pintar();
+  });
+
+  raiz.addEventListener("click", function (e) {
+    var destino = e.target.closest("[data-destino]");
+    if (destino) {
+      var col = { vistas: vistas, cons: cons, insp: insp }[destino.dataset.destino];
+      var i = +destino.dataset.i;
+      if (elegida !== null) {
+        [vistas, cons, insp].forEach(function (c) {
+          c.forEach(function (x) { if (x.fotoId === elegida) x.fotoId = null; });
+        });
+        col[i].fotoId = elegida; elegida = null;
+      } else { col[i].fotoId = null; }
+      pintar();
+      return;
+    }
+    var caja = e.target.closest("[data-estados]");
+    var boton = e.target.closest("[data-e]");
+    if (caja && boton) {
+      var col2 = { vistas: vistas, cons: cons, insp: insp }[caja.dataset.estados];
+      var j = +caja.dataset.i;
+      col2[j].estado = col2[j].estado === boton.dataset.e ? null : boton.dataset.e;
+      pintar();
+    }
+  });
+
+  raiz.addEventListener("input", function (e) {
+    var obs = e.target.closest("[data-obs]");
+    if (obs) {
+      var col = { vistas: vistas, insp: insp }[obs.dataset.obs];
+      col[+obs.dataset.i].observacion = e.target.value;
+      pintarSalida();
+      return;
+    }
+    var item = e.target.closest("[data-item]");
+    if (item) { insp[+item.dataset.item].item = e.target.value; pintarSalida(); return; }
+    if (["r-acta","r-guia","r-fecha","r-horometro","r-resumen"].indexOf(e.target.id) !== -1) {
+      pintarSalida();
+    }
+  });
+
+  $("#r-add-comp").addEventListener("click", function () {
+    insp.push({ item: "", estado: null, observacion: "",
+                foto_despacho: null, fotoId: null });
+    pintar();
+  });
+
+  /* ---------- salida ---------- */
+  var avisar = NEFER.avisador("#r-copiado");
+
+  $("#r-copiar").addEventListener("click", function () {
+    NEFER.copiar($("#r-salida").value, avisar, $("#r-salida"));
+  });
+
+  // Qué fotos de despacho cita realmente el acta: sólo esas viajan.
+  function previasCitadas(a) {
+    var rutas = {};
+    a.registro_fotografico.forEach(function (f) {
+      if (f.archivo_despacho) rutas[f.archivo_despacho] = true;
+    });
+    [a.consumibles, a.inspeccion_componentes].forEach(function (col) {
+      col.forEach(function (c) { if (c.foto_despacho) rutas[c.foto_despacho] = true; });
+    });
+    return Object.keys(rutas).map(function (ruta) {
+      return { ruta: ruta, archivo: archivoAntes(ruta) };
+    }).filter(function (x) { return x.archivo; });
+  }
+
+  $("#r-zip").addEventListener("click", function () {
+    var a = acta(), nombres = nombresDelPaquete(), u = usadas();
+    var incluir = retorno.filter(function (f) { return u[f.id] && f.archivo; });
+    if (!incluir.length) { avisar("no hay fotos de retorno asignadas"); return; }
+
+    avisar("empaquetando…");
+    var entradas = [{ nombre: "acta.json",
+                      datos: new TextEncoder().encode(JSON.stringify(a, null, 2)) }];
+    var tareas = incluir.map(function (f) {
+      return NEFER.leerBytes(f.archivo).then(function (bytes) {
+        entradas.push({ nombre: "fotos/" + nombres[f.id], datos: bytes });
+      });
+    }).concat(previasCitadas(a).map(function (x) {
+      return NEFER.leerBytes(x.archivo).then(function (bytes) {
+        entradas.push({ nombre: x.ruta, datos: bytes });
+      });
+    }));
+    Promise.all(tareas).then(function () {
+      var etiqueta = (a.encabezado.codigo_equipo || "EQUIPO").replace(/[^\w.-]+/g, "-");
+      var fecha = a.encabezado.fecha || NEFER.hoy();
+      NEFER.entregar(NEFER.armarZip(entradas),
+                     "RECEPCION-" + etiqueta + "-" + fecha + ".zip", avisar);
+    }, function () { avisar("no se pudo leer alguna foto"); });
+  });
+
+  /* ---------- memoria ----------
+     Sólo lo tecleado y los estados marcados. Las fotos viven en memoria y no
+     sobreviven al cierre: hay que volver a cargarlas, y eso se avisa. */
+  var CAMPOS = ["r-acta","r-guia","r-fecha","r-horometro","r-resumen"];
+  guardar = NEFER.recordar("recepcion.v1", function () {
+    var v = { campos: {} };
+    CAMPOS.forEach(function (id) { v.campos[id] = $("#" + id).value; });
+    return v;
+  }, function (v) {
+    if (v && v.campos) CAMPOS.forEach(function (id) {
+      if (typeof v.campos[id] === "string") $("#" + id).value = v.campos[id];
+    });
+  });
+})();
+
+NEFER.arrancar();
+</script>

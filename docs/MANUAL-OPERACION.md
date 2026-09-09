@@ -34,6 +34,21 @@ cd nefer
 pip install -e .
 ```
 
+### En el celular
+
+La computadora genera el Excel y el PDF; el celular es donde se levanta el acta,
+con el equipo delante. Para tenerlo ahí:
+
+1. Abra `herramientas/nefer-app.html` en el celular —enviándoselo por correo o
+   por WhatsApp y tocando el archivo, o desde la dirección donde lo publique—.
+2. **Android:** menú ⋮ del navegador → *Instalar aplicación*.
+   **iPhone:** botón Compartir → *Añadir a inicio*.
+3. Queda un icono en la pantalla de inicio. Desde ahí abre a pantalla completa
+   y **sin conexión**: es un solo archivo, sin nada del otro lado.
+
+En el patio no hace falta señal. El acta sale del teléfono como un paquete
+`.zip` que se envía o se pasa por cable cuando haya cobertura.
+
 ### Verificación
 
 ```bash
@@ -41,7 +56,7 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
-Debe terminar con **42 passed**. Si falla, no siga: el problema es del entorno,
+Debe terminar con **64 passed**. Si falla, no siga: el problema es del entorno,
 no de sus datos.
 
 ```bash
@@ -152,18 +167,22 @@ de toda la flota.
 
 Hay dos caminos. Use el que le acomode; el resultado es el mismo.
 
-#### Con la herramienta visual (recomendado la primera vez)
+#### Con la aplicación de campo (recomendado la primera vez)
 
-Abra **`herramientas/asignador-fotos.html`** en el navegador —basta doble clic,
-no necesita conexión ni instalar nada— y:
+Abra **`herramientas/nefer-app.html`** —basta doble clic en la computadora, o
+instalarla en la pantalla de inicio del celular— y entre en **Despacho**:
 
 1. Elija la familia del equipo.
 2. Arrastre la carpeta de fotos, o púlselas para cargarlas.
-3. La herramienta **propone** una asignación leyendo el nombre del archivo y la
+3. La aplicación **propone** una asignación leyendo el nombre del archivo y la
    fecha de captura EXIF. Las casillas propuestas quedan marcadas.
 4. Corrija lo que haga falta: arrastre una foto a otra casilla, o tóquela y
-   luego toque su destino. Funciona igual en tableta.
-5. Pulse **Copiar JSON** y péguelo en `acta.json`.
+   luego toque su destino. Funciona igual con el dedo.
+5. Rellene **Datos del acta** (va plegado, con el contador de lo que falta).
+6. Pulse **Guardar paquete .zip**: sale un archivo con `acta.json` y la carpeta
+   `fotos/` ya nombrada como el acta espera. Descomprímalo y siga en el paso 5.
+
+También puede pulsar **Copiar JSON** y pegarlo en un `acta.json` propio.
 
 Las fotos no salen de su equipo: todo ocurre en el navegador.
 
@@ -331,9 +350,13 @@ respaldo: con él se regenera el Excel y el PDF cuando haga falta.
 
 ### Levantar la recepción con el asistente
 
-Abra **`herramientas/asistente-recepcion.html`** en el navegador y cargue tres
-cosas: el `acta.json` del despacho, su carpeta `fotos/`, y las fotos del
-retorno que acaba de tomar.
+Abra la aplicación en **Recepción** y cargue tres cosas: el `acta.json` del
+despacho, su carpeta `fotos/`, y las fotos del retorno que acaba de tomar. Si
+el despacho se levantó en ese mismo teléfono, basta pulsar *usar el acta de la
+pestaña Despacho*.
+
+El paquete `.zip` de recepción incluye las dos tandas de fotos —las del retorno
+en `fotos/`, las del despacho en `fotos/despacho/`— porque el acta cita ambas.
 
 Para cada vista muestra **la foto de salida al lado**, y le pide la del retorno.
 Para cada accesorio le pide el estado. Para cada componente marcado observado o
@@ -435,8 +458,7 @@ que confirmarla igual, y en patio muchas veces no hay señal.
 | `nefer acta -e GE110-02 -c andina` | Acta con el encabezado ya lleno |
 | `nefer plantilla -o acta.json` | Manifiesto en blanco, sin catálogo |
 | `nefer fotos fotos/ -m acta.json` | Carga la carpeta de fotos en el manifiesto |
-| `herramientas/asignador-fotos.html` | Asignación visual de fotos, sin conexión |
-| `herramientas/asistente-recepcion.html` | Despacho → recepción, con antes y después |
+| `herramientas/nefer-app.html` | Aplicación de campo: despacho y recepción, sin conexión |
 | `nefer validar acta.json` | Verifica el manifiesto y que las fotos existan |
 | `nefer validar acta.json --sin-verificar-fotos` | Solo el manifiesto, sin mirar el disco |
 | `nefer construir acta.json -o salida.xlsx` | Genera el Excel |

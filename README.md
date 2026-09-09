@@ -85,8 +85,7 @@ python -m nefer pdf acta.xlsx                   # convertir un Excel ya generado
 | | |
 |---|---|
 | **[docs/MANUAL-OPERACION.md](docs/MANUAL-OPERACION.md)** | Cómo levantar un acta, de la primera prueba en patio al uso diario |
-| **[herramientas/asignador-fotos.html](herramientas/asignador-fotos.html)** | Asignación visual de fotos a las casillas del formato, en el navegador |
-| **[herramientas/asistente-recepcion.html](herramientas/asistente-recepcion.html)** | Convierte un acta de despacho en la de recepción, pareando antes y después |
+| **[herramientas/nefer-app.html](herramientas/nefer-app.html)** | Aplicación de campo: despacho y recepción desde el celular, sin conexión |
 | **[docs/ESQUEMA-JSON.md](docs/ESQUEMA-JSON.md)** | Todos los campos del manifiesto |
 | **[docs/evaluacion-madurez.html](docs/evaluacion-madurez.html)** | Dónde está este proceso frente al estado del arte, y qué falta |
 | **[docs/GUIA-OPERADOR.md](docs/GUIA-OPERADOR.md)** | Procedimiento interno, también incluido en cada acta |
