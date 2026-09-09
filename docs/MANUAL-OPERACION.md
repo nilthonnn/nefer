@@ -94,10 +94,10 @@ cámara— contra un navegador de verdad:
 ```bash
 pip install -e ".[navegador]"
 python -m playwright install chromium
-python -m pytest                       # ahora son 88
+python -m pytest                       # ahora son 91
 ```
 
-Las **24 pruebas** de `tests/test_app_navegador.py` abren el selector de
+Las **27 pruebas** de `tests/test_app_navegador.py` abren el selector de
 archivos real, disparan una cámara simulada y comprueban que cada foto cae en
 su casilla, que lo que no se puede abrir se nombra con su motivo y que el
 paquete resultante genera el acta. Seis de ellas sirven la app por HTTP para

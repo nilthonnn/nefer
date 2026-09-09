@@ -738,12 +738,109 @@ def test_desde_archivo_local_avisa_de_que_la_camara_no_puede_abrirse():
 
         assert pg.is_visible("#aviso-contexto")
         aviso = " ".join(pg.inner_text("#aviso-contexto").split())
-        assert "no puede abrirse" in aviso
+        assert "desactivada" in aviso
         assert "github.io" in aviso
+        # Y dice cuales son las vias que si funcionan aqui.
+        assert "Galería" in aviso and "Cámara del sistema" in aviso
         # Y el boton de camara no se ofrece donde no puede funcionar.
         pg.click("#tab-despacho")
         assert pg.is_hidden("#d-camara-app")
         assert pg.is_visible("#aviso-contexto-d")
+        nav.close()
+
+
+def test_desde_archivo_local_la_camara_del_sistema_sigue_disponible(fotos):
+    """La camara del sistema pasa por el selector, no por getUserMedia.
+
+    Es la via que le queda a un archivo descargado, y por eso se ofrece como
+    principal justo donde la camara integrada no puede abrirse.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        boton = pg.query_selector("#d-camara-lb")
+        assert boton.is_visible(), "no se ofrece la camara del sistema"
+        assert "primary" in (boton.get_attribute("class") or "")
+        entrada = pg.query_selector("#d-camara")
+        assert entrada.get_attribute("capture") == "environment"
+
+        # Abre el selector del sistema, que en el telefono ofrece la camara.
+        with pg.expect_file_chooser(timeout=10000) as fc:
+            boton.click()
+        fc.value.set_files([str(fotos["frontal"])])
+        pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
+                             timeout=30000)
+        pg.wait_for_timeout(400)
+
+        assert app.llenas == 1, app.mensaje
+        assert app.errores == []
+        nav.close()
+
+
+def test_desde_archivo_local_la_casilla_vacia_lleva_a_la_camara_del_telefono(fotos):
+    """Tocar una casilla vacia abre el selector del sistema —camara o galeria—
+    y la foto entra en esa casilla."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        # No se estorba con la camara integrada, que aqui no puede abrirse.
+        assert pg.is_hidden("#d-camara-app")
+
+        vacias = pg.query_selector_all("#d-grid .slot:not(.lleno)")
+        objetivo = vacias[4]
+        rotulo = objetivo.query_selector(".cap span").inner_text()
+        assert objetivo.evaluate("n => n.tagName") == "LABEL"
+
+        with pg.expect_file_chooser(timeout=10000) as fc:
+            objetivo.click()
+        fc.value.set_files([str(fotos["frontal"])])
+        pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
+                             timeout=30000)
+        pg.wait_for_timeout(400)
+
+        assert app.rotulos() == [(rotulo, "fotos/03-frontal.jpg")]
+        assert app.errores == []
+        nav.close()
+
+
+def test_el_ejemplo_arma_un_acta_entera_sin_camara_ni_galeria(tmp_path):
+    """El demo tiene que poder recorrerse sin cargar ni una sola foto."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        ctx = _contexto(nav, movil=True, descargas=True)
+        pg = ctx.new_page()
+        pg.goto(APP.as_uri())
+        pg.wait_for_timeout(500)
+
+        pg.click("#btn-demo")                      # un solo toque desde el inicio
+        pg.wait_for_timeout(2500)
+        app = App(pg)
+
+        assert pg.eval_on_selector(".vista.activa", "n => n.id") == "v-despacho"
+        assert app.llenas == 10
+        assert "Acta completa" in app.mensaje
+
+        with pg.expect_download() as espera:
+            pg.click("#d-zip")
+        ruta = tmp_path / espera.value.suggested_filename
+        espera.value.save_as(ruta)
+        with zipfile.ZipFile(ruta) as z:
+            assert z.testzip() is None
+            assert len([n for n in z.namelist() if n.startswith("fotos/")]) == 10
+            manifiesto = json.loads(z.read("acta.json"))
+
+        from nefer import schema
+        carpeta = tmp_path / "abierto"
+        with zipfile.ZipFile(ruta) as z:
+            z.extractall(carpeta)
+        assert schema.validar(manifiesto, carpeta) == []
+        assert app.errores == []
         nav.close()
 
 

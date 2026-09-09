@@ -289,6 +289,11 @@
     #v-despacho .bandeja .drop { padding:.5rem; font-size:.78rem; }
     #v-despacho .bandeja .vacia { padding:.3rem 0 0; font-size:.75rem; }
     #v-despacho .bandeja.llena .drop { display:none; }
+    /* Sin nada por asignar, la bandeja pegajosa sólo estorba: se encoge a su
+       cabecera y devuelve la pantalla a la rejilla, que es el trabajo. */
+    #v-despacho .bandeja.compacta .panel-body { padding:.3rem .55rem .45rem; }
+    #v-despacho .bandeja.compacta .vacia { display:none; }
+    #v-despacho .bandeja.compacta .reducir { margin-top:0; min-height:38px; }
   }
 
   #v-despacho .drop { border:2px dashed var(--rule); border-radius:6px;
@@ -503,6 +508,11 @@
       </div>
 
       <div class="aviso malo" id="aviso-contexto" hidden></div>
+
+      <div class="bar" id="bar-demo">
+        <button class="primary" type="button" id="btn-demo">Ver un acta de ejemplo</button>
+        <span class="lb">10 fotos de muestra, sin cargar nada</span>
+      </div>
 
       <div class="aviso" id="pista-instalar">
         <b>Instálala en la pantalla de inicio</b> para abrirla como aplicación, a
@@ -1714,20 +1724,24 @@ var NEFER = (function () {
      lo descubra en el patio, y se dice dónde sí funciona. */
   function avisarContexto() {
     if (CONTEXTO.camaraPosible) return;
-    var texto = CONTEXTO.archivoLocal
-      ? "<b>Aquí la cámara no puede abrirse.</b> Esta app se abrió como archivo " +
-        "suelto del teléfono, y a un archivo local el navegador nunca le concede " +
-        "la cámara —ni el selector de fotos, en algunos visores—. Ábrala desde su " +
-        "dirección web e instálela desde ahí:<br><code>" +
-        esc(DIRECCION_PUBLICADA) + "</code>"
-      : "<b>Aquí la cámara no puede abrirse.</b> Esta app va incrustada dentro de " +
-        "otra página, que no le cede la cámara. Ábrala en su propia pestaña:<br>" +
-        "<code>" + esc(DIRECCION_PUBLICADA) + "</code>";
+    // Se distingue lo que de verdad no puede funcionar de lo que sí: la cámara
+    // dentro de la app necesita un permiso que aquí no se concede, pero la del
+    // sistema pasa por el selector de fotos y no depende de ese permiso.
+    var motivo = CONTEXTO.archivoLocal
+      ? "Esta app se abrió como <b>archivo suelto</b> del teléfono, y a un archivo " +
+        "local el navegador nunca le concede el permiso de cámara."
+      : "Esta app va <b>incrustada dentro de otra página</b>, que no le cede el " +
+        "permiso de cámara.";
     ["#aviso-contexto", "#aviso-contexto-d"].forEach(function (sel) {
       var n = $(sel);
       if (!n) return;
-      n.innerHTML = texto + "<br><br>Mientras tanto puede seguir usando " +
-        "<b>Cargar fotos…</b> para elegir de la galería.";
+      n.className = "aviso";
+      n.innerHTML = "<b>La cámara dentro de la app está desactivada aquí.</b> " +
+        motivo + " Siguen funcionando <b>Cámara del sistema</b> —la cámara normal " +
+        "del teléfono— y <b>Galería…</b>." +
+        "<br><br>Para la cámara integrada, que va recorriendo las casillas sola, " +
+        "abra la app desde su dirección web:<br><code>" +
+        esc(DIRECCION_PUBLICADA) + "</code>";
       n.hidden = false;
     });
   }
@@ -2048,6 +2062,7 @@ var NEFER = (function () {
     });
     $("#d-t-bandeja").textContent = sueltas.length;
     $("#d-bandeja").classList.toggle("llena", fotos.length > 0);
+    $("#d-bandeja").classList.toggle("compacta", fotos.length > 0 && !sueltas.length);
     $("#d-tray-vacia").textContent = fotos.length === 0
       ? "Aún no hay fotos cargadas."
       : (sueltas.length ? "Toque una foto y luego su casilla." : "Todas asignadas.");
@@ -2327,6 +2342,7 @@ var NEFER = (function () {
     $("#d-camara-lb").hidden = false;
     $("#d-file-lb").classList.remove("primary");
     $("#d-file-lb").textContent = "Galería…";
+    if (!NEFER.camara.hay()) $("#d-camara-lb").classList.add("primary");
   }
 
   // Recorre las casillas vacías en orden: se abre la cámara una vez y se
@@ -2365,6 +2381,14 @@ var NEFER = (function () {
   }
 
   $("#d-camara-app").addEventListener("click", function () { abrirCamara(); });
+
+  // Desde el inicio: lleva a Despacho y monta el ejemplo de una vez, para que
+  // la app se pueda probar entera sin cámara, sin galería y sin conexión.
+  var demoInicio = document.getElementById("btn-demo");
+  if (demoInicio) demoInicio.addEventListener("click", function () {
+    NEFER.ir("despacho");
+    $("#d-ejemplo").click();
+  });
   if (NEFER.RUTAS.carpeta) $("#d-carpeta-lb").hidden = false;
   $("#d-max-lado").textContent = NEFER.MAX_LADO;
 
@@ -2502,6 +2526,7 @@ var NEFER = (function () {
         $("#d-resumen").value = "Grupo sale operativo con extintor; sin observaciones.";
       }
       autoAsignar(); pintar();
+      $("#d-estado").scrollIntoView({ block: "nearest" });
       avisar("ejemplo cargado");
     });
   });
