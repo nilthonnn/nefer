@@ -94,7 +94,7 @@ cámara— contra un navegador de verdad:
 ```bash
 pip install -e ".[navegador]"
 python -m playwright install chromium
-python -m pytest                       # ahora son 102
+python -m pytest                       # ahora son 106
 ```
 
 Las **27 pruebas** de `tests/test_app_navegador.py` abren el selector de
@@ -458,10 +458,22 @@ respaldo: con él se regenera el Excel y el PDF cuando haga falta.
 
 ### Levantar la recepción con el asistente
 
-Abra la aplicación en **Recepción** y cargue tres cosas: el `acta.json` del
-despacho, su carpeta `fotos/`, y las fotos del retorno que acaba de tomar. Si
-el despacho se levantó en ese mismo teléfono, basta pulsar *usar el acta de la
-pestaña Despacho*.
+Abra la aplicación en **Recepción**. Hay dos caminos:
+
+**A — Sin acta de despacho.** Elija la familia del equipo y pulse *Empezar
+recepción*. La app arma las vistas del formato y el lado «antes» queda vacío.
+Es el camino normal en el patio, donde nadie lleva el `acta.json` en el
+teléfono.
+
+**B — Con el acta de despacho.** Cargue el `acta.json`, su carpeta `fotos/` y
+las fotos del retorno. Así cada foto de salida aparece al lado de la de vuelta.
+Si el despacho se levantó en ese mismo teléfono, basta pulsar *usar el acta de
+la pestaña Despacho*.
+
+Los accesorios se añaden con **+ Añadir accesorio**, que ofrece el catálogo de
+los que aparecen en las actas reales —conos, barra puesta a tierra, base de
+extintor, chapa de puerta, estrobos, gomas de acople, gata de tiro— sin dejar
+de aceptar cualquier otro texto.
 
 El paquete `.zip` de recepción incluye las dos tandas de fotos —las del retorno
 en `fotos/`, las del despacho en `fotos/despacho/`— porque el acta cita ambas.
@@ -606,7 +618,7 @@ fotos y logo — debe existir.
 
 ### Categorías
 
-`grupo_electrogeno` · `torre_iluminacion` · `plataforma_elevacion` ·
+`grupo_electrogeno` · `torre_iluminacion` · `compresor` · `plataforma_elevacion` ·
 `maquinaria_amarilla` · `generico`
 
 Determinan los rótulos sugeridos y la tabla de fluidos de la hoja

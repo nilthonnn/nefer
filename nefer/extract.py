@@ -83,6 +83,8 @@ def _categoria(modelo: str) -> str:
         return "torre_iluminacion"
     if "PLATAFORMA" in m or "TIJERA" in m or "ELEVACI" in m:
         return "plataforma_elevacion"
+    if "COMPRESOR" in m:
+        return "compresor"
     if any(p in m for p in ("EXCAVADORA", "CARGADOR", "RETROEXCAVADORA",
                             "MINICARGADOR", "TRACTOR", "MOTONIVELADORA",
                             "RODILLO", "MONTACARGA")):

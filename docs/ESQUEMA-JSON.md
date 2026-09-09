@@ -84,7 +84,7 @@ python -m nefer validar acta.json
 | `version_formato` | no | Por defecto `00` |
 | `fecha_formato` | no | Fecha de emisión del formato. Vacía por defecto |
 
-Categorías: `grupo_electrogeno`, `torre_iluminacion`, `plataforma_elevacion`,
+Categorías: `grupo_electrogeno`, `torre_iluminacion`, `compresor`, `plataforma_elevacion`,
 `maquinaria_amarilla`, `generico`.
 
 ### Horómetro ilegible
@@ -136,7 +136,7 @@ recepción a la derecha y una franja amarilla de recuperación.
 - `texto_despacho`, `texto_recepcion`, `recuperacion`: sobreescriben la
   redacción automática cuando se acordó otro texto con el cliente.
 
-La franja amarilla dice `RECUPERACIÓN N° n` cuando el estado es `NO_RETORNA`,
+La franja amarilla dice `RECUPERACIÓN n` cuando el estado es `NO_RETORNA`,
 `D` u `OBS`; en cualquier otro caso dice `CONFORME — SIN RECUPERACIÓN`.
 
 ### Un despacho no declara el retorno

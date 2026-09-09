@@ -326,7 +326,7 @@ def test_la_recepcion_lleva_las_secciones_del_formato(recepcion):
     assert any("OBSERVACIONES" == t for t in textos), textos
     assert layout.TITULO_COMPARATIVO in textos, textos
     assert layout.TITULO_DANOS in textos, textos
-    assert any(t.startswith("RECUPERACIÓN N° 1") for t in textos), textos
+    assert any(t.startswith("RECUPERACIÓN 1") for t in textos), textos
 
 
 def test_la_recepcion_cae_en_las_mismas_filas_que_el_escritorio(recepcion, tmp_path):
@@ -352,7 +352,7 @@ def test_el_pdf_de_recepcion_nombra_el_antes_y_el_despues(recepcion):
     for esperado in (layout.TITULO_COMPARATIVO, layout.TITULO_DANOS,
                      "ANTES · VISTA FRONTAL", "DESPUÉS · VISTA FRONTAL",
                      "EL EQUIPO RETORNÓ SIN 01 EXTINTOR DE 6 KG",
-                     "RECUPERACIÓN N° 1", "JUNTA DE ESCAPE"):
+                     "RECUPERACIÓN 1", "JUNTA DE ESCAPE"):
         assert esperado in texto, esperado
 
     # La marca del tipo de documento tiene que decir RECEPCIÓN, no DESPACHO.
@@ -444,3 +444,128 @@ def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
         impresos.append(ws[f"{layout.PANEL_IZQ[0]}{fila}"].value)
         impresos.append(ws[f"{layout.PANEL_DER[0]}{fila}"].value)
     assert impresos == salieron, impresos
+
+def test_las_vistas_de_la_app_son_las_de_layout():
+    """La app y la herramienta de escritorio tienen que ofrecer las mismas.
+
+    Si divergen, un acta levantada en el telefono deja de encajar en el
+    formato que imprime la computadora.
+    """
+    # Hay otra `var VISTAS` en el nucleo, con los nombres de las pestañas: se
+    # ancla en la que declara las familias de equipo.
+    bloque = re.search(r"var VISTAS = \{\s*\n\s*grupo_electrogeno:(.*?)\n  \};",
+                       FUENTE, re.S)
+    assert bloque, "no se encontro la tabla de vistas de la app"
+
+    leidas: dict[str, list[str]] = {}
+    cuerpo_completo = "grupo_electrogeno:" + bloque.group(1)
+    for familia, cuerpo in re.findall(r"(\w+):\s*\[(.*?)\]", cuerpo_completo, re.S):
+        leidas[familia] = re.findall(r'"([^"]+)"', cuerpo)
+
+    assert leidas == layout.VISTAS_POR_CATEGORIA
+
+
+def test_el_selector_de_familias_ofrece_todas():
+    opciones = set(re.findall(r'<option value="(\w+)">', FUENTE))
+    assert layout.VISTAS_POR_CATEGORIA.keys() <= opciones, \
+        sorted(layout.VISTAS_POR_CATEGORIA.keys() - opciones)
+
+
+def test_el_catalogo_de_accesorios_esta_publicado():
+    """El operador elige de una lista; sin ella hay que teclearlo todo."""
+    bloque = re.search(r"var ACCESORIOS = \[(.*?)\];", FUENTE, re.S)
+    assert bloque, "no se encontro el catalogo de accesorios"
+    items = re.findall(r'"((?:[^"\\]|\\.)*)"', bloque.group(1))
+    assert len(items) >= 15, items
+    # Los que aparecen en las actas reales que sirvieron de plantilla.
+    for esperado in ("BARRA PUESTA A TIERRA", "GATA DE TIRO", "CHAPA DE PUERTA",
+                     "ESTROBO DE SEGURIDAD", "GOMA DE ACOPLE TIPO CHICAGO"):
+        assert esperado in items, esperado
+
+
+def test_la_recepcion_arranca_sin_acta_de_despacho(tmp_path):
+    """En el patio nadie lleva el acta.json del despacho en el telefono."""
+    if CHROME is None:
+        pytest.skip("no hay Chromium disponible")
+    from nefer import schema
+
+    fallos: list[str] = []
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch(executable_path=CHROME)
+        ctx = nav.new_context(viewport={"width": 390, "height": 844},
+                              has_touch=True, is_mobile=True,
+                              accept_downloads=True, permissions=[])
+        pg = ctx.new_page()
+        pg.on("pageerror", lambda e: fallos.append(str(e)))
+        pg.goto(APP.as_uri())
+        pg.wait_for_timeout(600)
+        pg.click("#tab-recepcion")
+        pg.wait_for_timeout(300)
+
+        pg.select_option("#r-cat", "compresor")
+        pg.click("#r-empezar")
+        pg.wait_for_timeout(600)
+
+        rotulos = pg.eval_on_selector_all("#r-vistas .par-top h3",
+                                          "n => n.map(x => x.textContent)")
+        assert rotulos == layout.VISTAS_POR_CATEGORIA["compresor"], rotulos
+
+        pg.evaluate("""async () => {
+          const dt = new DataTransfer();
+          for (let i = 1; i <= 9; i++) {
+            const c = document.createElement('canvas'); c.width = 320; c.height = 240;
+            const g = c.getContext('2d');
+            g.fillStyle = '#3f4c58'; g.fillRect(0, 0, 320, 240);
+            const b = await new Promise(r => c.toBlob(r, 'image/png'));
+            dt.items.add(new File([b], 'R' + i + '.png', {type: 'image/png'}));
+          }
+          const i = document.querySelector('#r-f3');
+          i.files = dt.files;
+          i.dispatchEvent(new Event('change', {bubbles: true}));
+        }""")
+        pg.wait_for_timeout(3000)
+        for k in range(9):
+            pg.click("#r-tira .tile:first-child")
+            pg.click(f"#r-vistas .par:nth-child({k + 1}) [data-destino='vistas']")
+            pg.wait_for_timeout(60)
+
+        # Un accesorio del catalogo, no retornado: genera recuperacion.
+        pg.click("#r-add-cons")
+        pg.wait_for_timeout(300)
+        pg.fill("#r-consumibles .par:last-child [data-cons-nombre]",
+                'CONOS DE SEGURIDAD DE 28"')
+        pg.click("#r-consumibles .par:last-child .estados button[data-e='NO_RETORNA']")
+        pg.wait_for_timeout(300)
+
+        for campo, valor in (("#r-acta", "000-000001"), ("#r-horometro", "1700.87"),
+                             ("#r-cliente", "CLIENTE DE PRUEBA S.A.C."),
+                             ("#r-codigo_equipo", "C000-00"),
+                             ("#r-modelo_equipo", "COMPRESOR TRANSPORTABLE DE 375 CFM"),
+                             ("#r-resumen", "Retorna operativo; faltan los conos.")):
+            pg.fill(campo, valor)
+        pg.wait_for_timeout(400)
+
+        with pg.expect_download(timeout=90000) as espera:
+            pg.click("#r-zip")
+        paquete = tmp_path / espera.value.suggested_filename
+        espera.value.save_as(paquete)
+        nav.close()
+
+    assert fallos == [], fallos
+
+    carpeta = tmp_path / "abierto"
+    with zipfile.ZipFile(paquete) as z:
+        z.extractall(carpeta)
+    manifiesto = json.loads((carpeta / "acta.json").read_text(encoding="utf-8"))
+    assert schema.validar(manifiesto, carpeta) == []
+    assert manifiesto["encabezado"]["categoria"] == "compresor"
+    assert manifiesto["encabezado"]["tipo_documento"] == "RECEPCION"
+    assert len(manifiesto["registro_fotografico"]) == 9
+
+    # Y el acta imprime la recuperacion del accesorio que no volvio.
+    openpyxl = pytest.importorskip("openpyxl")
+    referencia = carpeta / "REFERENCIA.xlsx"
+    build.construir(manifiesto, referencia, carpeta)
+    ws = openpyxl.load_workbook(referencia).active
+    bandas = [ws.cell(row=f, column=1).value for f in range(1, ws.max_row + 1)]
+    assert any(isinstance(v, str) and v.startswith("RECUPERACIÓN 1") for v in bandas)

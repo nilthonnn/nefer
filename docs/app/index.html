@@ -561,6 +561,7 @@
         <select id="d-cat">
           <option value="grupo_electrogeno">Grupo electrógeno</option>
           <option value="torre_iluminacion">Torre de iluminación</option>
+          <option value="compresor">Compresor transportable</option>
           <option value="plataforma_elevacion">Plataforma de elevación</option>
           <option value="maquinaria_amarilla">Maquinaria amarilla</option>
           <option value="generico">Genérico</option>
@@ -679,8 +680,21 @@
       </div>
 
       <div class="cargas">
+        <div class="carga" id="r-c0">
+          <h2><span class="n">A</span> Sin acta de despacho</h2>
+          <p>Elija la familia y la app arma las vistas del formato.</p>
+          <select id="r-cat" aria-label="Familia del equipo que retorna">
+            <option value="grupo_electrogeno">Grupo electrógeno</option>
+            <option value="torre_iluminacion">Torre de iluminación</option>
+            <option value="compresor">Compresor transportable</option>
+            <option value="plataforma_elevacion">Plataforma de elevación</option>
+            <option value="maquinaria_amarilla">Maquinaria amarilla</option>
+            <option value="generico">Genérico</option>
+          </select>
+          <button class="primary" id="r-empezar" type="button">Empezar recepción</button>
+        </div>
         <div class="carga" id="r-c1">
-          <h2><span class="n">01</span> Acta de despacho</h2>
+          <h2><span class="n">B1</span> Acta de despacho</h2>
           <p>El <code>acta.json</code> del despacho de este equipo.</p>
           <input type="file" id="r-f1" class="archivo"
                  aria-label="Seleccionar el acta de despacho en JSON">
@@ -688,7 +702,7 @@
           <span class="estado" id="r-e1"></span>
         </div>
         <div class="carga" id="r-c2">
-          <h2><span class="n">02</span> Fotos del despacho</h2>
+          <h2><span class="n">B2</span> Fotos del despacho</h2>
           <p>La carpeta <code>fotos/</code> de ese mismo despacho.</p>
           <input type="file" id="r-f2" class="archivo" multiple
                    aria-label="Seleccionar fotos del despacho">
@@ -699,7 +713,7 @@
           <span class="estado" id="r-e2"></span>
         </div>
         <div class="carga" id="r-c3">
-          <h2><span class="n">03</span> Fotos del retorno</h2>
+          <h2><span class="n">B3</span> Fotos del retorno</h2>
           <p>Las que acaba de tomar al recibir el equipo.</p>
           <button type="button" class="primary ruta" id="r-camara-app" hidden>Cámara</button>
           <input type="file" id="r-camara" class="archivo" accept="image/*"
@@ -737,6 +751,15 @@
               <input type="date" id="r-fecha"></label>
             <label class="campo"><span class="lb">Horómetro de retorno</span>
               <input type="text" id="r-horometro" placeholder="1731.2" inputmode="decimal"></label>
+            <label class="campo"><span class="lb">Cliente</span>
+              <input type="text" id="r-cliente" placeholder="razón social"></label>
+            <label class="campo"><span class="lb">Obra</span>
+              <input type="text" id="r-obra" placeholder="proyecto"></label>
+            <label class="campo"><span class="lb">Código de equipo</span>
+              <input type="text" id="r-codigo_equipo" placeholder="C375-39"></label>
+            <label class="campo"><span class="lb">Modelo</span>
+              <input type="text" id="r-modelo_equipo"
+                     placeholder="COMPRESOR TRANSPORTABLE DE 375 CFM"></label>
           </div>
         </section>
         <div class="aviso" id="r-aviso-horo">
@@ -755,6 +778,7 @@
           <h2>Accesorios <span class="tally" id="r-t-cons">0 / 0</span></h2>
           <p>Qué volvió y en qué estado. Lo que no retorna genera recuperación.</p>
           <div id="r-consumibles"></div>
+          <button id="r-add-cons" type="button" style="margin-top:.4rem">+ Añadir accesorio</button>
         </section>
 
         <section class="seccion">
@@ -1799,8 +1823,11 @@ var NEFER = (function () {
       "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL","VISTA FRONTAL DE MOTOR",
       "VISTA POSTERIOR DE MOTOR","BATERÍAS","TANQUE DE COMBUSTIBLE"],
     torre_iluminacion: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
-      "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL","MÁSTIL Y WINCHE","FOCOS",
-      "ESTABILIZADORES","BATERÍAS"],
+      "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL","LUMINARIAS","BATERÍA",
+      "VISTA FRONTAL DE MOTOR","VISTA POSTERIOR DE MOTOR"],
+    compresor: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
+      "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL","BATERÍA",
+      "VISTA LATERAL IZQUIERDA DE MOTOR","VISTA LATERAL DERECHA DE MOTOR"],
     plataforma_elevacion: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
       "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL","MANDO DE CONTROL",
       "PISO DE PLATAFORMA","LLAVE DE CONTACTO","BATERÍAS","TACOS"],
@@ -1825,9 +1852,11 @@ var NEFER = (function () {
     ["MANDO DE CONTROL",        ["mando","joystick","botonera"]],
     ["TANQUE DE COMBUSTIBLE",   ["tanque","combustible","diesel","fuel"]],
     ["BATERÍAS",                ["bateria","baterias","battery"]],
+    ["VISTA LATERAL IZQUIERDA DE MOTOR", ["motorlatizq","motorizquierda"]],
+    ["VISTA LATERAL DERECHA DE MOTOR",   ["motorlatder","motorderecha"]],
+    ["LUMINARIAS",              ["luminaria","luminarias","foco","focos","luces","lampara"]],
     ["MÁSTIL Y WINCHE",         ["mastil","winche","torre"]],
-    ["FOCOS",                   ["foco","focos","luces","lampara","light"]],
-    ["ESTABILIZADORES",         ["estabilizador","gato","outrigger"]],
+    ["ESTABILIZADORES",         ["estabilizador","outrigger"]],
     ["PISO DE PLATAFORMA",      ["piso","plataforma","canastilla"]],
     ["LLAVE DE CONTACTO",       ["llave","contacto","ignicion"]],
     ["TACOS",                   ["taco","tacos","cuna"]],
@@ -1836,6 +1865,28 @@ var NEFER = (function () {
     ["SISTEMA HIDRÁULICO",      ["hidraulico","hidraulica","manguera","hydraulic"]],
     ["TREN DE RODAJE / LLANTAS",["rodaje","llanta","oruga","neumatico","track"]],
     ["MOTOR",                   ["motor","engine"]]
+  ];
+
+  // Accesorios que aparecen en las actas de recepción reales. Es una lista de
+  // sugerencias, no una jaula: el campo sigue admitiendo cualquier texto.
+  var ACCESORIOS = [
+    "CONOS DE SEGURIDAD DE 28\"",
+    "BARRA PUESTA A TIERRA",
+    "BANDEJA METÁLICA A.D 0.60 X 0.40 M",
+    "BASE DE EXTINTOR DE 6 KG",
+    "BASE DE EXTINTOR DE 9 KG",
+    "EXTINTOR DE 6 KG",
+    "EXTINTOR DE 9 KG",
+    "CHAPA DE PUERTA",
+    "BISAGRA DE PUERTA",
+    "SEGURO DE GOMA DE PUERTA",
+    "SEGURO DE SUJECIÓN DE PALANCA DE PUERTA",
+    "GANCHO",
+    "GRILLETE",
+    "ESTROBO DE SEGURIDAD",
+    "GOMA DE ACOPLE TIPO CHICAGO",
+    "GATA DE TIRO",
+    "TACOS"
   ];
 
   var fotos = [];        // {id, nombre, url, archivo, fecha, respaldo, sugerida}
@@ -2111,8 +2162,9 @@ var NEFER = (function () {
       fila.className = "cons-row";
       var f = a.fotoId ? porId(a.fotoId) : null;
       fila.innerHTML =
-        '<input type="text" data-acc-nombre="' + i + '" placeholder="EXTINTOR DE 6 KG" value="' +
-          esc(a.nombre) + '" aria-label="Nombre del accesorio ' + (i + 1) + '">' +
+        '<input type="text" list="lista-accesorios" data-acc-nombre="' + i +
+          '" placeholder="elija o escriba" value="' + esc(a.nombre) +
+          '" aria-label="Nombre del accesorio ' + (i + 1) + '">' +
         '<span class="mini"><button type="button" class="slot" data-acc="' + i + '" ' +
           'aria-label="Foto del accesorio ' + (i + 1) + '">' +
           (f ? '<img alt="" src="' + f.url + '">' : '<span class="ph">foto</span>') +
@@ -2588,6 +2640,20 @@ var NEFER = (function () {
   if (!$("#d-fecha").value) $("#d-fecha").value = NEFER.hoy();
 
   /* ---------- puente hacia recepción ---------- */
+  (function publicarCatalogo() {
+    var lista = document.createElement("datalist");
+    lista.id = "lista-accesorios";
+    ACCESORIOS.forEach(function (a) {
+      var o = document.createElement("option");
+      o.value = a;
+      lista.appendChild(o);
+    });
+    document.body.appendChild(lista);
+  })();
+
+  NEFER.VISTAS = VISTAS;
+  NEFER.ACCESORIOS = ACCESORIOS;
+
   NEFER.puenteDespacho = function () {
     if (!fotos.length) return null;
     var nombres = nombresDelPaquete(), mapa = {};
@@ -2656,6 +2722,32 @@ var NEFER = (function () {
     $("#r-e1").style.color = "var(--ok)";
     pintar();
   }
+
+  // Sin acta de despacho no había forma de empezar, y en el patio nadie la
+  // lleva en el teléfono. Se arma un despacho en blanco con las vistas del
+  // formato: el lado «antes» queda vacío, que es la verdad.
+  $("#r-empezar").addEventListener("click", function () {
+    var cat = $("#r-cat").value;
+    var vistasFormato = (NEFER.VISTAS && NEFER.VISTAS[cat]) || [];
+    adoptar({
+      encabezado: { tipo_documento: "DESPACHO", categoria: cat, cliente: "",
+                    codigo_equipo: "", modelo_equipo: "", fecha: NEFER.hoy(),
+                    horometro: 0 },
+      registro_fotografico: vistasFormato.map(function (v, i) {
+        return { foto_id: i + 1, descripcion: v };
+      }),
+      consumibles: [], inspeccion_componentes: [], control_consumibles: []
+    });
+    $("#r-e1").textContent = "vistas del formato · " + vistasFormato.length;
+    $("#r-e1").style.color = "var(--ok)";
+    $("#r-c0").classList.add("lista");
+  });
+
+  $("#r-add-cons").addEventListener("click", function () {
+    cons.push({ descripcion: "", cantidad: 1, foto_despacho: null,
+                fotoId: null, estado: null, nuevo: true });
+    pintar();
+  });
 
   // El despacho armado en este mismo teléfono: se toma tal cual, con sus fotos
   // ya cargadas en memoria. Ahorra volver a buscar la carpeta en la galería.
@@ -2784,6 +2876,11 @@ var NEFER = (function () {
       return { item: i.item || "", estado: null, observacion: "",
                foto_despacho: i.foto_despacho || null, fotoId: null };
     });
+    var enc = d.encabezado || {};
+    ["cliente", "obra", "codigo_equipo", "modelo_equipo"].forEach(function (campo) {
+      var n = $("#r-" + campo);
+      if (n && !n.value && enc[campo]) n.value = enc[campo];
+    });
     if (!$("#r-fecha").value) $("#r-fecha").value = NEFER.hoy();
     if (!$("#r-guia").value) $("#r-guia").value = "";
     $("#r-trabajo").classList.remove("oculto");
@@ -2837,9 +2934,9 @@ var NEFER = (function () {
            : '<span class="vacio">' + esc(textoVacio) + '</span>') + '</div>';
   }
 
-  function filaPar(clase, i, titulo, urlIzq, urlDer, extra) {
+  function filaPar(clase, i, titulo, urlIzq, urlDer, extra, htmlTitulo) {
     return '<div class="par ' + (urlDer ? "resuelto" : "pendiente") + '">' +
-      '<div class="par-top"><h3>' + esc(titulo) + '</h3>' +
+      '<div class="par-top"><h3>' + (htmlTitulo || esc(titulo)) + '</h3>' +
       '<span class="idx">' + (i + 1) + '</span></div>' +
       '<div class="dupla">' +
         '<div class="lado"><span class="tag">Antes · despacho</span>' +
@@ -2884,13 +2981,23 @@ var NEFER = (function () {
 
     $("#r-consumibles").innerHTML = cons.map(function (c, i) {
       var necesita = c.estado === "OBS" || c.estado === "D" || c.estado === "NO_RETORNA";
+      // Los que venían del despacho no se tocan: son el registro de lo que
+      // salió. Los añadidos aquí sí, porque todavía no tienen nombre.
+      var htmlTitulo = c.nuevo
+        ? '<input type="text" list="lista-accesorios" data-cons-nombre="' + i +
+          '" value="' + esc(c.descripcion) + '" placeholder="elija o escriba" ' +
+          'aria-label="Nombre del accesorio ' + (i + 1) + '">'
+        : null;
       return filaPar("cons", i,
         String(c.cantidad).padStart(2, "0") + " " + c.descripcion,
         urlAntes(c.foto_despacho), c.fotoId ? porId(c.fotoId).url : null,
         botonesEstado(ESTADOS_CONS, c.estado, "cons", i) +
         (necesita ? '<p class="lb" style="margin:.4rem 0 0;color:var(--obs)">' +
-                    'genera recuperación en el acta</p>' : ""));
-    }).join("") || '<p class="lb">El despacho no llevaba accesorios.</p>';
+                    'genera recuperación en el acta</p>' : "") +
+        (c.nuevo ? '<button type="button" class="ghost" data-cons-quitar="' + i +
+                   '">quitar</button>' : ""),
+        htmlTitulo);
+    }).join("") || '<p class="lb">Sin accesorios. Añada los que salieron con el equipo.</p>';
     $("#r-t-cons").textContent =
       cons.filter(function (c) { return c.estado; }).length + " / " + cons.length;
 
@@ -2932,6 +3039,10 @@ var NEFER = (function () {
     var nombres = nombresDelPaquete();
     var enc = JSON.parse(JSON.stringify((despacho || {}).encabezado || {}));
     enc.tipo_documento = "RECEPCION";
+    ["cliente", "obra", "codigo_equipo", "modelo_equipo"].forEach(function (campo) {
+      var n = $("#r-" + campo);
+      if (n && n.value.trim()) enc[campo] = n.value.trim();
+    });
     enc.n_acta = $("#r-acta").value.trim();
     enc.n_guia = $("#r-guia").value.trim();
     enc.fecha = $("#r-fecha").value;
@@ -3019,6 +3130,8 @@ var NEFER = (function () {
   });
 
   raiz.addEventListener("click", function (e) {
+    var quitar = e.target.closest("[data-cons-quitar]");
+    if (quitar) { cons.splice(+quitar.dataset.consQuitar, 1); pintar(); return; }
     var destino = e.target.closest("[data-destino]");
     if (destino) {
       var col = { vistas: vistas, cons: cons, insp: insp }[destino.dataset.destino];
@@ -3052,7 +3165,10 @@ var NEFER = (function () {
     }
     var item = e.target.closest("[data-item]");
     if (item) { insp[+item.dataset.item].item = e.target.value; pintarSalida(); return; }
-    if (["r-acta","r-guia","r-fecha","r-horometro","r-resumen"].indexOf(e.target.id) !== -1) {
+    var acc = e.target.closest("[data-cons-nombre]");
+    if (acc) { cons[+acc.dataset.consNombre].descripcion = e.target.value; pintarSalida(); return; }
+    if (["r-acta","r-guia","r-fecha","r-horometro","r-resumen","r-cliente","r-obra",
+         "r-codigo_equipo","r-modelo_equipo"].indexOf(e.target.id) !== -1) {
       pintarSalida();
     }
   });
@@ -3144,7 +3260,8 @@ var NEFER = (function () {
   /* ---------- memoria ----------
      Sólo lo tecleado y los estados marcados. Las fotos viven en memoria y no
      sobreviven al cierre: hay que volver a cargarlas, y eso se avisa. */
-  var CAMPOS = ["r-acta","r-guia","r-fecha","r-horometro","r-resumen"];
+  var CAMPOS = ["r-acta","r-guia","r-fecha","r-horometro","r-resumen",
+                "r-cliente","r-obra","r-codigo_equipo","r-modelo_equipo"];
   guardar = NEFER.recordar("recepcion.v1", function () {
     var v = { campos: {} };
     CAMPOS.forEach(function (id) { v.campos[id] = $("#" + id).value; });
@@ -3400,7 +3517,7 @@ var ENTREGABLE = (function () {
     if (cons.recuperacion) return cons.recuperacion;
     var cant = dosDigitos(cons.cantidad), desc = (cons.descripcion || "").trim();
     if (["NO_RETORNA", "D", "OBS"].indexOf(cons.estado_recepcion) !== -1) {
-      return "RECUPERACIÓN N° " + numero + " : " + cant + " " + desc;
+      return "RECUPERACIÓN " + numero + " : " + cant + " " + desc;
     }
     return "CONFORME N° " + numero + " : " + cant + " " + desc + " — SIN RECUPERACIÓN";
   }

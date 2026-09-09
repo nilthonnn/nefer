@@ -95,12 +95,22 @@ VISTAS_POR_CATEGORIA = {
         "VISTA FRONTAL DE MOTOR", "VISTA POSTERIOR DE MOTOR",
         "BATERÍAS", "TANQUE DE COMBUSTIBLE",
     ],
+    # Tomadas de un acta real de torre LED: la rejilla del formato termina en
+    # las dos vistas de motor, no en mastil ni estabilizadores.
     "torre_iluminacion": [
         "VISTA FRONTAL", "VISTA POSTERIOR",
         "VISTA LATERAL IZQUIERDA", "VISTA LATERAL DERECHA",
         "HORÓMETRO", "PANEL DE CONTROL",
-        "MÁSTIL Y WINCHE", "FOCOS",
-        "ESTABILIZADORES", "BATERÍAS",
+        "LUMINARIAS", "BATERÍA",
+        "VISTA FRONTAL DE MOTOR", "VISTA POSTERIOR DE MOTOR",
+    ],
+    # Compresor transportable: el motor se fotografia por sus dos costados.
+    "compresor": [
+        "VISTA FRONTAL", "VISTA POSTERIOR",
+        "VISTA LATERAL IZQUIERDA", "VISTA LATERAL DERECHA",
+        "HORÓMETRO", "PANEL DE CONTROL",
+        "BATERÍA",
+        "VISTA LATERAL IZQUIERDA DE MOTOR", "VISTA LATERAL DERECHA DE MOTOR",
     ],
     "plataforma_elevacion": [
         "VISTA FRONTAL", "VISTA POSTERIOR",
@@ -139,9 +149,11 @@ PISTAS_NOMBRE = [
     ("MANDO DE CONTROL", ("mando", "joystick", "botonera")),
     ("TANQUE DE COMBUSTIBLE", ("tanque", "combustible", "diesel", "fuel")),
     ("BATERÍAS", ("bateria", "baterias", "battery")),
+    ("VISTA LATERAL IZQUIERDA DE MOTOR", ("motorlatizq", "motorizquierda")),
+    ("VISTA LATERAL DERECHA DE MOTOR", ("motorlatder", "motorderecha")),
+    ("LUMINARIAS", ("luminaria", "luminarias", "foco", "focos", "luces", "lampara")),
     ("MÁSTIL Y WINCHE", ("mastil", "winche")),
-    ("FOCOS", ("foco", "focos", "luces", "lampara", "light")),
-    ("ESTABILIZADORES", ("estabilizador", "gato", "outrigger")),
+    ("ESTABILIZADORES", ("estabilizador", "outrigger")),
     ("PISO DE PLATAFORMA", ("piso", "plataforma", "canastilla")),
     ("LLAVE DE CONTACTO", ("llave", "contacto", "ignicion")),
     ("TACOS", ("taco", "tacos", "cuna")),
@@ -165,7 +177,8 @@ def vista_sugerida(nombre: str) -> str | None:
 
 
 # Equipos que llevan hoja de consumibles (equipos moviles / autopropulsados).
-CATEGORIAS_MOVILES = {"plataforma_elevacion", "maquinaria_amarilla", "torre_iluminacion"}
+CATEGORIAS_MOVILES = {"plataforma_elevacion", "maquinaria_amarilla",
+                      "torre_iluminacion", "compresor"}
 
 
 def bloque_foto(indice: int) -> dict:

@@ -39,6 +39,14 @@ CONTROL_BASE = {
         ("Refrigerante", "%"),
         ("Estado de baterías", "OK/OBS"),
     ],
+    "compresor": [
+        ("Combustible diésel", "%"),
+        ("Aceite de motor", "%"),
+        ("Aceite de compresor", "%"),
+        ("Refrigerante", "%"),
+        ("Filtros (aire / combustible)", "OK/OBS"),
+        ("Estado de baterías", "OK/OBS"),
+    ],
     "generico": [
         ("Combustible", "%"),
         ("Aceite de motor", "%"),
@@ -93,8 +101,10 @@ def texto_recuperacion(cons: dict, numero: int,
         return cons["recuperacion"]
     cantidad = cons.get("cantidad", 1)
     descripcion = cons.get("descripcion", "").strip()
+    # La redaccion sigue la de las actas reales: "RECUPERACION 1 : ...", sin
+    # el simbolo de numero.
     if cons.get("estado_recepcion") in {"NO_RETORNA", "D", "OBS"}:
-        return f"RECUPERACIÓN N° {numero} : {cantidad:02d} {descripcion}"
+        return f"RECUPERACIÓN {numero} : {cantidad:02d} {descripcion}"
     return f"CONFORME N° {numero} : {cantidad:02d} {descripcion} — SIN RECUPERACIÓN"
 
 
