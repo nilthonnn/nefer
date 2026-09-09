@@ -94,7 +94,7 @@ cámara— contra un navegador de verdad:
 ```bash
 pip install -e ".[navegador]"
 python -m playwright install chromium
-python -m pytest                       # ahora son 114
+python -m pytest                       # ahora son 116
 ```
 
 Las **27 pruebas** de `tests/test_app_navegador.py` abren el selector de
@@ -489,12 +489,18 @@ con la misma forma que en el Excel:
 | **DESPACHO** | **RECEPCIÓN** |
 | foto — se toca y se fotografía | foto — se toca y se fotografía |
 | `02 CONOS DE 28" DESPACHADO` | `EL EQUIPO RETORNÓ SIN 02 CONOS DE 28"` |
-| **RECUPERACIÓN 1 : 02 CONOS DE 28"** — franja amarilla, editable ||
+| **RECUPERACIÓN N° 1 : 02 CONOS DE 28"** — franja amarilla ||
 
-Las dos celdas cargan foto por cámara o galería. Los rótulos se redactan solos
-a partir del nombre, la cantidad y el estado. La franja va **amarilla cuando hay
-algo que recuperar** y en blanco cuando no, y se puede reescribir: la redacción
-automática es un punto de partida, no la última palabra del que firma.
+Las dos celdas cargan foto por cámara o galería. **Los tres textos —los dos
+rótulos y la franja— se redactan solos y se pueden reescribir**: la redacción
+automática es un punto de partida, no la última palabra del que firma. Lo que
+no se toca lo redacta el acta, así que la pantalla y el papel no pueden decir
+cosas distintas.
+
+La franja va **amarilla cuando hay algo que recuperar** y en blanco cuando no.
+Su número es el ordinal **dentro de su propia serie**: si el primer accesorio
+vuelve conforme, el segundo que falte es la `RECUPERACIÓN N° 1`, el siguiente
+la `N° 2`. Un accesorio conforme no gasta un número de recuperación.
 
 Los accesorios se añaden con **+ Añadir accesorio**, que ofrece el catálogo de
 los que aparecen en las actas reales —conos, barra puesta a tierra, base de

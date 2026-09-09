@@ -472,6 +472,7 @@
   .obs-cab > span:first-child,
   .obs-fotos > *:first-child,
   .obs-rotulos > *:first-child { border-right:1px solid var(--ink-3); }
+  .obs-rotulos { align-items:stretch; }
   .obs-fotos > * { aspect-ratio:4/3; background:var(--card); display:grid;
                    place-items:center; padding:0; border:0; width:100%;
                    cursor:pointer; overflow:hidden; position:relative; }
@@ -480,11 +481,12 @@
                       text-align:center; white-space:pre-line; line-height:1.4;
                       padding:.3rem; }
   .obs-fotos > *:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
-  .obs-rotulos > span { background:var(--card-2); border-top:1px solid var(--ink-3);
-                        font-size:.62rem; font-weight:600; text-transform:uppercase;
-                        text-align:center; padding:.35rem .3rem; line-height:1.3;
-                        color:var(--ink-2); min-height:2.6rem;
-                        display:flex; align-items:center; justify-content:center; }
+  .obs-rotulos > input { background:var(--card-2); border:0;
+                         border-top:1px solid var(--ink-3); border-radius:0;
+                         font-size:.62rem; font-weight:600; text-transform:uppercase;
+                         text-align:center; padding:.4rem .3rem; line-height:1.3;
+                         color:var(--ink-2); min-height:44px; width:100%; }
+  .obs-rotulos > input:focus { background:var(--card); color:var(--ink); }
   .obs-recuperacion { border-top:1px solid var(--ink-3); background:#FFFF00; }
   .obs-recuperacion input { background:transparent; border:0; border-radius:0;
                             color:#16191B; font-weight:700; font-size:.68rem;
@@ -3183,6 +3185,18 @@ var NEFER = (function () {
        ├───────────────┴───────────────┤
        │ RECUPERACIÓN 1 : 01 X         │   franja amarilla, editable
        └───────────────────────────────┘                                     */
+  // Qué número le toca a este accesorio dentro de su serie. El primero que
+  // falte es la RECUPERACIÓN N° 1, el siguiente la N° 2, y así.
+  function numeroDeSerie(indice) {
+    var recupera = ["NO_RETORNA", "D", "OBS"].indexOf(cons[indice].estado) !== -1;
+    var n = 0;
+    for (var k = 0; k <= indice; k++) {
+      var esa = ["NO_RETORNA", "D", "OBS"].indexOf(cons[k].estado) !== -1;
+      if (esa === recupera) n++;
+    }
+    return n;
+  }
+
   function bloqueObservacion(c, i) {
     var tipo = "RECEPCION";
     var auto = window.ENTREGABLE || null;
@@ -3195,10 +3209,10 @@ var NEFER = (function () {
       (auto ? auto.textoConsumible(comoEnActa, "DESPACHO", tipo) : c.descripcion);
     var textoDer = c.texto_recepcion ||
       (auto ? auto.textoConsumible(comoEnActa, "RECEPCIÓN", tipo) : "");
+    var hayRecuperacion = ["NO_RETORNA", "D", "OBS"].indexOf(c.estado) !== -1;
     var recuperacion = c.recuperacion !== undefined && c.recuperacion !== null
       ? c.recuperacion
-      : (auto ? auto.textoRecuperacion(comoEnActa, i + 1, tipo) : "");
-    var hayRecuperacion = ["NO_RETORNA", "D", "OBS"].indexOf(c.estado) !== -1;
+      : (auto ? auto.textoRecuperacion(comoEnActa, numeroDeSerie(i), tipo) : "");
 
     function celda(url, clase, etiqueta) {
       var attrs = 'data-destino="' + clase + '" data-i="' + i +
@@ -3233,8 +3247,10 @@ var NEFER = (function () {
           celda(urlDer, "cons", "Foto de retorno de " + c.descripcion) +
         '</div>' +
         '<div class="obs-fila obs-rotulos">' +
-          '<span>' + esc(textoIzq) + '</span>' +
-          '<span>' + esc(textoDer) + '</span>' +
+          '<input type="text" data-cons-tizq="' + i + '" value="' + esc(textoIzq) +
+            '" aria-label="Texto del despacho, accesorio ' + (i + 1) + '">' +
+          '<input type="text" data-cons-tder="' + i + '" value="' + esc(textoDer) +
+            '" aria-label="Texto de la recepción, accesorio ' + (i + 1) + '">' +
         '</div>' +
         '<div class="obs-recuperacion' + (hayRecuperacion ? "" : " sin-recuperacion") + '">' +
           '<input type="text" data-cons-recup="' + i + '" value="' + esc(recuperacion) +
@@ -3361,15 +3377,26 @@ var NEFER = (function () {
     var consumibles = cons.filter(function (c) { return c.estado; }).map(function (c) {
       var o = { descripcion: c.descripcion, cantidad: c.cantidad || 1,
                 estado_recepcion: c.estado };
-      // Sólo viaja lo escrito a mano; si no, el acta la redacta sola y las dos
+      // Sólo viaja lo escrito a mano; si no, el acta lo redacta sola y las dos
       // implementaciones no pueden discrepar.
-      var auto = window.ENTREGABLE
-        ? window.ENTREGABLE.textoRecuperacion(
-            { descripcion: c.descripcion, cantidad: c.cantidad || 1,
-              estado_recepcion: c.estado },
-            cons.indexOf(c) + 1, "RECEPCION")
-        : "";
-      if (c.recuperacion && c.recuperacion !== auto) o.recuperacion = c.recuperacion;
+      var E = window.ENTREGABLE;
+      var comoEnActa = { descripcion: c.descripcion, cantidad: c.cantidad || 1,
+                         estado_recepcion: c.estado };
+      if (E) {
+        var autoRec = E.textoRecuperacion(comoEnActa, numeroDeSerie(cons.indexOf(c)),
+                                          "RECEPCION");
+        if (c.recuperacion && c.recuperacion !== autoRec) o.recuperacion = c.recuperacion;
+        var autoIzq = E.textoConsumible(comoEnActa, "DESPACHO", "RECEPCION");
+        if (c.texto_despacho && c.texto_despacho !== autoIzq) {
+          o.texto_despacho = c.texto_despacho;
+        }
+        var autoDer = E.textoConsumible(comoEnActa, "RECEPCIÓN", "RECEPCION");
+        if (c.texto_recepcion && c.texto_recepcion !== autoDer) {
+          o.texto_recepcion = c.texto_recepcion;
+        }
+      } else if (c.recuperacion) {
+        o.recuperacion = c.recuperacion;
+      }
       var previa = rutaAntes(c.foto_despacho);
       if (previa) o.foto_despacho = previa;
       if (c.fotoId) o.foto_recepcion = "fotos/" + nombres[c.fotoId];
@@ -3510,6 +3537,12 @@ var NEFER = (function () {
     // punto de partida, no la última palabra del que firma.
     var rec = e.target.closest("[data-cons-recup]");
     if (rec) { cons[+rec.dataset.consRecup].recuperacion = e.target.value; pintarSalida(); return; }
+    // Los rótulos también: lo que falta o el daño se describe con las palabras
+    // del que firma, no con las que la app supone.
+    var tizq = e.target.closest("[data-cons-tizq]");
+    if (tizq) { cons[+tizq.dataset.consTizq].texto_despacho = e.target.value; pintarSalida(); return; }
+    var tder = e.target.closest("[data-cons-tder]");
+    if (tder) { cons[+tder.dataset.consTder].texto_recepcion = e.target.value; pintarSalida(); return; }
     if (["r-acta","r-guia","r-fecha","r-horometro","r-resumen","r-cliente","r-obra",
          "r-codigo_equipo","r-modelo_equipo"].indexOf(e.target.id) !== -1) {
       pintarSalida();
@@ -3859,10 +3892,13 @@ var ENTREGABLE = (function () {
     if (tipo === "DESPACHO") return "";
     if (cons.recuperacion) return cons.recuperacion;
     var cant = dosDigitos(cons.cantidad), desc = (cons.descripcion || "").trim();
+    // El número es el ordinal dentro de su propia serie, no el del bloque: si
+    // el primer accesorio vuelve conforme, el segundo que falte es la
+    // RECUPERACIÓN N° 1. Lo lleva quien llama.
     if (["NO_RETORNA", "D", "OBS"].indexOf(cons.estado_recepcion) !== -1) {
-      return "RECUPERACIÓN " + numero + " : " + cant + " " + desc;
+      return "RECUPERACIÓN N° " + numero + " : " + cant + " " + desc;
     }
-    return "CONFORME " + numero + " : " + cant + " " + desc + " — SIN RECUPERACIÓN";
+    return "CONFORME N° " + numero + " : " + cant + " " + desc + " — SIN RECUPERACIÓN";
   }
 
   function modelo(acta) {
@@ -3874,7 +3910,10 @@ var ENTREGABLE = (function () {
       return { rotulo: f.descripcion || "", foto: f.archivo || null };
     });
 
-    var consumibles = (acta.consumibles || []).map(function (c, i) {
+    var nRecuperacion = 0, nConforme = 0;
+    var consumibles = (acta.consumibles || []).map(function (c) {
+      var recupera = ["NO_RETORNA", "D", "OBS"].indexOf(c.estado_recepcion) !== -1;
+      var numero = recupera ? ++nRecuperacion : ++nConforme;
       return {
         rotulo: (c.descripcion || ""),
         cabeceraIzq: "DESPACHO", cabeceraDer: "RECEPCIÓN",
@@ -3882,7 +3921,7 @@ var ENTREGABLE = (function () {
         fotoDer: c.foto_recepcion || null,
         textoIzq: c.texto_despacho || textoConsumible(c, "DESPACHO", tipo),
         textoDer: c.texto_recepcion || textoConsumible(c, "RECEPCIÓN", tipo),
-        banda: textoRecuperacion(c, i + 1, tipo),
+        banda: c.recuperacion || textoRecuperacion(c, numero, tipo),
         bandaAmarilla: true
       };
     });

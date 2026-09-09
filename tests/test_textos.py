@@ -14,7 +14,7 @@ def test_rotulo_de_recepcion_sin_retorno():
 def test_recuperacion_solo_cuando_hay_falta_o_dano():
     faltante = {"cantidad": 1, "descripcion": "EXTINTOR 6 KG", "estado_recepcion": "NO_RETORNA"}
     conforme = {"cantidad": 1, "descripcion": "EXTINTOR 6 KG", "estado_recepcion": "OK"}
-    assert textos.texto_recuperacion(faltante, 3).startswith("RECUPERACIÓN 3")
+    assert textos.texto_recuperacion(faltante, 3).startswith("RECUPERACIÓN N° 3")
     assert "SIN RECUPERACIÓN" in textos.texto_recuperacion(conforme, 3)
 
 

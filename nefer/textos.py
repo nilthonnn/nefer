@@ -101,11 +101,12 @@ def texto_recuperacion(cons: dict, numero: int,
         return cons["recuperacion"]
     cantidad = cons.get("cantidad", 1)
     descripcion = cons.get("descripcion", "").strip()
-    # La redaccion sigue la de las actas reales: "RECUPERACION 1 : ...", sin
-    # el simbolo de numero.
+    # El numero es el ordinal entre las que generan recuperacion, no el del
+    # bloque: si el primer accesorio vuelve conforme, el segundo que falte es
+    # la RECUPERACION N° 1. Lo lleva quien llama.
     if cons.get("estado_recepcion") in {"NO_RETORNA", "D", "OBS"}:
-        return f"RECUPERACIÓN {numero} : {cantidad:02d} {descripcion}"
-    return f"CONFORME {numero} : {cantidad:02d} {descripcion} — SIN RECUPERACIÓN"
+        return f"RECUPERACIÓN N° {numero} : {cantidad:02d} {descripcion}"
+    return f"CONFORME N° {numero} : {cantidad:02d} {descripcion} — SIN RECUPERACIÓN"
 
 
 def _enc(manifiesto: dict) -> dict:

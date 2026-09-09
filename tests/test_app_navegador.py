@@ -1120,8 +1120,9 @@ def test_observaciones_tiene_la_forma_de_la_tabla_del_formato(servidor):
         pg.click("#r-consumibles .estados button[data-e='NO_RETORNA']")
         pg.wait_for_timeout(400)
 
-        rotulos = pg.eval_on_selector_all("#r-consumibles .obs-rotulos span",
-                                          "n => n.map(x => x.textContent)")
+        # Los rotulos son campos: se redactan solos y se pueden reescribir.
+        rotulos = pg.eval_on_selector_all("#r-consumibles .obs-rotulos input",
+                                          "n => n.map(x => x.value)")
         assert rotulos[0] == '02 CONOS DE SEGURIDAD DE 28" DESPACHADO', rotulos
         assert rotulos[1] == 'EL EQUIPO RETORNÓ SIN 02 CONOS DE SEGURIDAD DE 28"', rotulos
 
@@ -1129,7 +1130,7 @@ def test_observaciones_tiene_la_forma_de_la_tabla_del_formato(servidor):
                                      "n => getComputedStyle(n).backgroundColor")
         assert franja == "rgb(255, 255, 0)", franja
         valor = pg.input_value("#r-consumibles [data-cons-recup]")
-        assert valor == 'RECUPERACIÓN 1 : 02 CONOS DE SEGURIDAD DE 28"', valor
+        assert valor == 'RECUPERACIÓN N° 1 : 02 CONOS DE SEGURIDAD DE 28"', valor
         nav.close()
 
 
@@ -1215,4 +1216,71 @@ def test_la_recuperacion_escrita_a_mano_manda(servidor):
         acta = json.loads(pg.input_value("#r-salida"))
         assert acta["consumibles"][0]["recuperacion"] == \
             "RECUPERACIÓN 1 : 01 GATA — POR EVALUAR POR PLANTA"
+        nav.close()
+
+def _accesorio(pg, indice, nombre, estado):
+    pg.click("#r-add-cons")
+    pg.wait_for_timeout(350)
+    pg.fill(f"#r-consumibles .par:nth-child({indice + 1}) [data-cons-nombre]", nombre)
+    pg.wait_for_timeout(250)
+    pg.click(f"#r-consumibles .par:nth-child({indice + 1}) "
+             f".estados button[data-e='{estado}']")
+    pg.wait_for_timeout(350)
+
+
+def test_la_recuperacion_se_numera_progresivamente(servidor):
+    """El primero que falte es la N° 1, el siguiente la N° 2.
+
+    El numero es el ordinal dentro de su serie, no el del bloque: un accesorio
+    que vuelve conforme no consume un numero de recuperacion.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        _sin_camara(pg)
+        pg.goto(servidor)
+        pg.wait_for_timeout(600)
+        _empezar_recepcion(pg)
+
+        for i, (nombre, estado) in enumerate([
+                ("BARRA PUESTA A TIERRA", "OK"),
+                ('CONOS DE SEGURIDAD DE 28"', "NO_RETORNA"),
+                ("GATA DE TIRO", "OK"),
+                ("CHAPA DE PUERTA", "D")]):
+            _accesorio(pg, i, nombre, estado)
+
+        franjas = pg.eval_on_selector_all("#r-consumibles [data-cons-recup]",
+                                          "n => n.map(x => x.value)")
+        assert franjas[0].startswith("CONFORME N° 1"), franjas
+        assert franjas[1].startswith("RECUPERACIÓN N° 1"), franjas
+        assert franjas[2].startswith("CONFORME N° 2"), franjas
+        assert franjas[3].startswith("RECUPERACIÓN N° 2"), franjas
+        nav.close()
+
+
+def test_los_rotulos_de_observaciones_se_pueden_escribir(servidor):
+    """Lo que falta o el daño se describe con las palabras del que firma."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        _sin_camara(pg)
+        pg.goto(servidor)
+        pg.wait_for_timeout(600)
+        _empezar_recepcion(pg)
+        _accesorio(pg, 0, 'CONOS DE SEGURIDAD DE 28"', "NO_RETORNA")
+
+        # Hay un campo por lado, no un texto fijo.
+        assert pg.eval_on_selector_all("#r-consumibles [data-cons-tizq]",
+                                       "n => n.length") == 1
+        assert pg.eval_on_selector_all("#r-consumibles [data-cons-tder]",
+                                       "n => n.length") == 1
+
+        propio = 'EL EQUIPO RETORNÓ SIN 02 CONOS DE 28" (SE FACTURAN)'
+        pg.fill("#r-consumibles [data-cons-tder]", propio)
+        pg.wait_for_timeout(400)
+
+        acta = json.loads(pg.input_value("#r-salida"))
+        assert acta["consumibles"][0]["texto_recepcion"] == propio, acta["consumibles"][0]
+        # Lo que no se toca no viaja: lo redacta el acta.
+        assert "texto_despacho" not in acta["consumibles"][0]
         nav.close()

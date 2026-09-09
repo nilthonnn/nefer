@@ -190,6 +190,10 @@ def _bloques_consumibles(ws, consumibles: list[dict], n_bloques_foto: int,
     ancho = {izq[0]: layout.ancho_panel_px(izq), der[0]: layout.ancho_panel_px(der)}
     alto = layout.alto_bloque_px()
 
+    # Dos contadores independientes: uno para lo que se recupera y otro para lo
+    # que vuelve conforme. Cada franja se numera dentro de su propia serie.
+    n_recuperacion = n_conforme = 0
+
     for j, cons in enumerate(consumibles):
         b = layout.bloque_consumible(j, n_bloques_foto)
         for panel, titulo, clave_foto, clave_texto in (
@@ -215,7 +219,13 @@ def _bloques_consumibles(ws, consumibles: list[dict], n_bloques_foto: int,
                     )
 
         fila_rec = b["fila_recuperacion"]
-        leyenda = textos.texto_recuperacion(cons, j + 1, tipo_documento)
+        if cons.get("estado_recepcion") in {"NO_RETORNA", "D", "OBS"}:
+            n_recuperacion += 1
+            numero = n_recuperacion
+        else:
+            n_conforme += 1
+            numero = n_conforme
+        leyenda = textos.texto_recuperacion(cons, numero, tipo_documento)
         # Sin recuperacion que declarar, la franja va vacia y en blanco: una
         # banda amarilla sin texto se lee como un dato que falta.
         st.escribir(ws, f"A{fila_rec}:Z{fila_rec}", leyenda,

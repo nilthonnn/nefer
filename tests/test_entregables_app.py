@@ -326,7 +326,7 @@ def test_la_recepcion_lleva_las_secciones_del_formato(recepcion):
     assert any("OBSERVACIONES" == t for t in textos), textos
     assert layout.TITULO_COMPARATIVO in textos, textos
     assert layout.TITULO_DANOS in textos, textos
-    assert any(t.startswith("RECUPERACIÓN 1") for t in textos), textos
+    assert any(t.startswith("RECUPERACIÓN N° 1") for t in textos), textos
 
 
 def test_la_recepcion_cae_en_las_mismas_filas_que_el_escritorio(recepcion, tmp_path):
@@ -352,7 +352,7 @@ def test_el_pdf_de_recepcion_nombra_el_antes_y_el_despues(recepcion):
     for esperado in (layout.TITULO_COMPARATIVO, layout.TITULO_DANOS,
                      "ANTES · VISTA FRONTAL", "DESPUÉS · VISTA FRONTAL",
                      "EL EQUIPO RETORNÓ SIN 01 EXTINTOR DE 6 KG",
-                     "RECUPERACIÓN 1", "JUNTA DE ESCAPE"):
+                     "RECUPERACIÓN N° 1", "JUNTA DE ESCAPE"):
         assert esperado in texto, esperado
 
     # La marca del tipo de documento tiene que decir RECEPCIÓN, no DESPACHO.
@@ -568,4 +568,4 @@ def test_la_recepcion_arranca_sin_acta_de_despacho(tmp_path):
     build.construir(manifiesto, referencia, carpeta)
     ws = openpyxl.load_workbook(referencia).active
     bandas = [ws.cell(row=f, column=1).value for f in range(1, ws.max_row + 1)]
-    assert any(isinstance(v, str) and v.startswith("RECUPERACIÓN 1") for v in bandas)
+    assert any(isinstance(v, str) and v.startswith("RECUPERACIÓN N° 1") for v in bandas)
