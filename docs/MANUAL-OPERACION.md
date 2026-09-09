@@ -94,7 +94,7 @@ cámara— contra un navegador de verdad:
 ```bash
 pip install -e ".[navegador]"
 python -m playwright install chromium
-python -m pytest                       # ahora son 106
+python -m pytest                       # ahora son 109
 ```
 
 Las **27 pruebas** de `tests/test_app_navegador.py` abren el selector de
@@ -469,6 +469,11 @@ teléfono.
 las fotos del retorno. Así cada foto de salida aparece al lado de la de vuelta.
 Si el despacho se levantó en ese mismo teléfono, basta pulsar *usar el acta de
 la pestaña Despacho*.
+
+Las fotos del retorno entran **por las mismas vías que en despacho** —cámara
+integrada, cámara del sistema, galería y carpeta—, en una barra con la misma
+forma. Y como en despacho, **tocar un recuadro «DESPUÉS» vacío dispara la
+cámara para esa vista**: la foto entra donde toca, sin pasar por la bandeja.
 
 Los accesorios se añaden con **+ Añadir accesorio**, que ofrece el catálogo de
 los que aparecen en las actas reales —conos, barra puesta a tierra, base de

@@ -422,7 +422,10 @@
            width:100%; padding:0; cursor:pointer; }
   .marco img { width:100%; height:100%; object-fit:cover; display:block; }
   .marco .vacio { font-family:var(--mono); font-size:.58rem; color:var(--ink-3);
-                  padding:.35rem; text-align:center; }
+                  padding:.35rem; text-align:center; white-space:pre-line;
+                  line-height:1.35; }
+  label.marco { cursor:pointer; }
+  label.marco:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .marco.fija { cursor:default; }
   .marco.hot { border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent); }
 
@@ -712,18 +715,6 @@
           <label class="boton ruta" id="r-carpeta-lb" for="r-carpeta" hidden>Carpeta…</label>
           <span class="estado" id="r-e2"></span>
         </div>
-        <div class="carga" id="r-c3">
-          <h2><span class="n">B3</span> Fotos del retorno</h2>
-          <p>Las que acaba de tomar al recibir el equipo.</p>
-          <button type="button" class="primary ruta" id="r-camara-app" hidden>Cámara</button>
-          <input type="file" id="r-camara" class="archivo" accept="image/*"
-                 capture="environment" aria-label="Fotografiar el equipo que retorna">
-          <label class="boton ruta" id="r-camara-lb" for="r-camara" hidden>Cámara del sistema</label>
-          <input type="file" id="r-f3" class="archivo" multiple
-                   aria-label="Seleccionar fotos del retorno">
-          <label class="boton" for="r-f3">Cargar fotos…</label>
-          <span class="estado" id="r-e3"></span>
-        </div>
       </div>
 
       <p class="nota" id="r-puente" style="margin-bottom:.9rem">
@@ -732,6 +723,25 @@
       </p>
 
       <div id="r-trabajo" class="oculto">
+
+        <div class="bar">
+          <span class="lb" style="align-self:center">Fotos del retorno</span>
+          <button type="button" class="primary ruta" id="r-camara-app" hidden>Cámara</button>
+          <input type="file" id="r-camara" class="archivo" accept="image/*"
+                 capture="environment" aria-label="Fotografiar el equipo que retorna">
+          <label class="boton ruta" id="r-camara-lb" for="r-camara" hidden>Cámara del sistema</label>
+          <input type="file" id="r-f3" class="archivo" multiple
+                 aria-label="Seleccionar fotos del retorno">
+          <label class="boton primary" for="r-f3" id="r-f3-lb">Cargar fotos…</label>
+          <input type="file" id="r-carpeta3" class="archivo" multiple webkitdirectory
+                 aria-label="Elegir una carpeta de fotos del retorno">
+          <label class="boton ruta" id="r-carpeta3-lb" for="r-carpeta3" hidden>Carpeta…</label>
+          <span class="grow"></span>
+          <span class="lb" id="r-e3"></span>
+        </div>
+
+        <input type="file" id="r-slot" class="archivo"
+               aria-label="Fotografía para la vista elegida">
 
         <div class="bandeja">
           <h2>Fotos del retorno sin usar <span class="tally" id="r-t-tira">0</span></h2>
@@ -2686,6 +2696,8 @@ var NEFER = (function () {
   var sig = 1;
   var guardar = function () {};
 
+  var PISTA_VACIA = NEFER.RUTAS.tactil ? "tocar para\nfotografiar" : "vacía · elegir";
+
   var ESTADOS_CONS = [["OK","Conforme"],["OBS","Observado"],["D","Dañado"],
                       ["NO_RETORNA","No retornó"]];
   var ESTADOS_INSP = [["OK","Funcional"],["OBS","Observado"],["D","Dañado"]];
@@ -2743,6 +2755,65 @@ var NEFER = (function () {
     $("#r-c0").classList.add("lista");
   });
 
+  // Adónde va la próxima foto: la vista, el accesorio o el componente que se tocó.
+  var objetivo = null;
+
+  function guardarEn(clase, i, foto) {
+    var col = { vistas: vistas, cons: cons, insp: insp }[clase];
+    if (!col || !col[i]) return;
+    [vistas, cons, insp].forEach(function (c) {
+      c.forEach(function (x) { if (x.fotoId === foto.id) x.fotoId = null; });
+    });
+    col[i].fotoId = foto.id;
+  }
+
+  function admitirRetorno(archivos, alGuardar) {
+    return NEFER.admitir(archivos, { reducir: true }).then(function (r) {
+      var añadidas = [];
+      r.aceptadas.forEach(function (x) {
+        var foto = { id: sig++, nombre: x.archivo.name || ("foto-" + sig + ".jpg"),
+                     url: x.url, archivo: x.archivo };
+        retorno.push(foto);
+        añadidas.push(foto);
+      });
+      $("#r-e3").textContent = retorno.length + " foto(s)" +
+        (r.rechazadas.length ? " · " + r.rechazadas.length + " no se pudo abrir" : "");
+      if (alGuardar && añadidas.length) alGuardar(añadidas[0]);
+      pintar();
+    });
+  }
+
+  $("#r-slot").addEventListener("change", function (e) {
+    var donde = objetivo;
+    objetivo = null;
+    var archivos = Array.prototype.slice.call(e.target.files);  // la FileList es viva
+    e.target.value = "";
+    if (!archivos.length) return;
+    admitirRetorno(archivos, function (foto) {
+      if (donde) guardarEn(donde.clase, donde.i, foto);
+    });
+  });
+
+  function abrirCamaraEn(clase, i, rotulo) {
+    NEFER.camara.abrir({
+      pendientes: [{ indice: i, rotulo: rotulo || "FOTO DE RETORNO" }],
+      tomar: function (archivo) {
+        admitirRetorno([archivo], function (foto) { guardarEn(clase, i, foto); });
+      },
+      respaldo: function () { objetivo = { clase: clase, i: i }; $("#r-slot").click(); }
+    });
+  }
+
+  // La etiqueta no responde al teclado por sí sola.
+  raiz.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var t = e.target.closest("label[data-destino]");
+    if (!t) return;
+    e.preventDefault();
+    objetivo = { clase: t.dataset.destino, i: +t.dataset.i };
+    $("#r-slot").click();
+  });
+
   $("#r-add-cons").addEventListener("click", function () {
     cons.push({ descripcion: "", cantidad: 1, foto_despacho: null,
                 fotoId: null, estado: null, nuevo: true });
@@ -2787,7 +2858,8 @@ var NEFER = (function () {
         else retorno.push({ id: sig++, nombre: nombre, url: x.url, archivo: x.archivo });
       });
       var n = destino === "antes" ? Object.keys(antes).length : retorno.length;
-      $("#" + tarjetaId).classList.toggle("lista", n > 0);
+      var tarjeta = $("#" + tarjetaId);
+      if (tarjeta) tarjeta.classList.toggle("lista", n > 0);
       aviso.textContent = n + " foto(s)" + (r.rechazadas.length
         ? " · " + r.rechazadas.length + " no se pudo abrir (" +
           NEFER.motivoRechazo(r.rechazadas[0]) + ")"
@@ -2814,10 +2886,28 @@ var NEFER = (function () {
     e.target.value = "";
     cargarFotos(archivos, "antes", "r-e2", "r-c2");
   });
+  $("#r-carpeta3").addEventListener("change", function (e) {
+    var archivos = Array.prototype.slice.call(e.target.files);
+    e.target.value = "";
+    cargarFotos(archivos, "retorno", "r-e3", "r-c3");
+  });
 
-  if (NEFER.RUTAS.camara) $("#r-camara-lb").hidden = false;
-  if (NEFER.RUTAS.carpeta) $("#r-carpeta-lb").hidden = false;
-  if (NEFER.camara.hay()) $("#r-camara-app").hidden = false;
+  // Las mismas rutas que en despacho, y las mismas reglas: se muestra lo que
+  // este aparato puede hacer, y la cámara integrada manda donde existe.
+  if (NEFER.RUTAS.camara) {
+    $("#r-camara-lb").hidden = false;
+    $("#r-f3-lb").classList.remove("primary");
+    $("#r-f3-lb").textContent = "Galería…";
+  }
+  if (NEFER.RUTAS.carpeta) {
+    $("#r-carpeta-lb").hidden = false;
+    $("#r-carpeta3-lb").hidden = false;
+  }
+  if (NEFER.camara.hay()) {
+    $("#r-camara-app").hidden = false;
+    $("#r-f3-lb").classList.remove("primary");
+    $("#r-f3-lb").textContent = "Galería…";
+  }
 
   // En el retorno la cámara recorre las vistas que aún no tienen foto de vuelta.
   $("#r-camara-app").addEventListener("click", function () {
@@ -2848,7 +2938,7 @@ var NEFER = (function () {
   });
 
   // Arrastrar la carpeta del despacho sobre su tarjeta.
-  [["r-c2", "antes", "r-e2"], ["r-c3", "retorno", "r-e3"]].forEach(function (t) {
+  [["r-c2", "antes", "r-e2"]].forEach(function (t) {
     var caja = $("#" + t[0]);
     ["dragenter", "dragover"].forEach(function (ev) {
       caja.addEventListener(ev, function (e) { e.preventDefault(); caja.classList.add("lista"); });
@@ -2926,6 +3016,20 @@ var NEFER = (function () {
            : '<span class="vacio">' + esc(textoVacio) + '</span>') + '</button>';
   }
 
+  // Lleno se toca para vaciarlo; vacío es la etiqueta del selector de fotos,
+  // como la casilla vacía del despacho. La activación nativa de la etiqueta es
+  // la que ningún navegador bloquea.
+  function marcoDestino(url, clase, i, etiqueta) {
+    var attrs = 'data-destino="' + clase + '" data-i="' + i + '" aria-label="' +
+                esc(etiqueta) + '"';
+    if (url) {
+      return '<button type="button" class="marco" ' + attrs + '>' +
+             '<img alt="" src="' + url + '"></button>';
+    }
+    return '<label class="marco vacia" for="r-slot" role="button" tabindex="0" ' +
+      attrs + '><span class="vacio">' + esc(PISTA_VACIA) + '</span></label>';
+  }
+
   // El lado «antes» sólo se mira: no se toca, no se enfoca y su descripción
   // vive en el texto alternativo de la imagen.
   function marcoFijo(url, textoVacio, descripcion) {
@@ -2942,9 +3046,7 @@ var NEFER = (function () {
         '<div class="lado"><span class="tag">Antes · despacho</span>' +
           marcoFijo(urlIzq, "sin foto de despacho", titulo) + '</div>' +
         '<div class="lado"><span class="tag">Después · retorno</span>' +
-          marco(urlDer, "toque para asignar",
-                'data-destino="' + clase + '" data-i="' + i + '" ' +
-                'aria-label="Foto de retorno de ' + esc(titulo) + '"') + '</div>' +
+          marcoDestino(urlDer, clase, i, "Foto de retorno de " + titulo) + '</div>' +
       '</div>' + (extra || "") + '</div>';
   }
 
@@ -3020,8 +3122,8 @@ var NEFER = (function () {
             '<div class="lado"><span class="tag">Antes · despacho</span>' +
               marcoFijo(urlAntes(c.foto_despacho), "sin foto", c.item || "el componente") +
             '</div><div class="lado"><span class="tag">Después · retorno</span>' +
-              marco(c.fotoId ? porId(c.fotoId).url : null, "toque para asignar",
-                    'data-destino="insp" data-i="' + i + '" aria-label="Foto del daño"') +
+              marcoDestino(c.fotoId ? porId(c.fotoId).url : null, "insp", i,
+                           "Foto del daño") +
             '</div></div>'
           : "") +
         extra + '</div>';
@@ -3134,15 +3236,29 @@ var NEFER = (function () {
     if (quitar) { cons.splice(+quitar.dataset.consQuitar, 1); pintar(); return; }
     var destino = e.target.closest("[data-destino]");
     if (destino) {
-      var col = { vistas: vistas, cons: cons, insp: insp }[destino.dataset.destino];
+      var clase = destino.dataset.destino;
+      var col = { vistas: vistas, cons: cons, insp: insp }[clase];
       var i = +destino.dataset.i;
-      if (elegida !== null) {
+
+      if (elegida !== null) {              // hay una foto elegida: se coloca
+        e.preventDefault();
         [vistas, cons, insp].forEach(function (c) {
           c.forEach(function (x) { if (x.fotoId === elegida) x.fotoId = null; });
         });
         col[i].fotoId = elegida; elegida = null;
-      } else { col[i].fotoId = null; }
-      pintar();
+        pintar();
+        return;
+      }
+      if (col[i].fotoId) {                 // lleno: se vacía
+        col[i].fotoId = null;
+        pintar();
+        return;
+      }
+      objetivo = { clase: clase, i: i };   // vacío: la foto que venga es de aquí
+      if (NEFER.camara.hay()) {
+        e.preventDefault();
+        abrirCamaraEn(clase, i, col[i].rotulo || col[i].descripcion || col[i].item || "");
+      }
       return;
     }
     var caja = e.target.closest("[data-estados]");

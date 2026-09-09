@@ -935,3 +935,99 @@ def test_de_la_camara_al_acta_valida(tmp_path, servidor):
     with zipfile.ZipFile(xlsx) as z:
         medios = [n for n in z.namelist() if n.startswith("xl/media/")]
     assert len(medios) == 3, medios
+
+# ==========================================================================
+# RECEPCION: las mismas rutas que despacho
+# ==========================================================================
+
+def _empezar_recepcion(pg, familia="compresor"):
+    pg.click("#tab-recepcion")
+    pg.wait_for_timeout(300)
+    pg.select_option("#r-cat", familia)
+    pg.click("#r-empezar")
+    pg.wait_for_timeout(600)
+
+
+def test_recepcion_ofrece_las_mismas_rutas_que_despacho(servidor):
+    """Un operador no puede tener que aprenderse dos menus distintos."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        pg.wait_for_timeout(600)
+
+        pg.click("#tab-despacho")
+        pg.wait_for_timeout(200)
+        en_despacho = {
+            "camara_app": pg.is_visible("#d-camara-app"),
+            "camara_sistema": pg.is_visible("#d-camara-lb"),
+            "galeria": pg.is_visible("#d-file-lb"),
+            "carpeta": pg.is_visible("#d-carpeta-lb"),
+        }
+
+        _empezar_recepcion(pg)
+        en_recepcion = {
+            "camara_app": pg.is_visible("#r-camara-app"),
+            "camara_sistema": pg.is_visible("#r-camara-lb"),
+            "galeria": pg.is_visible("#r-f3-lb"),
+            "carpeta": pg.is_visible("#r-carpeta3-lb"),
+        }
+
+        assert en_recepcion == en_despacho, (en_recepcion, en_despacho)
+        assert pg.inner_text("#r-f3-lb") == pg.inner_text("#d-file-lb")
+        nav.close()
+
+
+def test_en_recepcion_el_recuadro_vacio_abre_la_camara_de_esa_vista(servidor):
+    """Igual que la casilla vacia del despacho: se toca y se fotografia ahi."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        pg.wait_for_timeout(600)
+        _empezar_recepcion(pg, "torre_iluminacion")
+
+        marco = pg.query_selector("#r-vistas .par:first-child [data-destino='vistas']")
+        assert pg.evaluate("n => n.tagName", marco) == "LABEL"
+        rotulo = pg.eval_on_selector("#r-vistas .par:first-child h3", "n => n.textContent")
+
+        marco.click()
+        pg.wait_for_function(
+            "() => document.querySelector('#cam-video').videoWidth > 0", timeout=15000)
+        assert pg.inner_text("#cam-rotulo") == rotulo
+
+        pg.click("#cam-disparar")
+        pg.wait_for_timeout(1500)
+        pg.click("#cam-cerrar")
+        pg.wait_for_timeout(500)
+
+        acta = json.loads(pg.input_value("#r-salida"))
+        conFoto = [f for f in acta["registro_fotografico"] if f.get("archivo")]
+        assert len(conFoto) == 1
+        assert conFoto[0]["descripcion"] == rotulo
+        nav.close()
+
+
+def test_en_recepcion_sin_camara_el_recuadro_abre_el_selector(fotos):
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        _sin_camara(pg)
+        pg.goto(APP.as_uri())
+        pg.wait_for_timeout(600)
+        _empezar_recepcion(pg)
+
+        assert pg.is_hidden("#r-camara-app")
+        marco = pg.query_selector("#r-vistas .par:nth-child(3) [data-destino='vistas']")
+        rotulo = pg.eval_on_selector("#r-vistas .par:nth-child(3) h3", "n => n.textContent")
+
+        with pg.expect_file_chooser(timeout=10000) as fc:
+            marco.click()
+        fc.value.set_files([str(fotos["frontal"])])
+        pg.wait_for_timeout(4000)
+
+        acta = json.loads(pg.input_value("#r-salida"))
+        conFoto = [f for f in acta["registro_fotografico"] if f.get("archivo")]
+        assert len(conFoto) == 1, acta["registro_fotografico"]
+        assert conFoto[0]["descripcion"] == rotulo
+        nav.close()
