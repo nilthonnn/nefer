@@ -29,7 +29,7 @@ COL_PRIMERA, COL_ULTIMA = "A", "Z"
 # Anchos de columna medidos en los reportes originales (unidades Excel).
 ANCHOS_COLUMNA = {
     "A": 5.00, "B": 4.29, "C": 3.71, "D": 2.29, "E": 4.00, "F": 1.71,
-    "G": 4.00, "H": 8.43, "I": 8.43, "J": 2.86, "K": 2.43, "L": 11.71,
+    "G": 4.00, "H": 4.00, "I": 4.00, "J": 2.86, "K": 2.43, "L": 11.71,
     "M": 1.43, "N": 2.71, "O": 1.57, "P": 1.14, "Q": 3.71, "R": 4.86,
     "S": 4.00, "T": 7.57, "U": 4.00, "V": 2.14, "W": 4.00, "X": 3.14,
     "Y": 0.43, "Z": 11.43,
@@ -76,6 +76,9 @@ BLANCO = "FFFFFFFF"
 ALTO_FILA_ESTANDAR = 15.0
 ALTO_FILA_SEPARADOR = 10.5
 ALTO_FILA_ROTULO = 16.5
+# La fila donde va la descripcion de lo despachado y lo que retorno.
+# A 16,5 pt solo cabe una linea y las descripciones largas se cortaban.
+ALTO_FILA_TEXTO = 28.5        # dos lineas de Calibri 10 mas el margen
 
 # Bloque de control documental. Cada organizacion pone el suyo desde el
 # manifiesto: encabezado.codigo_formato, version_formato y fecha_formato.

@@ -83,8 +83,9 @@ def _dimensionar(ws, ultima_fila: int, n_bloques_foto: int, n_consumibles: int) 
         ws.row_dimensions[layout.bloque_foto(i)["fila_rotulo"]].height = layout.ALTO_FILA_ROTULO
     for j in range(n_consumibles):
         bloque = layout.bloque_consumible(j, n_bloques_foto)
-        for clave in ("fila_encabezado", "fila_rotulo", "fila_recuperacion"):
+        for clave in ("fila_encabezado", "fila_recuperacion"):
             ws.row_dimensions[bloque[clave]].height = layout.ALTO_FILA_ROTULO
+        ws.row_dimensions[bloque["fila_rotulo"]].height = layout.ALTO_FILA_TEXTO
 
 
 def _ruta_logo(enc: dict, raiz: Path) -> Path | None:
@@ -233,8 +234,17 @@ def _bloques_consumibles(ws, consumibles: list[dict], n_bloques_foto: int,
                     fill=st.FILL_RECUPERACION if leyenda else None)
 
 
-# Bloques que caben en una hoja A4 vertical sin partirse.
-BLOQUES_FOTO_POR_PAGINA = 4
+# Bloques que caben en una hoja A4 vertical sin partirse. Medido: la rejilla
+# mide 634 pt y el ancho util de un A4 con estos margenes son 561, asi que el
+# ajuste a lo ancho impone una escala del 88 %; a esa escala la caja de
+# impresion admite 887 pt de contenido. La cabecera ocupa 145,5, una franja
+# fotografica 226,5 y un bloque de consumible 271,5.
+#   3 franjas: 145,5 + 679,5 = 825 pt, entra.
+#   4 franjas: 145,5 + 906   = 1051,5 pt, no entra: Excel parte el cuarto
+#              bloque y la foto queda separada de su rotulo.
+#   3 consumibles: 15 + 814,5 = 829,5 pt, entra.
+# Un acta real de referencia corta su primera pagina tras la tercera franja.
+BLOQUES_FOTO_POR_PAGINA = 3
 BLOQUES_CONSUMIBLE_POR_PAGINA = 3
 
 
@@ -280,6 +290,9 @@ def _seccion_pareada(ws, titulo: str, fila_titulo: int, entradas: list[dict],
 
     for i, entrada in enumerate(entradas):
         b = layout.bloque_pareado(i, fila_titulo)
+        for clave in ("fila_encabezado", "fila_pie"):
+            ws.row_dimensions[b[clave]].height = layout.ALTO_FILA_ROTULO
+        ws.row_dimensions[b["fila_rotulo"]].height = layout.ALTO_FILA_TEXTO
         for panel, cabecera, clave_foto, clave_texto in (
             (izq, "DESPACHO", "foto_izq", "texto_izq"),
             (der, "RECEPCIÓN", "foto_der", "texto_der"),

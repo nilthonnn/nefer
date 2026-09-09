@@ -267,7 +267,7 @@ Al pie de **Resultado** hay tres salidas:
 
 | Botón | Qué da | Para qué |
 |---|---|---|
-| **Descargar PDF** | El acta impresa, A4, ocho fotos por página | Firmarla ahí mismo con el cliente |
+| **Descargar PDF** | El acta impresa, A4, seis fotos por página —las que entran— | Firmarla ahí mismo con el cliente |
 | **Descargar Excel** | El `.xlsx` con la rejilla y las fotos incrustadas | El archivo de la oficina |
 | **Paquete .zip** | `acta.json` + `fotos/` | Regenerar todo en la computadora, o guardar el respaldo |
 

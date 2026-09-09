@@ -3741,7 +3741,7 @@ var ENTREGABLE = (function () {
 
   // Copiado de nefer/layout.py y nefer/build.py. Si cambia allí, cambia aquí.
   var NUMEROS = {
-    BLOQUES_FOTO_POR_PAGINA: 4,
+    BLOQUES_FOTO_POR_PAGINA: 3,
     BLOQUES_CONSUMIBLE_POR_PAGINA: 3,
     CODIGO_FORMATO: "FO-DR-001",
     VERSION_FORMATO: "00",
@@ -3758,11 +3758,13 @@ var ENTREGABLE = (function () {
   var CAB_ALTO = 104;
   var HUECO = 6;
   var CELDA = (ANCHO - HUECO) / 2;
-  // Cuatro franjas de dos fotos por página: ocho, como en el formato impreso.
-  var FOTO_ALTO = 142;
+  // Tres franjas de dos fotos por página: seis, como en el formato impreso.
+  // Con cuatro no caben, y las fotos salen tan pequeñas que no sirven de
+  // prueba de nada.
+  var FOTO_ALTO = 188;
   var ROTULO_ALTO = 15;
   var BLOQUE = FOTO_ALTO + ROTULO_ALTO;
-  var FOTOS_POR_PAGINA = 8;
+  var FOTOS_POR_PAGINA = 6;
 
   /* ---------- texto en WinAnsi ----------
      Helvetica con WinAnsiEncoding cubre el español entero. Sólo hay que
@@ -3828,6 +3830,27 @@ var ENTREGABLE = (function () {
     if (ancho(t, pt, negrita) <= limite) return t;
     while (t.length > 1 && ancho(t + "…", pt, negrita) > limite) t = t.slice(0, -1);
     return t + "…";
+  }
+
+  // Parte el texto en como mucho `lineas` renglones que quepan en `limite`.
+  // La descripción de un accesorio —«01 BASE DE EXTINTOR DE 6 KG CON SU
+  // SOPORTE DE PARED DESPACHADO»— no entra en un renglón y se perdía el final.
+  function envolver(texto, pt, negrita, limite, lineas) {
+    var palabras = String(texto || "").split(/\s+/).filter(Boolean), salida = [], act = "";
+    for (var i = 0; i < palabras.length; i++) {
+      var prueba = act ? act + " " + palabras[i] : palabras[i];
+      if (act && ancho(prueba, pt, negrita) > limite) {
+        salida.push(act);
+        if (salida.length === lineas - 1) { act = palabras.slice(i).join(" "); break; }
+        act = palabras[i];
+      } else {
+        act = prueba;
+      }
+    }
+    if (act) salida.push(act);
+    if (!salida.length) return [""];
+    salida[salida.length - 1] = recortar(salida[salida.length - 1], pt, negrita, limite);
+    return salida;
   }
 
   /* ---------- lienzo de una página ---------- */
@@ -3959,6 +3982,24 @@ var ENTREGABLE = (function () {
              comparativo: comparativo, danos: danos };
   }
 
+  /* Un acta a la que le faltan los datos que la identifican no puede salir con
+     aspecto de documento definitivo: alguien la firma y no dice de qué equipo
+     es. Se marca como borrador y se enumera lo que falta. */
+  function faltantes(acta) {
+    var enc = acta.encabezado || {}, falta = [];
+    if (!String(enc.n_acta || "").trim()) falta.push("N° de acta");
+    if (!String(enc.cliente || "").trim()) falta.push("cliente");
+    if (!String(enc.codigo_equipo || "").trim()) falta.push("código de equipo");
+    if (!String(enc.modelo_equipo || "").trim()) falta.push("modelo");
+    if (!String(enc.fecha || "").trim()) falta.push("fecha");
+    var h = enc.horometro;
+    if (h === 0 || h === "" || h === undefined || h === null) falta.push("horómetro");
+    if (!(acta.registro_fotografico || []).some(function (f) { return f.archivo; })) {
+      falta.push("fotografías");
+    }
+    return falta;
+  }
+
   function rutasCitadas(m) {
     var vistas = {};
     m.fotos.forEach(function (f) { if (f.foto) vistas[f.foto] = true; });
@@ -3974,8 +4015,8 @@ var ENTREGABLE = (function () {
   return { NUMEROS: NUMEROS, TITULO: TITULO, A4: A4, MARGEN: MARGEN, ANCHO: ANCHO,
            CAB_ALTO: CAB_ALTO, HUECO: HUECO, CELDA: CELDA, FOTO_ALTO: FOTO_ALTO,
            ROTULO_ALTO: ROTULO_ALTO, BLOQUE: BLOQUE, FOTOS_POR_PAGINA: FOTOS_POR_PAGINA,
-           Lienzo: Lienzo, ancho: ancho, recortar: recortar, escapar: escapar,
-           modelo: modelo, rutasCitadas: rutasCitadas,
+           Lienzo: Lienzo, ancho: ancho, recortar: recortar, envolver: envolver, escapar: escapar,
+           modelo: modelo, rutasCitadas: rutasCitadas, faltantes: faltantes,
            textoConsumible: textoConsumible, textoRecuperacion: textoRecuperacion,
            LEYENDA_ESTADO: LEYENDA_ESTADO,
            TITULO_OBSERVACIONES: "OBSERVACIONES" };
@@ -4014,8 +4055,17 @@ var ENTREGABLE = (function () {
   }
 
   /* ---------- la cabecera del formato ---------- */
-  function cabecera(L, enc, pagina, paginas) {
-    var y = M, x = M, w = E.ANCHO;
+  function bandaBorrador(L, falta) {
+    if (!falta.length) return 0;
+    var alto = 15;
+    L.caja(M, M, E.ANCHO, alto, "1 0.85 0.85", 0.8);
+    L.texto("BORRADOR — SIN VALOR PARA FIRMA. Falta: " + falta.join(", ") + ".",
+            M + 5, M + alto - 4.5, 8, true, "0.55 0 0");
+    return alto + 4;
+  }
+
+  function cabecera(L, enc, pagina, paginas, desplazado) {
+    var y = M + (desplazado || 0), x = M, w = E.ANCHO;
     var alturas = [18, 18, 15, 15, 15, 15];   // título, y cinco filas de datos
     var izq = w * 0.62;
 
@@ -4040,12 +4090,16 @@ var ENTREGABLE = (function () {
     y += 36;
     var etiqueta = w * 0.16, valor = w * 0.46;
 
-    function fila(nombre, texto, alto) {
+    // `anchoValor` deja alargar la casilla hasta el borde: en el formato el
+    // cliente y el equipo ocupan de G a Z, y el nombre de un cliente con RUC
+    // no entra en media fila.
+    function fila(nombre, texto, alto, anchoValor) {
+      var av = anchoValor || valor;
       L.caja(x, y, etiqueta, alto, "0.85 0.85 0.85", 0.5);
       L.texto(nombre, x + 4, y + alto - 4, 7.5, true);
-      L.caja(x + etiqueta, y, valor, alto, "1 1 1", 0.5);
-      L.texto(E.recortar(texto, 8, false, valor - 8), x + etiqueta + 4, y + alto - 4, 8, false);
-      return { derechaX: x + etiqueta + valor, alto: alto };
+      L.caja(x + etiqueta, y, av, alto, "1 1 1", 0.5);
+      L.texto(E.recortar(texto, 8, false, av - 8), x + etiqueta + 4, y + alto - 4, 8, false);
+      return { derechaX: x + etiqueta + av, alto: alto };
     }
 
     var resto = w - etiqueta - valor;
@@ -4056,8 +4110,7 @@ var ENTREGABLE = (function () {
     L.texto("Pág. " + pagina + " de " + paginas, f.derechaX + 4, y + 9, 7.5, false);
     y += 13;
 
-    f = fila("N° GUÍA:", enc.n_guia || "", 13);
-    L.caja(f.derechaX, y, resto, 13, "1 1 1", 0.5);
+    f = fila("N° GUÍA:", enc.n_guia || "", 13, valor + resto);
     y += 13;
 
     // La fila de fecha lleva las casillas DESPACHO / RECEPCIÓN con su marca.
@@ -4071,12 +4124,10 @@ var ENTREGABLE = (function () {
     L.texto("X", marcaX, y + 9.5, 9, true);
     y += 13;
 
-    f = fila("CLIENTE:", enc.cliente || "", 13);
-    L.caja(f.derechaX, y, resto, 13, "1 1 1", 0.5);
+    f = fila("CLIENTE:", enc.cliente || "", 13, valor + resto);
     y += 13;
 
-    f = fila("EQUIPO:", enc.modelo_equipo || "", 13);
-    L.caja(f.derechaX, y, resto, 13, "1 1 1", 0.5);
+    f = fila("EQUIPO:", enc.modelo_equipo || "", 13, valor + resto);
     y += 13;
 
     f = fila("CÓDIGO:", enc.codigo_equipo || "", 13);
@@ -4112,7 +4163,10 @@ var ENTREGABLE = (function () {
   }
 
   /* ---------- un bloque pareado: lo que salió y lo que volvió ---------- */
-  var PAR_CABECERA = 13, PAR_IMAGEN = 152, PAR_ROTULO = 15, PAR_BANDA = 15;
+  // PAR_ROTULO da para dos renglones: una descripción de accesorio no entra
+  // en uno solo. Los 10 pt salen de la casilla de la foto para que el bloque
+  // siga midiendo 195 y sigan entrando tres por página, como en el Excel.
+  var PAR_CABECERA = 13, PAR_IMAGEN = 142, PAR_ROTULO = 25, PAR_BANDA = 15;
   var PAR_ALTO = PAR_CABECERA + PAR_IMAGEN + PAR_ROTULO + PAR_BANDA;
   var TITULO_ALTO = 18;
 
@@ -4139,8 +4193,10 @@ var ENTREGABLE = (function () {
 
       var rot = arriba + PAR_IMAGEN;
       L.caja(l.x, rot, E.CELDA, PAR_ROTULO, "0.85 0.85 0.85", 0.5);
-      L.centrado(E.recortar(l.texto, 7, true, E.CELDA - 6), l.x, E.CELDA,
-                 rot + PAR_ROTULO - 4.5, 7, true);
+      var renglones = E.envolver(l.texto, 7, true, E.CELDA - 6, 2);
+      renglones.forEach(function (r, k) {
+        L.centrado(r, l.x, E.CELDA, rot + 10 + k * 9, 7, true);
+      });
     });
 
     // Franja de ancho completo: la recuperación va en amarillo, como en el
@@ -4177,7 +4233,7 @@ var ENTREGABLE = (function () {
 
     function seccion(titulo, entradas) {
       if (!entradas.length) return;
-      lista.push({ titulo: titulo, alto: TITULO_ALTO, atomica: true,
+      lista.push({ titulo: titulo, alto: TITULO_ALTO, atomica: true, nuevaPagina: true,
                    dibujar: function (L, x, y) { tituloSeccion(L, titulo, x, y); } });
       entradas.forEach(function (e) {
         lista.push({ alto: PAR_ALTO, atomica: false,
@@ -4201,7 +4257,9 @@ var ENTREGABLE = (function () {
       var pieza = lista[i];
       var necesita = pieza.alto + (actual.length ? E.HUECO : 0);
       if (pieza.atomica && lista[i + 1]) necesita += E.HUECO + lista[i + 1].alto;
-      if (alto + necesita > altoUtil && actual.length) cerrar();
+      // El Excel y el formato abren página en cada título de sección.
+      if (pieza.nuevaPagina) cerrar();
+      else if (alto + necesita > altoUtil && actual.length) cerrar();
       if (actual.length) alto += E.HUECO;
       actual.push(pieza);
       alto += pieza.alto;
@@ -4303,12 +4361,15 @@ var ENTREGABLE = (function () {
 
       // Lo que queda de página bajo la cabecera, dejando sitio al resumen.
       var altoCabecera = 120, altoResumen = 24;
-      var altoUtil = A4.h - M * 2 - altoCabecera - altoResumen;
+      var altoUtil = A4.h - M * 2 - altoCabecera - altoResumen -
+                     (E.faltantes(acta).length ? 19 : 0);
       var paginas = repartir(m, altoUtil);
 
+      var falta = E.faltantes(acta);
       var lienzos = paginas.map(function (piezasPagina, p) {
         var L = new E.Lienzo();
-        var y = cabecera(L, acta.encabezado || {}, p + 1, paginas.length);
+        var desplazado = bandaBorrador(L, falta);
+        var y = cabecera(L, acta.encabezado || {}, p + 1, paginas.length, desplazado);
         piezasPagina.forEach(function (pieza) {
           pieza.dibujar(L, M, y, imagenes);
           y += pieza.alto + E.HUECO;
@@ -4344,13 +4405,16 @@ var ENTREGABLE = (function () {
   // Copiado de nefer/layout.py. La prueba `test_geometria_compartida` compara
   // estas cifras con las de allí para que no se separen.
   var ANCHOS_COLUMNA = {
-    A:5.00, B:4.29, C:3.71, D:2.29, E:4.00, F:1.71, G:4.00, H:8.43, I:8.43,
+    A:5.00, B:4.29, C:3.71, D:2.29, E:4.00, F:1.71, G:4.00, H:4.00, I:4.00,
     J:2.86, K:2.43, L:11.71, M:1.43, N:2.71, O:1.57, P:1.14, Q:3.71, R:4.86,
     S:4.00, T:7.57, U:4.00, V:2.14, W:4.00, X:3.14, Y:0.43, Z:11.43
   };
   var PANEL_IZQ = ["A", "L"], PANEL_DER = ["M", "Z"];
   var FILA_INICIO_FOTOS = 11, ALTO_BLOQUE_FOTO = 15, FILAS_IMAGEN = 14;
   var ALTO_FILA_ESTANDAR = 15.0, ALTO_FILA_ROTULO = 16.5, ALTO_FILA_SEPARADOR = 10.5;
+  // A 16,5 pt en la fila de la descripción solo cabe una línea; las
+  // descripciones largas se cortaban. 28,5 pt son dos líneas de Calibri 10.
+  var ALTO_FILA_TEXTO = 28.5;
   var EMU = 9525;                       // EMU por píxel
 
   function anchoPx(col) { return Math.round((ANCHOS_COLUMNA[col] || 8.43) * 7) + 5; }
@@ -4420,33 +4484,33 @@ var ENTREGABLE = (function () {
 
     // --- cabecera ---
     fundir("A1:F3", "", 1);
-    fundir("G1:R3", "REPORTE FOTOGRÁFICO DE DESPACHO Y RECEPCIÓN", 4);
-    fundir("S1:U1", "CÓDIGO:", 1);
-    fundir("V1:Z1", enc.codigo_formato || E.NUMEROS.CODIGO_FORMATO, 2);
-    fundir("S2:U2", "VERSIÓN:", 1);
-    fundir("V2:Z2", enc.version_formato || E.NUMEROS.VERSION_FORMATO, 2);
-    fundir("S3:U3", "FECHA:", 1);
-    fundir("V3:Z3", enc.fecha_formato || "", 2);
+    fundir("G1:R3", E.TITULO.join("\n"), 4);
+    // El formato lleva etiqueta y valor en una sola celda de control.
+    fundir("S1:Z1", "CÓDIGO: " + (enc.codigo_formato || E.NUMEROS.CODIGO_FORMATO), 1);
+    fundir("S2:Z2", "VERSIÓN: " + (enc.version_formato || E.NUMEROS.VERSION_FORMATO), 1);
+    fundir("S3:Z3", "FECHA: " + (enc.fecha_formato || ""), 1);
 
     [[4, "N° ACTA:", enc.n_acta || ""], [5, "N° GUÍA:", enc.n_guia || ""],
-     [6, "FECHA:", enc.fecha || ""], [7, "CLIENTE:", enc.cliente || ""],
-     [8, "EQUIPO:", enc.modelo_equipo || ""], [9, "CÓDIGO:", enc.codigo_equipo || ""]
+     [7, "CLIENTE:", enc.cliente || ""], [8, "EQUIPO:", enc.modelo_equipo || ""]
     ].forEach(function (d) {
       fundir("A" + d[0] + ":F" + d[0], d[1], 1);
-      fundir("G" + d[0] + ":R" + d[0], d[2], 2);
+      fundir("G" + d[0] + ":Z" + d[0], d[2], 2);
     });
 
+    // Fila 6: fecha + casillas de tipo de documento, en las columnas del formato.
     var esDespacho = m.tipo !== "RECEPCION";
-    fundir("S4:Z4", "", 2);
-    fundir("S5:Z5", "", 2);
-    fundir("S6:U6", "DESPACHO", 1);
-    celda("V6", esDespacho ? "X" : "", 3);
-    fundir("W6:Y6", "RECEPCIÓN", 1);
+    fundir("A6:F6", "FECHA:", 1);
+    fundir("G6:M6", enc.fecha || "", 2);
+    fundir("N6:R6", "DESPACHO", 1);
+    fundir("S6:T6", esDespacho ? "X" : "", 3);
+    fundir("U6:Y6", "RECEPCIÓN", 1);
     celda("Z6", esDespacho ? "" : "X", 3);
-    fundir("S7:Z7", enc.obra || "", 2);
-    fundir("S8:Z8", "", 2);
-    fundir("S9:U9", "HORÓMETRO:", 1);
-    fundir("V9:Z9", enc.horometro === undefined ? "" : enc.horometro, 2);
+
+    // Fila 9: código interno + horómetro.
+    fundir("A9:F9", "CÓDIGO:", 1);
+    fundir("G9:L9", enc.codigo_equipo || "", 2);
+    fundir("M9:R9", "HORÓMETRO:", 1);
+    fundir("S9:Z9", enc.horometro === undefined ? "" : enc.horometro, 2);
     alturas[10] = ALTO_FILA_SEPARADOR;
 
     // --- rejilla fotográfica ---
@@ -4458,7 +4522,7 @@ var ENTREGABLE = (function () {
       for (var f = tope; f < rotulo; f++) alturas[f] = ALTO_FILA_ESTANDAR;
       alturas[rotulo] = ALTO_FILA_ROTULO;
       fusiones.push(panel[0] + tope + ":" + panel[1] + (rotulo - 1));
-      celda(panel[0] + tope, "", 2);
+      celda(panel[0] + tope, b.foto ? "" : "(sin fotografía)", b.foto ? 2 : 7);
       fundir(panel[0] + rotulo + ":" + panel[1] + rotulo, b.rotulo, 3);
       anclar(b.foto ? imagenPara(b.foto) : null, panel, tope);
     });
@@ -4476,13 +4540,13 @@ var ENTREGABLE = (function () {
         var panel = l[0];
         fundir(panel[0] + b.encabezado + ":" + panel[1] + b.encabezado, l[1], 3);
         fusiones.push(panel[0] + b.imagenInicio + ":" + panel[1] + b.imagenFin);
-        celda(panel[0] + b.imagenInicio, "", 2);
+        celda(panel[0] + b.imagenInicio, l[2] ? "" : "(sin fotografía)", l[2] ? 2 : 7);
         fundir(panel[0] + b.rotulo + ":" + panel[1] + b.rotulo, l[3] || e.rotulo, 3);
         anclar(l[2] ? imagenPara(l[2]) : null, panel, b.imagenInicio);
       });
       alturas[b.encabezado] = ALTO_FILA_ROTULO;
       for (var f = b.imagenInicio; f <= b.imagenFin; f++) alturas[f] = ALTO_FILA_ESTANDAR;
-      alturas[b.rotulo] = ALTO_FILA_ROTULO;
+      alturas[b.rotulo] = ALTO_FILA_TEXTO;
       alturas[b.banda] = ALTO_FILA_ROTULO;
       // La recuperación va en amarillo; sin texto, la franja se deja en blanco.
       fundir("A" + b.banda + ":Z" + b.banda, e.banda || "",
@@ -4531,11 +4595,29 @@ var ENTREGABLE = (function () {
     if (acta.resumen_ejecutivo) {
       fundir("A" + (fila + 2) + ":Z" + (fila + 2), "RESUMEN EJECUTIVO", 1);
       fundir("A" + (fila + 3) + ":Z" + (fila + 3), acta.resumen_ejecutivo, 2);
+      fila += 3;
     }
 
+    // La misma advertencia que el PDF. Va al pie porque la cabecera ocupa A1 y
+    // desplazar el formato entero para caber una fila sería peor remedio.
+    var falta = E.faltantes(acta);
+    if (falta.length) {
+      fundir("A" + (fila + 2) + ":Z" + (fila + 2),
+             "BORRADOR — SIN VALOR PARA FIRMA. Falta: " + falta.join(", ") + ".", 5);
+      alturas[fila + 2] = ALTO_FILA_ROTULO;
+      fila += 2;
+    }
+
+    var ultimaFila = fila + (acta.resumen_ejecutivo ? 3 : 0);
+    Object.keys(alturas).forEach(function (f) { ultimaFila = Math.max(ultimaFila, +f); });
+
     return { filas: filas, fusiones: fusiones, alturas: alturas, anclas: anclas,
-             cortes: cortes.filter(function (c) { return c > 0; })
-                           .sort(function (a, b) { return a - b; }) };
+             ultimaFila: ultimaFila,
+             // Sin quitar repetidos, una sección que empieza justo donde
+             // cortaba la rejilla emitiría dos saltos en la misma fila.
+             cortes: cortes.filter(function (c, i) {
+                             return c > 0 && cortes.indexOf(c) === i;
+                           }).sort(function (a, b) { return a - b; }) };
   }
 
   function sheetXml(h) {
@@ -4546,6 +4628,12 @@ var ENTREGABLE = (function () {
 
     var maxFila = h.filas.length - 1;
     Object.keys(h.alturas).forEach(function (f) { maxFila = Math.max(maxFila, +f); });
+
+    // Toda fila lleva su alto declarado. Sin esto la cabecera sale con el alto
+    // por defecto y el bloque no mide lo que mide en el formato.
+    for (var f = 1; f <= maxFila; f++) {
+      if (!h.alturas[f]) h.alturas[f] = ALTO_FILA_ESTANDAR;
+    }
 
     var cuerpo = "";
     for (var n = 1; n <= maxFila; n++) {
@@ -4578,8 +4666,9 @@ var ENTREGABLE = (function () {
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
       'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
       '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' +
+      '<sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews>' +
       '<cols>' + cols + '</cols><sheetData>' + cuerpo + '</sheetData>' + fus +
-      '<pageMargins left="0.25" right="0.25" top="0.3" bottom="0.3" ' +
+      '<pageMargins left="0.24" right="0.24" top="0.4" bottom="0.4" ' +
       'header="0.2" footer="0.2"/>' +
       '<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>' +
       (h.cortes.length
@@ -4622,22 +4711,26 @@ var ENTREGABLE = (function () {
 
   var ESTILOS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-    '<fonts count="3">' +
+    '<fonts count="5">' +
     '<font><sz val="11"/><name val="Calibri"/></font>' +
     '<font><b/><sz val="10"/><name val="Calibri"/></font>' +
     '<font><b/><sz val="12"/><name val="Calibri"/></font>' +
+    '<font><b/><sz val="10"/><color rgb="FF8B0000"/><name val="Calibri"/></font>' +
+    '<font><i/><sz val="9"/><color rgb="FF9AA3A8"/><name val="Calibri"/></font>' +
     '</fonts>' +
-    '<fills count="4"><fill><patternFill patternType="none"/></fill>' +
+    '<fills count="5"><fill><patternFill patternType="none"/></fill>' +
     '<fill><patternFill patternType="gray125"/></fill>' +
     '<fill><patternFill patternType="solid"><fgColor rgb="FFD9D9D9"/>' +
     '<bgColor indexed="64"/></patternFill></fill>' +
     '<fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/>' +
+    '<bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFFCE4E4"/>' +
     '<bgColor indexed="64"/></patternFill></fill></fills>' +
     '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
     '<border><left style="thin"/><right style="thin"/><top style="thin"/>' +
     '<bottom style="thin"/><diagonal/></border></borders>' +
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-    '<cellXfs count="6">' +
+    '<cellXfs count="8">' +
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
     '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
     'applyFill="1" applyBorder="1" applyAlignment="1">' +
@@ -4653,6 +4746,13 @@ var ENTREGABLE = (function () {
     '<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" ' +
     'applyFill="1" applyBorder="1" applyAlignment="1">' +
     '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+    // 6: aviso de borrador. 7: casilla sin fotografía.
+    '<xf numFmtId="0" fontId="3" fillId="4" borderId="1" xfId="0" applyFont="1" ' +
+    'applyFill="1" applyBorder="1" applyAlignment="1">' +
+    '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+    '<xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" ' +
+    'applyBorder="1" applyAlignment="1">' +
+    '<alignment horizontal="center" vertical="center"/></xf>' +
     '</cellXfs>' +
     // Excel y openpyxl esperan un estilo normal declarado; sin el avisan.
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/>' +
@@ -4709,7 +4809,11 @@ var ENTREGABLE = (function () {
           '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
           '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
           'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
-          '<sheets><sheet name="REPORTE" sheetId="1" r:id="rId1"/></sheets></workbook>' },
+          '<sheets><sheet name="REPORTE" sheetId="1" r:id="rId1"/></sheets>' +
+          // Sin área de impresión, Excel arrastra columnas vacías a una hoja de más.
+          '<definedNames><definedName name="_xlnm.Print_Area" localSheetId="0">' +
+          "REPORTE!$A$1:$Z$" + h.ultimaFila + '</definedName></definedNames>' +
+          '</workbook>' },
         { nombre: "xl/_rels/workbook.xml.rels", texto:
           '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
           '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +

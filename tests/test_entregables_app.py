@@ -56,6 +56,7 @@ def test_geometria_compartida_con_layout():
     assert float(_var_js("ALTO_FILA_ESTANDAR")) == layout.ALTO_FILA_ESTANDAR
     assert float(_var_js("ALTO_FILA_ROTULO")) == layout.ALTO_FILA_ROTULO
     assert float(_var_js("ALTO_FILA_SEPARADOR")) == layout.ALTO_FILA_SEPARADOR
+    assert float(_var_js("ALTO_FILA_TEXTO")) == layout.ALTO_FILA_TEXTO
 
 
 def test_anchos_de_columna_compartidos():
@@ -128,10 +129,11 @@ def test_el_pdf_es_valido_y_lleva_el_acta(entregables):
     assert datos.startswith(b"%PDF-")
     assert datos.rstrip().endswith(b"%%EOF")
 
-    # Ocho fotos por pagina: diez fotos y un accesorio caben en dos.
+    # Seis fotos por pagina —las que entran en un A4— y OBSERVACIONES abre
+    # hoja: cinco franjas ocupan dos paginas y el accesorio una tercera.
     assert datos.count(b"/Type /Page\n") or datos.count(b"/Type /Page ")
     paginas = len(re.findall(rb"/Type /Page[^s]", datos))
-    assert paginas == 2, paginas
+    assert paginas == 3, paginas
 
     # Cada foto entra como JPEG incrustado, sin recodificar en el lector.
     assert len(re.findall(rb"/Subtype /Image", datos)) == 10
@@ -569,3 +571,68 @@ def test_la_recepcion_arranca_sin_acta_de_despacho(tmp_path):
     ws = openpyxl.load_workbook(referencia).active
     bandas = [ws.cell(row=f, column=1).value for f in range(1, ws.max_row + 1)]
     assert any(isinstance(v, str) and v.startswith("RECUPERACIÓN N° 1") for v in bandas)
+
+
+def _cabecera_del_libro(ruta_xlsx: Path) -> dict:
+    """Fusiones y valores de las nueve filas de cabecera."""
+    openpyxl = pytest.importorskip("openpyxl")
+    ws = openpyxl.load_workbook(ruta_xlsx).active
+    fusiones = sorted(str(r) for r in ws.merged_cells.ranges if r.min_row <= 10)
+    fijos = {}
+    for celda in ("A4", "A5", "A6", "A7", "A8", "A9", "N6", "U6", "M9",
+                  layout.CELDA_MARCA_DESPACHO, layout.CELDA_MARCA_RECEPCION):
+        fijos[celda] = ws[celda].value
+    return {"fusiones": fusiones, "celdas": fijos}
+
+
+def test_la_cabecera_ocupa_las_columnas_del_formato(recepcion, tmp_path):
+    """El formato pone DESPACHO en N6 y HORÓMETRO en M9, no donde caiga."""
+    from nefer import build as _build
+
+    carpeta = tmp_path / "cabecera"
+    with zipfile.ZipFile(recepcion["zip"]) as z:
+        z.extractall(carpeta)
+    manifiesto = json.loads((carpeta / "acta.json").read_text(encoding="utf-8"))
+    referencia = carpeta / "REFERENCIA.xlsx"
+    _build.construir(manifiesto, referencia, carpeta)
+
+    del_navegador = _cabecera_del_libro(recepcion["xlsx"])
+    del_escritorio = _cabecera_del_libro(referencia)
+    assert del_navegador["fusiones"] == del_escritorio["fusiones"]
+
+    assert del_navegador["celdas"]["N6"] == "DESPACHO"
+    assert del_navegador["celdas"]["U6"] == "RECEPCIÓN"
+    assert del_navegador["celdas"]["M9"] == "HORÓMETRO:"
+    assert del_navegador["celdas"][layout.CELDA_MARCA_RECEPCION] == "X"
+    assert not del_navegador["celdas"][layout.CELDA_MARCA_DESPACHO]
+
+
+def test_el_pdf_y_el_excel_reparten_las_mismas_hojas(recepcion):
+    """Dos entregables del mismo acta que no coinciden hoja a hoja no se cotejan."""
+    datos = recepcion["pdf"].read_bytes()
+    paginas_pdf = len(re.findall(rb"/Type /Page[^s]", datos))
+    # Cada salto abre una hoja; sin saltos automaticos, hojas = saltos + 1.
+    assert paginas_pdf == len(_cortes(recepcion["xlsx"])) + 1
+
+
+def test_la_descripcion_larga_se_reparte_en_dos_renglones():
+    """Una descripcion de accesorio no entra en un renglon; no se puede cortar."""
+    if CHROME is None:
+        pytest.skip("no hay Chromium disponible")
+    largo = "01 BASE DE EXTINTOR DE 6 KG CON SU SOPORTE DE PARED DESPACHADO"
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch(executable_path=CHROME)
+        pg = nav.new_page()
+        pg.goto(APP.as_uri())
+        pg.wait_for_timeout(400)
+        medida = pg.evaluate(
+            """(t) => {
+              const E = window.ENTREGABLE;
+              return {uno: E.recortar(t, 7, true, E.CELDA - 6),
+                      dos: E.envolver(t, 7, true, E.CELDA - 6, 2)};
+            }""", largo)
+        nav.close()
+    # Con un solo renglon el final se pierde; con dos esta entero.
+    assert medida["uno"].endswith("…")
+    assert len(medida["dos"]) == 2
+    assert " ".join(medida["dos"]) == largo
