@@ -357,3 +357,90 @@ def test_el_pdf_de_recepcion_nombra_el_antes_y_el_despues(recepcion):
 
     # La marca del tipo de documento tiene que decir RECEPCIÓN, no DESPACHO.
     assert "RECEPCIÓN" in texto
+
+def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
+    """La rejilla del retorno es la misma que la de salida, foto o no foto.
+
+    Si una vista sin foto de retorno desapareciera del acta, las dos dejarian
+    de poder compararse, y una casilla vacia es justamente el dato de que esa
+    vista no se fotografio al volver.
+    """
+    if CHROME is None:
+        pytest.skip("no hay Chromium disponible")
+    from nefer import schema
+
+    fallos: list[str] = []
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch(executable_path=CHROME)
+        ctx = nav.new_context(viewport={"width": 390, "height": 844},
+                              has_touch=True, is_mobile=True,
+                              accept_downloads=True, permissions=[])
+        pg = ctx.new_page()
+        pg.on("pageerror", lambda e: fallos.append(str(e)))
+        pg.goto(APP.as_uri())
+        pg.wait_for_timeout(600)
+        pg.click("#btn-demo")
+        pg.wait_for_timeout(2500)
+        despacho = json.loads(pg.input_value("#d-salida"))
+
+        pg.click("#tab-recepcion")
+        pg.wait_for_timeout(300)
+        pg.click("#r-desde-despacho")
+        pg.wait_for_timeout(800)
+        # Sólo seis vistas fotografiadas de las diez que salieron.
+        pg.evaluate("""async () => {
+          const dt = new DataTransfer();
+          for (let i = 1; i <= 6; i++) {
+            const c = document.createElement('canvas'); c.width = 320; c.height = 240;
+            const g = c.getContext('2d');
+            g.fillStyle = '#3f4c58'; g.fillRect(0, 0, 320, 240);
+            const b = await new Promise(r => c.toBlob(r, 'image/png'));
+            dt.items.add(new File([b], 'R' + i + '.png', {type: 'image/png'}));
+          }
+          const i = document.querySelector('#r-f3');
+          i.files = dt.files;
+          i.dispatchEvent(new Event('change', {bubbles: true}));
+        }""")
+        pg.wait_for_timeout(2500)
+        for k in range(6):
+            pg.click("#r-tira .tile:first-child")
+            pg.click(f"#r-vistas .par:nth-child({k + 1}) [data-destino='vistas']")
+            pg.wait_for_timeout(60)
+
+        pg.fill("#r-acta", "004-001157")
+        pg.fill("#r-horometro", "1731.2")
+        pg.fill("#r-resumen", "Retorna operativo; faltan cuatro vistas.")
+        pg.wait_for_timeout(400)
+        acta = json.loads(pg.input_value("#r-salida"))
+
+        with pg.expect_download(timeout=90000) as espera:
+            pg.click("#r-zip")
+        paquete = tmp_path / espera.value.suggested_filename
+        espera.value.save_as(paquete)
+        nav.close()
+
+    assert fallos == [], fallos
+
+    salieron = [f["descripcion"] for f in despacho["registro_fotografico"]]
+    volvieron = [f["descripcion"] for f in acta["registro_fotografico"]]
+    assert volvieron == salieron, volvieron
+    assert sum(1 for f in acta["registro_fotografico"] if f.get("archivo")) == 6
+
+    # El acta incompleta sigue siendo valida: la casilla vacia es legitima.
+    carpeta = tmp_path / "abierto"
+    with zipfile.ZipFile(paquete) as z:
+        z.extractall(carpeta)
+    manifiesto = json.loads((carpeta / "acta.json").read_text(encoding="utf-8"))
+    assert schema.validar(manifiesto, carpeta) == []
+
+    # Y la herramienta de escritorio imprime las diez casillas con su rotulo.
+    openpyxl = pytest.importorskip("openpyxl")
+    referencia = carpeta / "REFERENCIA.xlsx"
+    build.construir(manifiesto, referencia, carpeta)
+    ws = openpyxl.load_workbook(referencia).active
+    impresos = []
+    for franja in range(5):
+        fila = layout.bloque_foto(franja)["fila_rotulo"]
+        impresos.append(ws[f"{layout.PANEL_IZQ[0]}{fila}"].value)
+        impresos.append(ws[f"{layout.PANEL_DER[0]}{fila}"].value)
+    assert impresos == salieron, impresos

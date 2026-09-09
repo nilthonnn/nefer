@@ -2939,11 +2939,14 @@ var NEFER = (function () {
     enc.horometro = /^[0-9]+([.,][0-9]+)?$/.test(h) ? parseFloat(h.replace(",", "."))
                                                     : (h || 0);
 
+    // La recepción conserva TODAS las vistas del despacho, tengan o no foto de
+    // retorno. La rejilla del acta tiene que ser la misma que la de salida: una
+    // casilla vacía dice que esa vista no se fotografió al volver, y eso es un
+    // dato. Si se omitiera, las dos actas dejarían de poder compararse.
     var registro = [], n = 0;
     vistas.forEach(function (v) {
-      if (!v.fotoId) return;
-      var f = { foto_id: ++n, descripcion: v.rotulo,
-                archivo: "fotos/" + nombres[v.fotoId] };
+      var f = { foto_id: ++n, descripcion: v.rotulo };
+      if (v.fotoId) f.archivo = "fotos/" + nombres[v.fotoId];
       var previa = rutaAntes(v.archivo_despacho);
       if (previa) f.archivo_despacho = previa;
       if (v.observacion.trim()) f.observacion = v.observacion.trim();

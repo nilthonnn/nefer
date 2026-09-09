@@ -94,7 +94,7 @@ cámara— contra un navegador de verdad:
 ```bash
 pip install -e ".[navegador]"
 python -m playwright install chromium
-python -m pytest                       # ahora son 101
+python -m pytest                       # ahora son 102
 ```
 
 Las **27 pruebas** de `tests/test_app_navegador.py` abren el selector de
@@ -270,6 +270,11 @@ Al pie de **Resultado** hay tres salidas:
 | **Descargar PDF** | El acta impresa, A4, ocho fotos por página | Firmarla ahí mismo con el cliente |
 | **Descargar Excel** | El `.xlsx` con la rejilla y las fotos incrustadas | El archivo de la oficina |
 | **Paquete .zip** | `acta.json` + `fotos/` | Regenerar todo en la computadora, o guardar el respaldo |
+
+La rejilla del acta de recepción es **la misma que la del despacho**: lleva
+todas las vistas que salieron, tengan o no foto de retorno. La que no se
+fotografió sale rotulada y vacía, porque esa ausencia es un dato — y porque si
+desapareciera, las dos actas dejarían de poder compararse.
 
 En un acta de **recepción** los dos entregables llevan además las secciones
 que el formato exige y que sólo existen en un retorno: **OBSERVACIONES** con
