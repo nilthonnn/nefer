@@ -3369,10 +3369,114 @@ var ENTREGABLE = (function () {
       x.toFixed(2) + " " + (A4.h - y - h).toFixed(2) + " cm /" + nombre + " Do Q");
   };
 
+
+  /* ---------- el acta, por secciones ----------
+     El mismo orden que imprime nefer/build.py: rejilla, OBSERVACIONES con los
+     accesorios, COMPARATIVO DESPACHO / RECEPCIÓN y, al final, DAÑOS. Las tres
+     últimas sólo existen en un acta de recepción. */
+  var LEYENDA_ESTADO = { OK: "Funcional", OBS: "Observado", D: "Dañado" };
+
+  function dosDigitos(n) { return ("0" + (n || 1)).slice(-2); }
+
+  function textoConsumible(cons, lado, tipo) {
+    var cant = dosDigitos(cons.cantidad), desc = (cons.descripcion || "").trim();
+    if (lado === "DESPACHO") return cant + " " + desc + " DESPACHADO";
+    // En un despacho el lado de recepción va en blanco: afirmar un retorno que
+    // no ha ocurrido, en un papel que el cliente firma, sería declarar un hecho
+    // falso.
+    if (tipo === "DESPACHO") return "";
+    var estado = cons.estado_recepcion;
+    if (estado === "NO_RETORNA") return "EL EQUIPO RETORNÓ SIN " + cant + " " + desc;
+    if (estado === "D") return "EL EQUIPO RETORNÓ CON " + cant + " " + desc + " DAÑADO(A)";
+    if (estado === "OBS") return "EL EQUIPO RETORNÓ CON " + cant + " " + desc + " OBSERVADO(A)";
+    return "EL EQUIPO RETORNÓ CON " + cant + " " + desc;
+  }
+
+  function textoRecuperacion(cons, numero, tipo) {
+    if (tipo === "DESPACHO") return "";
+    if (cons.recuperacion) return cons.recuperacion;
+    var cant = dosDigitos(cons.cantidad), desc = (cons.descripcion || "").trim();
+    if (["NO_RETORNA", "D", "OBS"].indexOf(cons.estado_recepcion) !== -1) {
+      return "RECUPERACIÓN N° " + numero + " : " + cant + " " + desc;
+    }
+    return "CONFORME N° " + numero + " : " + cant + " " + desc + " — SIN RECUPERACIÓN";
+  }
+
+  function modelo(acta) {
+    var enc = acta.encabezado || {};
+    var tipo = enc.tipo_documento || "DESPACHO";
+    var esRecepcion = tipo === "RECEPCION";
+
+    var fotos = (acta.registro_fotografico || []).map(function (f) {
+      return { rotulo: f.descripcion || "", foto: f.archivo || null };
+    });
+
+    var consumibles = (acta.consumibles || []).map(function (c, i) {
+      return {
+        rotulo: (c.descripcion || ""),
+        cabeceraIzq: "DESPACHO", cabeceraDer: "RECEPCIÓN",
+        fotoIzq: c.foto_despacho || null,
+        fotoDer: c.foto_recepcion || null,
+        textoIzq: c.texto_despacho || textoConsumible(c, "DESPACHO", tipo),
+        textoDer: c.texto_recepcion || textoConsumible(c, "RECEPCIÓN", tipo),
+        banda: textoRecuperacion(c, i + 1, tipo),
+        bandaAmarilla: true
+      };
+    });
+
+    // Sólo las vistas que traen foto de salida se pueden comparar.
+    var comparativo = !esRecepcion ? [] :
+      (acta.registro_fotografico || []).filter(function (f) {
+        return f.archivo_despacho;
+      }).map(function (f) {
+        var r = f.descripcion || "";
+        return {
+          rotulo: r, cabeceraIzq: "DESPACHO", cabeceraDer: "RECEPCIÓN",
+          fotoIzq: f.archivo_despacho, fotoDer: f.archivo || null,
+          textoIzq: "ANTES · " + r, textoDer: "DESPUÉS · " + r,
+          banda: f.observacion || "", bandaAmarilla: false
+        };
+      });
+
+    // Sólo lo observado o dañado: es lo que sustenta un cobro.
+    var danos = !esRecepcion ? [] :
+      (acta.inspeccion_componentes || []).filter(function (i) {
+        return i.estado === "OBS" || i.estado === "D";
+      }).map(function (i) {
+        var n = (i.item || "").toUpperCase();
+        var etiqueta = (LEYENDA_ESTADO[i.estado] || "").toUpperCase();
+        return {
+          rotulo: n, cabeceraIzq: "DESPACHO", cabeceraDer: "RECEPCIÓN",
+          fotoIzq: i.foto_despacho || null, fotoDer: i.foto_recepcion || null,
+          textoIzq: "ANTES · " + n, textoDer: "DESPUÉS · " + n + " — " + etiqueta,
+          banda: i.observacion || "", bandaAmarilla: true
+        };
+      });
+
+    return { tipo: tipo, fotos: fotos, consumibles: consumibles,
+             comparativo: comparativo, danos: danos };
+  }
+
+  function rutasCitadas(m) {
+    var vistas = {};
+    m.fotos.forEach(function (f) { if (f.foto) vistas[f.foto] = true; });
+    [m.consumibles, m.comparativo, m.danos].forEach(function (lista) {
+      lista.forEach(function (e) {
+        if (e.fotoIzq) vistas[e.fotoIzq] = true;
+        if (e.fotoDer) vistas[e.fotoDer] = true;
+      });
+    });
+    return Object.keys(vistas);
+  }
+
   return { NUMEROS: NUMEROS, TITULO: TITULO, A4: A4, MARGEN: MARGEN, ANCHO: ANCHO,
            CAB_ALTO: CAB_ALTO, HUECO: HUECO, CELDA: CELDA, FOTO_ALTO: FOTO_ALTO,
            ROTULO_ALTO: ROTULO_ALTO, BLOQUE: BLOQUE, FOTOS_POR_PAGINA: FOTOS_POR_PAGINA,
-           Lienzo: Lienzo, ancho: ancho, recortar: recortar, escapar: escapar };
+           Lienzo: Lienzo, ancho: ancho, recortar: recortar, escapar: escapar,
+           modelo: modelo, rutasCitadas: rutasCitadas,
+           textoConsumible: textoConsumible, textoRecuperacion: textoRecuperacion,
+           LEYENDA_ESTADO: LEYENDA_ESTADO,
+           TITULO_OBSERVACIONES: "OBSERVACIONES" };
 })();
 </script>
 
@@ -3505,38 +3609,104 @@ var ENTREGABLE = (function () {
     }
   }
 
-  /* ---------- de un acta a una lista de páginas ---------- */
-  function repartir(acta) {
-    var bloques = (acta.registro_fotografico || []).map(function (f) {
-      return { rotulo: f.descripcion || "", foto: f.archivo || null,
-               nota: f.observacion || "" };
-    });
-    (acta.consumibles || []).forEach(function (c) {
-      var estado = c.estado_recepcion ? " · " + c.estado_recepcion : "";
-      bloques.push({
-        rotulo: String(c.cantidad || 1).padStart(2, "0") + " " + (c.descripcion || "") + estado,
-        foto: c.foto_recepcion || c.foto_despacho || null,
-        nota: c.texto_recepcion || ""
-      });
-    });
-    (acta.inspeccion_componentes || []).forEach(function (i) {
-      if (i.estado === "OK") return;          // sólo lo observado o dañado se ilustra
-      bloques.push({
-        rotulo: (i.item || "") + " · " + (i.estado || ""),
-        foto: i.foto_recepcion || i.foto_despacho || null,
-        nota: i.observacion || ""
-      });
+  /* ---------- un bloque pareado: lo que salió y lo que volvió ---------- */
+  var PAR_CABECERA = 13, PAR_IMAGEN = 152, PAR_ROTULO = 15, PAR_BANDA = 15;
+  var PAR_ALTO = PAR_CABECERA + PAR_IMAGEN + PAR_ROTULO + PAR_BANDA;
+  var TITULO_ALTO = 18;
+
+  function bloquePareado(L, e, x, y, imagenes) {
+    var lados = [
+      { x: x, cab: e.cabeceraIzq, foto: e.fotoIzq, texto: e.textoIzq },
+      { x: x + E.CELDA + E.HUECO, cab: e.cabeceraDer, foto: e.fotoDer, texto: e.textoDer }
+    ];
+    lados.forEach(function (l) {
+      L.caja(l.x, y, E.CELDA, PAR_CABECERA, "0.85 0.85 0.85", 0.5);
+      L.centrado(l.cab, l.x, E.CELDA, y + PAR_CABECERA - 3.5, 7.5, true);
+
+      var arriba = y + PAR_CABECERA;
+      L.caja(l.x, arriba, E.CELDA, PAR_IMAGEN, "1 1 1");
+      var foto = l.foto ? imagenes[l.foto] : null;
+      if (foto) {
+        var escala = Math.min((E.CELDA - 6) / foto.w, (PAR_IMAGEN - 6) / foto.h);
+        var w = foto.w * escala, h = foto.h * escala;
+        L.imagen(foto.ref, l.x + (E.CELDA - w) / 2, arriba + (PAR_IMAGEN - h) / 2, w, h);
+      } else {
+        L.centrado("(sin fotografía)", l.x, E.CELDA, arriba + PAR_IMAGEN / 2, 7.5,
+                   false, "0.5 0.5 0.5");
+      }
+
+      var rot = arriba + PAR_IMAGEN;
+      L.caja(l.x, rot, E.CELDA, PAR_ROTULO, "0.85 0.85 0.85", 0.5);
+      L.centrado(E.recortar(l.texto, 7, true, E.CELDA - 6), l.x, E.CELDA,
+                 rot + PAR_ROTULO - 4.5, 7, true);
     });
 
-    // BLOQUES_FOTO_POR_PAGINA cuenta franjas, y cada franja lleva dos fotos.
-    var porPagina = E.FOTOS_POR_PAGINA, paginas = [];
-    for (var i = 0; i < bloques.length; i += porPagina) {
-      paginas.push(bloques.slice(i, i + porPagina));
+    // Franja de ancho completo: la recuperación va en amarillo, como en el
+    // formato. Vacía se deja en blanco: una banda amarilla sin texto se lee
+    // como un dato que falta.
+    var banda = y + PAR_CABECERA + PAR_IMAGEN + PAR_ROTULO;
+    var relleno = (e.banda && e.bandaAmarilla) ? "1 1 0" : "1 1 1";
+    L.caja(x, banda, E.ANCHO, PAR_BANDA, relleno, 0.5);
+    if (e.banda) {
+      L.centrado(E.recortar(e.banda, 7.5, true, E.ANCHO - 10), x, E.ANCHO,
+                 banda + PAR_BANDA - 4.5, 7.5, true);
     }
-    if (!paginas.length) paginas.push([]);
-    return paginas;
   }
 
+  function tituloSeccion(L, texto, x, y) {
+    L.caja(x, y, E.ANCHO, TITULO_ALTO, "0.85 0.85 0.85", 0.5);
+    L.texto(texto, x + 5, y + TITULO_ALTO - 5.5, 9, true);
+  }
+
+  /* ---------- el acta como una lista de piezas que se apilan ---------- */
+  function piezas(m) {
+    var lista = [];
+
+    // La rejilla se recorre de dos en dos: izquierda y derecha de cada franja.
+    for (var i = 0; i < m.fotos.length; i += 2) {
+      (function (par) {
+        lista.push({ alto: E.BLOQUE, atomica: false, dibujar: function (L, x, y, im) {
+          par.forEach(function (b, k) {
+            bloqueFoto(L, b, x + k * (E.CELDA + E.HUECO), y, im);
+          });
+        } });
+      })(m.fotos.slice(i, i + 2));
+    }
+
+    function seccion(titulo, entradas) {
+      if (!entradas.length) return;
+      lista.push({ titulo: titulo, alto: TITULO_ALTO, atomica: true,
+                   dibujar: function (L, x, y) { tituloSeccion(L, titulo, x, y); } });
+      entradas.forEach(function (e) {
+        lista.push({ alto: PAR_ALTO, atomica: false,
+                     dibujar: function (L, x, y, im) { bloquePareado(L, e, x, y, im); } });
+      });
+    }
+
+    seccion(E.TITULO_OBSERVACIONES, m.consumibles);
+    seccion(E.NUMEROS.TITULO_COMPARATIVO, m.comparativo);
+    seccion(E.NUMEROS.TITULO_DANOS, m.danos);
+    return lista;
+  }
+
+  // Se reparten por altura disponible. Un título nunca cierra una página: se
+  // baja con su primer bloque, porque un encabezado suelto al pie no dice nada.
+  function repartir(m, altoUtil) {
+    var lista = piezas(m), paginas = [], actual = [], alto = 0;
+    function cerrar() { if (actual.length) { paginas.push(actual); actual = []; alto = 0; } }
+
+    for (var i = 0; i < lista.length; i++) {
+      var pieza = lista[i];
+      var necesita = pieza.alto + (actual.length ? E.HUECO : 0);
+      if (pieza.atomica && lista[i + 1]) necesita += E.HUECO + lista[i + 1].alto;
+      if (alto + necesita > altoUtil && actual.length) cerrar();
+      if (actual.length) alto += E.HUECO;
+      actual.push(pieza);
+      alto += pieza.alto;
+    }
+    cerrar();
+    return paginas.length ? paginas : [[]];
+  }
   /* ---------- el archivo PDF ---------- */
   function ensamblar(paginas, imagenes) {
     var partes = [], desplaz = 0, offsets = [];
@@ -3612,12 +3782,8 @@ var ENTREGABLE = (function () {
 
   /* ---------- entrada pública ---------- */
   function pdf(acta, urlDeFoto) {
-    var paginas = repartir(acta);
-    var rutas = {};
-    paginas.forEach(function (bloques) {
-      bloques.forEach(function (b) { if (b.foto) rutas[b.foto] = true; });
-    });
-    var claves = Object.keys(rutas);
+    var m = E.modelo(acta);
+    var claves = E.rutasCitadas(m);
 
     return Promise.all(claves.map(function (ruta, i) {
       var url = urlDeFoto(ruta);
@@ -3633,13 +3799,17 @@ var ENTREGABLE = (function () {
         imagenes[im.ruta] = im;
       });
 
-      var lienzos = paginas.map(function (bloques, p) {
+      // Lo que queda de página bajo la cabecera, dejando sitio al resumen.
+      var altoCabecera = 120, altoResumen = 24;
+      var altoUtil = A4.h - M * 2 - altoCabecera - altoResumen;
+      var paginas = repartir(m, altoUtil);
+
+      var lienzos = paginas.map(function (piezasPagina, p) {
         var L = new E.Lienzo();
         var y = cabecera(L, acta.encabezado || {}, p + 1, paginas.length);
-        bloques.forEach(function (b, i) {
-          var col = i % 2, fila = Math.floor(i / 2);
-          bloqueFoto(L, b, M + col * (E.CELDA + E.HUECO),
-                     y + fila * (E.BLOQUE + E.HUECO), imagenes);
+        piezasPagina.forEach(function (pieza) {
+          pieza.dibujar(L, M, y, imagenes);
+          y += pieza.alto + E.HUECO;
         });
         if (p === paginas.length - 1 && acta.resumen_ejecutivo) {
           var pie = A4.h - M - 6;
@@ -3656,7 +3826,6 @@ var ENTREGABLE = (function () {
   }
 
   ENTREGABLE.pdf = pdf;
-  ENTREGABLE.repartir = repartir;
   ENTREGABLE.aJpeg = aJpeg;
 })();
 </script>
@@ -3704,18 +3873,47 @@ var ENTREGABLE = (function () {
       .replace(/"/g, "&quot;");
   }
 
+  /* ---------- el planificador de filas, copiado de layout.py ---------- */
+  var ALTO_BLOQUE_CONSUMIBLE = 17, ALTO_BLOQUE_PAREADO = 17;
+
+  function filaTituloObservaciones(franjas) {
+    return FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * franjas;
+  }
+  function bloqueConsumible(indice, franjas) {
+    var base = filaTituloObservaciones(franjas) + 1 + ALTO_BLOQUE_CONSUMIBLE * indice;
+    return { encabezado: base, imagenInicio: base + 1, imagenFin: base + FILAS_IMAGEN,
+             rotulo: base + FILAS_IMAGEN + 1, banda: base + FILAS_IMAGEN + 2 };
+  }
+  function finConsumibles(franjas, n) {
+    return n ? bloqueConsumible(n - 1, franjas).banda : filaTituloObservaciones(franjas);
+  }
+  function bloquePareadoFilas(indice, filaTitulo) {
+    var base = filaTitulo + 1 + ALTO_BLOQUE_PAREADO * indice;
+    return { encabezado: base, imagenInicio: base + 1, imagenFin: base + FILAS_IMAGEN,
+             rotulo: base + FILAS_IMAGEN + 1, banda: base + FILAS_IMAGEN + 2 };
+  }
+  function finPareada(filaTitulo, n) {
+    return n ? bloquePareadoFilas(n - 1, filaTitulo).banda : filaTitulo;
+  }
+
   /* ---------- una hoja como la del formato ---------- */
-  function hoja(acta, bloques) {
+  function hoja(acta, m, imagenPara) {
     var enc = acta.encabezado || {}, filas = [], fusiones = [], alturas = {};
+    var anclas = [], cortes = [];
 
     function celda(ref, valor, estilo) {
-      var col = ref.match(/^[A-Z]+/)[0], fila = +ref.match(/\d+$/)[0];
+      var fila = +ref.match(/\d+$/)[0];
       filas[fila] = filas[fila] || [];
-      filas[fila].push({ ref: ref, col: col, valor: valor, estilo: estilo || 0 });
+      filas[fila].push({ ref: ref, valor: valor, estilo: estilo || 0 });
     }
     function fundir(rango, valor, estilo) {
       fusiones.push(rango);
       celda(rango.split(":")[0], valor, estilo);
+    }
+    function anclar(imagen, panel, fila) {
+      if (!imagen) return;
+      anclas.push({ imagen: imagen, col: indiceColumna(panel[0]), fila: fila - 1,
+                    anchoPanel: anchoPanelPx(panel), altoBloque: altoBloquePx() });
     }
 
     // --- cabecera ---
@@ -3728,20 +3926,15 @@ var ENTREGABLE = (function () {
     fundir("S3:U3", "FECHA:", 1);
     fundir("V3:Z3", enc.fecha_formato || "", 2);
 
-    var datos = [
-      [4, "N° ACTA:", enc.n_acta || ""],
-      [5, "N° GUÍA:", enc.n_guia || ""],
-      [6, "FECHA:", enc.fecha || ""],
-      [7, "CLIENTE:", enc.cliente || ""],
-      [8, "EQUIPO:", enc.modelo_equipo || ""],
-      [9, "CÓDIGO:", enc.codigo_equipo || ""]
-    ];
-    datos.forEach(function (d) {
+    [[4, "N° ACTA:", enc.n_acta || ""], [5, "N° GUÍA:", enc.n_guia || ""],
+     [6, "FECHA:", enc.fecha || ""], [7, "CLIENTE:", enc.cliente || ""],
+     [8, "EQUIPO:", enc.modelo_equipo || ""], [9, "CÓDIGO:", enc.codigo_equipo || ""]
+    ].forEach(function (d) {
       fundir("A" + d[0] + ":F" + d[0], d[1], 1);
       fundir("G" + d[0] + ":R" + d[0], d[2], 2);
     });
 
-    var esDespacho = (enc.tipo_documento || "") !== "RECEPCION";
+    var esDespacho = m.tipo !== "RECEPCION";
     fundir("S4:Z4", "", 2);
     fundir("S5:Z5", "", 2);
     fundir("S6:U6", "DESPACHO", 1);
@@ -3752,44 +3945,95 @@ var ENTREGABLE = (function () {
     fundir("S8:Z8", "", 2);
     fundir("S9:U9", "HORÓMETRO:", 1);
     fundir("V9:Z9", enc.horometro === undefined ? "" : enc.horometro, 2);
-
     alturas[10] = ALTO_FILA_SEPARADOR;
 
-    // --- rejilla fotográfica: dos bloques por franja, izquierda y derecha ---
-    var anclas = [];
-    bloques.forEach(function (b, pos) {
-      var indice = Math.floor(pos / 2);
+    // --- rejilla fotográfica ---
+    m.fotos.forEach(function (b, pos) {
+      var franja = Math.floor(pos / 2);
       var panel = (pos % 2 === 0) ? PANEL_IZQ : PANEL_DER;
-      var tope = FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * indice;
+      var tope = FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * franja;
       var rotulo = tope + FILAS_IMAGEN;
-
       for (var f = tope; f < rotulo; f++) alturas[f] = ALTO_FILA_ESTANDAR;
       alturas[rotulo] = ALTO_FILA_ROTULO;
-
       fusiones.push(panel[0] + tope + ":" + panel[1] + (rotulo - 1));
       celda(panel[0] + tope, "", 2);
       fundir(panel[0] + rotulo + ":" + panel[1] + rotulo, b.rotulo, 3);
-
-      if (b.imagen) {
-        anclas.push({ imagen: b.imagen, col: indiceColumna(panel[0]), fila: tope - 1,
-                      anchoPanel: anchoPanelPx(panel), altoBloque: altoBloquePx() });
-      }
+      anclar(b.foto ? imagenPara(b.foto) : null, panel, tope);
     });
 
-    // Sin saltos, Excel imprime la hoja entera escalada y el formato se pierde.
-    var franjas = Math.ceil(bloques.length / 2), cortes = [];
+    var franjas = Math.max(1, Math.ceil(m.fotos.length / 2));
     for (var i = E.NUMEROS.BLOQUES_FOTO_POR_PAGINA; i < franjas;
          i += E.NUMEROS.BLOQUES_FOTO_POR_PAGINA) {
       cortes.push(FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * i - 1);
     }
 
-    var filaResumen = FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * franjas;
-    fundir("A" + filaResumen + ":Z" + filaResumen, "OBSERVACIONES", 1);
-    fundir("A" + (filaResumen + 1) + ":Z" + (filaResumen + 1),
-           acta.resumen_ejecutivo || "", 2);
+    // --- un bloque pareado: encabezados, fotos, rótulos y franja de pie ---
+    function escribirPareado(e, b, amarilla) {
+      [[PANEL_IZQ, e.cabeceraIzq, e.fotoIzq, e.textoIzq],
+       [PANEL_DER, e.cabeceraDer, e.fotoDer, e.textoDer]].forEach(function (l) {
+        var panel = l[0];
+        fundir(panel[0] + b.encabezado + ":" + panel[1] + b.encabezado, l[1], 3);
+        fusiones.push(panel[0] + b.imagenInicio + ":" + panel[1] + b.imagenFin);
+        celda(panel[0] + b.imagenInicio, "", 2);
+        fundir(panel[0] + b.rotulo + ":" + panel[1] + b.rotulo, l[3] || e.rotulo, 3);
+        anclar(l[2] ? imagenPara(l[2]) : null, panel, b.imagenInicio);
+      });
+      alturas[b.encabezado] = ALTO_FILA_ROTULO;
+      for (var f = b.imagenInicio; f <= b.imagenFin; f++) alturas[f] = ALTO_FILA_ESTANDAR;
+      alturas[b.rotulo] = ALTO_FILA_ROTULO;
+      alturas[b.banda] = ALTO_FILA_ROTULO;
+      // La recuperación va en amarillo; sin texto, la franja se deja en blanco.
+      fundir("A" + b.banda + ":Z" + b.banda, e.banda || "",
+             (e.banda && amarilla) ? 5 : 3);
+    }
+
+    function seccionPareada(titulo, entradas, filaTitulo, amarilla) {
+      if (!entradas.length) return;
+      fundir("A" + filaTitulo + ":Z" + filaTitulo, titulo, 1);
+      alturas[filaTitulo] = ALTO_FILA_ROTULO;
+      cortes.push(filaTitulo - 1);
+      entradas.forEach(function (e, j) {
+        escribirPareado(e, bloquePareadoFilas(j, filaTitulo), amarilla);
+        if (j > 0 && (j + 1) % E.NUMEROS.BLOQUES_CONSUMIBLE_POR_PAGINA === 0 &&
+            j + 1 < entradas.length) {
+          cortes.push(bloquePareadoFilas(j, filaTitulo).banda);
+        }
+      });
+    }
+
+    // --- OBSERVACIONES: los accesorios, con su franja de recuperación ---
+    if (m.consumibles.length) {
+      var filaObs = filaTituloObservaciones(franjas);
+      fundir("A" + filaObs + ":Z" + filaObs, E.TITULO_OBSERVACIONES, 1);
+      alturas[filaObs] = ALTO_FILA_ROTULO;
+      cortes.push(filaObs - 1);
+      m.consumibles.forEach(function (e, j) {
+        escribirPareado(e, bloqueConsumible(j, franjas), true);
+        if (j > 0 && (j + 1) % E.NUMEROS.BLOQUES_CONSUMIBLE_POR_PAGINA === 0 &&
+            j + 1 < m.consumibles.length) {
+          cortes.push(bloqueConsumible(j, franjas).banda);
+        }
+      });
+    }
+
+    var fila = finConsumibles(franjas, m.consumibles.length);
+    if (m.comparativo.length) {
+      seccionPareada(E.NUMEROS.TITULO_COMPARATIVO, m.comparativo, fila + 1, false);
+      fila = finPareada(fila + 1, m.comparativo.length);
+    }
+    if (m.danos.length) {
+      seccionPareada(E.NUMEROS.TITULO_DANOS, m.danos, fila + 1, true);
+      fila = finPareada(fila + 1, m.danos.length);
+    }
+
+    if (acta.resumen_ejecutivo) {
+      fundir("A" + (fila + 2) + ":Z" + (fila + 2), "RESUMEN EJECUTIVO", 1);
+      fundir("A" + (fila + 3) + ":Z" + (fila + 3), acta.resumen_ejecutivo, 2);
+    }
 
     return { filas: filas, fusiones: fusiones, alturas: alturas, anclas: anclas,
-             cortes: cortes };
+             cortes: cortes.filter(function (c) { return c > 0; })
+                           .sort(function (a, b) { return a - b; }) };
   }
 
   function sheetXml(h) {
@@ -3881,15 +4125,17 @@ var ENTREGABLE = (function () {
     '<font><b/><sz val="10"/><name val="Calibri"/></font>' +
     '<font><b/><sz val="12"/><name val="Calibri"/></font>' +
     '</fonts>' +
-    '<fills count="3"><fill><patternFill patternType="none"/></fill>' +
+    '<fills count="4"><fill><patternFill patternType="none"/></fill>' +
     '<fill><patternFill patternType="gray125"/></fill>' +
     '<fill><patternFill patternType="solid"><fgColor rgb="FFD9D9D9"/>' +
+    '<bgColor indexed="64"/></patternFill></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/>' +
     '<bgColor indexed="64"/></patternFill></fill></fills>' +
     '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
     '<border><left style="thin"/><right style="thin"/><top style="thin"/>' +
     '<bottom style="thin"/><diagonal/></border></borders>' +
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-    '<cellXfs count="5">' +
+    '<cellXfs count="6">' +
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
     '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
     'applyFill="1" applyBorder="1" applyAlignment="1">' +
@@ -3902,19 +4148,17 @@ var ENTREGABLE = (function () {
     '<xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" ' +
     'applyBorder="1" applyAlignment="1">' +
     '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+    '<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" ' +
+    'applyFill="1" applyBorder="1" applyAlignment="1">' +
+    '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
     '</cellXfs>' +
     // Excel y openpyxl esperan un estilo normal declarado; sin el avisan.
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/>' +
     '</cellStyles></styleSheet>';
 
   function xlsx(acta, urlDeFoto) {
-    var entradas = ENTREGABLE.repartir(acta).reduce(function (a, p) {
-      return a.concat(p);
-    }, []);
-    var rutas = [];
-    entradas.forEach(function (b) {
-      if (b.foto && rutas.indexOf(b.foto) === -1) rutas.push(b.foto);
-    });
+    var m = E.modelo(acta);
+    var rutas = E.rutasCitadas(m);
 
     return Promise.all(rutas.map(function (ruta) {
       var url = urlDeFoto(ruta);
@@ -3930,10 +4174,7 @@ var ENTREGABLE = (function () {
         porRuta[im.ruta] = im;
       });
 
-      var bloques = entradas.map(function (b) {
-        return { rotulo: b.rotulo, imagen: b.foto ? porRuta[b.foto] || null : null };
-      });
-      var h = hoja(acta, bloques);
+      var h = hoja(acta, m, function (ruta) { return porRuta[ruta] || null; });
 
       // Las anclas apuntan a la relación de su imagen, en el orden en que
       // se declaran en el dibujo.

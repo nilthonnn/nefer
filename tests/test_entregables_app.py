@@ -110,7 +110,7 @@ def entregables(tmp_path_factory):
         pg.wait_for_timeout(2500)
         assert pg.eval_on_selector_all("#d-grid .slot.lleno", "n => n.length") == 10
 
-        for boton, clave in (("#d-pdf", "pdf"), ("#d-xlsx", "xlsx")):
+        for boton, clave in (("#d-pdf", "pdf"), ("#d-xlsx", "xlsx"), ("#d-zip", "zip")):
             with pg.expect_download(timeout=60000) as espera:
                 pg.click(boton)
             bajado = espera.value
@@ -176,15 +176,30 @@ def test_el_excel_lo_abre_openpyxl_con_sus_fotos(entregables):
     assert leidos == esperados
 
 
-def test_el_excel_pagina_como_el_formato(entregables):
-    """Sin saltos, Excel imprime la hoja entera escalada y el formato se pierde."""
-    with zipfile.ZipFile(entregables["xlsx"]) as z:
+def _cortes(ruta_xlsx: Path) -> list[int]:
+    with zipfile.ZipFile(ruta_xlsx) as z:
         hoja = z.read("xl/worksheets/sheet1.xml").decode("utf-8")
-    cortes = [int(m) for m in re.findall(r'<brk id="(\d+)"', hoja)]
-    # Diez fotos son cinco franjas: un corte tras la cuarta.
-    esperado = layout.FILA_INICIO_FOTOS + \
-        layout.ALTO_BLOQUE_FOTO * build.BLOQUES_FOTO_POR_PAGINA - 1
-    assert cortes == [esperado], cortes
+    return sorted(int(m) for m in re.findall(r'<brk id="(\d+)"', hoja))
+
+
+def test_el_excel_pagina_como_el_formato(entregables, tmp_path):
+    """Sin saltos, Excel imprime la hoja entera escalada y el formato se pierde.
+
+    Los cortes se comparan con los que pone `nefer construir` sobre el mismo
+    acta: si la regla cambia alli, esta prueba lo dice.
+    """
+    from nefer import schema
+
+    carpeta = tmp_path / "abierto"
+    with zipfile.ZipFile(entregables["zip"]) as z:
+        z.extractall(carpeta)
+    manifiesto = json.loads((carpeta / "acta.json").read_text(encoding="utf-8"))
+    assert schema.validar(manifiesto, carpeta) == []
+
+    referencia = carpeta / "REFERENCIA.xlsx"
+    build.construir(manifiesto, referencia, carpeta)
+
+    assert _cortes(entregables["xlsx"]) == _cortes(referencia)
 
 
 def test_el_excel_lo_abre_libreoffice(entregables, tmp_path):
@@ -203,3 +218,142 @@ def test_el_excel_lo_abre_libreoffice(entregables, tmp_path):
     salida = tmp_path / (entregables["xlsx"].stem + ".pdf")
     assert salida.exists(), r.stdout + r.stderr
     assert salida.stat().st_size > 20_000
+
+# --------------------------------------------------------------------------
+# el acta de recepcion: las secciones que solo existen en un retorno
+# --------------------------------------------------------------------------
+
+RECEPCION_EN_EL_NAVEGADOR = """async () => {
+  const dt = new DataTransfer();
+  for (let i = 1; i <= 11; i++) {
+    const c = document.createElement('canvas'); c.width = 320; c.height = 240;
+    const g = c.getContext('2d');
+    g.fillStyle = '#3f4c58'; g.fillRect(0, 0, 320, 240);
+    g.fillStyle = '#eee'; g.font = '16px monospace';
+    g.fillText('RETORNO ' + i, 20, 120);
+    const b = await new Promise(r => c.toBlob(r, 'image/png'));
+    dt.items.add(new File([b], 'R' + String(i).padStart(2, '0') + '.png',
+                          {type: 'image/png'}));
+  }
+  const i = document.querySelector('#r-f3');
+  i.files = dt.files;
+  i.dispatchEvent(new Event('change', {bubbles: true}));
+}"""
+
+
+@pytest.fixture(scope="module")
+def recepcion(tmp_path_factory):
+    """Un acta de recepcion completa: accesorio no retornado y un daño."""
+    if CHROME is None:
+        pytest.skip("no hay Chromium disponible")
+    destino = tmp_path_factory.mktemp("recepcion")
+    salida = {}
+    fallos: list[str] = []
+
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch(executable_path=CHROME)
+        ctx = nav.new_context(viewport={"width": 390, "height": 844},
+                              has_touch=True, is_mobile=True,
+                              accept_downloads=True, permissions=[])
+        pg = ctx.new_page()
+        pg.on("pageerror", lambda e: fallos.append(str(e)))
+        pg.goto(APP.as_uri())
+        pg.wait_for_timeout(600)
+        pg.click("#btn-demo")
+        pg.wait_for_timeout(2500)
+
+        pg.click("#tab-recepcion")
+        pg.wait_for_timeout(300)
+        pg.click("#r-desde-despacho")
+        pg.wait_for_timeout(800)
+        pg.evaluate(RECEPCION_EN_EL_NAVEGADOR)
+        pg.wait_for_timeout(3000)
+
+        for k in range(10):
+            pg.click("#r-tira .tile:first-child")
+            pg.click(f"#r-vistas .par:nth-child({k + 1}) [data-destino='vistas']")
+            pg.wait_for_timeout(60)
+
+        pg.click("#r-consumibles .par:first-child .estados button[data-e='NO_RETORNA']")
+        pg.wait_for_timeout(200)
+        pg.click("#r-add-comp")
+        pg.wait_for_timeout(200)
+        pg.fill("#r-inspeccion .par:last-child [data-item]", "JUNTA DE ESCAPE")
+        pg.click("#r-inspeccion .par:last-child .estados button[data-e='D']")
+        pg.wait_for_timeout(200)
+        pg.fill("#r-inspeccion .par:last-child [data-obs]",
+                "Junta partida en el codo de salida.")
+        pg.click("#r-tira .tile:first-child")
+        pg.click("#r-inspeccion .par:last-child [data-destino='insp']")
+        pg.wait_for_timeout(200)
+
+        pg.fill("#r-acta", "004-001156")
+        pg.fill("#r-horometro", "1731.2")
+        pg.fill("#r-resumen", "Retorna operativo; junta rota y extintor no retornado.")
+        pg.wait_for_timeout(500)
+
+        for boton, clave in (("#r-pdf", "pdf"), ("#r-xlsx", "xlsx"), ("#r-zip", "zip")):
+            with pg.expect_download(timeout=90000) as espera:
+                pg.click(boton)
+            bajado = espera.value
+            ruta = destino / bajado.suggested_filename
+            bajado.save_as(ruta)
+            salida[clave] = ruta
+        nav.close()
+
+    assert fallos == [], fallos
+    return salida
+
+
+def _titulos_por_fila(ruta_xlsx: Path) -> dict[int, str]:
+    """Fila -> texto de las bandas de ancho completo (titulos y recuperacion)."""
+    openpyxl = pytest.importorskip("openpyxl")
+    ws = openpyxl.load_workbook(ruta_xlsx).active
+    marcas = {}
+    for fila in range(1, ws.max_row + 1):
+        v = ws.cell(row=fila, column=1).value
+        if not isinstance(v, str):
+            continue
+        if any(t in v for t in ("OBSERVACIONES", layout.TITULO_COMPARATIVO,
+                                layout.TITULO_DANOS, "RECUPERACIÓN", "CONFORME")):
+            marcas[fila] = v
+    return marcas
+
+
+def test_la_recepcion_lleva_las_secciones_del_formato(recepcion):
+    marcas = _titulos_por_fila(recepcion["xlsx"])
+    textos = list(marcas.values())
+    assert any("OBSERVACIONES" == t for t in textos), textos
+    assert layout.TITULO_COMPARATIVO in textos, textos
+    assert layout.TITULO_DANOS in textos, textos
+    assert any(t.startswith("RECUPERACIÓN N° 1") for t in textos), textos
+
+
+def test_la_recepcion_cae_en_las_mismas_filas_que_el_escritorio(recepcion, tmp_path):
+    """La prueba de fuego: mismas secciones, en las mismas filas."""
+    from nefer import build as _build, schema
+
+    carpeta = tmp_path / "abierto"
+    with zipfile.ZipFile(recepcion["zip"]) as z:
+        z.extractall(carpeta)
+    manifiesto = json.loads((carpeta / "acta.json").read_text(encoding="utf-8"))
+    assert schema.validar(manifiesto, carpeta) == []
+
+    referencia = carpeta / "REFERENCIA.xlsx"
+    _build.construir(manifiesto, referencia, carpeta)
+
+    assert _titulos_por_fila(recepcion["xlsx"]) == _titulos_por_fila(referencia)
+
+
+def test_el_pdf_de_recepcion_nombra_el_antes_y_el_despues(recepcion):
+    texto = _texto_de_pdf(recepcion["pdf"])
+    if texto is None:
+        pytest.skip("pdftotext no esta disponible")
+    for esperado in (layout.TITULO_COMPARATIVO, layout.TITULO_DANOS,
+                     "ANTES · VISTA FRONTAL", "DESPUÉS · VISTA FRONTAL",
+                     "EL EQUIPO RETORNÓ SIN 01 EXTINTOR DE 6 KG",
+                     "RECUPERACIÓN N° 1", "JUNTA DE ESCAPE"):
+        assert esperado in texto, esperado
+
+    # La marca del tipo de documento tiene que decir RECEPCIÓN, no DESPACHO.
+    assert "RECEPCIÓN" in texto

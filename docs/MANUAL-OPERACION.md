@@ -94,7 +94,7 @@ cámara— contra un navegador de verdad:
 ```bash
 pip install -e ".[navegador]"
 python -m playwright install chromium
-python -m pytest                       # ahora son 98
+python -m pytest                       # ahora son 101
 ```
 
 Las **27 pruebas** de `tests/test_app_navegador.py` abren el selector de
@@ -270,6 +270,14 @@ Al pie de **Resultado** hay tres salidas:
 | **Descargar PDF** | El acta impresa, A4, ocho fotos por página | Firmarla ahí mismo con el cliente |
 | **Descargar Excel** | El `.xlsx` con la rejilla y las fotos incrustadas | El archivo de la oficina |
 | **Paquete .zip** | `acta.json` + `fotos/` | Regenerar todo en la computadora, o guardar el respaldo |
+
+En un acta de **recepción** los dos entregables llevan además las secciones
+que el formato exige y que sólo existen en un retorno: **OBSERVACIONES** con
+cada accesorio en su bloque (lo despachado a la izquierda, lo retornado a la
+derecha) y su franja amarilla de **RECUPERACIÓN**; **COMPARATIVO DESPACHO /
+RECEPCIÓN** con la foto de salida al lado de la de vuelta; y **DAÑOS Y
+OBSERVACIONES** con lo observado o dañado. Una prueba comprueba que caen en las
+mismas filas que `nefer construir`.
 
 El PDF y el Excel se arman dentro del teléfono, sin conexión. Son una segunda
 implementación del mismo formato que produce `nefer construir`: la geometría se
