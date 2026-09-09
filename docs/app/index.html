@@ -655,8 +655,10 @@
                  placeholder="Grupo electrógeno sale operativo, con extintor y tacos; sin observaciones."></label>
         <div class="aviso" id="d-estado"><b>Cargue las fotos</b> para empezar.</div>
         <div class="bar">
-          <button class="primary" id="d-zip" type="button">Guardar paquete .zip</button>
-          <button id="d-copiar" type="button">Copiar JSON</button>
+          <button class="primary" id="d-pdf" type="button">Descargar PDF</button>
+          <button id="d-xlsx" type="button">Descargar Excel</button>
+          <button id="d-zip" type="button">Paquete .zip</button>
+          <button class="ghost" id="d-copiar" type="button">copiar JSON</button>
           <span class="grow"></span>
           <span class="lb" id="d-copiado"></span>
         </div>
@@ -771,8 +773,10 @@
             <input type="text" id="r-resumen"
                    placeholder="Grupo retorna operativo; junta de escape rota, se factura el cambio."></label>
           <div class="bar">
-            <button class="primary" id="r-zip" type="button">Guardar paquete .zip</button>
-            <button id="r-copiar" type="button">Copiar JSON</button>
+            <button class="primary" id="r-pdf" type="button">Descargar PDF</button>
+            <button id="r-xlsx" type="button">Descargar Excel</button>
+            <button id="r-zip" type="button">Paquete .zip</button>
+            <button class="ghost" id="r-copiar" type="button">copiar JSON</button>
             <span class="grow"></span>
             <span class="lb" id="r-copiado"></span>
           </div>
@@ -2450,6 +2454,37 @@ var NEFER = (function () {
     NEFER.copiar($("#d-salida").value, avisar, $("#d-salida"));
   });
 
+  // El acta cita las fotos por su ruta dentro del paquete; aquí se traduce a
+  // la imagen que ya está en memoria, sin volver a leer nada del disco.
+  function urlDeFoto() {
+    var nombres = nombresDelPaquete(), porRuta = {};
+    fotos.forEach(function (f) { porRuta["fotos/" + nombres[f.id]] = f.url; });
+    return function (ruta) { return porRuta[ruta] || null; };
+  }
+
+  function etiquetaArchivo(a) {
+    var codigo = (a.encabezado.codigo_equipo || "EQUIPO").replace(/[^\w.-]+/g, "-");
+    return "DESPACHO-" + codigo + "-" + (a.encabezado.fecha || NEFER.hoy());
+  }
+
+  $("#d-pdf").addEventListener("click", function () {
+    var a = acta();
+    if (!a.registro_fotografico.length) { avisar("no hay fotos colocadas"); return; }
+    avisar("armando el PDF…");
+    ENTREGABLE.pdf(a, urlDeFoto()).then(function (blob) {
+      NEFER.entregar(blob, etiquetaArchivo(a) + ".pdf", avisar);
+    }, function () { avisar("no se pudo armar el PDF"); });
+  });
+
+  $("#d-xlsx").addEventListener("click", function () {
+    var a = acta();
+    if (!a.registro_fotografico.length) { avisar("no hay fotos colocadas"); return; }
+    avisar("armando el Excel…");
+    ENTREGABLE.xlsx(a, urlDeFoto()).then(function (blob) {
+      NEFER.entregar(blob, etiquetaArchivo(a) + ".xlsx", avisar);
+    }, function () { avisar("no se pudo armar el Excel"); });
+  });
+
   $("#d-zip").addEventListener("click", function () {
     var a = acta(), nombres = nombresDelPaquete();
     var usadas = asignadas();
@@ -3046,6 +3081,38 @@ var NEFER = (function () {
     }).filter(function (x) { return x.archivo; });
   }
 
+  function urlDeFotoRecepcion() {
+    var nombres = nombresDelPaquete(), porRuta = {};
+    retorno.forEach(function (f) { porRuta["fotos/" + nombres[f.id]] = f.url; });
+    Object.keys(antes).forEach(function (n) {
+      porRuta["fotos/despacho/" + n] = antes[n].url;
+    });
+    return function (ruta) { return porRuta[ruta] || null; };
+  }
+
+  function etiquetaArchivo(a) {
+    var codigo = (a.encabezado.codigo_equipo || "EQUIPO").replace(/[^\w.-]+/g, "-");
+    return "RECEPCION-" + codigo + "-" + (a.encabezado.fecha || NEFER.hoy());
+  }
+
+  $("#r-pdf").addEventListener("click", function () {
+    var a = acta();
+    if (!a.registro_fotografico.length) { avisar("no hay fotos de retorno asignadas"); return; }
+    avisar("armando el PDF…");
+    ENTREGABLE.pdf(a, urlDeFotoRecepcion()).then(function (blob) {
+      NEFER.entregar(blob, etiquetaArchivo(a) + ".pdf", avisar);
+    }, function () { avisar("no se pudo armar el PDF"); });
+  });
+
+  $("#r-xlsx").addEventListener("click", function () {
+    var a = acta();
+    if (!a.registro_fotografico.length) { avisar("no hay fotos de retorno asignadas"); return; }
+    avisar("armando el Excel…");
+    ENTREGABLE.xlsx(a, urlDeFotoRecepcion()).then(function (blob) {
+      NEFER.entregar(blob, etiquetaArchivo(a) + ".xlsx", avisar);
+    }, function () { avisar("no se pudo armar el Excel"); });
+  });
+
   $("#r-zip").addEventListener("click", function () {
     var a = acta(), nombres = nombresDelPaquete(), u = usadas();
     var incluir = retorno.filter(function (f) { return u[f.id] && f.archivo; });
@@ -3163,3 +3230,781 @@ var NEFER = (function () {
 
 NEFER.arrancar();
 </script>
+
+<script>
+/* ================================================================
+   ENTREGABLES · el acta impresa, generada dentro del teléfono.
+
+   Es una segunda implementación del mismo formato que produce la
+   herramienta de escritorio. Para que las dos no se separen, la geometría
+   vive en NUMEROS, copiada de nefer/layout.py, y hay una prueba que
+   compara ambas listas de constantes.
+   ================================================================ */
+var ENTREGABLE = (function () {
+  "use strict";
+
+  // Copiado de nefer/layout.py y nefer/build.py. Si cambia allí, cambia aquí.
+  var NUMEROS = {
+    BLOQUES_FOTO_POR_PAGINA: 4,
+    BLOQUES_CONSUMIBLE_POR_PAGINA: 3,
+    CODIGO_FORMATO: "FO-DR-001",
+    VERSION_FORMATO: "00",
+    TITULO_COMPARATIVO: "COMPARATIVO DESPACHO / RECEPCIÓN",
+    TITULO_DANOS: "DAÑOS Y OBSERVACIONES"
+  };
+
+  var TITULO = ["REPORTE FOTOGRÁFICO", "DE DESPACHO Y RECEPCIÓN"];
+
+  /* ---------- página ---------- */
+  var A4 = { w: 595.28, h: 841.89 };
+  var MARGEN = 24;
+  var ANCHO = A4.w - MARGEN * 2;
+  var CAB_ALTO = 104;
+  var HUECO = 6;
+  var CELDA = (ANCHO - HUECO) / 2;
+  // Cuatro franjas de dos fotos por página: ocho, como en el formato impreso.
+  var FOTO_ALTO = 142;
+  var ROTULO_ALTO = 15;
+  var BLOQUE = FOTO_ALTO + ROTULO_ALTO;
+  var FOTOS_POR_PAGINA = 8;
+
+  /* ---------- texto en WinAnsi ----------
+     Helvetica con WinAnsiEncoding cubre el español entero. Sólo hay que
+     traducir los pocos signos que cp1252 coloca fuera de Latin-1. */
+  var ESPECIALES = {
+    "€": 0x80, "‚": 0x82, "ƒ": 0x83, "„": 0x84,
+    "…": 0x85, "†": 0x86, "‡": 0x87, "ˆ": 0x88,
+    "‰": 0x89, "Š": 0x8A, "‹": 0x8B, "Œ": 0x8C,
+    "Ž": 0x8E, "‘": 0x91, "’": 0x92, "“": 0x93,
+    "”": 0x94, "•": 0x95, "–": 0x96, "—": 0x97,
+    "˜": 0x98, "™": 0x99, "š": 0x9A, "›": 0x9B,
+    "œ": 0x9C, "ž": 0x9E, "Ÿ": 0x9F
+  };
+
+  function aWinAnsi(texto) {
+    var salida = [];
+    for (var i = 0; i < texto.length; i++) {
+      var c = texto[i], cp = texto.charCodeAt(i);
+      if (ESPECIALES[c] !== undefined) salida.push(ESPECIALES[c]);
+      else if (cp < 256) salida.push(cp);
+      else salida.push(63);                       // '?': no lo hay en la fuente
+    }
+    return salida;
+  }
+
+  function escapar(texto) {
+    var bytes = aWinAnsi(String(texto == null ? "" : texto)), fuera = "";
+    for (var i = 0; i < bytes.length; i++) {
+      var b = bytes[i];
+      if (b === 40 || b === 41 || b === 92) fuera += "\\" + String.fromCharCode(b);
+      else if (b < 32 || b > 126) fuera += "\\" + ("00" + b.toString(8)).slice(-3);
+      else fuera += String.fromCharCode(b);
+    }
+    return fuera;
+  }
+
+  // Anchos de Helvetica, en milésimas de em. Sirven para centrar y recortar.
+  var ANCHOS = (function () {
+    var a = {}, i;
+    var normal = ("278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278," +
+      "556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667," +
+      "722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722," +
+      "667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556," +
+      "222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334," +
+      "260,334,584").split(",").map(Number);
+    for (i = 0; i < normal.length; i++) a[32 + i] = normal[i];
+    return a;
+  })();
+
+  function ancho(texto, pt, negrita) {
+    var bytes = aWinAnsi(String(texto || "")), total = 0;
+    for (var i = 0; i < bytes.length; i++) {
+      var w = ANCHOS[bytes[i]];
+      total += (w === undefined ? 556 : w);
+    }
+    // La negrita de Helvetica es algo más ancha; basta con esta aproximación
+    // para centrar y para decidir dónde recortar.
+    return total / 1000 * pt * (negrita ? 1.06 : 1);
+  }
+
+  function recortar(texto, pt, negrita, limite) {
+    var t = String(texto || "");
+    if (ancho(t, pt, negrita) <= limite) return t;
+    while (t.length > 1 && ancho(t + "…", pt, negrita) > limite) t = t.slice(0, -1);
+    return t + "…";
+  }
+
+  /* ---------- lienzo de una página ---------- */
+  function Lienzo() {
+    this.ops = [];
+    this.imagenes = [];      // {nombre, ref}
+  }
+  Lienzo.prototype.texto = function (t, x, y, pt, negrita, color) {
+    if (t === "" || t == null) return;
+    this.ops.push("BT /" + (negrita ? "F2" : "F1") + " " + pt + " Tf " +
+      (color || "0 0 0") + " rg " + x.toFixed(2) + " " +
+      (A4.h - y).toFixed(2) + " Td (" + escapar(t) + ") Tj ET");
+  };
+  Lienzo.prototype.centrado = function (t, x, anchoCaja, y, pt, negrita, color) {
+    var w = ancho(t, pt, negrita);
+    this.texto(t, x + (anchoCaja - w) / 2, y, pt, negrita, color);
+  };
+  Lienzo.prototype.caja = function (x, y, w, h, relleno, grosor) {
+    if (relleno) {
+      this.ops.push(relleno + " rg " + x.toFixed(2) + " " + (A4.h - y - h).toFixed(2) +
+        " " + w.toFixed(2) + " " + h.toFixed(2) + " re f");
+    }
+    this.ops.push("0 0 0 RG " + (grosor || 0.6) + " w " + x.toFixed(2) + " " +
+      (A4.h - y - h).toFixed(2) + " " + w.toFixed(2) + " " + h.toFixed(2) + " re S");
+  };
+  Lienzo.prototype.linea = function (x1, y1, x2, y2, grosor) {
+    this.ops.push("0 0 0 RG " + (grosor || 0.6) + " w " + x1.toFixed(2) + " " +
+      (A4.h - y1).toFixed(2) + " m " + x2.toFixed(2) + " " + (A4.h - y2).toFixed(2) +
+      " l S");
+  };
+  Lienzo.prototype.imagen = function (ref, x, y, w, h) {
+    var nombre = "Im" + ref;
+    if (this.imagenes.indexOf(nombre) === -1) this.imagenes.push(nombre);
+    this.ops.push("q " + w.toFixed(2) + " 0 0 " + h.toFixed(2) + " " +
+      x.toFixed(2) + " " + (A4.h - y - h).toFixed(2) + " cm /" + nombre + " Do Q");
+  };
+
+  return { NUMEROS: NUMEROS, TITULO: TITULO, A4: A4, MARGEN: MARGEN, ANCHO: ANCHO,
+           CAB_ALTO: CAB_ALTO, HUECO: HUECO, CELDA: CELDA, FOTO_ALTO: FOTO_ALTO,
+           ROTULO_ALTO: ROTULO_ALTO, BLOQUE: BLOQUE, FOTOS_POR_PAGINA: FOTOS_POR_PAGINA,
+           Lienzo: Lienzo, ancho: ancho, recortar: recortar, escapar: escapar };
+})();
+</script>
+
+<script>
+/* ================================================================
+   ENTREGABLES · el PDF del acta, armado en el teléfono.
+   ================================================================ */
+(function () {
+  "use strict";
+  var E = ENTREGABLE, A4 = E.A4, M = E.MARGEN;
+
+  /* ---------- las fotos, en JPEG, que es lo que un PDF incrusta tal cual ---------- */
+  function aJpeg(url) {
+    return new Promise(function (ok, mal) {
+      var img = new Image();
+      img.onload = function () {
+        var c = document.createElement("canvas");
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        c.getContext("2d").drawImage(img, 0, 0);
+        c.toBlob(function (b) {
+          if (!b) { mal(new Error("no se pudo codificar")); return; }
+          var fr = new FileReader();
+          fr.onload = function () {
+            ok({ bytes: new Uint8Array(fr.result), w: c.width, h: c.height });
+          };
+          fr.onerror = function () { mal(fr.error); };
+          fr.readAsArrayBuffer(b);
+        }, "image/jpeg", 0.86);
+      };
+      img.onerror = function () { mal(new Error("no se pudo abrir la imagen")); };
+      img.src = url;
+    });
+  }
+
+  /* ---------- la cabecera del formato ---------- */
+  function cabecera(L, enc, pagina, paginas) {
+    var y = M, x = M, w = E.ANCHO;
+    var alturas = [18, 18, 15, 15, 15, 15];   // título, y cinco filas de datos
+    var izq = w * 0.62;
+
+    // Bloque de título, a la izquierda; control documental a la derecha.
+    L.caja(x, y, izq, 36, "1 1 1");
+    L.centrado(E.TITULO[0], x, izq, y + 14, 10, true);
+    L.centrado(E.TITULO[1], x, izq, y + 27, 10, true);
+
+    var cx = x + izq, cw = w - izq;
+    var control = [
+      ["CÓDIGO:", enc.codigo_formato || E.NUMEROS.CODIGO_FORMATO],
+      ["VERSIÓN:", enc.version_formato || E.NUMEROS.VERSION_FORMATO],
+      ["FECHA:", enc.fecha_formato || ""]
+    ];
+    control.forEach(function (fila, i) {
+      var fy = y + i * 12;
+      L.caja(cx, fy, cw, 12, "1 1 1", 0.5);
+      L.texto(fila[0], cx + 4, fy + 8.5, 7.5, true);
+      L.texto(E.recortar(fila[1], 7.5, false, cw - 60), cx + 58, fy + 8.5, 7.5, false);
+    });
+
+    y += 36;
+    var etiqueta = w * 0.16, valor = w * 0.46;
+
+    function fila(nombre, texto, alto) {
+      L.caja(x, y, etiqueta, alto, "0.85 0.85 0.85", 0.5);
+      L.texto(nombre, x + 4, y + alto - 4, 7.5, true);
+      L.caja(x + etiqueta, y, valor, alto, "1 1 1", 0.5);
+      L.texto(E.recortar(texto, 8, false, valor - 8), x + etiqueta + 4, y + alto - 4, 8, false);
+      return { derechaX: x + etiqueta + valor, alto: alto };
+    }
+
+    var resto = w - etiqueta - valor;
+    var f;
+
+    f = fila("N° ACTA:", enc.n_acta || "", 13);
+    L.caja(f.derechaX, y, resto, 13, "1 1 1", 0.5);
+    L.texto("Pág. " + pagina + " de " + paginas, f.derechaX + 4, y + 9, 7.5, false);
+    y += 13;
+
+    f = fila("N° GUÍA:", enc.n_guia || "", 13);
+    L.caja(f.derechaX, y, resto, 13, "1 1 1", 0.5);
+    y += 13;
+
+    // La fila de fecha lleva las casillas DESPACHO / RECEPCIÓN con su marca.
+    f = fila("FECHA:", (enc.fecha || ""), 13);
+    var mitad = resto / 2, esDespacho = (enc.tipo_documento || "") !== "RECEPCION";
+    L.caja(f.derechaX, y, mitad, 13, "0.85 0.85 0.85", 0.5);
+    L.texto("DESPACHO", f.derechaX + 4, y + 9, 7.5, true);
+    L.caja(f.derechaX + mitad, y, mitad, 13, "0.85 0.85 0.85", 0.5);
+    L.texto("RECEPCIÓN", f.derechaX + mitad + 4, y + 9, 7.5, true);
+    var marcaX = esDespacho ? f.derechaX + mitad - 14 : f.derechaX + resto - 14;
+    L.texto("X", marcaX, y + 9.5, 9, true);
+    y += 13;
+
+    f = fila("CLIENTE:", enc.cliente || "", 13);
+    L.caja(f.derechaX, y, resto, 13, "1 1 1", 0.5);
+    y += 13;
+
+    f = fila("EQUIPO:", enc.modelo_equipo || "", 13);
+    L.caja(f.derechaX, y, resto, 13, "1 1 1", 0.5);
+    y += 13;
+
+    f = fila("CÓDIGO:", enc.codigo_equipo || "", 13);
+    L.caja(f.derechaX, y, mitad, 13, "0.85 0.85 0.85", 0.5);
+    L.texto("HORÓMETRO:", f.derechaX + 4, y + 9, 7.5, true);
+    L.caja(f.derechaX + mitad, y, mitad, 13, "1 1 1", 0.5);
+    L.texto(String(enc.horometro === undefined ? "" : enc.horometro),
+            f.derechaX + mitad + 4, y + 9, 8, false);
+    y += 13;
+
+    return y + 6;
+  }
+
+  /* ---------- un bloque de foto con su rótulo ---------- */
+  function bloqueFoto(L, entrada, x, y, imagenes) {
+    L.caja(x, y, E.CELDA, E.FOTO_ALTO, "1 1 1");
+    var foto = entrada.foto ? imagenes[entrada.foto] : null;
+    if (foto) {
+      // Se centra respetando la proporción: una foto deformada no vale como prueba.
+      var escala = Math.min((E.CELDA - 8) / foto.w, (E.FOTO_ALTO - 8) / foto.h);
+      var w = foto.w * escala, h = foto.h * escala;
+      L.imagen(foto.ref, x + (E.CELDA - w) / 2, y + (E.FOTO_ALTO - h) / 2, w, h);
+    } else {
+      L.centrado("(sin fotografía)", x, E.CELDA, y + E.FOTO_ALTO / 2, 8, false, "0.5 0.5 0.5");
+    }
+    L.caja(x, y + E.FOTO_ALTO, E.CELDA, E.ROTULO_ALTO, "0.85 0.85 0.85");
+    L.centrado(E.recortar(entrada.rotulo, 8, true, E.CELDA - 8),
+               x, E.CELDA, y + E.FOTO_ALTO + 12, 8, true);
+    if (entrada.nota) {
+      L.texto(E.recortar(entrada.nota, 7, false, E.CELDA - 8), x + 4,
+              y + E.FOTO_ALTO - 4, 7, false, "0.35 0.35 0.35");
+    }
+  }
+
+  /* ---------- de un acta a una lista de páginas ---------- */
+  function repartir(acta) {
+    var bloques = (acta.registro_fotografico || []).map(function (f) {
+      return { rotulo: f.descripcion || "", foto: f.archivo || null,
+               nota: f.observacion || "" };
+    });
+    (acta.consumibles || []).forEach(function (c) {
+      var estado = c.estado_recepcion ? " · " + c.estado_recepcion : "";
+      bloques.push({
+        rotulo: String(c.cantidad || 1).padStart(2, "0") + " " + (c.descripcion || "") + estado,
+        foto: c.foto_recepcion || c.foto_despacho || null,
+        nota: c.texto_recepcion || ""
+      });
+    });
+    (acta.inspeccion_componentes || []).forEach(function (i) {
+      if (i.estado === "OK") return;          // sólo lo observado o dañado se ilustra
+      bloques.push({
+        rotulo: (i.item || "") + " · " + (i.estado || ""),
+        foto: i.foto_recepcion || i.foto_despacho || null,
+        nota: i.observacion || ""
+      });
+    });
+
+    // BLOQUES_FOTO_POR_PAGINA cuenta franjas, y cada franja lleva dos fotos.
+    var porPagina = E.FOTOS_POR_PAGINA, paginas = [];
+    for (var i = 0; i < bloques.length; i += porPagina) {
+      paginas.push(bloques.slice(i, i + porPagina));
+    }
+    if (!paginas.length) paginas.push([]);
+    return paginas;
+  }
+
+  /* ---------- el archivo PDF ---------- */
+  function ensamblar(paginas, imagenes) {
+    var partes = [], desplaz = 0, offsets = [];
+    var cod = new TextEncoder();
+
+    function crudo(texto) {
+      var b = new Uint8Array(texto.length);
+      for (var i = 0; i < texto.length; i++) b[i] = texto.charCodeAt(i) & 0xFF;
+      partes.push(b); desplaz += b.length;
+    }
+    function binario(bytes) { partes.push(bytes); desplaz += bytes.length; }
+    function objeto(n, cuerpo, datos) {
+      offsets[n] = desplaz;
+      crudo(n + " 0 obj\n" + cuerpo + "\n");
+      if (datos) { crudo("stream\n"); binario(datos); crudo("\nendstream\n"); }
+      crudo("endobj\n");
+    }
+
+    var nImagenes = Object.keys(imagenes).length;
+    var idFuente1 = 3, idFuente2 = 4;
+    var idPrimeraImagen = 5;
+    var idPrimerContenido = idPrimeraImagen + nImagenes;
+    var idPrimeraPagina = idPrimerContenido + paginas.length;
+
+    crudo("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+
+    var hijos = [];
+    for (var i = 0; i < paginas.length; i++) hijos.push((idPrimeraPagina + i) + " 0 R");
+    objeto(1, "<< /Type /Catalog /Pages 2 0 R >>");
+    objeto(2, "<< /Type /Pages /Kids [" + hijos.join(" ") + "] /Count " + paginas.length + " >>");
+    objeto(idFuente1, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica " +
+                      "/Encoding /WinAnsiEncoding >>");
+    objeto(idFuente2, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold " +
+                      "/Encoding /WinAnsiEncoding >>");
+
+    Object.keys(imagenes).forEach(function (clave) {
+      var im = imagenes[clave];
+      objeto(idPrimeraImagen + im.ref - 1,
+        "<< /Type /XObject /Subtype /Image /Width " + im.w + " /Height " + im.h +
+        " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " +
+        im.bytes.length + " >>", im.bytes);
+    });
+
+    paginas.forEach(function (L, i) {
+      var flujo = L.ops.join("\n");
+      objeto(idPrimerContenido + i, "<< /Length " + flujo.length + " >>", cod.encode(flujo));
+    });
+
+    paginas.forEach(function (L, i) {
+      var xo = L.imagenes.map(function (nombre) {
+        var ref = parseInt(nombre.slice(2), 10);
+        return "/" + nombre + " " + (idPrimeraImagen + ref - 1) + " 0 R";
+      }).join(" ");
+      objeto(idPrimeraPagina + i,
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + A4.w + " " + A4.h + "] " +
+        "/Resources << /Font << /F1 " + idFuente1 + " 0 R /F2 " + idFuente2 + " 0 R >> " +
+        (xo ? "/XObject << " + xo + " >> " : "") + ">> " +
+        "/Contents " + (idPrimerContenido + i) + " 0 R >>");
+    });
+
+    var total = idPrimeraPagina + paginas.length;
+    var inicioXref = desplaz;
+    var xref = "xref\n0 " + total + "\n0000000000 65535 f \n";
+    for (var n = 1; n < total; n++) {
+      xref += ("0000000000" + (offsets[n] || 0)).slice(-10) + " 00000 n \n";
+    }
+    crudo(xref);
+    crudo("trailer\n<< /Size " + total + " /Root 1 0 R >>\nstartxref\n" +
+          inicioXref + "\n%%EOF\n");
+
+    return new Blob(partes, { type: "application/pdf" });
+  }
+
+  /* ---------- entrada pública ---------- */
+  function pdf(acta, urlDeFoto) {
+    var paginas = repartir(acta);
+    var rutas = {};
+    paginas.forEach(function (bloques) {
+      bloques.forEach(function (b) { if (b.foto) rutas[b.foto] = true; });
+    });
+    var claves = Object.keys(rutas);
+
+    return Promise.all(claves.map(function (ruta, i) {
+      var url = urlDeFoto(ruta);
+      if (!url) return Promise.resolve(null);
+      return aJpeg(url).then(function (im) {
+        im.ref = i + 1; im.ruta = ruta; return im;
+      }, function () { return null; });
+    })).then(function (lista) {
+      var imagenes = {}, ref = 1;
+      lista.forEach(function (im) {
+        if (!im) return;
+        im.ref = ref++;
+        imagenes[im.ruta] = im;
+      });
+
+      var lienzos = paginas.map(function (bloques, p) {
+        var L = new E.Lienzo();
+        var y = cabecera(L, acta.encabezado || {}, p + 1, paginas.length);
+        bloques.forEach(function (b, i) {
+          var col = i % 2, fila = Math.floor(i / 2);
+          bloqueFoto(L, b, M + col * (E.CELDA + E.HUECO),
+                     y + fila * (E.BLOQUE + E.HUECO), imagenes);
+        });
+        if (p === paginas.length - 1 && acta.resumen_ejecutivo) {
+          var pie = A4.h - M - 6;
+          L.caja(M, pie - 14, E.ANCHO, 16, "0.85 0.85 0.85", 0.5);
+          L.texto("RESUMEN:", M + 4, pie - 3, 7.5, true);
+          L.texto(E.recortar(acta.resumen_ejecutivo, 8, false, E.ANCHO - 60),
+                  M + 48, pie - 3, 8, false);
+        }
+        return L;
+      });
+
+      return ensamblar(lienzos, imagenes);
+    });
+  }
+
+  ENTREGABLE.pdf = pdf;
+  ENTREGABLE.repartir = repartir;
+  ENTREGABLE.aJpeg = aJpeg;
+})();
+</script>
+
+<script>
+/* ================================================================
+   ENTREGABLES · el Excel del acta, armado en el teléfono.
+   Un .xlsx es un ZIP de XML, y el ZIP ya lo sabe escribir la app.
+   ================================================================ */
+(function () {
+  "use strict";
+  var E = ENTREGABLE;
+
+  // Copiado de nefer/layout.py. La prueba `test_geometria_compartida` compara
+  // estas cifras con las de allí para que no se separen.
+  var ANCHOS_COLUMNA = {
+    A:5.00, B:4.29, C:3.71, D:2.29, E:4.00, F:1.71, G:4.00, H:8.43, I:8.43,
+    J:2.86, K:2.43, L:11.71, M:1.43, N:2.71, O:1.57, P:1.14, Q:3.71, R:4.86,
+    S:4.00, T:7.57, U:4.00, V:2.14, W:4.00, X:3.14, Y:0.43, Z:11.43
+  };
+  var PANEL_IZQ = ["A", "L"], PANEL_DER = ["M", "Z"];
+  var FILA_INICIO_FOTOS = 11, ALTO_BLOQUE_FOTO = 15, FILAS_IMAGEN = 14;
+  var ALTO_FILA_ESTANDAR = 15.0, ALTO_FILA_ROTULO = 16.5, ALTO_FILA_SEPARADOR = 10.5;
+  var EMU = 9525;                       // EMU por píxel
+
+  function anchoPx(col) { return Math.round((ANCHOS_COLUMNA[col] || 8.43) * 7) + 5; }
+  function columnas(desde, hasta) {
+    var salida = [];
+    for (var c = desde.charCodeAt(0); c <= hasta.charCodeAt(0); c++) {
+      salida.push(String.fromCharCode(c));
+    }
+    return salida;
+  }
+  function anchoPanelPx(panel) {
+    return columnas(panel[0], panel[1]).reduce(function (a, c) { return a + anchoPx(c); }, 0);
+  }
+  function altoBloquePx(filas) {
+    return Math.round((filas || FILAS_IMAGEN) * ALTO_FILA_ESTANDAR * 96 / 72);
+  }
+  function indiceColumna(col) { return col.charCodeAt(0) - 65; }
+
+  function xml(t) {
+    return String(t == null ? "" : t)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  /* ---------- una hoja como la del formato ---------- */
+  function hoja(acta, bloques) {
+    var enc = acta.encabezado || {}, filas = [], fusiones = [], alturas = {};
+
+    function celda(ref, valor, estilo) {
+      var col = ref.match(/^[A-Z]+/)[0], fila = +ref.match(/\d+$/)[0];
+      filas[fila] = filas[fila] || [];
+      filas[fila].push({ ref: ref, col: col, valor: valor, estilo: estilo || 0 });
+    }
+    function fundir(rango, valor, estilo) {
+      fusiones.push(rango);
+      celda(rango.split(":")[0], valor, estilo);
+    }
+
+    // --- cabecera ---
+    fundir("A1:F3", "", 1);
+    fundir("G1:R3", "REPORTE FOTOGRÁFICO DE DESPACHO Y RECEPCIÓN", 4);
+    fundir("S1:U1", "CÓDIGO:", 1);
+    fundir("V1:Z1", enc.codigo_formato || E.NUMEROS.CODIGO_FORMATO, 2);
+    fundir("S2:U2", "VERSIÓN:", 1);
+    fundir("V2:Z2", enc.version_formato || E.NUMEROS.VERSION_FORMATO, 2);
+    fundir("S3:U3", "FECHA:", 1);
+    fundir("V3:Z3", enc.fecha_formato || "", 2);
+
+    var datos = [
+      [4, "N° ACTA:", enc.n_acta || ""],
+      [5, "N° GUÍA:", enc.n_guia || ""],
+      [6, "FECHA:", enc.fecha || ""],
+      [7, "CLIENTE:", enc.cliente || ""],
+      [8, "EQUIPO:", enc.modelo_equipo || ""],
+      [9, "CÓDIGO:", enc.codigo_equipo || ""]
+    ];
+    datos.forEach(function (d) {
+      fundir("A" + d[0] + ":F" + d[0], d[1], 1);
+      fundir("G" + d[0] + ":R" + d[0], d[2], 2);
+    });
+
+    var esDespacho = (enc.tipo_documento || "") !== "RECEPCION";
+    fundir("S4:Z4", "", 2);
+    fundir("S5:Z5", "", 2);
+    fundir("S6:U6", "DESPACHO", 1);
+    celda("V6", esDespacho ? "X" : "", 3);
+    fundir("W6:Y6", "RECEPCIÓN", 1);
+    celda("Z6", esDespacho ? "" : "X", 3);
+    fundir("S7:Z7", enc.obra || "", 2);
+    fundir("S8:Z8", "", 2);
+    fundir("S9:U9", "HORÓMETRO:", 1);
+    fundir("V9:Z9", enc.horometro === undefined ? "" : enc.horometro, 2);
+
+    alturas[10] = ALTO_FILA_SEPARADOR;
+
+    // --- rejilla fotográfica: dos bloques por franja, izquierda y derecha ---
+    var anclas = [];
+    bloques.forEach(function (b, pos) {
+      var indice = Math.floor(pos / 2);
+      var panel = (pos % 2 === 0) ? PANEL_IZQ : PANEL_DER;
+      var tope = FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * indice;
+      var rotulo = tope + FILAS_IMAGEN;
+
+      for (var f = tope; f < rotulo; f++) alturas[f] = ALTO_FILA_ESTANDAR;
+      alturas[rotulo] = ALTO_FILA_ROTULO;
+
+      fusiones.push(panel[0] + tope + ":" + panel[1] + (rotulo - 1));
+      celda(panel[0] + tope, "", 2);
+      fundir(panel[0] + rotulo + ":" + panel[1] + rotulo, b.rotulo, 3);
+
+      if (b.imagen) {
+        anclas.push({ imagen: b.imagen, col: indiceColumna(panel[0]), fila: tope - 1,
+                      anchoPanel: anchoPanelPx(panel), altoBloque: altoBloquePx() });
+      }
+    });
+
+    // Sin saltos, Excel imprime la hoja entera escalada y el formato se pierde.
+    var franjas = Math.ceil(bloques.length / 2), cortes = [];
+    for (var i = E.NUMEROS.BLOQUES_FOTO_POR_PAGINA; i < franjas;
+         i += E.NUMEROS.BLOQUES_FOTO_POR_PAGINA) {
+      cortes.push(FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * i - 1);
+    }
+
+    var filaResumen = FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * franjas;
+    fundir("A" + filaResumen + ":Z" + filaResumen, "OBSERVACIONES", 1);
+    fundir("A" + (filaResumen + 1) + ":Z" + (filaResumen + 1),
+           acta.resumen_ejecutivo || "", 2);
+
+    return { filas: filas, fusiones: fusiones, alturas: alturas, anclas: anclas,
+             cortes: cortes };
+  }
+
+  function sheetXml(h) {
+    var cols = columnas("A", "Z").map(function (c, i) {
+      return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' +
+             ANCHOS_COLUMNA[c] + '" customWidth="1"/>';
+    }).join("");
+
+    var maxFila = h.filas.length - 1;
+    Object.keys(h.alturas).forEach(function (f) { maxFila = Math.max(maxFila, +f); });
+
+    var cuerpo = "";
+    for (var n = 1; n <= maxFila; n++) {
+      var celdas = h.filas[n] || [];
+      if (!celdas.length && !h.alturas[n]) continue;
+      var alto = h.alturas[n]
+        ? ' ht="' + h.alturas[n] + '" customHeight="1"' : "";
+      cuerpo += '<row r="' + n + '"' + alto + '>';
+      celdas.forEach(function (c) {
+        var v = c.valor;
+        if (typeof v === "number") {
+          cuerpo += '<c r="' + c.ref + '" s="' + c.estilo + '"><v>' + v + '</v></c>';
+        } else if (v === "" || v == null) {
+          cuerpo += '<c r="' + c.ref + '" s="' + c.estilo + '"/>';
+        } else {
+          cuerpo += '<c r="' + c.ref + '" s="' + c.estilo + '" t="inlineStr">' +
+                    '<is><t xml:space="preserve">' + xml(v) + '</t></is></c>';
+        }
+      });
+      cuerpo += "</row>";
+    }
+
+    var fus = h.fusiones.length
+      ? '<mergeCells count="' + h.fusiones.length + '">' +
+        h.fusiones.map(function (r) { return '<mergeCell ref="' + r + '"/>'; }).join("") +
+        "</mergeCells>"
+      : "";
+
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' +
+      '<cols>' + cols + '</cols><sheetData>' + cuerpo + '</sheetData>' + fus +
+      '<pageMargins left="0.25" right="0.25" top="0.3" bottom="0.3" ' +
+      'header="0.2" footer="0.2"/>' +
+      '<pageSetup paperSize="9" orientation="portrait" fitToWidth="1" fitToHeight="0"/>' +
+      (h.cortes.length
+        ? '<rowBreaks count="' + h.cortes.length + '" manualBreakCount="' +
+          h.cortes.length + '">' +
+          h.cortes.map(function (f) {
+            return '<brk id="' + f + '" max="25" man="1"/>';
+          }).join("") + '</rowBreaks>'
+        : "") +
+      (h.anclas.length ? '<drawing r:id="rId1"/>' : "") +
+      "</worksheet>";
+  }
+
+  function drawingXml(anclas) {
+    var piezas = anclas.map(function (a, i) {
+      var escala = Math.min(a.anchoPanel / a.imagen.w, a.altoBloque / a.imagen.h);
+      var w = Math.round(a.imagen.w * escala), alto = Math.round(a.imagen.h * escala);
+      var desX = Math.round((a.anchoPanel - w) / 2) * EMU;
+      var desY = Math.round((a.altoBloque - alto) / 2) * EMU;
+      return '<xdr:oneCellAnchor>' +
+        '<xdr:from><xdr:col>' + a.col + '</xdr:col><xdr:colOff>' + desX + '</xdr:colOff>' +
+        '<xdr:row>' + a.fila + '</xdr:row><xdr:rowOff>' + desY + '</xdr:rowOff></xdr:from>' +
+        '<xdr:ext cx="' + (w * EMU) + '" cy="' + (alto * EMU) + '"/>' +
+        '<xdr:pic><xdr:nvPicPr>' +
+        '<xdr:cNvPr id="' + (i + 2) + '" name="Imagen ' + (i + 1) + '"/>' +
+        '<xdr:cNvPicPr/></xdr:nvPicPr>' +
+        '<xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rId' +
+        (i + 1) + '"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>' +
+        '<xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + (w * EMU) + '" cy="' +
+        (alto * EMU) + '"/></a:xfrm>' +
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>' +
+        '<xdr:clientData/></xdr:oneCellAnchor>';
+    }).join("");
+
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" ' +
+      'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">' + piezas +
+      "</xdr:wsDr>";
+  }
+
+  var ESTILOS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<fonts count="3">' +
+    '<font><sz val="11"/><name val="Calibri"/></font>' +
+    '<font><b/><sz val="10"/><name val="Calibri"/></font>' +
+    '<font><b/><sz val="12"/><name val="Calibri"/></font>' +
+    '</fonts>' +
+    '<fills count="3"><fill><patternFill patternType="none"/></fill>' +
+    '<fill><patternFill patternType="gray125"/></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFD9D9D9"/>' +
+    '<bgColor indexed="64"/></patternFill></fill></fills>' +
+    '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
+    '<border><left style="thin"/><right style="thin"/><top style="thin"/>' +
+    '<bottom style="thin"/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="5">' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
+    'applyFill="1" applyBorder="1" applyAlignment="1">' +
+    '<alignment vertical="center" wrapText="1"/></xf>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" ' +
+    'applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>' +
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
+    'applyFill="1" applyBorder="1" applyAlignment="1">' +
+    '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+    '<xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" ' +
+    'applyBorder="1" applyAlignment="1">' +
+    '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+    '</cellXfs>' +
+    // Excel y openpyxl esperan un estilo normal declarado; sin el avisan.
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/>' +
+    '</cellStyles></styleSheet>';
+
+  function xlsx(acta, urlDeFoto) {
+    var entradas = ENTREGABLE.repartir(acta).reduce(function (a, p) {
+      return a.concat(p);
+    }, []);
+    var rutas = [];
+    entradas.forEach(function (b) {
+      if (b.foto && rutas.indexOf(b.foto) === -1) rutas.push(b.foto);
+    });
+
+    return Promise.all(rutas.map(function (ruta) {
+      var url = urlDeFoto(ruta);
+      return url ? ENTREGABLE.aJpeg(url).then(function (im) {
+        im.ruta = ruta; return im;
+      }, function () { return null; }) : Promise.resolve(null);
+    })).then(function (lista) {
+      var porRuta = {}, medios = [];
+      lista.forEach(function (im) {
+        if (!im) return;
+        medios.push(im);
+        im.indice = medios.length;
+        porRuta[im.ruta] = im;
+      });
+
+      var bloques = entradas.map(function (b) {
+        return { rotulo: b.rotulo, imagen: b.foto ? porRuta[b.foto] || null : null };
+      });
+      var h = hoja(acta, bloques);
+
+      // Las anclas apuntan a la relación de su imagen, en el orden en que
+      // se declaran en el dibujo.
+      h.anclas.forEach(function (a, i) { a.rel = i + 1; });
+
+      var relDibujo = h.anclas.map(function (a, i) {
+        return '<Relationship Id="rId' + (i + 1) + '" Type="http://schemas.openxmlformats.org/' +
+          'officeDocument/2006/relationships/image" Target="../media/imagen' +
+          a.imagen.indice + '.jpeg"/>';
+      }).join("");
+
+      var archivos = [
+        { nombre: "[Content_Types].xml", texto:
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+          '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+          '<Default Extension="xml" ContentType="application/xml"/>' +
+          '<Default Extension="jpeg" ContentType="image/jpeg"/>' +
+          '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+          '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+          '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+          (h.anclas.length ? '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' : "") +
+          '</Types>' },
+        { nombre: "_rels/.rels", texto:
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+          '</Relationships>' },
+        { nombre: "xl/workbook.xml", texto:
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+          'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+          '<sheets><sheet name="REPORTE" sheetId="1" r:id="rId1"/></sheets></workbook>' },
+        { nombre: "xl/_rels/workbook.xml.rels", texto:
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+          '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+          '</Relationships>' },
+        { nombre: "xl/styles.xml", texto: ESTILOS },
+        { nombre: "xl/worksheets/sheet1.xml", texto: sheetXml(h) }
+      ];
+
+      if (h.anclas.length) {
+        archivos.push({ nombre: "xl/worksheets/_rels/sheet1.xml.rels", texto:
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>' +
+          '</Relationships>' });
+        archivos.push({ nombre: "xl/drawings/drawing1.xml", texto: drawingXml(h.anclas) });
+        archivos.push({ nombre: "xl/drawings/_rels/drawing1.xml.rels", texto:
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+          relDibujo + '</Relationships>' });
+      }
+
+      var cod = new TextEncoder();
+      var entradasZip = archivos.map(function (a) {
+        return { nombre: a.nombre, datos: cod.encode(a.texto) };
+      });
+      medios.forEach(function (im) {
+        entradasZip.push({ nombre: "xl/media/imagen" + im.indice + ".jpeg", datos: im.bytes });
+      });
+
+      var zip = NEFER.armarZip(entradasZip);
+      return zip.slice(0, zip.size,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    });
+  }
+
+  ENTREGABLE.xlsx = xlsx;
+})();
+</script>
+

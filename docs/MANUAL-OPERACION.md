@@ -94,7 +94,7 @@ cámara— contra un navegador de verdad:
 ```bash
 pip install -e ".[navegador]"
 python -m playwright install chromium
-python -m pytest                       # ahora son 91
+python -m pytest                       # ahora son 98
 ```
 
 Las **27 pruebas** de `tests/test_app_navegador.py` abren el selector de
@@ -261,7 +261,23 @@ Luego:
 6. Pulse **Guardar paquete .zip**: sale un archivo con `acta.json` y la carpeta
    `fotos/` ya nombrada como el acta espera. Descomprímalo y siga en el paso 5.
 
-También puede pulsar **Copiar JSON** y pegarlo en un `acta.json` propio.
+### El entregable, desde el propio teléfono
+
+Al pie de **Resultado** hay tres salidas:
+
+| Botón | Qué da | Para qué |
+|---|---|---|
+| **Descargar PDF** | El acta impresa, A4, ocho fotos por página | Firmarla ahí mismo con el cliente |
+| **Descargar Excel** | El `.xlsx` con la rejilla y las fotos incrustadas | El archivo de la oficina |
+| **Paquete .zip** | `acta.json` + `fotos/` | Regenerar todo en la computadora, o guardar el respaldo |
+
+El PDF y el Excel se arman dentro del teléfono, sin conexión. Son una segunda
+implementación del mismo formato que produce `nefer construir`: la geometría se
+copió de `nefer/layout.py` y hay pruebas que comparan ambas listas de constantes
+para que no se separen. Para el archivo definitivo, el que manda sigue siendo el
+de la computadora, porque es el que se validó contra las actas reales.
+
+También puede pulsar **copiar JSON** y pegarlo en un `acta.json` propio.
 
 Las fotos no salen de su equipo: todo ocurre en el navegador.
 
