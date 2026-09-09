@@ -156,3 +156,15 @@ python -m pytest
 
 Cubren la geometría contra las actas reales, el validador, la redacción
 automática y la ida y vuelta completa manifiesto → Excel → manifiesto.
+
+La aplicación de campo tiene su propia suite, que conduce un navegador de
+verdad: abre el selector de archivos real y dispara una cámara simulada, para
+comprobar que cada foto entra y cae donde debe.
+
+```bash
+pip install -e ".[navegador]"
+python -m playwright install chromium
+python -m pytest tests/test_app_navegador.py
+```
+
+Sin Playwright instalado se saltan solas.

@@ -1533,6 +1533,28 @@ var NEFER = (function () {
              conectar: conectar };
   })();
 
+  /* ---------- nombres dentro del paquete ----------
+     El acta nombra fotos/<archivo>; si dos fotos llegan con el mismo nombre
+     —cosa habitual al mezclar cámaras, o al cargar dos carpetas— el acta
+     apuntaría dos veces al mismo archivo. Se resuelve aquí, en un solo sitio,
+     para que el JSON y el ZIP no puedan discrepar. */
+  function nombresUnicos(lista) {
+    var usados = {}, mapa = {};
+    lista.forEach(function (f) {
+      var base = String(f.nombre || "").split(/[\\/]/).pop().replace(/[^\w.\- ]+/g, "_");
+      if (!base) base = "foto.jpg";
+      var nombre = base, n = 1;
+      while (usados[nombre.toLowerCase()]) {
+        var punto = base.lastIndexOf(".");
+        nombre = punto > 0 ? base.slice(0, punto) + "-" + (++n) + base.slice(punto)
+                           : base + "-" + (++n);
+      }
+      usados[nombre.toLowerCase()] = true;
+      mapa[f.id] = nombre;
+    });
+    return mapa;
+  }
+
   /* ---------- entrega del paquete ----------
      Compartir primero: en el celular es el camino que lleva el archivo a
      WhatsApp o al correo sin pasar por la carpeta de descargas. */
@@ -1659,7 +1681,7 @@ var NEFER = (function () {
     incrustada: incrustada,
     RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo, camara: camara,
     archivosArrastrados: archivosArrastrados, imagenesPegadas: imagenesPegadas,
-    pesoLegible: pesoLegible, MAX_LADO: MAX_LADO
+    pesoLegible: pesoLegible, MAX_LADO: MAX_LADO, nombresUnicos: nombresUnicos
   };
 })();
 </script>
@@ -1783,26 +1805,7 @@ var NEFER = (function () {
     return null;
   }
 
-  /* ---------- nombres dentro del paquete ----------
-     El acta nombra fotos/<archivo>; si dos fotos llegan con el mismo nombre —
-     cosa habitual al mezclar cámaras — el acta apuntaría dos veces al mismo
-     archivo. Se renombra aquí, una sola vez, para que JSON y ZIP coincidan. */
-  function nombresDelPaquete() {
-    var usados = {}, mapa = {};
-    fotos.forEach(function (f) {
-      var base = String(f.nombre).split(/[\\/]/).pop().replace(/[^\w.\- ]+/g, "_");
-      if (!base) base = "foto.jpg";
-      var nombre = base, n = 1;
-      while (usados[nombre.toLowerCase()]) {
-        var punto = base.lastIndexOf(".");
-        nombre = punto > 0 ? base.slice(0, punto) + "-" + (++n) + base.slice(punto)
-                           : base + "-" + (++n);
-      }
-      usados[nombre.toLowerCase()] = true;
-      mapa[f.id] = nombre;
-    });
-    return mapa;
-  }
+  function nombresDelPaquete() { return NEFER.nombresUnicos(fotos); }
 
   /* ---------- carga ----------
      Todas las rutas —cámara, galería, carpeta, arrastre, pegado— terminan
@@ -2783,22 +2786,7 @@ var NEFER = (function () {
   }
 
   /* ---------- el acta ---------- */
-  function nombresDelPaquete() {
-    var usados = {}, mapa = {};
-    retorno.forEach(function (f) {
-      var base = String(f.nombre).split(/[\\/]/).pop().replace(/[^\w.\- ]+/g, "_");
-      if (!base) base = "foto.jpg";
-      var nombre = base, n = 1;
-      while (usados[nombre.toLowerCase()]) {
-        var punto = base.lastIndexOf(".");
-        nombre = punto > 0 ? base.slice(0, punto) + "-" + (++n) + base.slice(punto)
-                           : base + "-" + (++n);
-      }
-      usados[nombre.toLowerCase()] = true;
-      mapa[f.id] = nombre;
-    });
-    return mapa;
-  }
+  function nombresDelPaquete() { return NEFER.nombresUnicos(retorno); }
 
   function acta() {
     var nombres = nombresDelPaquete();

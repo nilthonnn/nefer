@@ -1,0 +1,657 @@
+"""Pruebas de la aplicacion de campo contra un navegador real.
+
+Validan las dos vias por las que entra una foto —galeria y camara— tal como
+las usa el operador: abriendo el selector de archivos de verdad y disparando
+una camara de verdad, no inyectando ficheros por detras.
+
+Se saltan enteras si no hay Playwright o Chromium: `python -m pytest` tiene
+que seguir pasando en una maquina sin navegador.
+"""
+
+from __future__ import annotations
+
+import io
+import json
+import os
+import struct
+import zipfile
+from pathlib import Path
+
+import pytest
+
+pytest.importorskip("playwright.sync_api", reason="Playwright no esta instalado")
+from playwright.sync_api import sync_playwright  # noqa: E402
+from PIL import Image  # noqa: E402
+
+APP = Path(__file__).resolve().parents[1] / "herramientas" / "nefer-app.html"
+
+CHROME = next(
+    (r for r in (
+        os.environ.get("NEFER_CHROMIUM"),
+        "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
+    ) if r and Path(r).exists()),
+    None,
+)
+pytestmark = pytest.mark.skipif(CHROME is None, reason="no hay Chromium disponible")
+
+UA_ANDROID = ("Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/120 Mobile Safari/537.36")
+
+
+# --------------------------------------------------------------------------
+# fotos de prueba, fabricadas como las entrega un telefono
+# --------------------------------------------------------------------------
+
+def _bloque_exif(fecha: str) -> bytes:
+    """TIFF minimo con DateTimeOriginal. 20 bytes de texto, contando el nulo."""
+    texto = fecha.encode("ascii") + b"\x00"
+    assert len(texto) == 20
+    t = bytearray()
+    t += b"II\x2a\x00" + struct.pack("<I", 8)
+    t += struct.pack("<H", 1)
+    t += struct.pack("<HHII", 0x8769, 4, 1, 26)     # puntero al ExifIFD
+    t += struct.pack("<I", 0)
+    t += struct.pack("<H", 1)
+    t += struct.pack("<HHII", 0x9003, 2, 20, 44)    # DateTimeOriginal
+    t += struct.pack("<I", 0)
+    t += texto
+    return b"Exif\x00\x00" + bytes(t)
+
+
+def _jpeg(ruta: Path, color, fecha: str | None = None, tam=(1024, 768)) -> Path:
+    img = Image.new("RGB", tam, color)
+    if fecha:
+        img.save(ruta, "JPEG", quality=90, exif=_bloque_exif(fecha))
+    else:
+        img.save(ruta, "JPEG", quality=90)
+    return ruta
+
+
+@pytest.fixture(scope="module")
+def fotos(tmp_path_factory) -> dict[str, Path]:
+    """Un juego de archivos como los que llegan de un telefono de verdad."""
+    d = tmp_path_factory.mktemp("fotos")
+    salida = {
+        # nombradas y con hora de captura, en desorden alfabetico a proposito
+        "frontal": _jpeg(d / "03-frontal.jpg", (92, 104, 118), "2026:09:09 07:41:12"),
+        "posterior": _jpeg(d / "01-posterior.jpg", (104, 92, 84), "2026:09:09 07:42:30"),
+        "horometro": _jpeg(d / "02-horometro.jpg", (34, 36, 40), "2026:09:09 07:43:05"),
+        # como la entrega un selector de Android: sin extension
+        "sin_nombre": _jpeg(d / "content-1000012345", (70, 90, 70)),
+        # grande, como sale de la camara del telefono
+        "grande": _jpeg(d / "IMG_4088.jpg", (120, 110, 100),
+                        "2026:09:09 07:44:00", tam=(3024, 4032)),
+    }
+    # un HEIC que ningun navegador decodifica
+    heic = d / "IMG_4021.HEIC"
+    heic.write_bytes(b"\x00\x00\x00\x18ftypheic" + b"\x00" * 64)
+    salida["heic"] = heic
+    # algo que no es una imagen
+    texto = d / "notas.txt"
+    texto.write_text("esto no es una foto")
+    salida["texto"] = texto
+    # nombre repetido, en otra carpeta
+    otra = d / "otra"
+    otra.mkdir()
+    salida["repetida"] = _jpeg(otra / "03-frontal.jpg", (60, 70, 80))
+    # sin ninguna pista en el nombre, y en orden alfabetico inverso a su hora:
+    # solo el EXIF puede ordenarlas bien
+    salida["tarde"] = _jpeg(d / "aaa.jpg", (30, 60, 90), "2026:09:09 08:30:00")
+    salida["media"] = _jpeg(d / "mmm.jpg", (60, 90, 30), "2026:09:09 08:20:00")
+    salida["pronto"] = _jpeg(d / "zzz.jpg", (90, 30, 60), "2026:09:09 08:10:00")
+    return salida
+
+
+# --------------------------------------------------------------------------
+# utilidades de navegador
+# --------------------------------------------------------------------------
+
+class App:
+    """La aplicacion abierta en una pagina, con lo justo para conducirla."""
+
+    def __init__(self, pagina):
+        self.pg = pagina
+        self.errores: list[str] = []
+        pagina.on("pageerror", lambda e: self.errores.append(str(e)))
+
+    def despacho(self):
+        self.pg.click("#tab-despacho")
+        self.pg.wait_for_timeout(200)
+        return self
+
+    def cargar_por_galeria(self, rutas, selector="label[for='d-file']"):
+        """Pasa por el selector de archivos de verdad, como el operador."""
+        with self.pg.expect_file_chooser(timeout=10000) as fc:
+            self.pg.click(selector)
+        fc.value.set_files([str(r) for r in rutas])
+        self._esperar_carga(len(rutas))
+        return self
+
+    def _esperar_carga(self, cuantas):
+        self.pg.wait_for_function(
+            "() => document.querySelector('#d-progreso').hidden",
+            timeout=30000)
+        self.pg.wait_for_timeout(400)
+
+    @property
+    def llenas(self) -> int:
+        return self.pg.eval_on_selector_all("#d-grid .slot.lleno", "n => n.length")
+
+    @property
+    def bandeja(self) -> int:
+        return int(self.pg.inner_text("#d-t-bandeja"))
+
+    @property
+    def mensaje(self) -> str:
+        return " ".join(self.pg.inner_text("#d-estado").split())
+
+    @property
+    def acta(self) -> dict:
+        return json.loads(self.pg.input_value("#d-salida"))
+
+    def rotulos(self) -> list[tuple[str, str]]:
+        return [(f["descripcion"], f["archivo"]) for f in self.acta["registro_fotografico"]]
+
+
+def _lanzar(pw, *, camara=False):
+    args = (["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"]
+            if camara else [])
+    return pw.chromium.launch(executable_path=CHROME, args=args)
+
+
+def _contexto(nav, *, movil=False, camara=False, descargas=False):
+    opciones = {"viewport": {"width": 390, "height": 844}, "locale": "es-PE"}
+    if movil:
+        opciones.update(has_touch=True, is_mobile=True, user_agent=UA_ANDROID)
+    if camara:
+        opciones["permissions"] = ["camera"]
+    if descargas:
+        opciones["accept_downloads"] = True
+    return nav.new_context(**opciones)
+
+
+def _sin_camara(pagina):
+    """Un navegador que no ofrece camara: fuerza la via del selector."""
+    pagina.add_init_script(
+        "Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:undefined});")
+
+
+# ==========================================================================
+# GALERIA
+# ==========================================================================
+
+@pytest.mark.parametrize("movil", [False, True], ids=["computadora", "celular"])
+def test_galeria_carga_y_ordena_por_hora_de_captura(fotos, movil):
+    """Las fotos entran por el selector real y se ordenan por su EXIF."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=movil).new_page()
+        _sin_camara(pg)
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        app.cargar_por_galeria([fotos["frontal"], fotos["posterior"], fotos["horometro"]])
+
+        assert app.llenas == 3, app.mensaje
+        assert app.bandeja == 0
+        rotulos = app.rotulos()
+        # El nombre manda sobre la hora: cada archivo cae en su vista.
+        assert rotulos[0] == ("VISTA FRONTAL", "fotos/03-frontal.jpg")
+        assert ("VISTA POSTERIOR", "fotos/01-posterior.jpg") in rotulos
+        assert ("HORÓMETRO", "fotos/02-horometro.jpg") in rotulos
+        assert app.errores == []
+        nav.close()
+
+
+def test_galeria_ordena_por_hora_de_captura_cuando_el_nombre_no_dice_nada(fotos):
+    """Sin pista en el nombre, manda el EXIF: zzz.jpg es la primera del carrete."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav).new_page()
+        _sin_camara(pg)
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        # Se entregan en orden alfabetico; la hora de captura es la inversa.
+        app.cargar_por_galeria([fotos["tarde"], fotos["media"], fotos["pronto"]])
+
+        assert app.llenas == 3, app.mensaje
+        assert app.rotulos() == [
+            ("VISTA FRONTAL", "fotos/zzz.jpg"),      # 08:10
+            ("VISTA POSTERIOR", "fotos/mmm.jpg"),    # 08:20
+            ("VISTA LATERAL IZQUIERDA", "fotos/aaa.jpg"),  # 08:30
+        ]
+        assert app.errores == []
+        nav.close()
+
+
+def test_cargar_mas_fotos_no_deshace_lo_ya_colocado(fotos):
+    """Lo que el operador ordena a mano manda sobre cualquier propuesta."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav).new_page()
+        _sin_camara(pg)
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        app.cargar_por_galeria([fotos["frontal"], fotos["posterior"]])
+        assert app.llenas == 2, app.mensaje
+
+        # Se saca la frontal de su casilla y se lleva a mano a PANEL DE CONTROL.
+        pg.click("#d-grid .slot:nth-child(1)")           # vaciar: vuelve a la bandeja
+        pg.wait_for_timeout(250)
+        pg.click("#d-tray .tile")                        # elegirla
+        pg.wait_for_timeout(200)
+        casillas = pg.query_selector_all("#d-grid .slot")
+        assert casillas[5].query_selector(".cap span").inner_text() == "PANEL DE CONTROL"
+        casillas[5].click()
+        pg.wait_for_timeout(300)
+        assert ("PANEL DE CONTROL", "fotos/03-frontal.jpg") in app.rotulos()
+
+        # Llega una foto mas: no puede mover nada de lo anterior.
+        app.cargar_por_galeria([fotos["horometro"]])
+
+        rotulos = app.rotulos()
+        assert ("PANEL DE CONTROL", "fotos/03-frontal.jpg") in rotulos, rotulos
+        assert ("VISTA POSTERIOR", "fotos/01-posterior.jpg") in rotulos, rotulos
+        assert ("HORÓMETRO", "fotos/02-horometro.jpg") in rotulos, rotulos
+        assert app.errores == []
+        nav.close()
+
+
+def test_galeria_admite_archivo_sin_extension_ni_tipo(fotos):
+    """Lo que entrega un selector de Android: sin extension y sin tipo MIME."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        _sin_camara(pg)
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        app.cargar_por_galeria([fotos["sin_nombre"]])
+
+        assert app.llenas == 1, app.mensaje
+        assert "no entraron" not in app.mensaje.lower()
+        assert app.errores == []
+        nav.close()
+
+
+def test_galeria_nombra_lo_que_no_puede_abrir(fotos):
+    """Nada desaparece en silencio: cada descarte se explica por su nombre."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav).new_page()
+        _sin_camara(pg)
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        app.cargar_por_galeria([fotos["frontal"], fotos["heic"], fotos["texto"],
+                                fotos["sin_nombre"]])
+
+        assert app.llenas == 2, app.mensaje
+        assert "2 de 4 fotos cargadas" in app.mensaje
+        assert "IMG_4021.HEIC" in app.mensaje
+        assert "HEIC" in app.mensaje
+        assert "notas.txt" in app.mensaje
+        assert app.errores == []
+        nav.close()
+
+
+def test_galeria_reduce_la_foto_grande(fotos, tmp_path):
+    """Una foto de 3024x4032 no puede viajar entera en el paquete."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        ctx = _contexto(nav, descargas=True)
+        pg = ctx.new_page()
+        _sin_camara(pg)
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        app.cargar_por_galeria([fotos["grande"]])
+        assert app.llenas == 1, app.mensaje
+
+        mostrada = pg.evaluate(
+            "() => { const i = document.querySelector('#d-grid .slot.lleno img');"
+            "        return {w: i.naturalWidth, h: i.naturalHeight}; }")
+        assert max(mostrada["w"], mostrada["h"]) == 1600
+
+        paquete = _guardar_paquete(pg, tmp_path)
+        with zipfile.ZipFile(paquete) as z:
+            nombre = [n for n in z.namelist() if n.startswith("fotos/")][0]
+            im = Image.open(io.BytesIO(z.read(nombre)))
+        assert max(im.size) == 1600
+        assert paquete.stat().st_size < fotos["grande"].stat().st_size / 2
+        assert app.errores == []
+        nav.close()
+
+
+def test_galeria_separa_nombres_repetidos(fotos, tmp_path):
+    """Dos fotos con el mismo nombre no pueden apuntar al mismo archivo."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, descargas=True).new_page()
+        _sin_camara(pg)
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        app.cargar_por_galeria([fotos["frontal"], fotos["repetida"]])
+        assert app.llenas == 2, app.mensaje
+
+        citados = [f["archivo"] for f in app.acta["registro_fotografico"]]
+        assert len(set(citados)) == 2, citados
+
+        with zipfile.ZipFile(_guardar_paquete(pg, tmp_path)) as z:
+            empaquetados = sorted(n for n in z.namelist() if n.startswith("fotos/"))
+        assert empaquetados == sorted(citados)
+        nav.close()
+
+
+def test_galeria_dice_algo_cuando_el_selector_no_devuelve_nada():
+    """Cancelar el selector no puede dejar la pantalla muda."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav).new_page()
+        _sin_camara(pg)
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        pg.evaluate("""() => {
+          const i = document.querySelector('#d-file');
+          i.dispatchEvent(new Event('change', {bubbles: true}));
+        }""")
+        pg.wait_for_timeout(400)
+
+        assert "no devolvió ningún archivo" in app.mensaje
+        assert app.errores == []
+        nav.close()
+
+
+def test_galeria_funciona_dentro_de_un_marco_con_sandbox(fotos, tmp_path):
+    """Publicada como pagina, la app va incrustada: el selector debe abrirse."""
+    marco = tmp_path / "marco.html"
+    marco.write_text(
+        '<!doctype html><meta charset="utf-8"><body style="margin:0">'
+        '<iframe style="width:390px;height:800px;border:0" '
+        'sandbox="allow-scripts allow-forms allow-popups allow-modals" '
+        f'src="{APP.as_uri()}"></iframe>', encoding="utf-8")
+
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav).new_page()
+        errores: list[str] = []
+        pg.on("pageerror", lambda e: errores.append(str(e)))
+        pg.goto(marco.as_uri())
+        pg.wait_for_timeout(800)
+        dentro = pg.frame_locator("iframe")
+
+        dentro.locator("#tab-despacho").click()
+        with pg.expect_file_chooser(timeout=10000) as fc:
+            dentro.locator("label[for='d-file']").click()
+        fc.value.set_files([str(fotos["frontal"]), str(fotos["posterior"])])
+        pg.wait_for_timeout(3000)
+
+        assert dentro.locator("#d-grid .slot.lleno").count() == 2
+        assert errores == []
+        nav.close()
+
+
+# ==========================================================================
+# CAMARA
+# ==========================================================================
+
+def test_camara_recorre_las_casillas_y_cada_foto_cae_en_la_suya():
+    """El disparo entra en la casilla que el panel anuncia, y avanza sola."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        pg.click("#d-camara-app")
+        pg.wait_for_function(
+            "() => { const v = document.querySelector('#cam-video');"
+            "        return v && v.videoWidth > 0; }", timeout=15000)
+
+        assert pg.is_visible("#camara")
+        assert pg.is_hidden("#cam-aviso")
+        assert pg.inner_text("#cam-rotulo") == "VISTA FRONTAL"
+
+        esperados = []
+        for _ in range(4):
+            esperados.append(pg.inner_text("#cam-rotulo"))
+            pg.click("#cam-disparar")
+            pg.wait_for_timeout(1200)
+
+        assert esperados == ["VISTA FRONTAL", "VISTA POSTERIOR",
+                             "VISTA LATERAL IZQUIERDA", "VISTA LATERAL DERECHA"]
+        assert pg.inner_text("#cam-rotulo") == "HORÓMETRO"
+        assert "quedan 6" in pg.inner_text("#cam-cuenta")
+
+        pg.click("#cam-cerrar")
+        pg.wait_for_timeout(300)
+        assert pg.is_hidden("#camara")
+
+        assert app.llenas == 4
+        # Cada foto queda nombrada por la vista que ocupa.
+        assert app.rotulos() == [
+            ("VISTA FRONTAL", "fotos/01-vista-frontal.jpg"),
+            ("VISTA POSTERIOR", "fotos/02-vista-posterior.jpg"),
+            ("VISTA LATERAL IZQUIERDA", "fotos/03-vista-lateral-izquierda.jpg"),
+            ("VISTA LATERAL DERECHA", "fotos/04-vista-lateral-derecha.jpg"),
+        ]
+        assert app.errores == []
+        nav.close()
+
+
+def test_camara_saltar_deja_la_casilla_vacia():
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        pg.click("#d-camara-app")
+        pg.wait_for_function("() => document.querySelector('#cam-video').videoWidth > 0",
+                             timeout=15000)
+        pg.click("#cam-saltar")
+        pg.wait_for_timeout(200)
+        assert pg.inner_text("#cam-rotulo") == "VISTA POSTERIOR"
+
+        pg.click("#cam-disparar")
+        pg.wait_for_timeout(1200)
+        pg.click("#cam-cerrar")
+        pg.wait_for_timeout(300)
+
+        assert app.rotulos() == [("VISTA POSTERIOR", "fotos/02-vista-posterior.jpg")]
+        assert app.errores == []
+        nav.close()
+
+
+def test_camara_desde_una_casilla_concreta():
+    """Tocar una casilla vacia fotografia solo para esa casilla."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        casillas = pg.query_selector_all("#d-grid .slot")
+        objetivo = casillas[4]                      # HORÓMETRO
+        rotulo = objetivo.query_selector(".cap span").inner_text()
+        objetivo.click()
+        pg.wait_for_function("() => document.querySelector('#cam-video').videoWidth > 0",
+                             timeout=15000)
+
+        assert pg.inner_text("#cam-rotulo") == rotulo == "HORÓMETRO"
+        assert "quedan 1" in pg.inner_text("#cam-cuenta")
+
+        pg.click("#cam-disparar")
+        pg.wait_for_timeout(1200)
+        pg.click("#cam-cerrar")
+        pg.wait_for_timeout(400)
+
+        assert app.rotulos() == [("HORÓMETRO", "fotos/05-horometro.jpg")]
+        assert app.errores == []
+        nav.close()
+
+
+def test_camara_denegada_ofrece_la_galeria_sin_perder_la_casilla(fotos):
+    """Si la camara no se concede, el operador sale por la galeria."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        pg.add_init_script("""
+          Object.defineProperty(navigator, 'mediaDevices', {configurable: true, value: {
+            getUserMedia: () => Promise.reject(
+              Object.assign(new Error('x'), {name: 'NotAllowedError'}))}});
+        """)
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        casillas = pg.query_selector_all("#d-grid .slot")
+        casillas[4].click()                          # HORÓMETRO
+        pg.wait_for_timeout(900)
+
+        assert pg.is_visible("#cam-aviso")
+        aviso = " ".join(pg.inner_text("#cam-aviso").split())
+        assert "bloqueada" in aviso
+        assert "Chrome" in aviso and "Safari" in aviso
+
+        with pg.expect_file_chooser(timeout=10000) as fc:
+            pg.click("#cam-galeria")
+        fc.value.set_files([str(fotos["frontal"])])
+        pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
+                             timeout=30000)
+        pg.wait_for_timeout(500)
+
+        assert pg.is_hidden("#camara")
+        # La foto va a la casilla que se habia tocado, no a la primera libre.
+        assert app.rotulos() == [("HORÓMETRO", "fotos/03-frontal.jpg")]
+
+        # Comprobado el fallo, la camara deja de interponerse.
+        assert pg.is_hidden("#d-camara-app")
+        vacias = pg.query_selector_all("#d-grid .slot:not(.lleno)")
+        with pg.expect_file_chooser(timeout=10000) as fc2:
+            vacias[0].click()
+        fc2.value.set_files([str(fotos["posterior"])])
+        pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
+                             timeout=30000)
+        assert pg.is_hidden("#camara")
+        assert app.errores == []
+        nav.close()
+
+
+def test_sin_camara_la_casilla_vacia_abre_el_selector(fotos):
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        _sin_camara(pg)
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        assert pg.is_hidden("#d-camara-app")
+        vacias = pg.query_selector_all("#d-grid .slot:not(.lleno)")
+        objetivo = vacias[2]
+        rotulo = objetivo.query_selector(".cap span").inner_text()
+        with pg.expect_file_chooser(timeout=10000) as fc:
+            objetivo.click()
+        fc.value.set_files([str(fotos["frontal"])])
+        pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
+                             timeout=30000)
+        pg.wait_for_timeout(400)
+
+        assert app.rotulos() == [(rotulo, "fotos/03-frontal.jpg")]
+        assert app.errores == []
+        nav.close()
+
+
+def test_camara_en_marco_con_sandbox_no_deja_al_operador_sin_salida(fotos, tmp_path):
+    """Incrustada y sin permiso de camara, la galeria tiene que seguir ahi."""
+    marco = tmp_path / "marco2.html"
+    marco.write_text(
+        '<!doctype html><meta charset="utf-8"><body style="margin:0">'
+        '<iframe style="width:390px;height:800px;border:0" '
+        'sandbox="allow-scripts allow-forms allow-popups allow-modals" '
+        f'src="{APP.as_uri()}"></iframe>', encoding="utf-8")
+
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        errores: list[str] = []
+        pg.on("pageerror", lambda e: errores.append(str(e)))
+        pg.goto(marco.as_uri())
+        pg.wait_for_timeout(800)
+        dentro = pg.frame_locator("iframe")
+        dentro.locator("#tab-despacho").click()
+        pg.wait_for_timeout(300)
+
+        # La galeria funciona aunque la camara no se conceda.
+        with pg.expect_file_chooser(timeout=10000) as fc:
+            dentro.locator("label[for='d-file']").click()
+        fc.value.set_files([str(fotos["frontal"])])
+        pg.wait_for_timeout(3000)
+        assert dentro.locator("#d-grid .slot.lleno").count() == 1
+        assert errores == []
+        nav.close()
+
+
+# ==========================================================================
+# DE LA CAMARA AL ACTA IMPRESA
+# ==========================================================================
+
+def _guardar_paquete(pg, destino: Path) -> Path:
+    pg.eval_on_selector("#d-datos", "e => e.open = true")
+    for campo, valor in (("#d-cliente", "MINERA EJEMPLO S.A.C."),
+                         ("#d-equipo", "GE-0142"), ("#d-modelo", "C90D5 / 90 kVA"),
+                         ("#d-horometro", "1548.7"),
+                         ("#d-resumen", "Equipo sale operativo; sin observaciones.")):
+        pg.fill(campo, valor)
+    pg.wait_for_timeout(300)
+    with pg.expect_download() as espera:
+        pg.click("#d-zip")
+    bajado = espera.value
+    ruta = destino / bajado.suggested_filename
+    bajado.save_as(ruta)
+    return ruta
+
+
+def test_de_la_camara_al_acta_valida(tmp_path):
+    """El paquete que sale de la camara pasa `nefer validar` y genera el acta."""
+    from nefer import build, schema
+
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True, descargas=True).new_page()
+        pg.goto(APP.as_uri())
+        app = App(pg).despacho()
+
+        pg.click("#d-camara-app")
+        pg.wait_for_function("() => document.querySelector('#cam-video').videoWidth > 0",
+                             timeout=15000)
+        for _ in range(3):
+            pg.click("#cam-disparar")
+            pg.wait_for_timeout(1200)
+        pg.click("#cam-cerrar")
+        pg.wait_for_timeout(400)
+        assert app.llenas == 3
+
+        paquete = _guardar_paquete(pg, tmp_path)
+        assert app.errores == []
+        nav.close()
+
+    carpeta = tmp_path / "abierto"
+    with zipfile.ZipFile(paquete) as z:
+        assert z.testzip() is None
+        z.extractall(carpeta)
+
+    manifiesto = json.loads((carpeta / "acta.json").read_text(encoding="utf-8"))
+    assert schema.validar(manifiesto, carpeta) == []
+
+    xlsx = carpeta / "ACTA.xlsx"
+    build.construir(manifiesto, xlsx, carpeta)
+    assert xlsx.exists() and xlsx.stat().st_size > 10_000
+
+    # Las tres fotos llegan incrustadas al Excel, cada una bajo su rotulo.
+    with zipfile.ZipFile(xlsx) as z:
+        medios = [n for n in z.namelist() if n.startswith("xl/media/")]
+    assert len(medios) == 3, medios

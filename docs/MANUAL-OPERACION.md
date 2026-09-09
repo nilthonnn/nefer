@@ -72,6 +72,21 @@ python -m pytest
 Debe terminar con **64 passed**. Si falla, no siga: el problema es del entorno,
 no de sus datos.
 
+Para comprobar además la aplicación de campo —la carga por galería y la
+cámara— contra un navegador de verdad:
+
+```bash
+pip install -e ".[navegador]"
+python -m playwright install chromium
+python -m pytest                       # ahora son 81
+```
+
+Las **17 pruebas** de `tests/test_app_navegador.py` abren el selector de
+archivos real, disparan una cámara simulada y comprueban que cada foto cae en
+su casilla, que lo que no se puede abrir se nombra con su motivo y que el
+paquete resultante genera el acta. Sin Playwright instalado se saltan solas y
+la suite sigue en 64.
+
 ```bash
 nefer --version        # nefer 1.0.0
 ```
