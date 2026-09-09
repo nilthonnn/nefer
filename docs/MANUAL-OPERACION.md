@@ -94,7 +94,7 @@ cámara— contra un navegador de verdad:
 ```bash
 pip install -e ".[navegador]"
 python -m playwright install chromium
-python -m pytest                       # ahora son 109
+python -m pytest                       # ahora son 111
 ```
 
 Las **27 pruebas** de `tests/test_app_navegador.py` abren el selector de
@@ -469,6 +469,12 @@ teléfono.
 las fotos del retorno. Así cada foto de salida aparece al lado de la de vuelta.
 Si el despacho se levantó en ese mismo teléfono, basta pulsar *usar el acta de
 la pestaña Despacho*.
+
+La sección **Vistas del equipo** es una rejilla con **una casilla por cada
+vista del formato**, la misma que en despacho. En la esquina de cada casilla va
+la foto de salida en miniatura, para saber qué hay que encuadrar. Las
+observaciones viven en un panel plegable aparte, una por vista: en la rejilla
+no caben y sólo hacen falta cuando hay algo que decir.
 
 Las fotos del retorno entran **por las mismas vías que en despacho** —cámara
 integrada, cámara del sistema, galería y carpeta—, en una barra con la misma

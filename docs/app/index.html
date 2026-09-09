@@ -293,7 +293,9 @@
        cabecera y devuelve la pantalla a la rejilla, que es el trabajo. */
     #v-despacho .bandeja.compacta .panel-body { padding:.3rem .55rem .45rem; }
     #v-despacho .bandeja.compacta .vacia { display:none; }
-    #v-despacho .bandeja.compacta .reducir { margin-top:0; min-height:38px; }
+    /* Compacta se gana espacio en la cabecera, no en el objetivo táctil: la
+       fila sigue midiendo 44 px, que es lo que se pulsa con guantes. */
+    #v-despacho .bandeja.compacta .reducir { margin-top:0; }
   }
 
   #v-despacho .drop { border:2px dashed var(--rule); border-radius:6px;
@@ -385,6 +387,10 @@
   #v-recepcion .bandeja .tally { font-family:var(--mono); font-size:.68rem;
                                  font-weight:400; color:var(--ink-3); text-transform:none; }
   #v-recepcion .tira { display:flex; gap:.35rem; overflow-x:auto; padding-bottom:.2rem; }
+  #v-recepcion .bandeja.compacta { padding:.35rem .6rem; }
+  #v-recepcion .bandeja.compacta h2 { margin:0; }
+  #v-recepcion .bandeja.compacta .tira,
+  #v-recepcion .bandeja.compacta #r-pista { display:none; }
   #v-recepcion .tile { position:relative; flex:0 0 4.2rem; aspect-ratio:4/3;
                        border:1px solid var(--rule); border-radius:4px; overflow:hidden;
                        background:var(--card-2); padding:0; cursor:pointer; }
@@ -424,6 +430,19 @@
   .marco .vacio { font-family:var(--mono); font-size:.58rem; color:var(--ink-3);
                   padding:.35rem; text-align:center; white-space:pre-line;
                   line-height:1.35; }
+  /* La foto de salida, en pequeño, sobre la casilla: dice qué hay que
+     encuadrar sin robarle sitio a la del retorno. */
+  .slot { position:relative; }
+  .slot .antes { position:absolute; top:.25rem; left:.25rem; width:34%;
+                 max-width:64px; border:1.5px solid var(--card);
+                 border-radius:3px; overflow:hidden; line-height:0;
+                 box-shadow:0 1px 4px rgba(0,0,0,.45); }
+  .slot .antes::after { content:"antes"; position:absolute; left:0; right:0; bottom:0;
+                        background:rgba(0,0,0,.62); color:#fff;
+                        font-family:var(--mono); font-size:.45rem; text-align:center;
+                        line-height:1.5; }
+  .slot .antes img { width:100%; display:block; aspect-ratio:4/3; object-fit:cover; }
+
   label.marco { cursor:pointer; }
   label.marco:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .marco.fija { cursor:default; }
@@ -747,7 +766,7 @@
           <h2>Fotos del retorno sin usar <span class="tally" id="r-t-tira">0</span></h2>
           <div class="tira" id="r-tira"></div>
           <p class="lb" id="r-pista" style="margin:.35rem 0 0">
-            Toque una foto y luego el recuadro «DESPUÉS» donde va.
+            Toque una foto y luego la casilla de su vista.
           </p>
         </div>
 
@@ -780,8 +799,14 @@
 
         <section class="seccion">
           <h2>Vistas del equipo <span class="tally" id="r-t-vistas">0 / 0</span></h2>
-          <p>La foto de salida ya está. Ponga al lado la del retorno, con la misma toma.</p>
-          <div id="r-vistas"></div>
+          <p>Una casilla por cada vista del formato. Toque la vacía y fotografíe;
+             la miniatura de la esquina es cómo salió el equipo.</p>
+          <div class="grid" id="r-vistas"></div>
+
+          <details class="panel plegable" id="r-obs" style="margin-top:.7rem">
+            <summary>Observaciones por vista <span class="tally" id="r-t-obs"></span></summary>
+            <div class="panel-body"><div id="r-obs-lista"></div></div>
+          </details>
         </section>
 
         <section class="seccion">
@@ -2810,7 +2835,13 @@ var NEFER = (function () {
     var t = e.target.closest("label[data-destino]");
     if (!t) return;
     e.preventDefault();
-    objetivo = { clase: t.dataset.destino, i: +t.dataset.i };
+    var clase = t.dataset.destino, i = +t.dataset.i;
+    objetivo = { clase: clase, i: i };
+    if (NEFER.camara.hay()) {
+      var col = { vistas: vistas, cons: cons, insp: insp }[clase];
+      abrirCamaraEn(clase, i, (col[i] || {}).rotulo || "");
+      return;
+    }
     $("#r-slot").click();
   });
 
@@ -3016,6 +3047,30 @@ var NEFER = (function () {
            : '<span class="vacio">' + esc(textoVacio) + '</span>') + '</button>';
   }
 
+  /* Una casilla de la rejilla del retorno. Misma figura que la del despacho:
+     llena se toca para vaciarla, vacía es la etiqueta del selector. En la
+     esquina va la foto de salida en pequeño, para saber qué hay que encuadrar. */
+  function casillaVista(v, i) {
+    var url = v.fotoId ? porId(v.fotoId).url : null;
+    var antes = urlAntes(v.archivo_despacho);
+    var attrs = 'data-destino="vistas" data-i="' + i + '"';
+    var cuerpo =
+      (url ? '<img alt="" src="' + url + '">'
+           : '<span class="ph">' + PISTA_VACIA + '</span>') +
+      (antes ? '<span class="antes"><img alt="Foto de despacho de ' + esc(v.rotulo) +
+               '" src="' + antes + '"></span>' : "") +
+      '<span class="cap"><span>' + esc(v.rotulo) + '</span>' +
+      '<span class="num">' + (i + 1) + '</span></span>';
+
+    if (url) {
+      return '<button type="button" class="slot lleno" ' + attrs +
+        ' aria-label="' + esc(v.rotulo) + ', con foto de retorno">' + cuerpo + '</button>';
+    }
+    return '<label class="slot" for="r-slot" role="button" tabindex="0" ' + attrs +
+      ' aria-label="' + esc(v.rotulo) + ', sin foto de retorno, tocar para añadir">' +
+      cuerpo + '</label>';
+  }
+
   // Lleno se toca para vaciarlo; vacío es la etiqueta del selector de fotos,
   // como la casilla vacía del despacho. La activación nativa de la etiqueta es
   // la que ningún navegador bloquea.
@@ -3070,14 +3125,24 @@ var NEFER = (function () {
         '<img alt="" src="' + f.url + '"><span class="fn">' + esc(f.nombre) + '</span></button>';
     }).join("");
     $("#r-t-tira").textContent = libres.length;
+    $("#r-tira").closest(".bandeja").classList.toggle("compacta", !libres.length);
 
     $("#r-vistas").innerHTML = vistas.map(function (v, i) {
-      var extra = '<div class="obs-campo"><input type="text" data-obs="vistas" data-i="' +
-        i + '" placeholder="observación (opcional)" value="' + esc(v.observacion) +
-        '" aria-label="Observación de ' + esc(v.rotulo) + '"></div>';
-      return filaPar("vistas", i, v.rotulo, urlAntes(v.archivo_despacho),
-                     v.fotoId ? porId(v.fotoId).url : null, extra);
+      return casillaVista(v, i);
     }).join("");
+
+    // Las observaciones van aparte: en la rejilla no caben, y sólo hacen falta
+    // cuando hay algo que decir.
+    $("#r-obs-lista").innerHTML = vistas.map(function (v, i) {
+      return '<label class="campo" style="margin-bottom:.45rem">' +
+        '<span class="lb">' + esc(v.rotulo) + '</span>' +
+        '<input type="text" data-obs="vistas" data-i="' + i +
+        '" placeholder="observación (opcional)" value="' + esc(v.observacion) +
+        '" aria-label="Observación de ' + esc(v.rotulo) + '"></label>';
+    }).join("");
+    var conObs = vistas.filter(function (v) { return v.observacion.trim(); }).length;
+    $("#r-t-obs").textContent = conObs ? conObs + " escrita(s)" : "ninguna";
+    $("#r-t-obs").classList.toggle("ok", conObs > 0);
     $("#r-t-vistas").textContent =
       vistas.filter(function (v) { return v.fotoId; }).length + " / " + vistas.length;
 

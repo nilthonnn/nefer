@@ -987,11 +987,11 @@ def test_en_recepcion_el_recuadro_vacio_abre_la_camara_de_esa_vista(servidor):
         pg.wait_for_timeout(600)
         _empezar_recepcion(pg, "torre_iluminacion")
 
-        marco = pg.query_selector("#r-vistas .par:first-child [data-destino='vistas']")
-        assert pg.evaluate("n => n.tagName", marco) == "LABEL"
-        rotulo = pg.eval_on_selector("#r-vistas .par:first-child h3", "n => n.textContent")
+        casilla = pg.query_selector("#r-vistas .slot")
+        assert pg.evaluate("n => n.tagName", casilla) == "LABEL"
+        rotulo = pg.eval_on_selector("#r-vistas .slot .cap span", "n => n.textContent")
 
-        marco.click()
+        casilla.click()
         pg.wait_for_function(
             "() => document.querySelector('#cam-video').videoWidth > 0", timeout=15000)
         assert pg.inner_text("#cam-rotulo") == rotulo
@@ -1018,11 +1018,12 @@ def test_en_recepcion_sin_camara_el_recuadro_abre_el_selector(fotos):
         _empezar_recepcion(pg)
 
         assert pg.is_hidden("#r-camara-app")
-        marco = pg.query_selector("#r-vistas .par:nth-child(3) [data-destino='vistas']")
-        rotulo = pg.eval_on_selector("#r-vistas .par:nth-child(3) h3", "n => n.textContent")
+        casillas = pg.query_selector_all("#r-vistas .slot")
+        casilla = casillas[2]
+        rotulo = casilla.query_selector(".cap span").inner_text()
 
         with pg.expect_file_chooser(timeout=10000) as fc:
-            marco.click()
+            casilla.click()
         fc.value.set_files([str(fotos["frontal"])])
         pg.wait_for_timeout(4000)
 
@@ -1030,4 +1031,58 @@ def test_en_recepcion_sin_camara_el_recuadro_abre_el_selector(fotos):
         conFoto = [f for f in acta["registro_fotografico"] if f.get("archivo")]
         assert len(conFoto) == 1, acta["registro_fotografico"]
         assert conFoto[0]["descripcion"] == rotulo
+        nav.close()
+
+def test_recepcion_muestra_una_casilla_por_cada_vista_del_formato(servidor):
+    """La plantilla tiene tantas ventanas como vistas: la app tambien."""
+    from nefer import layout
+
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        pg.wait_for_timeout(600)
+
+        for familia, vistas in layout.VISTAS_POR_CATEGORIA.items():
+            pg.click("#tab-recepcion")
+            pg.wait_for_timeout(150)
+            pg.select_option("#r-cat", familia)
+            pg.click("#r-empezar")
+            pg.wait_for_timeout(500)
+
+            rotulos = pg.eval_on_selector_all(
+                "#r-vistas .slot .cap span:first-child",
+                "n => n.map(x => x.textContent)")
+            assert rotulos == vistas, (familia, rotulos)
+            # Y un campo de observacion por vista, fuera de la rejilla.
+            assert pg.eval_on_selector_all("#r-obs-lista input", "n => n.length") == \
+                len(vistas), familia
+        nav.close()
+
+
+def test_la_casilla_llena_de_recepcion_se_vacia_al_tocarla(servidor):
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        pg.wait_for_timeout(600)
+        _empezar_recepcion(pg, "generico")
+
+        pg.query_selector("#r-vistas .slot").click()
+        pg.wait_for_function(
+            "() => document.querySelector('#cam-video').videoWidth > 0", timeout=15000)
+        pg.click("#cam-disparar")
+        pg.wait_for_timeout(1300)
+        pg.click("#cam-cerrar")
+        pg.wait_for_timeout(500)
+        assert pg.eval_on_selector_all("#r-vistas .slot.lleno", "n => n.length") == 1
+
+        # Llena vuelve a ser un boton, y tocarlo la vacia.
+        llena = pg.query_selector("#r-vistas .slot.lleno")
+        assert pg.evaluate("n => n.tagName", llena) == "BUTTON"
+        llena.click()
+        pg.wait_for_timeout(400)
+        assert pg.eval_on_selector_all("#r-vistas .slot.lleno", "n => n.length") == 0
+        # Y la foto vuelve a la bandeja, no se pierde.
+        assert int(pg.inner_text("#r-t-tira")) == 1
         nav.close()

@@ -271,7 +271,7 @@ def recepcion(tmp_path_factory):
 
         for k in range(10):
             pg.click("#r-tira .tile:first-child")
-            pg.click(f"#r-vistas .par:nth-child({k + 1}) [data-destino='vistas']")
+            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
             pg.wait_for_timeout(60)
 
         pg.click("#r-consumibles .par:first-child .estados button[data-e='NO_RETORNA']")
@@ -404,7 +404,7 @@ def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
         pg.wait_for_timeout(2500)
         for k in range(6):
             pg.click("#r-tira .tile:first-child")
-            pg.click(f"#r-vistas .par:nth-child({k + 1}) [data-destino='vistas']")
+            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
             pg.wait_for_timeout(60)
 
         pg.fill("#r-acta", "004-001157")
@@ -506,7 +506,7 @@ def test_la_recepcion_arranca_sin_acta_de_despacho(tmp_path):
         pg.click("#r-empezar")
         pg.wait_for_timeout(600)
 
-        rotulos = pg.eval_on_selector_all("#r-vistas .par-top h3",
+        rotulos = pg.eval_on_selector_all("#r-vistas .slot .cap span:first-child",
                                           "n => n.map(x => x.textContent)")
         assert rotulos == layout.VISTAS_POR_CATEGORIA["compresor"], rotulos
 
@@ -526,7 +526,7 @@ def test_la_recepcion_arranca_sin_acta_de_despacho(tmp_path):
         pg.wait_for_timeout(3000)
         for k in range(9):
             pg.click("#r-tira .tile:first-child")
-            pg.click(f"#r-vistas .par:nth-child({k + 1}) [data-destino='vistas']")
+            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
             pg.wait_for_timeout(60)
 
         # Un accesorio del catalogo, no retornado: genera recuperacion.
