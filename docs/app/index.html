@@ -496,11 +496,15 @@
                                          text-transform:none; }
   .obs-recuperacion.sin-recuperacion { background:var(--card); }
   .obs-recuperacion.sin-recuperacion input { color:var(--ink-3); font-weight:400; }
-  .obs-cabecera { display:grid; grid-template-columns:1fr 4.5rem auto; gap:.4rem;
+  .obs-cabecera { display:grid; grid-template-columns:1fr 4.5rem auto auto; gap:.4rem;
                   align-items:center; }
+  .devuelve { display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem;
+              color:var(--ink-3); white-space:nowrap; }
+  .devuelve .cantidad { width:3.4rem; }
   @media (max-width:30rem) {
     .obs-cabecera { grid-template-columns:1fr auto; }
-    .obs-cabecera .cantidad { grid-column:1; }
+    .obs-cabecera > .cantidad { grid-column:1; }
+    .devuelve { grid-column:2; justify-self:end; }
   }
 
   /* ---------- INICIO y GUÍA ---------- */
@@ -3187,32 +3191,41 @@ var NEFER = (function () {
        └───────────────────────────────┘                                     */
   // Qué número le toca a este accesorio dentro de su serie. El primero que
   // falte es la RECUPERACIÓN N° 1, el siguiente la N° 2, y así.
-  function numeroDeSerie(indice) {
-    var recupera = ["NO_RETORNA", "D", "OBS"].indexOf(cons[indice].estado) !== -1;
-    var n = 0;
-    for (var k = 0; k <= indice; k++) {
-      var esa = ["NO_RETORNA", "D", "OBS"].indexOf(cons[k].estado) !== -1;
-      if (esa === recupera) n++;
-    }
-    return n;
+  // El accesorio tal como viaja en el acta: en pantalla el estado se llama
+  // `estado` y en el acta `estado_recepcion`.
+  function comoEnActa(c) {
+    return { descripcion: c.descripcion, cantidad: c.cantidad || 1,
+             cantidad_retorna: c.cantidad_retorna, estado_recepcion: c.estado };
   }
 
-  function bloqueObservacion(c, i) {
+  // Las franjas de cierre de todos los accesorios, numeradas cada una dentro
+  // de su propia serie: el primero que falte es la RECUPERACIÓN N° 1 y el
+  // primero que vuelva entero el CONFORME N° 1.
+  function franjasDeCierre() {
+    var E = window.ENTREGABLE, salida = [], nRec = 0, nConf = 0;
+    cons.forEach(function (c, i) {
+      var cierres = E ? E.cierresConsumible(comoEnActa(c), "RECEPCION") : [];
+      salida[i] = cierres.map(function (cierre, k) {
+        var numero = cierre.recupera ? ++nRec : ++nConf;
+        return { recupera: cierre.recupera,
+                 texto: E.textoCierre(comoEnActa(c), cierre, numero, k) };
+      });
+      if (!salida[i].length) salida[i] = [{ recupera: false, texto: "" }];
+    });
+    return salida;
+  }
+
+  function bloqueObservacion(c, i, franjas) {
     var tipo = "RECEPCION";
     var auto = window.ENTREGABLE || null;
-    // El redactor trabaja sobre el consumible tal como va en el acta, donde el
-    // estado se llama estado_recepcion. En pantalla se llama estado, así que
-    // hay que presentárselo con la forma que espera.
-    var comoEnActa = { descripcion: c.descripcion, cantidad: c.cantidad || 1,
-                       estado_recepcion: c.estado };
+    var enActa = comoEnActa(c);
     var textoIzq = c.texto_despacho ||
-      (auto ? auto.textoConsumible(comoEnActa, "DESPACHO", tipo) : c.descripcion);
+      (auto ? auto.textoConsumible(enActa, "DESPACHO", tipo) : c.descripcion);
     var textoDer = c.texto_recepcion ||
-      (auto ? auto.textoConsumible(comoEnActa, "RECEPCIÓN", tipo) : "");
-    var hayRecuperacion = ["NO_RETORNA", "D", "OBS"].indexOf(c.estado) !== -1;
-    var recuperacion = c.recuperacion !== undefined && c.recuperacion !== null
-      ? c.recuperacion
-      : (auto ? auto.textoRecuperacion(comoEnActa, numeroDeSerie(i), tipo) : "");
+      (auto ? auto.textoConsumible(enActa, "RECEPCIÓN", tipo) : "");
+    var cierres = (franjas && franjas[i]) || [{ recupera: false, texto: "" }];
+    var reparto = auto ? auto.repartoConsumible(enActa)
+                       : { retorna: c.cantidad || 1, falta: 0 };
 
     function celda(url, clase, etiqueta) {
       var attrs = 'data-destino="' + clase + '" data-i="' + i +
@@ -3233,7 +3246,13 @@ var NEFER = (function () {
             'aria-label="Nombre del accesorio ' + (i + 1) + '">'
           : '<b style="font-size:.9rem">' + esc(c.descripcion) + '</b>') +
         '<input class="cantidad" type="number" min="1" step="1" data-cons-cant="' + i +
-          '" value="' + (c.cantidad || 1) + '" aria-label="Cantidad">' +
+          '" value="' + (c.cantidad || 1) + '" aria-label="Cantidad despachada">' +
+        // Cuántas volvieron. Con menos de las que salieron, el bloque cierra
+        // con dos franjas en vez de una.
+        '<span class="devuelve">vuelven' +
+          '<input class="cantidad" type="number" min="0" step="1" data-cons-vuelve="' +
+          i + '" value="' + reparto.retorna + '" aria-label="Cantidad que retornó">' +
+        '</span>' +
         (c.nuevo
           ? '<button type="button" class="ghost" data-cons-quitar="' + i + '">quitar</button>'
           : '<span class="idx">' + (i + 1) + '</span>') +
@@ -3252,13 +3271,20 @@ var NEFER = (function () {
           '<input type="text" data-cons-tder="' + i + '" value="' + esc(textoDer) +
             '" aria-label="Texto de la recepción, accesorio ' + (i + 1) + '">' +
         '</div>' +
-        '<div class="obs-recuperacion' + (hayRecuperacion ? "" : " sin-recuperacion") + '">' +
-          '<input type="text" data-cons-recup="' + i + '" value="' + esc(recuperacion) +
-          '" placeholder="' + (hayRecuperacion
-              ? "descripción de la recuperación"
-              : "sin recuperación") +
-          '" aria-label="Recuperación del accesorio ' + (i + 1) + '">' +
-        '</div>' +
+        // Una franja por cada hecho que se declara. Un accesorio que vuelve
+        // en parte lleva dos: la recuperación de lo que falta y el conforme
+        // de lo que volvió.
+        cierres.map(function (cierre, k) {
+          var manual = (c.recuperaciones || [])[k];
+          var valor = manual !== undefined && manual !== null ? manual : cierre.texto;
+          return '<div class="obs-recuperacion' +
+            (cierre.recupera ? "" : " sin-recuperacion") + '">' +
+            '<input type="text" data-cons-recup="' + i + '" data-banda="' + k +
+            '" value="' + esc(valor) + '" placeholder="' +
+            (cierre.recupera ? "descripción de la recuperación" : "sin recuperación") +
+            '" aria-label="Cierre ' + (k + 1) + ' del accesorio ' + (i + 1) + '">' +
+          '</div>';
+        }).join("") +
       '</div>' +
     '</div>';
   }
@@ -3304,8 +3330,9 @@ var NEFER = (function () {
     $("#r-t-vistas").textContent =
       vistas.filter(function (v) { return v.fotoId; }).length + " / " + vistas.length;
 
+    var franjas = franjasDeCierre();
     $("#r-consumibles").innerHTML = cons.map(function (c, i) {
-      return bloqueObservacion(c, i);
+      return bloqueObservacion(c, i, franjas);
     }).join("") ||
       '<p class="lb">Sin accesorios. Añada los que salieron con el equipo.</p>';
     $("#r-t-cons").textContent =
@@ -3374,28 +3401,42 @@ var NEFER = (function () {
       registro.push(f);
     });
 
+    var franjas = franjasDeCierre();
     var consumibles = cons.filter(function (c) { return c.estado; }).map(function (c) {
       var o = { descripcion: c.descripcion, cantidad: c.cantidad || 1,
                 estado_recepcion: c.estado };
+      var enActa = comoEnActa(c);
+      var reparto = window.ENTREGABLE
+        ? window.ENTREGABLE.repartoConsumible(enActa) : null;
+      // Sólo se declara el retorno parcial: en todo o nada, el acta lo deduce
+      // del estado y no hace falta un campo que pueda contradecirlo.
+      if (reparto && reparto.falta && reparto.retorna) {
+        o.cantidad_retorna = reparto.retorna;
+      }
       // Sólo viaja lo escrito a mano; si no, el acta lo redacta sola y las dos
       // implementaciones no pueden discrepar.
       var E = window.ENTREGABLE;
-      var comoEnActa = { descripcion: c.descripcion, cantidad: c.cantidad || 1,
-                         estado_recepcion: c.estado };
       if (E) {
-        var autoRec = E.textoRecuperacion(comoEnActa, numeroDeSerie(cons.indexOf(c)),
-                                          "RECEPCION");
-        if (c.recuperacion && c.recuperacion !== autoRec) o.recuperacion = c.recuperacion;
-        var autoIzq = E.textoConsumible(comoEnActa, "DESPACHO", "RECEPCION");
+        var auto = (franjas[cons.indexOf(c)] || []).map(function (f) { return f.texto; });
+        var manuales = (c.recuperaciones || []).map(function (v, k) {
+          return (v !== undefined && v !== null && v !== auto[k]) ? v : "";
+        });
+        while (manuales.length && !manuales[manuales.length - 1]) manuales.pop();
+        // Con una sola franja escrita a mano viaja `recuperacion`, como
+        // siempre: un acta de una sola línea no tiene por qué cambiar de
+        // forma porque ahora existan las de dos.
+        if (manuales.length === 1) o.recuperacion = manuales[0];
+        else if (manuales.length) o.recuperaciones = manuales;
+        var autoIzq = E.textoConsumible(enActa, "DESPACHO", "RECEPCION");
         if (c.texto_despacho && c.texto_despacho !== autoIzq) {
           o.texto_despacho = c.texto_despacho;
         }
-        var autoDer = E.textoConsumible(comoEnActa, "RECEPCIÓN", "RECEPCION");
+        var autoDer = E.textoConsumible(enActa, "RECEPCIÓN", "RECEPCION");
         if (c.texto_recepcion && c.texto_recepcion !== autoDer) {
           o.texto_recepcion = c.texto_recepcion;
         }
-      } else if (c.recuperacion) {
-        o.recuperacion = c.recuperacion;
+      } else if (c.recuperaciones) {
+        o.recuperaciones = c.recuperaciones;
       }
       var previa = rutaAntes(c.foto_despacho);
       if (previa) o.foto_despacho = previa;
@@ -3529,14 +3570,33 @@ var NEFER = (function () {
     if (acc) { cons[+acc.dataset.consNombre].descripcion = e.target.value; pintar(); return; }
     var cant = e.target.closest("[data-cons-cant]");
     if (cant) {
-      cons[+cant.dataset.consCant].cantidad = Math.max(1, parseInt(e.target.value, 10) || 1);
+      var cc = cons[+cant.dataset.consCant];
+      cc.cantidad = Math.max(1, parseInt(e.target.value, 10) || 1);
+      // No pueden volver más de las que salieron.
+      if (cc.cantidad_retorna !== undefined && cc.cantidad_retorna !== null) {
+        cc.cantidad_retorna = Math.min(cc.cantidad_retorna, cc.cantidad);
+      }
       pintar();
       return;
     }
-    // La franja amarilla se puede reescribir: la redacción automática es un
-    // punto de partida, no la última palabra del que firma.
+    var vuelve = e.target.closest("[data-cons-vuelve]");
+    if (vuelve) {
+      var cv = cons[+vuelve.dataset.consVuelve];
+      var tope = Math.max(1, cv.cantidad || 1);
+      cv.cantidad_retorna = Math.max(0, Math.min(tope, parseInt(e.target.value, 10) || 0));
+      pintar();
+      return;
+    }
+    // Las franjas se pueden reescribir: la redacción automática es un punto de
+    // partida, no la última palabra del que firma.
     var rec = e.target.closest("[data-cons-recup]");
-    if (rec) { cons[+rec.dataset.consRecup].recuperacion = e.target.value; pintarSalida(); return; }
+    if (rec) {
+      var cr = cons[+rec.dataset.consRecup];
+      cr.recuperaciones = cr.recuperaciones || [];
+      cr.recuperaciones[+rec.dataset.banda] = e.target.value;
+      pintarSalida();
+      return;
+    }
     // Los rótulos también: lo que falta o el daño se describe con las palabras
     // del que firma, no con las que la app supone.
     var tizq = e.target.closest("[data-cons-tizq]");
@@ -3741,8 +3801,6 @@ var ENTREGABLE = (function () {
 
   // Copiado de nefer/layout.py y nefer/build.py. Si cambia allí, cambia aquí.
   var NUMEROS = {
-    BLOQUES_FOTO_POR_PAGINA: 3,
-    BLOQUES_CONSUMIBLE_POR_PAGINA: 3,
     CODIGO_FORMATO: "FO-DR-001",
     VERSION_FORMATO: "00",
     TITULO_COMPARATIVO: "COMPARATIVO DESPACHO / RECEPCIÓN",
@@ -3905,23 +3963,64 @@ var ENTREGABLE = (function () {
     // falso.
     if (tipo === "DESPACHO") return "";
     var estado = cons.estado_recepcion;
+    var sufijo = estado === "D" ? " DAÑADO(A)" : (estado === "OBS" ? " OBSERVADO(A)" : "");
+    var r = repartoConsumible(cons);
+    // Retorno parcial: la celda dice cuántas de cuántas volvieron. Decir sólo
+    // «retornó sin» o sólo «retornó con» sería falso en los dos sentidos.
+    if (r.falta && r.retorna) {
+      return "EL EQUIPO RETORNÓ CON " + dosDigitos(r.retorna) + " DE " + cant +
+             " " + desc + sufijo;
+    }
     if (estado === "NO_RETORNA") return "EL EQUIPO RETORNÓ SIN " + cant + " " + desc;
-    if (estado === "D") return "EL EQUIPO RETORNÓ CON " + cant + " " + desc + " DAÑADO(A)";
-    if (estado === "OBS") return "EL EQUIPO RETORNÓ CON " + cant + " " + desc + " OBSERVADO(A)";
-    return "EL EQUIPO RETORNÓ CON " + cant + " " + desc;
+    return "EL EQUIPO RETORNÓ CON " + cant + " " + desc + sufijo;
   }
 
-  function textoRecuperacion(cons, numero, tipo) {
-    if (tipo === "DESPACHO") return "";
-    if (cons.recuperacion) return cons.recuperacion;
-    var cant = dosDigitos(cons.cantidad), desc = (cons.descripcion || "").trim();
+  /* Un accesorio puede volver en parte: salieron dos conos y vuelve uno. Eso
+     son dos hechos —uno se cobra y el otro se da por conforme— y el bloque
+     cierra con una franja para cada uno. `cantidad_retorna` es opcional: un
+     acta que no la declara se lee como antes, todo o nada. */
+  function repartoConsumible(cons) {
+    var cantidad = Math.max(1, parseInt(cons.cantidad, 10) || 1), retorna;
+    if (cons.cantidad_retorna === undefined || cons.cantidad_retorna === null) {
+      retorna = cons.estado_recepcion === "NO_RETORNA" ? 0 : cantidad;
+    } else {
+      retorna = parseInt(cons.cantidad_retorna, 10) || 0;
+    }
+    retorna = Math.max(0, Math.min(cantidad, retorna));
+    return { retorna: retorna, falta: cantidad - retorna, cantidad: cantidad };
+  }
+
+  function cierresConsumible(cons, tipo) {
+    if (tipo === "DESPACHO") return [];
+    var r = repartoConsumible(cons);
+    var danado = ["D", "OBS"].indexOf(cons.estado_recepcion) !== -1;
+    var cierres = [];
+    if (r.falta) cierres.push({ recupera: true, cantidad: r.falta });
+    if (r.retorna) cierres.push({ recupera: danado, cantidad: r.retorna });
+    return cierres;
+  }
+
+  function leyendasManuales(cons) {
+    if (cons.recuperaciones) return cons.recuperaciones;
+    return cons.recuperacion ? [cons.recuperacion] : [];
+  }
+
+  function textoCierre(cons, cierre, numero, indice) {
+    var manual = leyendasManuales(cons);
+    var k = indice || 0;
+    if (k < manual.length && String(manual[k]).trim()) return manual[k];
+    var cant = dosDigitos(cierre.cantidad), desc = (cons.descripcion || "").trim();
     // El número es el ordinal dentro de su propia serie, no el del bloque: si
     // el primer accesorio vuelve conforme, el segundo que falte es la
     // RECUPERACIÓN N° 1. Lo lleva quien llama.
-    if (["NO_RETORNA", "D", "OBS"].indexOf(cons.estado_recepcion) !== -1) {
-      return "RECUPERACIÓN N° " + numero + " : " + cant + " " + desc;
-    }
+    if (cierre.recupera) return "RECUPERACIÓN N° " + numero + " : " + cant + " " + desc;
     return "CONFORME N° " + numero + " : " + cant + " " + desc + " — SIN RECUPERACIÓN";
+  }
+
+  function textoRecuperacion(cons, numero, tipo) {
+    var cierres = cierresConsumible(cons, tipo);
+    if (!cierres.length) return "";
+    return textoCierre(cons, cierres[0], numero, 0);
   }
 
   function modelo(acta) {
@@ -3935,8 +4034,11 @@ var ENTREGABLE = (function () {
 
     var nRecuperacion = 0, nConforme = 0;
     var consumibles = (acta.consumibles || []).map(function (c) {
-      var recupera = ["NO_RETORNA", "D", "OBS"].indexOf(c.estado_recepcion) !== -1;
-      var numero = recupera ? ++nRecuperacion : ++nConforme;
+      var bandas = cierresConsumible(c, tipo).map(function (cierre, k) {
+        var numero = cierre.recupera ? ++nRecuperacion : ++nConforme;
+        return textoCierre(c, cierre, numero, k);
+      });
+      if (!bandas.length) bandas = [""];
       return {
         rotulo: (c.descripcion || ""),
         cabeceraIzq: "DESPACHO", cabeceraDer: "RECEPCIÓN",
@@ -3944,7 +4046,7 @@ var ENTREGABLE = (function () {
         fotoDer: c.foto_recepcion || null,
         textoIzq: c.texto_despacho || textoConsumible(c, "DESPACHO", tipo),
         textoDer: c.texto_recepcion || textoConsumible(c, "RECEPCIÓN", tipo),
-        banda: c.recuperacion || textoRecuperacion(c, numero, tipo),
+        bandas: bandas,
         bandaAmarilla: true
       };
     });
@@ -3959,7 +4061,7 @@ var ENTREGABLE = (function () {
           rotulo: r, cabeceraIzq: "DESPACHO", cabeceraDer: "RECEPCIÓN",
           fotoIzq: f.archivo_despacho, fotoDer: f.archivo || null,
           textoIzq: "ANTES · " + r, textoDer: "DESPUÉS · " + r,
-          banda: f.observacion || "", bandaAmarilla: false
+          bandas: [f.observacion || ""], bandaAmarilla: false
         };
       });
 
@@ -3974,7 +4076,7 @@ var ENTREGABLE = (function () {
           rotulo: n, cabeceraIzq: "DESPACHO", cabeceraDer: "RECEPCIÓN",
           fotoIzq: i.foto_despacho || null, fotoDer: i.foto_recepcion || null,
           textoIzq: "ANTES · " + n, textoDer: "DESPUÉS · " + n + " — " + etiqueta,
-          banda: i.observacion || "", bandaAmarilla: true
+          bandas: [i.observacion || ""], bandaAmarilla: true
         };
       });
 
@@ -4000,6 +4102,59 @@ var ENTREGABLE = (function () {
     return falta;
   }
 
+  /* Reparto en hojas. Copiado de nefer/layout.py: los dos entregables y el
+     generador de escritorio tienen que cortar por los mismos sitios, o el
+     Excel y el PDF de una misma acta dejan de poder cotejarse hoja a hoja. */
+  var CAJA_IMPRESION_PT = 887.0;
+  var ALTO_FILA_ESTANDAR_PT = 15.0, ALTO_FILA_ROTULO_PT = 16.5;
+  var ALTO_FILA_SEPARADOR_PT = 10.5, ALTO_FILA_TEXTO_PT = 28.5, FILAS_IMAGEN_PT = 14;
+  var ALTO_CABECERA_PT = 9 * ALTO_FILA_ESTANDAR_PT + ALTO_FILA_SEPARADOR_PT;
+  var ALTO_BLOQUE_FOTO_PT = FILAS_IMAGEN_PT * ALTO_FILA_ESTANDAR_PT + ALTO_FILA_ROTULO_PT;
+  var ALTO_TITULO_SECCION_PT = ALTO_FILA_ROTULO_PT;
+
+  function altoBloquePareadoPt(bandas) {
+    return ALTO_FILA_ROTULO_PT + FILAS_IMAGEN_PT * ALTO_FILA_ESTANDAR_PT +
+           ALTO_FILA_TEXTO_PT + Math.max(1, bandas || 1) * ALTO_FILA_ROTULO_PT;
+  }
+
+  function reparto(piezas, disponible) {
+    var tope = disponible || CAJA_IMPRESION_PT;
+    var hojas = [], hoja = 0, alto = 0, cuantas = 0;
+    piezas.forEach(function (pieza, i) {
+      var necesita = pieza.alto;
+      if (pieza.arrastra && piezas[i + 1]) necesita += piezas[i + 1].alto;
+      if (cuantas && (pieza.abrePagina || alto + necesita > tope)) {
+        hoja++; alto = 0; cuantas = 0;
+      }
+      hojas.push(hoja);
+      alto += pieza.alto;
+      cuantas++;
+    });
+    return hojas;
+  }
+
+  /* El acta como una pila de piezas que no se pueden partir. `conCabecera`
+     distingue al Excel —que sólo la lleva en la primera hoja— del PDF, que
+     la repite y por eso no la cuenta como pieza. */
+  function piezasDelActa(m, conCabecera) {
+    var piezas = [];
+    if (conCabecera) piezas.push({ tipo: "cabecera", alto: ALTO_CABECERA_PT });
+    for (var i = 0; i < m.fotos.length; i += 2) {
+      piezas.push({ tipo: "foto", alto: ALTO_BLOQUE_FOTO_PT, indice: i });
+    }
+    [["OBSERVACIONES", m.consumibles], [NUMEROS.TITULO_COMPARATIVO, m.comparativo],
+     [NUMEROS.TITULO_DANOS, m.danos]].forEach(function (par) {
+      if (!par[1].length) return;
+      piezas.push({ tipo: "titulo", titulo: par[0], alto: ALTO_TITULO_SECCION_PT,
+                    abrePagina: true, arrastra: true });
+      par[1].forEach(function (e, j) {
+        piezas.push({ tipo: "bloque", alto: altoBloquePareadoPt((e.bandas || [""]).length),
+                      entrada: e, indice: j });
+      });
+    });
+    return piezas;
+  }
+
   function rutasCitadas(m) {
     var vistas = {};
     m.fotos.forEach(function (f) { if (f.foto) vistas[f.foto] = true; });
@@ -4017,6 +4172,11 @@ var ENTREGABLE = (function () {
            ROTULO_ALTO: ROTULO_ALTO, BLOQUE: BLOQUE, FOTOS_POR_PAGINA: FOTOS_POR_PAGINA,
            Lienzo: Lienzo, ancho: ancho, recortar: recortar, envolver: envolver, escapar: escapar,
            modelo: modelo, rutasCitadas: rutasCitadas, faltantes: faltantes,
+           repartoConsumible: repartoConsumible, cierresConsumible: cierresConsumible,
+           textoCierre: textoCierre, reparto: reparto,
+           ALTO_CABECERA_PT: ALTO_CABECERA_PT, ALTO_BLOQUE_FOTO_PT: ALTO_BLOQUE_FOTO_PT,
+           ALTO_TITULO_SECCION_PT: ALTO_TITULO_SECCION_PT,
+           altoBloquePareadoPt: altoBloquePareadoPt, piezasDelActa: piezasDelActa,
            textoConsumible: textoConsumible, textoRecuperacion: textoRecuperacion,
            LEYENDA_ESTADO: LEYENDA_ESTADO,
            TITULO_OBSERVACIONES: "OBSERVACIONES" };
@@ -4141,6 +4301,37 @@ var ENTREGABLE = (function () {
     return y + 6;
   }
 
+  /* ---------- cabecera reducida de las hojas de continuación ----------
+     La hoja 2 de un acta tiene que poder identificarse sola: si se suelta del
+     juego, sin número de acta ni equipo no es prueba de nada. Repetir la
+     cabecera entera costaría 120 pt por hoja; esta franja cuesta 26 y lleva
+     lo que identifica el documento. */
+  var CABECERA_CORTA = 26;
+
+  function cabeceraCompacta(L, enc, pagina, paginas, desplazado) {
+    var y = M + (desplazado || 0), x = M, w = E.ANCHO;
+    L.caja(x, y, w, CABECERA_CORTA, "0.93 0.93 0.93", 0.5);
+    var tercio = w / 3;
+    var tipo = (enc.tipo_documento || "") === "RECEPCION" ? "RECEPCIÓN" : "DESPACHO";
+
+    function par(etiqueta, valor, cx, cw, fy) {
+      L.texto(etiqueta, cx + 4, fy, 6.5, true, "0.35 0.35 0.35");
+      var salto = E.ancho(etiqueta, 6.5, true) + 7;
+      L.texto(E.recortar(String(valor == null ? "" : valor), 7.5, false, cw - salto - 6),
+              cx + salto, fy, 7.5, false);
+    }
+
+    par("N° ACTA:", enc.n_acta || "", x, tercio, y + 10);
+    par("CLIENTE:", enc.cliente || "", x, w - tercio, y + 21);
+    par("EQUIPO:", enc.modelo_equipo || "", x + tercio, tercio, y + 10);
+    par("CÓDIGO:", enc.codigo_equipo || "", x + w - tercio, tercio * 0.5, y + 21);
+    par("HORÓMETRO:", enc.horometro === undefined ? "" : enc.horometro,
+        x + w - tercio * 0.5, tercio * 0.5, y + 21);
+    L.texto(tipo + " · Pág. " + pagina + " de " + paginas,
+            x + w - tercio + 4, y + 10, 7.5, true);
+    return y + CABECERA_CORTA + 6;
+  }
+
   /* ---------- un bloque de foto con su rótulo ---------- */
   function bloqueFoto(L, entrada, x, y, imagenes) {
     L.caja(x, y, E.CELDA, E.FOTO_ALTO, "1 1 1");
@@ -4167,8 +4358,11 @@ var ENTREGABLE = (function () {
   // en uno solo. Los 10 pt salen de la casilla de la foto para que el bloque
   // siga midiendo 195 y sigan entrando tres por página, como en el Excel.
   var PAR_CABECERA = 13, PAR_IMAGEN = 142, PAR_ROTULO = 25, PAR_BANDA = 15;
-  var PAR_ALTO = PAR_CABECERA + PAR_IMAGEN + PAR_ROTULO + PAR_BANDA;
   var TITULO_ALTO = 18;
+
+  function parAlto(bandas) {
+    return PAR_CABECERA + PAR_IMAGEN + PAR_ROTULO + Math.max(1, bandas || 1) * PAR_BANDA;
+  }
 
   function bloquePareado(L, e, x, y, imagenes) {
     var lados = [
@@ -4199,16 +4393,20 @@ var ENTREGABLE = (function () {
       });
     });
 
-    // Franja de ancho completo: la recuperación va en amarillo, como en el
-    // formato. Vacía se deja en blanco: una banda amarilla sin texto se lee
-    // como un dato que falta.
+    // Franjas de ancho completo: la recuperación va en amarillo, como en el
+    // formato. Un accesorio que vuelve en parte cierra con dos: lo que falta y
+    // lo que volvió. Vacía se deja en blanco, porque una banda amarilla sin
+    // texto se lee como un dato que falta.
     var banda = y + PAR_CABECERA + PAR_IMAGEN + PAR_ROTULO;
-    var relleno = (e.banda && e.bandaAmarilla) ? "1 1 0" : "1 1 1";
-    L.caja(x, banda, E.ANCHO, PAR_BANDA, relleno, 0.5);
-    if (e.banda) {
-      L.centrado(E.recortar(e.banda, 7.5, true, E.ANCHO - 10), x, E.ANCHO,
-                 banda + PAR_BANDA - 4.5, 7.5, true);
-    }
+    (e.bandas || [""]).forEach(function (texto, k) {
+      var arriba = banda + k * PAR_BANDA;
+      L.caja(x, arriba, E.ANCHO, PAR_BANDA,
+             (texto && e.bandaAmarilla) ? "1 1 0" : "1 1 1", 0.5);
+      if (texto) {
+        L.centrado(E.recortar(texto, 7.5, true, E.ANCHO - 10), x, E.ANCHO,
+                   arriba + PAR_BANDA - 4.5, 7.5, true);
+      }
+    });
   }
 
   function tituloSeccion(L, texto, x, y) {
@@ -4216,55 +4414,35 @@ var ENTREGABLE = (function () {
     L.texto(texto, x + 5, y + TITULO_ALTO - 5.5, 9, true);
   }
 
-  /* ---------- el acta como una lista de piezas que se apilan ---------- */
-  function piezas(m) {
-    var lista = [];
-
-    // La rejilla se recorre de dos en dos: izquierda y derecha de cada franja.
-    for (var i = 0; i < m.fotos.length; i += 2) {
-      (function (par) {
-        lista.push({ alto: E.BLOQUE, atomica: false, dibujar: function (L, x, y, im) {
+  /* ---------- el acta como una lista de piezas que se apilan ----------
+     El reparto en hojas NO se decide aquí: sale de `E.reparto`, el mismo que
+     usan el Excel y el generador de escritorio. Si cada entregable cortara por
+     donde le conviniera, el PDF y el Excel de una misma acta no se podrían
+     cotejar hoja contra hoja, que es justo para lo que se firman. */
+  function repartir(m) {
+    var piezas = E.piezasDelActa(m, false);
+    var hojas = E.reparto(piezas);
+    var paginas = [];
+    piezas.forEach(function (pieza, i) {
+      var hoja = hojas[i];
+      while (paginas.length <= hoja) paginas.push([]);
+      if (pieza.tipo === "foto") {
+        var par = m.fotos.slice(pieza.indice, pieza.indice + 2);
+        paginas[hoja].push({ alto: E.BLOQUE, dibujar: function (L, x, y, im) {
           par.forEach(function (b, k) {
             bloqueFoto(L, b, x + k * (E.CELDA + E.HUECO), y, im);
           });
         } });
-      })(m.fotos.slice(i, i + 2));
-    }
-
-    function seccion(titulo, entradas) {
-      if (!entradas.length) return;
-      lista.push({ titulo: titulo, alto: TITULO_ALTO, atomica: true, nuevaPagina: true,
-                   dibujar: function (L, x, y) { tituloSeccion(L, titulo, x, y); } });
-      entradas.forEach(function (e) {
-        lista.push({ alto: PAR_ALTO, atomica: false,
-                     dibujar: function (L, x, y, im) { bloquePareado(L, e, x, y, im); } });
-      });
-    }
-
-    seccion(E.TITULO_OBSERVACIONES, m.consumibles);
-    seccion(E.NUMEROS.TITULO_COMPARATIVO, m.comparativo);
-    seccion(E.NUMEROS.TITULO_DANOS, m.danos);
-    return lista;
-  }
-
-  // Se reparten por altura disponible. Un título nunca cierra una página: se
-  // baja con su primer bloque, porque un encabezado suelto al pie no dice nada.
-  function repartir(m, altoUtil) {
-    var lista = piezas(m), paginas = [], actual = [], alto = 0;
-    function cerrar() { if (actual.length) { paginas.push(actual); actual = []; alto = 0; } }
-
-    for (var i = 0; i < lista.length; i++) {
-      var pieza = lista[i];
-      var necesita = pieza.alto + (actual.length ? E.HUECO : 0);
-      if (pieza.atomica && lista[i + 1]) necesita += E.HUECO + lista[i + 1].alto;
-      // El Excel y el formato abren página en cada título de sección.
-      if (pieza.nuevaPagina) cerrar();
-      else if (alto + necesita > altoUtil && actual.length) cerrar();
-      if (actual.length) alto += E.HUECO;
-      actual.push(pieza);
-      alto += pieza.alto;
-    }
-    cerrar();
+      } else if (pieza.tipo === "titulo") {
+        var titulo = pieza.titulo;
+        paginas[hoja].push({ alto: TITULO_ALTO,
+          dibujar: function (L, x, y) { tituloSeccion(L, titulo, x, y); } });
+      } else {
+        var e = pieza.entrada;
+        paginas[hoja].push({ alto: parAlto((e.bandas || [""]).length),
+          dibujar: function (L, x, y, im) { bloquePareado(L, e, x, y, im); } });
+      }
+    });
     return paginas.length ? paginas : [[]];
   }
   /* ---------- el archivo PDF ---------- */
@@ -4359,17 +4537,15 @@ var ENTREGABLE = (function () {
         imagenes[im.ruta] = im;
       });
 
-      // Lo que queda de página bajo la cabecera, dejando sitio al resumen.
-      var altoCabecera = 120, altoResumen = 24;
-      var altoUtil = A4.h - M * 2 - altoCabecera - altoResumen -
-                     (E.faltantes(acta).length ? 19 : 0);
-      var paginas = repartir(m, altoUtil);
+      var paginas = repartir(m);
 
       var falta = E.faltantes(acta);
       var lienzos = paginas.map(function (piezasPagina, p) {
         var L = new E.Lienzo();
         var desplazado = bandaBorrador(L, falta);
-        var y = cabecera(L, acta.encabezado || {}, p + 1, paginas.length, desplazado);
+        // Cabecera entera en la primera hoja; en las demás, la franja corta.
+        var pintar = p === 0 ? cabecera : cabeceraCompacta;
+        var y = pintar(L, acta.encabezado || {}, p + 1, paginas.length, desplazado);
         piezasPagina.forEach(function (pieza) {
           pieza.dibujar(L, M, y, imagenes);
           y += pieza.alto + E.HUECO;
@@ -4440,26 +4616,47 @@ var ENTREGABLE = (function () {
   }
 
   /* ---------- el planificador de filas, copiado de layout.py ---------- */
-  var ALTO_BLOQUE_CONSUMIBLE = 17, ALTO_BLOQUE_PAREADO = 17;
+  // encabezado + 14 filas de imagen + descripción; debajo, una franja de
+  // cierre por cada hecho que declarar.
+  var FILAS_BASE_CONSUMIBLE = 16;
+  var ALTO_BLOQUE_CONSUMIBLE = FILAS_BASE_CONSUMIBLE + 1;
 
   function filaTituloObservaciones(franjas) {
     return FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * franjas;
   }
-  function bloqueConsumible(indice, franjas) {
-    var base = filaTituloObservaciones(franjas) + 1 + ALTO_BLOQUE_CONSUMIBLE * indice;
+  // `bandas` lleva cuántas franjas de cierre ocupa cada bloque; sin lista, una
+  // por bloque, que es la forma corriente del formato.
+  function cuantasBandas(indice, bandas) {
+    if (!bandas || indice >= bandas.length) return 1;
+    return Math.max(1, bandas[indice]);
+  }
+  function bloqueEn(base, indice, bandas) {
+    var n = cuantasBandas(indice, bandas), primera = base + FILAS_IMAGEN + 2, filas = [];
+    for (var k = 0; k < n; k++) filas.push(primera + k);
     return { encabezado: base, imagenInicio: base + 1, imagenFin: base + FILAS_IMAGEN,
-             rotulo: base + FILAS_IMAGEN + 1, banda: base + FILAS_IMAGEN + 2 };
+             rotulo: base + FILAS_IMAGEN + 1, banda: primera, bandas: filas };
   }
-  function finConsumibles(franjas, n) {
-    return n ? bloqueConsumible(n - 1, franjas).banda : filaTituloObservaciones(franjas);
+  function desplazamiento(indice, bandas) {
+    var d = 0;
+    for (var j = 0; j < indice; j++) d += FILAS_BASE_CONSUMIBLE + cuantasBandas(j, bandas);
+    return d;
   }
-  function bloquePareadoFilas(indice, filaTitulo) {
-    var base = filaTitulo + 1 + ALTO_BLOQUE_PAREADO * indice;
-    return { encabezado: base, imagenInicio: base + 1, imagenFin: base + FILAS_IMAGEN,
-             rotulo: base + FILAS_IMAGEN + 1, banda: base + FILAS_IMAGEN + 2 };
+  function bloqueConsumible(indice, franjas, bandas) {
+    return bloqueEn(filaTituloObservaciones(franjas) + 1 + desplazamiento(indice, bandas),
+                    indice, bandas);
   }
-  function finPareada(filaTitulo, n) {
-    return n ? bloquePareadoFilas(n - 1, filaTitulo).banda : filaTitulo;
+  function finConsumibles(franjas, n, bandas) {
+    if (!n) return filaTituloObservaciones(franjas);
+    var b = bloqueConsumible(n - 1, franjas, bandas).bandas;
+    return b[b.length - 1];
+  }
+  function bloquePareadoFilas(indice, filaTitulo, bandas) {
+    return bloqueEn(filaTitulo + 1 + desplazamiento(indice, bandas), indice, bandas);
+  }
+  function finPareada(filaTitulo, n, bandas) {
+    if (!n) return filaTitulo;
+    var b = bloquePareadoFilas(n - 1, filaTitulo, bandas).bandas;
+    return b[b.length - 1];
   }
 
   /* ---------- una hoja como la del formato ---------- */
@@ -4528,12 +4725,8 @@ var ENTREGABLE = (function () {
     });
 
     var franjas = Math.max(1, Math.ceil(m.fotos.length / 2));
-    for (var i = E.NUMEROS.BLOQUES_FOTO_POR_PAGINA; i < franjas;
-         i += E.NUMEROS.BLOQUES_FOTO_POR_PAGINA) {
-      cortes.push(FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * i - 1);
-    }
 
-    // --- un bloque pareado: encabezados, fotos, rótulos y franja de pie ---
+    // --- un bloque pareado: encabezados, fotos, rótulos y franjas de cierre ---
     function escribirPareado(e, b, amarilla) {
       [[PANEL_IZQ, e.cabeceraIzq, e.fotoIzq, e.textoIzq],
        [PANEL_DER, e.cabeceraDer, e.fotoDer, e.textoDer]].forEach(function (l) {
@@ -4547,50 +4740,87 @@ var ENTREGABLE = (function () {
       alturas[b.encabezado] = ALTO_FILA_ROTULO;
       for (var f = b.imagenInicio; f <= b.imagenFin; f++) alturas[f] = ALTO_FILA_ESTANDAR;
       alturas[b.rotulo] = ALTO_FILA_TEXTO;
-      alturas[b.banda] = ALTO_FILA_ROTULO;
-      // La recuperación va en amarillo; sin texto, la franja se deja en blanco.
-      fundir("A" + b.banda + ":Z" + b.banda, e.banda || "",
-             (e.banda && amarilla) ? 5 : 3);
+      var leyendas = e.bandas || [""];
+      b.bandas.forEach(function (f, k) {
+        alturas[f] = ALTO_FILA_ROTULO;
+        var texto = leyendas[k] || "";
+        // La recuperación va en amarillo; sin texto, la franja se deja en
+        // blanco: una banda amarilla vacía se lee como un dato que falta.
+        fundir("A" + f + ":Z" + f, texto, (texto && amarilla) ? 5 : 3);
+      });
+    }
+
+    function bandasDe(entradas) {
+      return entradas.map(function (e) { return (e.bandas || [""]).length; });
     }
 
     function seccionPareada(titulo, entradas, filaTitulo, amarilla) {
       if (!entradas.length) return;
       fundir("A" + filaTitulo + ":Z" + filaTitulo, titulo, 1);
       alturas[filaTitulo] = ALTO_FILA_ROTULO;
-      cortes.push(filaTitulo - 1);
+      var bandas = bandasDe(entradas);
       entradas.forEach(function (e, j) {
-        escribirPareado(e, bloquePareadoFilas(j, filaTitulo), amarilla);
-        if (j > 0 && (j + 1) % E.NUMEROS.BLOQUES_CONSUMIBLE_POR_PAGINA === 0 &&
-            j + 1 < entradas.length) {
-          cortes.push(bloquePareadoFilas(j, filaTitulo).banda);
-        }
+        escribirPareado(e, bloquePareadoFilas(j, filaTitulo, bandas), amarilla);
       });
     }
 
-    // --- OBSERVACIONES: los accesorios, con su franja de recuperación ---
+    // --- OBSERVACIONES: los accesorios, con sus franjas de cierre ---
+    var bandasCons = bandasDe(m.consumibles);
     if (m.consumibles.length) {
       var filaObs = filaTituloObservaciones(franjas);
       fundir("A" + filaObs + ":Z" + filaObs, E.TITULO_OBSERVACIONES, 1);
       alturas[filaObs] = ALTO_FILA_ROTULO;
-      cortes.push(filaObs - 1);
       m.consumibles.forEach(function (e, j) {
-        escribirPareado(e, bloqueConsumible(j, franjas), true);
-        if (j > 0 && (j + 1) % E.NUMEROS.BLOQUES_CONSUMIBLE_POR_PAGINA === 0 &&
-            j + 1 < m.consumibles.length) {
-          cortes.push(bloqueConsumible(j, franjas).banda);
-        }
+        escribirPareado(e, bloqueConsumible(j, franjas, bandasCons), true);
       });
     }
 
-    var fila = finConsumibles(franjas, m.consumibles.length);
+    var fila = finConsumibles(franjas, m.consumibles.length, bandasCons);
+    var filaComparativo = null, filaDanos = null;
     if (m.comparativo.length) {
-      seccionPareada(E.NUMEROS.TITULO_COMPARATIVO, m.comparativo, fila + 1, false);
-      fila = finPareada(fila + 1, m.comparativo.length);
+      filaComparativo = fila + 1;
+      seccionPareada(E.NUMEROS.TITULO_COMPARATIVO, m.comparativo, filaComparativo, false);
+      fila = finPareada(filaComparativo, m.comparativo.length, bandasDe(m.comparativo));
     }
     if (m.danos.length) {
-      seccionPareada(E.NUMEROS.TITULO_DANOS, m.danos, fila + 1, true);
-      fila = finPareada(fila + 1, m.danos.length);
+      filaDanos = fila + 1;
+      seccionPareada(E.NUMEROS.TITULO_DANOS, m.danos, filaDanos, true);
+      fila = finPareada(filaDanos, m.danos.length, bandasDe(m.danos));
     }
+
+    // Los cortes salen del mismo reparto que usa el generador de escritorio:
+    // por alto, no por cuenta de bloques, porque los bloques ya no miden todos
+    // lo mismo. La última fila de cada hoja lleva el salto.
+    (function () {
+      var piezas = E.piezasDelActa(m, true), filaFin = [];
+      var titulos = { OBSERVACIONES: filaTituloObservaciones(franjas) };
+      titulos[E.NUMEROS.TITULO_COMPARATIVO] = filaComparativo;
+      titulos[E.NUMEROS.TITULO_DANOS] = filaDanos;
+      var enSeccion = null, nSeccion = 0;
+      piezas.forEach(function (pieza) {
+        if (pieza.tipo === "cabecera") { filaFin.push(FILA_INICIO_FOTOS - 1); return; }
+        if (pieza.tipo === "foto") {
+          filaFin.push(FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * (pieza.indice / 2 + 1) - 1);
+          return;
+        }
+        if (pieza.tipo === "titulo") {
+          enSeccion = pieza.titulo; nSeccion = 0;
+          filaFin.push(titulos[pieza.titulo]);
+          return;
+        }
+        var b = enSeccion === "OBSERVACIONES"
+          ? bloqueConsumible(nSeccion, franjas, bandasCons)
+          : bloquePareadoFilas(nSeccion, titulos[enSeccion],
+                               bandasDe(enSeccion === E.NUMEROS.TITULO_COMPARATIVO
+                                        ? m.comparativo : m.danos));
+        nSeccion++;
+        filaFin.push(b.bandas[b.bandas.length - 1]);
+      });
+      var hojas = E.reparto(piezas);
+      for (var k = 0; k + 1 < piezas.length; k++) {
+        if (hojas[k + 1] !== hojas[k]) cortes.push(filaFin[k]);
+      }
+    })();
 
     if (acta.resumen_ejecutivo) {
       fundir("A" + (fila + 2) + ":Z" + (fila + 2), "RESUMEN EJECUTIVO", 1);

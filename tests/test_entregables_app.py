@@ -42,9 +42,6 @@ def _var_js(nombre: str) -> str:
 
 def test_geometria_compartida_con_layout():
     """Las cifras que la app copio de layout.py siguen siendo las mismas."""
-    assert int(_constante_js("BLOQUES_FOTO_POR_PAGINA")) == build.BLOQUES_FOTO_POR_PAGINA
-    assert int(_constante_js("BLOQUES_CONSUMIBLE_POR_PAGINA")) == \
-        build.BLOQUES_CONSUMIBLE_POR_PAGINA
     assert _constante_js("CODIGO_FORMATO") == layout.CODIGO_FORMATO
     assert _constante_js("VERSION_FORMATO") == layout.VERSION_FORMATO
     assert _constante_js("TITULO_COMPARATIVO") == layout.TITULO_COMPARATIVO
@@ -57,6 +54,8 @@ def test_geometria_compartida_con_layout():
     assert float(_var_js("ALTO_FILA_ROTULO")) == layout.ALTO_FILA_ROTULO
     assert float(_var_js("ALTO_FILA_SEPARADOR")) == layout.ALTO_FILA_SEPARADOR
     assert float(_var_js("ALTO_FILA_TEXTO")) == layout.ALTO_FILA_TEXTO
+    assert int(_var_js("FILAS_BASE_CONSUMIBLE")) == layout.FILAS_BASE_CONSUMIBLE
+    assert float(_var_js("CAJA_IMPRESION_PT")) == layout.CAJA_IMPRESION_PT
 
 
 def test_anchos_de_columna_compartidos():
@@ -636,3 +635,114 @@ def test_la_descripcion_larga_se_reparte_en_dos_renglones():
     assert medida["uno"].endswith("…")
     assert len(medida["dos"]) == 2
     assert " ".join(medida["dos"]) == largo
+
+
+# --------------------------------------------------------------------------
+# retorno parcial: salieron dos, vuelve uno
+# --------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def parcial(tmp_path_factory):
+    """Acta con un accesorio que vuelve en parte y otro que no vuelve."""
+    if CHROME is None:
+        pytest.skip("no hay Chromium disponible")
+    destino = tmp_path_factory.mktemp("parcial")
+    salida = {}
+    fallos: list[str] = []
+    accesorios = [("GANCHOS DE IZAJE", "2", "1"), ('CONOS DE 28"', "2", "0")]
+
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch(executable_path=CHROME)
+        ctx = nav.new_context(viewport={"width": 390, "height": 844},
+                              has_touch=True, is_mobile=True,
+                              accept_downloads=True, permissions=[])
+        pg = ctx.new_page()
+        pg.on("pageerror", lambda e: fallos.append(str(e)))
+        pg.goto(APP.as_uri())
+        pg.wait_for_timeout(600)
+        pg.click("#tab-recepcion")
+        pg.wait_for_timeout(300)
+        pg.select_option("#r-cat", "compresor")
+        pg.click("#r-empezar")
+        pg.wait_for_timeout(600)
+
+        # Sin fotografias de retorno el acta no se deja descargar, y con razon.
+        pg.evaluate(RECEPCION_EN_EL_NAVEGADOR.replace("i <= 11", "i <= 2"))
+        pg.wait_for_timeout(2500)
+        for k in range(2):
+            pg.click("#r-tira .tile:first-child")
+            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
+            pg.wait_for_timeout(80)
+
+        for i, (nombre, cantidad, vuelven) in enumerate(accesorios):
+            pg.click("#r-add-cons")
+            pg.wait_for_timeout(300)
+            pg.fill(f'[data-cons-nombre="{i}"]', nombre)
+            pg.wait_for_timeout(200)
+            pg.fill(f'[data-cons-cant="{i}"]', cantidad)
+            pg.wait_for_timeout(200)
+            pg.click(f'[data-estados="cons"][data-i="{i}"] button[data-e="NO_RETORNA"]')
+            pg.wait_for_timeout(250)
+            pg.fill(f'[data-cons-vuelve="{i}"]', vuelven)
+            pg.wait_for_timeout(250)
+
+        for campo, valor in (("#r-acta", "000-000003"), ("#r-horometro", "1700.9"),
+                             ("#r-cliente", "CLIENTE DE PRUEBA S.A.C."),
+                             ("#r-codigo_equipo", "C000-00"),
+                             ("#r-modelo_equipo", "COMPRESOR TRANSPORTABLE DE 375 CFM"),
+                             ("#r-resumen", "Vuelve un gancho de los dos.")):
+            pg.fill(campo, valor)
+        pg.wait_for_timeout(400)
+
+        salida["franjas"] = pg.eval_on_selector_all(
+            "#r-consumibles [data-cons-recup]", "n => n.map(x => x.value)")
+        salida["acta"] = json.loads(pg.input_value("#r-salida"))
+
+        for boton, clave in (("#r-pdf", "pdf"), ("#r-xlsx", "xlsx"), ("#r-zip", "zip")):
+            with pg.expect_download(timeout=90000) as espera:
+                pg.click(boton)
+            ruta = destino / espera.value.suggested_filename
+            espera.value.save_as(ruta)
+            salida[clave] = ruta
+        nav.close()
+
+    assert fallos == [], fallos
+    return salida
+
+
+def test_lo_que_vuelve_en_parte_cierra_con_dos_franjas(parcial):
+    """Un gancho de dos: uno se cobra y el otro se da por conforme."""
+    assert parcial["franjas"] == [
+        "RECUPERACIÓN N° 1 : 01 GANCHOS DE IZAJE",
+        "CONFORME N° 1 : 01 GANCHOS DE IZAJE — SIN RECUPERACIÓN",
+        'RECUPERACIÓN N° 2 : 02 CONOS DE 28"',
+    ]
+    accesorios = parcial["acta"]["consumibles"]
+    assert accesorios[0]["cantidad_retorna"] == 1
+    # Lo que vuelve entero o no vuelve nada no necesita declararlo: se deduce.
+    assert "cantidad_retorna" not in accesorios[1]
+
+
+def test_el_acta_parcial_cae_en_las_mismas_filas_que_el_escritorio(parcial, tmp_path):
+    from nefer import build as _build, schema
+
+    carpeta = tmp_path / "abierto"
+    with zipfile.ZipFile(parcial["zip"]) as z:
+        z.extractall(carpeta)
+    manifiesto = json.loads((carpeta / "acta.json").read_text(encoding="utf-8"))
+    assert schema.validar(manifiesto, carpeta) == []
+
+    referencia = carpeta / "REFERENCIA.xlsx"
+    _build.construir(manifiesto, referencia, carpeta)
+    assert _titulos_por_fila(parcial["xlsx"]) == _titulos_por_fila(referencia)
+    assert _cortes(parcial["xlsx"]) == _cortes(referencia)
+
+
+def test_el_pdf_parcial_dice_cuantas_de_cuantas_volvieron(parcial):
+    texto = _texto_de_pdf(parcial["pdf"])
+    if texto is None:
+        pytest.skip("pdftotext no esta disponible")
+    for esperado in ("EL EQUIPO RETORNÓ CON 01 DE 02 GANCHOS DE IZAJE",
+                     "RECUPERACIÓN N° 1 : 01 GANCHOS DE IZAJE",
+                     "CONFORME N° 1 : 01 GANCHOS DE IZAJE"):
+        assert esperado in texto, esperado

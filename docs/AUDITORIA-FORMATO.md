@@ -187,19 +187,37 @@ cliente.
 `RECUPERACIÓN N° n` cuando falta, `CONFORME N° n` cuando retornó completo, cada
 uno con su propia numeración.
 
-### NC-13 · Las páginas sueltas no se pueden trazar
+### NC-13 · Un retorno parcial no tenía dónde declararse
+
+**Constatado.** En **A1**, un bloque declara «02 GANCHO MAS 02 GRILLETES EN
+DESPACHO» y cierra con **dos** franjas seguidas —«RECUPERACIÓN 4 : 01 GRILLETE»
+y «RECUPERACIÓN 5 : 01 GANCHO»— porque de cada par volvió uno. El formato no
+tiene casilla para eso: el operador lo resolvió juntando dos accesorios en un
+bloque y añadiendo una fila a mano. Un retorno parcial declarado como «no
+retornó» cobra de más, y declarado como «retornó» cobra de menos.
+
+**Levantada.** El accesorio declara cuántas unidades volvieron
+(`cantidad_retorna`). Con un retorno parcial el bloque cierra con dos franjas
+—la recuperación de lo que falta y el conforme de lo que volvió— y la celda de
+recepción dice «EL EQUIPO RETORNÓ CON 01 DE 02 …». La rejilla crece una fila y
+el reparto en hojas pasó a hacerse por el alto real de cada bloque, no por
+cuenta de bloques, para que ninguno quede partido.
+
+### NC-14 · Las páginas sueltas no se pueden trazar
 
 **Constatado.** En el PDF del acta real la cabecera —número de acta, cliente,
 equipo, código, horómetro— aparece **solo en la página 1**. Las páginas 2, 3 y 4
 no llevan ningún dato que las ate al acta. Tampoco hay numeración de páginas.
 
-**Cómo lo evita la aplicación.** El PDF repite la cabecera completa en cada
-página y numera «Pág. n de N». **Queda pendiente en el Excel**: ahí la cabecera
-sigue saliendo solo en la primera hoja, igual que en el formato. Repetirla
-obligaría a bajar de tres a dos bloques de observaciones por página, así que
-por ahora el entregable que se firma e imprime es el PDF.
+**Cómo lo evita la aplicación.** La primera hoja del PDF lleva la cabecera
+entera; las siguientes, una franja de 26 pt con número de acta, cliente,
+equipo, código, horómetro, tipo de documento y «Pág. n de N». Repetir la
+cabecera completa costaría 120 pt por hoja y obligaría a sacrificar un bloque;
+la franja corta cuesta 26 y deja la hoja igual de identificada. En el Excel la
+cabecera sigue saliendo sólo en la primera hoja, como en el formato: el
+entregable que se firma e imprime es el PDF.
 
-### NC-14 · Una franja del formato perdió una fila
+### NC-15 · Una franja del formato perdió una fila
 
 **Constatado.** En **A1** las franjas van de 15 filas salvo la tercera
 (filas 41 a 54), que tiene 14: alguien borró una fila de la plantilla y la
@@ -207,7 +225,7 @@ fotografía de esa franja es un 7 % más baja que las demás.
 
 **Cómo lo evita la aplicación.** La rejilla se calcula, no se edita.
 
-### NC-15 · Ortografía del rótulo
+### NC-16 · Ortografía del rótulo
 
 **Constatado.** El formato real rotula `BATERIA`, sin tilde. La aplicación
 escribe `BATERÍA`.
@@ -244,7 +262,9 @@ y cuatro accesorios, uno de ellos retornado conforme—:
 | `HORÓMETRO:` | `S9:U9` | `M9:R9` | `M9:R9` |
 | Renglones para la descripción | 1 | 2 | 1 a 3, a mano |
 | Hojas del PDF y del Excel | 3 y 4 | 4 y 4 | — |
-| Cabecera repetida en cada hoja | PDF sí, Excel no | PDF sí, Excel no | no |
+| Identificación en las hojas 2+ | ninguna | franja de 26 pt en el PDF | ninguna |
+| Retorno parcial | no se podía declarar | dos franjas de cierre | a mano, juntando bloques |
+| Reparto en hojas | por cuenta de bloques | por alto real del bloque | a ojo |
 
 El acta de prueba sale con las mismas cuatro páginas en los dos entregables y
 el mismo contenido en cada una: tres franjas, dos franjas, `OBSERVACIONES` con

@@ -502,6 +502,22 @@ Su número es el ordinal **dentro de su propia serie**: si el primer accesorio
 vuelve conforme, el segundo que falte es la `RECUPERACIÓN N° 1`, el siguiente
 la `N° 2`. Un accesorio conforme no gasta un número de recuperación.
 
+**Cuando vuelve una parte.** Junto a la cantidad despachada hay una casilla
+**«vuelven»**. Si de dos conos vuelve uno, se escribe 1 y el bloque cierra con
+dos franjas en vez de una:
+
+| | |
+|---|---|
+| **DESPACHO** | **RECEPCIÓN** |
+| `02 GANCHOS DE IZAJE DESPACHADO` | `EL EQUIPO RETORNÓ CON 01 DE 02 GANCHOS DE IZAJE` |
+| **RECUPERACIÓN N° 1 : 01 GANCHOS DE IZAJE** — amarilla ||
+| `CONFORME N° 1 : 01 GANCHOS DE IZAJE — SIN RECUPERACIÓN` ||
+
+Son dos hechos distintos —uno se cobra y el otro se da por conforme— y por eso
+van en dos líneas. Marcar el bloque entero como «no retornó» cobraría de más;
+marcarlo como «retornó» cobraría de menos. Si lo que volvió está dañado, esa
+segunda franja también es una recuperación, no un conforme.
+
 Los accesorios se añaden con **+ Añadir accesorio**, que ofrece el catálogo de
 los que aparecen en las actas reales —conos, barra puesta a tierra, base de
 extintor, chapa de puerta, estrobos, gomas de acople, gata de tiro— sin dejar

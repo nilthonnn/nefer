@@ -570,3 +570,51 @@ def test_la_extraccion_no_confunde_los_pares_con_consumibles(manifiesto, tmp_pat
     assert len(recuperado["consumibles"]) == 1, \
         "los bloques comparativos no son consumibles"
     assert recuperado["consumibles"][0]["descripcion"] == "EXTINTOR DE 6 KG"
+
+
+def test_el_retorno_parcial_ocupa_una_fila_mas_en_el_acta(manifiesto, tmp_path):
+    """El bloque de un accesorio que vuelve en parte crece una fila."""
+    man = manifiesto
+    man["consumibles"] = [
+        {"descripcion": "GANCHOS DE IZAJE", "cantidad": 2,
+         "estado_recepcion": "NO_RETORNA", "cantidad_retorna": 1},
+        {"descripcion": 'CONOS DE 28"', "cantidad": 2,
+         "estado_recepcion": "NO_RETORNA"},
+    ]
+    assert schema.validar(man, tmp_path) == []
+
+    salida = tmp_path / "acta.xlsx"
+    build.construir(man, salida, tmp_path)
+    ws = openpyxl.load_workbook(salida).active
+
+    bandas = {f: ws.cell(row=f, column=1).value
+              for f in range(1, ws.max_row + 1)
+              if isinstance(ws.cell(row=f, column=1).value, str)
+              and ws.cell(row=f, column=1).value.startswith(("RECUPERACIÓN", "CONFORME"))}
+    assert list(bandas.values()) == [
+        "RECUPERACIÓN N° 1 : 01 GANCHOS DE IZAJE",
+        "CONFORME N° 1 : 01 GANCHOS DE IZAJE — SIN RECUPERACIÓN",
+        'RECUPERACIÓN N° 2 : 02 CONOS DE 28"',
+    ]
+    # Las dos primeras van seguidas, y el bloque siguiente empieza despues.
+    filas = sorted(bandas)
+    assert filas[1] == filas[0] + 1
+    assert filas[2] == filas[1] + layout.ALTO_BLOQUE_CONSUMIBLE
+
+
+def test_una_cantidad_de_retorno_imposible_se_rechaza(manifiesto, tmp_path):
+    man = manifiesto
+    man["consumibles"] = [{"descripcion": "GANCHOS", "cantidad": 2,
+                           "estado_recepcion": "NO_RETORNA", "cantidad_retorna": 3}]
+    errores = schema.validar(man, tmp_path)
+    assert any("cantidad_retorna" in e for e in errores), errores
+
+
+def test_un_despacho_no_puede_declarar_cuantas_volvieron(manifiesto, tmp_path):
+    man = manifiesto
+    man["encabezado"]["tipo_documento"] = "DESPACHO"
+    man["inspeccion_componentes"] = []
+    man["consumibles"] = [{"descripcion": "GANCHOS", "cantidad": 2,
+                           "cantidad_retorna": 1}]
+    errores = schema.validar(man, tmp_path)
+    assert any("cantidad_retorna" in e for e in errores), errores

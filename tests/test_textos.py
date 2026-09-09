@@ -43,3 +43,70 @@ def test_la_recepcion_si_declara_el_retorno():
     cons = {"cantidad": 1, "descripcion": "EXTINTOR 6 KG", "estado_recepcion": "OK"}
     assert "RETORNÓ" in textos.texto_consumible(cons, "RECEPCIÓN", "RECEPCION")
     assert textos.texto_recuperacion(cons, 1, "RECEPCION") != ""
+
+
+# --------------------------------------------------------------------------
+# retorno parcial: un bloque cierra con una franja por hecho declarado
+# --------------------------------------------------------------------------
+
+def _acc(**extra):
+    base = {"descripcion": "GANCHOS DE IZAJE", "cantidad": 2,
+            "estado_recepcion": "NO_RETORNA"}
+    base.update(extra)
+    return base
+
+
+def test_sin_declarar_el_retorno_se_lee_como_antes():
+    """Un acta anterior al campo tiene que dar exactamente lo mismo."""
+    assert textos.reparto_consumible(_acc()) == (0, 2)
+    assert textos.reparto_consumible(_acc(estado_recepcion="OK")) == (2, 0)
+    assert textos.reparto_consumible(_acc(estado_recepcion="D")) == (2, 0)
+
+    assert (textos.texto_consumible(_acc(), "RECEPCIÓN")
+            == "EL EQUIPO RETORNÓ SIN 02 GANCHOS DE IZAJE")
+    assert (textos.texto_recuperacion(_acc(), 1)
+            == "RECUPERACIÓN N° 1 : 02 GANCHOS DE IZAJE")
+    assert (textos.texto_recuperacion(_acc(estado_recepcion="OK"), 1)
+            == "CONFORME N° 1 : 02 GANCHOS DE IZAJE — SIN RECUPERACIÓN")
+
+
+def test_el_retorno_parcial_cierra_con_dos_franjas():
+    """Salieron dos y vuelve uno: uno se cobra y el otro se da por conforme."""
+    cons = _acc(cantidad_retorna=1)
+    assert textos.reparto_consumible(cons) == (1, 1)
+
+    cierres = textos.cierres_consumible(cons)
+    assert [c["recupera"] for c in cierres] == [True, False]
+    assert [c["cantidad"] for c in cierres] == [1, 1]
+
+    assert (textos.texto_cierre(cons, cierres[0], 1, 0)
+            == "RECUPERACIÓN N° 1 : 01 GANCHOS DE IZAJE")
+    assert (textos.texto_cierre(cons, cierres[1], 1, 1)
+            == "CONFORME N° 1 : 01 GANCHOS DE IZAJE — SIN RECUPERACIÓN")
+
+    # Y la celda de recepcion dice cuantas de cuantas, no "sin" ni "con" a secas.
+    assert (textos.texto_consumible(cons, "RECEPCIÓN")
+            == "EL EQUIPO RETORNÓ CON 01 DE 02 GANCHOS DE IZAJE")
+
+
+def test_lo_que_vuelve_danado_no_se_da_por_conforme():
+    cons = _acc(estado_recepcion="D", cantidad_retorna=1)
+    cierres = textos.cierres_consumible(cons)
+    assert [c["recupera"] for c in cierres] == [True, True]
+    assert (textos.texto_consumible(cons, "RECEPCIÓN")
+            == "EL EQUIPO RETORNÓ CON 01 DE 02 GANCHOS DE IZAJE DAÑADO(A)")
+
+
+def test_la_leyenda_escrita_a_mano_manda_sobre_la_automatica():
+    cons = _acc(cantidad_retorna=1,
+                recuperaciones=["RECUPERACIÓN N° 1 : 01 GANCHO — SE FACTURA"])
+    cierres = textos.cierres_consumible(cons)
+    assert (textos.texto_cierre(cons, cierres[0], 1, 0)
+            == "RECUPERACIÓN N° 1 : 01 GANCHO — SE FACTURA")
+    # La segunda no se escribio a mano: se redacta sola.
+    assert (textos.texto_cierre(cons, cierres[1], 1, 1)
+            == "CONFORME N° 1 : 01 GANCHOS DE IZAJE — SIN RECUPERACIÓN")
+
+
+def test_un_despacho_no_cierra_nada():
+    assert textos.cierres_consumible(_acc(), "DESPACHO") == []

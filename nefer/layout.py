@@ -61,7 +61,11 @@ ALTO_BLOQUE_FOTO = 15         # 14 filas de imagen + 1 fila de rotulo
 FILAS_IMAGEN = 14
 
 # --- Bloques de consumibles / observaciones ----------------------------------
-ALTO_BLOQUE_CONSUMIBLE = 17   # rotulos + 14 filas de imagen + rotulos + recuperacion
+# encabezado + 14 filas de imagen + fila de descripcion. Debajo va una franja
+# de cierre por cada hecho que declarar: lo que falta se cobra y lo que volvio
+# se da por conforme, y un accesorio que vuelve en parte declara los dos.
+FILAS_BASE_CONSUMIBLE = 16
+ALTO_BLOQUE_CONSUMIBLE = FILAS_BASE_CONSUMIBLE + 1   # la forma corriente: una franja
 
 # --- Estilo ------------------------------------------------------------------
 FUENTE = "Cambria"
@@ -198,22 +202,41 @@ def fila_titulo_observaciones(n_bloques_foto: int) -> int:
     return FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * n_bloques_foto
 
 
-def bloque_consumible(indice: int, n_bloques_foto: int) -> dict:
-    """Filas del bloque de consumible `indice` (0-based)."""
-    base = fila_titulo_observaciones(n_bloques_foto) + 1 + ALTO_BLOQUE_CONSUMIBLE * indice
+def _bandas(indice: int, bandas) -> int:
+    """Franjas de cierre del bloque `indice`. Sin lista, una por bloque."""
+    if not bandas or indice >= len(bandas):
+        return 1
+    return max(1, int(bandas[indice]))
+
+
+def _desplazamiento(indice: int, bandas) -> int:
+    return sum(FILAS_BASE_CONSUMIBLE + _bandas(j, bandas) for j in range(indice))
+
+
+def bloque_consumible(indice: int, n_bloques_foto: int, bandas=None) -> dict:
+    """Filas del bloque de consumible `indice` (0-based).
+
+    `bandas` lleva cuantas franjas de cierre ocupa cada bloque; omitirla
+    equivale a una por bloque, que es la forma corriente del formato.
+    """
+    base = fila_titulo_observaciones(n_bloques_foto) + 1 + _desplazamiento(indice, bandas)
+    primera = base + FILAS_IMAGEN + 2
+    n = _bandas(indice, bandas)
     return {
         "fila_encabezado": base,
         "fila_imagen_inicio": base + 1,
         "fila_imagen_fin": base + FILAS_IMAGEN,
         "fila_rotulo": base + FILAS_IMAGEN + 1,
-        "fila_recuperacion": base + FILAS_IMAGEN + 2,
+        "fila_recuperacion": primera,
+        "filas_recuperacion": [primera + k for k in range(n)],
     }
 
 
-def fin_consumibles(n_bloques_foto: int, n_consumibles: int) -> int:
+def fin_consumibles(n_bloques_foto: int, n_consumibles: int, bandas=None) -> int:
     """Ultima fila ocupada por la seccion OBSERVACIONES."""
     if n_consumibles:
-        return bloque_consumible(n_consumibles - 1, n_bloques_foto)["fila_recuperacion"]
+        return bloque_consumible(n_consumibles - 1, n_bloques_foto,
+                                 bandas)["filas_recuperacion"][-1]
     return fila_titulo_observaciones(n_bloques_foto)
 
 
@@ -243,13 +266,14 @@ def fin_seccion_pareada(fila_titulo: int, n_bloques: int) -> int:
 
 
 def plan_secciones(n_bloques_foto: int, n_consumibles: int,
-                   n_comparativo: int = 0, n_danos: int = 0) -> dict:
+                   n_comparativo: int = 0, n_danos: int = 0,
+                   bandas=None) -> dict:
     """Fila donde arranca cada seccion y donde termina el acta.
 
     Las secciones se encadenan en el orden en que se imprimen: rejilla,
     observaciones, comparativo despacho/recepcion y, al final, danos.
     """
-    fila = fin_consumibles(n_bloques_foto, n_consumibles)
+    fila = fin_consumibles(n_bloques_foto, n_consumibles, bandas)
 
     titulo_comparativo = fila + 1 if n_comparativo else None
     if n_comparativo:
@@ -268,9 +292,50 @@ def plan_secciones(n_bloques_foto: int, n_consumibles: int,
 
 
 def ultima_fila(n_bloques_foto: int, n_consumibles: int,
-                n_comparativo: int = 0, n_danos: int = 0) -> int:
+                n_comparativo: int = 0, n_danos: int = 0, bandas=None) -> int:
     return plan_secciones(n_bloques_foto, n_consumibles,
-                          n_comparativo, n_danos)["ultima_fila"]
+                          n_comparativo, n_danos, bandas)["ultima_fila"]
+
+
+# --- Reparto en hojas ---------------------------------------------------------
+# Alto de contenido que admite una hoja A4 vertical con esta rejilla. Medido:
+# la rejilla mide 634 pt y el ancho util de un A4 con estos margenes son 561,
+# asi que el ajuste a lo ancho impone una escala del 88 %; a esa escala entran
+# 887 pt de contenido bajo el borde superior.
+CAJA_IMPRESION_PT = 887.0
+
+ALTO_CABECERA_PT = 9 * ALTO_FILA_ESTANDAR + ALTO_FILA_SEPARADOR      # 145,5
+ALTO_BLOQUE_FOTO_PT = FILAS_IMAGEN * ALTO_FILA_ESTANDAR + ALTO_FILA_ROTULO   # 226,5
+ALTO_TITULO_SECCION_PT = ALTO_FILA_ROTULO
+
+
+def alto_bloque_pareado_pt(bandas: int = 1) -> float:
+    """Alto de un bloque de observacion con `bandas` franjas de cierre."""
+    return (ALTO_FILA_ROTULO + FILAS_IMAGEN * ALTO_FILA_ESTANDAR
+            + ALTO_FILA_TEXTO + max(1, bandas) * ALTO_FILA_ROTULO)
+
+
+def reparto(piezas: list[dict], disponible: float = CAJA_IMPRESION_PT) -> list[int]:
+    """Numero de hoja (0-based) de cada pieza.
+
+    Una pieza es {"alto": pt, "abre_pagina": bool, "arrastra": bool}. `arrastra`
+    marca los titulos de seccion: un encabezado solo al pie de una hoja no dice
+    nada, asi que baja con su primer bloque. El reparto se hace por alto y no
+    por cuenta de bloques porque los bloques ya no miden todos lo mismo.
+    """
+    paginas, hoja, alto, cuantas = [], 0, 0.0, 0
+    for i, pieza in enumerate(piezas):
+        necesita = pieza["alto"]
+        if pieza.get("arrastra") and i + 1 < len(piezas):
+            necesita += piezas[i + 1]["alto"]
+        if cuantas and (pieza.get("abre_pagina") or alto + necesita > disponible):
+            hoja += 1
+            alto = 0.0
+            cuantas = 0
+        paginas.append(hoja)
+        alto += pieza["alto"]
+        cuantas += 1
+    return paginas
 
 
 def _ancho_px(col: str) -> int:
