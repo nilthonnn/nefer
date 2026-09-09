@@ -130,6 +130,20 @@
   button.ghost:hover { color:var(--accent); }
   button:disabled { opacity:.45; cursor:not-allowed; }
 
+  /* El selector de archivos se abre pulsando una <label>, no llamando a
+     .click() sobre un input escondido: la activación nativa es la única que
+     ningún navegador bloquea, ni dentro de un marco ni en el móvil. */
+  .boton { display:inline-flex; align-items:center; justify-content:center;
+           font-family:var(--sans); font-size:.85rem; font-weight:600;
+           padding:.5rem .75rem; min-height:44px; border-radius:5px; cursor:pointer;
+           border:1px solid var(--rule); background:var(--card-2); color:var(--ink); }
+  .boton:hover { border-color:var(--accent); color:var(--accent); }
+  .boton.primary { background:var(--accent); border-color:var(--accent); color:var(--paper); }
+  .boton.primary:hover { filter:brightness(1.12); color:var(--paper); }
+  .archivo { position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+             overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0; }
+  .archivo:focus-visible + .boton { outline:2px solid var(--accent); outline-offset:2px; }
+
   input[type="text"], input[type="number"], input[type="date"], select, textarea {
     font-family:var(--sans); font-size:.86rem; color:var(--ink);
     background:var(--card-2); border:1px solid var(--rule);
@@ -485,9 +499,10 @@
           <option value="maquinaria_amarilla">Maquinaria amarilla</option>
           <option value="generico">Genérico</option>
         </select>
-        <button class="primary" id="d-cargar" type="button">Cargar fotos…</button>
-        <input type="file" id="d-file" accept="image/*" multiple hidden
+        <input type="file" id="d-file" class="archivo" multiple
+               accept="image/*,.jpg,.jpeg,.png,.heic,.heif"
                aria-label="Seleccionar fotografías del equipo">
+        <label class="boton primary" for="d-file">Cargar fotos…</label>
         <button id="d-auto" type="button">Reasignar</button>
         <button class="ghost" id="d-ejemplo" type="button">ver ejemplo</button>
         <span class="grow"></span>
@@ -587,22 +602,27 @@
         <div class="carga" id="r-c1">
           <h2><span class="n">01</span> Acta de despacho</h2>
           <p>El <code>acta.json</code> del despacho de este equipo.</p>
-          <button class="primary" id="r-b1" type="button">Cargar acta.json…</button>
-          <input type="file" id="r-f1" accept=".json,application/json" hidden>
+          <input type="file" id="r-f1" class="archivo"
+                 aria-label="Seleccionar el acta de despacho en JSON">
+          <label class="boton primary" for="r-f1">Cargar acta.json…</label>
           <span class="estado" id="r-e1"></span>
         </div>
         <div class="carga" id="r-c2">
           <h2><span class="n">02</span> Fotos del despacho</h2>
           <p>La carpeta <code>fotos/</code> de ese mismo despacho.</p>
-          <button id="r-b2" type="button">Cargar fotos…</button>
-          <input type="file" id="r-f2" accept="image/*" multiple hidden>
+          <input type="file" id="r-f2" class="archivo" multiple
+                 accept="image/*,.jpg,.jpeg,.png,.heic,.heif"
+                 aria-label="Seleccionar fotos del despacho">
+          <label class="boton" for="r-f2">Cargar fotos…</label>
           <span class="estado" id="r-e2"></span>
         </div>
         <div class="carga" id="r-c3">
           <h2><span class="n">03</span> Fotos del retorno</h2>
           <p>Las que acaba de tomar al recibir el equipo.</p>
-          <button id="r-b3" type="button">Cargar fotos…</button>
-          <input type="file" id="r-f3" accept="image/*" multiple hidden>
+          <input type="file" id="r-f3" class="archivo" multiple
+                 accept="image/*,.jpg,.jpeg,.png,.heic,.heif"
+                 aria-label="Seleccionar fotos del retorno">
+          <label class="boton" for="r-f3">Cargar fotos…</label>
           <span class="estado" id="r-e3"></span>
         </div>
       </div>
@@ -1298,29 +1318,85 @@ var NEFER = (function () {
   }
 
   /* ---------- carga ---------- */
-  function agregar(archivos) {
-    var pendientes = Array.prototype.filter.call(archivos, function (f) {
-      return /^image\//.test(f.type) || /\.(jpe?g|png|gif|bmp)$/i.test(f.name);
-    });
-    var rechazados = Array.prototype.filter.call(archivos, function (f) {
-      return /\.(heic|heif|tiff?|webp|dng)$/i.test(f.name);
-    });
-    if (!pendientes.length) { avisarRechazo(rechazados); return; }
-
-    var restan = pendientes.length;
-    pendientes.forEach(function (f) {
-      var foto = {
-        id: siguienteId++, nombre: f.name, url: URL.createObjectURL(f), archivo: f,
-        fecha: null, respaldo: f.lastModified || 0, sugerida: sugerir(f.name)
-      };
-      fotos.push(foto);
-      var fr = new FileReader();
-      function listo() {
-        if (--restan === 0) { autoAsignar(); pintar(); avisarRechazo(rechazados); }
+  /* ---------- carga ----------
+     La prueba es si el navegador decodifica la imagen, no cómo se llama ni qué
+     tipo declara: los selectores de Android entregan a menudo `type` vacío y
+     nombres sin extensión, y filtrar por nombre hacía desaparecer esas fotos
+     sin un solo aviso. Lo que no decodifica se nombra y se explica. */
+  function decodifica(archivo) {
+    return new Promise(function (ok) {
+      var url = URL.createObjectURL(archivo);
+      var img = new Image();
+      var cerrado = false;
+      function fin(vale) {
+        if (cerrado) return;
+        cerrado = true;
+        if (!vale) URL.revokeObjectURL(url);
+        ok(vale ? url : null);
       }
-      fr.onload = function () { foto.fecha = fechaExif(fr.result); listo(); };
-      fr.onerror = listo;
-      fr.readAsArrayBuffer(f.slice(0, 131072));   // la cabecera basta para el EXIF
+      img.onload = function () { fin(img.naturalWidth > 0); };
+      img.onerror = function () { fin(false); };
+      // Un archivo enorme o un formato que el navegador ni intenta no puede
+      // dejar la carga colgada para siempre.
+      setTimeout(function () { fin(false); }, 15000);
+      img.src = url;
+    });
+  }
+
+  function motivoRechazo(f) {
+    if (/\.(heic|heif)$/i.test(f.name) || /heic|heif/i.test(f.type || "")) {
+      return "formato HEIC del iPhone";
+    }
+    if (/\.(tiff?|dng|raw|cr2|nef)$/i.test(f.name)) return "formato RAW o TIFF";
+    if (/\.(mov|mp4|avi)$/i.test(f.name) || /^video\//.test(f.type || "")) return "es un vídeo";
+    if (!f.size) return "el archivo llegó vacío";
+    return "el navegador no pudo abrirla";
+  }
+
+  function agregar(archivos) {
+    var lista = Array.prototype.slice.call(archivos);
+    if (!lista.length) { diagnostico(0, 0, []); return; }
+
+    var caja = $("#d-estado");
+    caja.className = "aviso";
+    caja.innerHTML = "Abriendo " + lista.length + " archivo(s)…";
+
+    Promise.all(lista.map(function (f) {
+      return decodifica(f).then(function (url) { return { archivo: f, url: url }; });
+    })).then(function (resultados) {
+      var aceptados = [], rechazados = [];
+      resultados.forEach(function (x) {
+        if (!x.url) { rechazados.push(x.archivo); return; }
+        var foto = {
+          id: siguienteId++, nombre: x.archivo.name || ("foto-" + siguienteId + ".jpg"),
+          url: x.url, archivo: x.archivo, fecha: null,
+          respaldo: x.archivo.lastModified || 0,
+          sugerida: sugerir(x.archivo.name || "")
+        };
+        fotos.push(foto);
+        aceptados.push(foto);
+      });
+
+      if (!aceptados.length) {
+        autoAsignar(); pintar();
+        diagnostico(lista.length, 0, rechazados);
+        return;
+      }
+
+      // La fecha EXIF sólo ordena la propuesta: si falla, no se pierde la foto.
+      var restan = aceptados.length;
+      aceptados.forEach(function (foto) {
+        var fr = new FileReader();
+        function listo() {
+          if (--restan) return;
+          autoAsignar(); pintar();
+          diagnostico(lista.length, aceptados.length, rechazados);
+        }
+        fr.onload = function () { foto.fecha = fechaExif(fr.result); listo(); };
+        fr.onerror = listo;
+        try { fr.readAsArrayBuffer(foto.archivo.slice(0, 131072)); }  // basta la cabecera
+        catch (e) { listo(); }
+      });
     });
   }
 
@@ -1518,14 +1594,33 @@ var NEFER = (function () {
     guardar();
   }
 
-  function avisarRechazo(rechazados) {
-    if (!rechazados || !rechazados.length) return;
+  // Ningún archivo desaparece sin explicación: si el operador eligió diez y
+  // entraron ocho, tiene que ver cuáles faltan y por qué.
+  function diagnostico(entraron, aceptados, rechazados) {
     var caja = $("#d-estado");
+    if (!entraron) {
+      caja.className = "aviso";
+      caja.innerHTML = "<b>El selector no devolvió ningún archivo.</b> Si no llegó a " +
+        "abrirse, arrastre las fotos al recuadro, o abra la app instalada en la " +
+        "pantalla de inicio en vez de esta página.";
+      return;
+    }
+    if (!rechazados.length) { pintarSalida(); return; }
+
+    var detalle = rechazados.slice(0, 4).map(function (f) {
+      return esc(f.name || "sin nombre") + " — " + motivoRechazo(f);
+    }).join("; ");
+    var heic = rechazados.some(function (f) {
+      return /\.(heic|heif)$/i.test(f.name) || /heic|heif/i.test(f.type || "");
+    });
+
     caja.className = "aviso malo";
-    caja.innerHTML = "<b>" + rechazados.length + " archivo(s) que Excel no puede " +
-      "incrustar</b> (" + esc(rechazados.slice(0, 3).map(function (f) { return f.name; }).join(", ")) +
-      "). Conviértalos a JPG. En el iPhone, Ajustes → Cámara → Formatos → " +
-      "«Más compatible» lo evita de raíz.";
+    caja.innerHTML = "<b>" + aceptados + " de " + entraron + " fotos cargadas.</b> " +
+      "No entraron: " + detalle +
+      (rechazados.length > 4 ? " y " + (rechazados.length - 4) + " más" : "") + ". " +
+      (heic ? "El HEIC del iPhone no se puede incrustar en el Excel: Ajustes → " +
+              "Cámara → Formatos → «Más compatible» lo evita de raíz."
+            : "Vuelva a tomarlas o conviértalas a JPG.");
   }
 
   /* ---------- interacción ---------- */
@@ -1599,7 +1694,6 @@ var NEFER = (function () {
     accesorios.push({ nombre: "", fotoId: null }); pintar();
   });
 
-  $("#d-cargar").addEventListener("click", function () { $("#d-file").click(); });
   $("#d-file").addEventListener("change", function (e) { agregar(e.target.files); e.target.value = ""; });
   $("#d-cat").addEventListener("change", function () { autoAsignar(); pintar(); });
   $("#d-auto").addEventListener("click", function () { autoAsignar(); pintar(); });
@@ -1771,10 +1865,6 @@ var NEFER = (function () {
   var ESTADOS_INSP = [["OK","Funcional"],["OBS","Observado"],["D","Dañado"]];
 
   /* ---------- carga ---------- */
-  $("#r-b1").addEventListener("click", function () { $("#r-f1").click(); });
-  $("#r-b2").addEventListener("click", function () { $("#r-f2").click(); });
-  $("#r-b3").addEventListener("click", function () { $("#r-f3").click(); });
-
   $("#r-f1").addEventListener("change", function (e) {
     var f = e.target.files[0];
     if (!f) return;
@@ -1818,27 +1908,61 @@ var NEFER = (function () {
     adoptar(puente.acta);
   });
 
-  function cargarFotos(files, destino) {
-    Array.prototype.forEach.call(files, function (f) {
-      if (!/^image\//.test(f.type) && !/\.(jpe?g|png|gif|bmp)$/i.test(f.name)) return;
-      var url = URL.createObjectURL(f);
-      if (destino === "antes") antes[f.name] = { url: url, archivo: f };
-      else retorno.push({ id: sig++, nombre: f.name, url: url, archivo: f });
+  // Igual que en despacho: vale la foto que el navegador sabe decodificar, no
+  // la que trae la extensión correcta. Y lo descartado se cuenta a la vista.
+  function decodifica(archivo) {
+    return new Promise(function (ok) {
+      var url = URL.createObjectURL(archivo);
+      var img = new Image(), cerrado = false;
+      function fin(vale) {
+        if (cerrado) return;
+        cerrado = true;
+        if (!vale) URL.revokeObjectURL(url);
+        ok(vale ? url : null);
+      }
+      img.onload = function () { fin(img.naturalWidth > 0); };
+      img.onerror = function () { fin(false); };
+      setTimeout(function () { fin(false); }, 15000);
+      img.src = url;
+    });
+  }
+
+  function cargarFotos(files, destino, avisoId, tarjetaId) {
+    var lista = Array.prototype.slice.call(files);
+    var aviso = $("#" + avisoId);
+    if (!lista.length) {
+      aviso.textContent = "el selector no devolvió nada";
+      aviso.style.color = "var(--obs)";
+      return;
+    }
+    aviso.textContent = "abriendo " + lista.length + "…";
+    aviso.style.color = "var(--ink-3)";
+
+    Promise.all(lista.map(function (f) {
+      return decodifica(f).then(function (url) { return { archivo: f, url: url }; });
+    })).then(function (res) {
+      var malas = 0;
+      res.forEach(function (x) {
+        if (!x.url) { malas++; return; }
+        var nombre = x.archivo.name || ("foto-" + sig + ".jpg");
+        if (destino === "antes") antes[nombre] = { url: x.url, archivo: x.archivo };
+        else retorno.push({ id: sig++, nombre: nombre, url: x.url, archivo: x.archivo });
+      });
+      var n = destino === "antes" ? Object.keys(antes).length : retorno.length;
+      $("#" + tarjetaId).classList.toggle("lista", n > 0);
+      aviso.textContent = n + " foto(s)" + (malas ? " · " + malas + " no se pudo abrir" : "");
+      aviso.style.color = malas ? "var(--obs)" : "var(--ok)";
+      pintar();
     });
   }
 
   $("#r-f2").addEventListener("change", function (e) {
-    cargarFotos(e.target.files, "antes");
-    var n = Object.keys(antes).length;
-    $("#r-c2").classList.toggle("lista", n > 0);
-    $("#r-e2").textContent = n + " foto(s)";
-    pintar(); e.target.value = "";
+    cargarFotos(e.target.files, "antes", "r-e2", "r-c2");
+    e.target.value = "";
   });
   $("#r-f3").addEventListener("change", function (e) {
-    cargarFotos(e.target.files, "retorno");
-    $("#r-c3").classList.toggle("lista", retorno.length > 0);
-    $("#r-e3").textContent = retorno.length + " foto(s)";
-    pintar(); e.target.value = "";
+    cargarFotos(e.target.files, "retorno", "r-e3", "r-c3");
+    e.target.value = "";
   });
 
   /* ---------- preparar desde el acta de despacho ---------- */
