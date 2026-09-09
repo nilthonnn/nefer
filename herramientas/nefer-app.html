@@ -1050,6 +1050,15 @@ var NEFER = (function () {
     try { return window.self !== window.top; } catch (e) { return true; }
   })();
 
+  // Publicada como página, el visor no deja que la página descargue por su
+  // cuenta: hay que pedirle al anfitrión que guarde el archivo. Abierta desde
+  // el teléfono como aplicación no existe ese anfitrión y se descarga directo.
+  var guardadoAnfitrion = (window.claude && typeof window.claude.use === "function")
+    ? Promise.resolve(window.claude.use("downloads")).then(
+        function (d) { return d && typeof d.save === "function" ? d : null; },
+        function () { return null; })
+    : Promise.resolve(null);
+
   function entregar(blob, nombre, avisar) {
     var archivo = null;
     try { archivo = new File([blob], nombre, { type: "application/zip" }); } catch (e) { /* File viejo */ }
@@ -1068,8 +1077,22 @@ var NEFER = (function () {
   }
 
   function descargar(blob, nombre, avisar) {
+    guardadoAnfitrion.then(function (guardar) {
+      if (!guardar) { porEnlace(blob, nombre, avisar); return; }
+      guardar.save({ filename: nombre, data: blob }).then(
+        function (r) { avisar(r && r.status === "delivered" ? "entregado" : "guardado: " + nombre); },
+        function (err) {
+          var codigo = err && err.code;
+          if (codigo === "declined") { avisar(""); return; }
+          if (codigo === "rate_limited") { avisar("espere un momento y reintente"); return; }
+          porEnlace(blob, nombre, avisar);
+        });
+    });
+  }
+
+  function porEnlace(blob, nombre, avisar) {
     if (incrustada) {
-      avisar("descarga bloqueada aquí — abra la app instalada");
+      avisar("aquí no se puede descargar — use el archivo instalado");
       return;
     }
     var url = URL.createObjectURL(blob);
