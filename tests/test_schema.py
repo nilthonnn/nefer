@@ -98,3 +98,21 @@ def test_logo_inexistente_es_un_error(tmp_path):
     assert any("logo" in e for e in schema.validar(m, tmp_path))
     # Sin raiz no se comprueba el disco: solo se valida el tipo.
     assert schema.validar(m) == []
+def test_una_observacion_fotografiada_puede_no_tener_nombre(tmp_path):
+    """La foto se tomo delante del equipo; el nombre se puede escribir luego.
+
+    Sin fotografia el nombre sigue siendo obligatorio: un bloque vacio no
+    declara nada y solo estorba en el acta.
+    """
+    from nefer import schema
+
+    (tmp_path / "fotos").mkdir()
+    (tmp_path / "fotos" / "x.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+
+    con_foto = {"descripcion": "", "cantidad": 1, "foto_recepcion": "fotos/x.png"}
+    sin_foto = {"descripcion": "", "cantidad": 1}
+    errores: list[str] = []
+    schema._validar_consumibles([con_foto], errores, tmp_path)
+    assert errores == []
+    schema._validar_consumibles([sin_foto], errores, tmp_path)
+    assert any("obligatoria salvo con fotografía" in e for e in errores)
