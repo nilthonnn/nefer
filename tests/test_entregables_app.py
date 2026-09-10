@@ -318,6 +318,91 @@ def _titulos_por_fila(ruta_xlsx: Path) -> dict[int, str]:
     return marcas
 
 
+def test_una_observacion_sin_estado_conserva_su_fotografia(tmp_path):
+    """Lo que el operador fotografia tiene que llegar al acta.
+
+    Medido antes del arreglo: una observacion levantada en la recepcion, con su
+    nombre y su foto de retorno puesta, desaparecia entera del PDF y del Excel
+    si no se marcaba el estado —el acta la filtraba en silencio—. La foto se
+    tomo delante del equipo y no llegaba a ninguna parte.
+    """
+    if not HAY_CHROMIUM:
+        pytest.skip("no hay Chromium disponible")
+    openpyxl = pytest.importorskip("openpyxl")
+
+    fallos: list[str] = []
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch(**opciones())
+        ctx = nav.new_context(viewport={"width": 390, "height": 844},
+                              has_touch=True, is_mobile=True,
+                              accept_downloads=True, permissions=[])
+        pg = ctx.new_page()
+        pg.on("pageerror", lambda e: fallos.append(str(e)))
+        pg.goto(APP.as_uri())
+        pg.wait_for_timeout(600)
+        pg.click("#btn-demo")
+        pg.wait_for_timeout(2500)
+
+        pg.click("#tab-recepcion")
+        pg.wait_for_timeout(300)
+        pg.click("#r-desde-despacho")
+        pg.wait_for_timeout(800)
+        pg.evaluate(RECEPCION_EN_EL_NAVEGADOR)
+        pg.wait_for_timeout(3000)
+        for k in range(10):
+            pg.click("#r-tira .tile:first-child")
+            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
+            pg.wait_for_timeout(60)
+
+        # Una observación nueva: nombre y fotografía, SIN marcar el estado.
+        pg.click("#r-add-cons")
+        pg.wait_for_timeout(400)
+        i = pg.eval_on_selector_all("[data-cons-nombre]",
+                                    "n => n[n.length - 1].dataset.consNombre")
+        pg.fill(f"[data-cons-nombre='{i}']", "BARRA PUESTA A TIERRA")
+        pg.wait_for_timeout(300)
+        pg.click("#r-tira .tile:first-child")
+        pg.click(f"#r-consumibles [data-destino='cons'][data-i='{i}']")
+        pg.wait_for_timeout(500)
+
+        pg.fill("#r-acta", "004-001158")
+        pg.fill("#r-horometro", "1760")
+        pg.wait_for_timeout(400)
+        acta = json.loads(pg.input_value("#r-salida"))
+
+        with pg.expect_download(timeout=90000) as espera:
+            pg.click("#r-xlsx")
+        xlsx = tmp_path / espera.value.suggested_filename
+        espera.value.save_as(xlsx)
+        nav.close()
+
+    assert fallos == [], fallos
+
+    obs = [c for c in acta["consumibles"] if c["descripcion"] == "BARRA PUESTA A TIERRA"]
+    assert len(obs) == 1, acta["consumibles"]
+    assert obs[0].get("foto_recepcion"), "la fotografía tiene que viajar en el acta"
+    # Y el acta no declara un retorno que nadie afirmó.
+    assert "estado_recepcion" not in obs[0]
+
+    ws = openpyxl.load_workbook(xlsx).active
+    filas = [f for f in range(1, ws.max_row + 1)
+             if ws.cell(row=f, column=1).value == "01 BARRA PUESTA A TIERRA DESPACHADO"]
+    assert len(filas) == 1, "el bloque de la observación tiene que imprimirse"
+    fila_rotulo = filas[0]
+    columna_der = layout.PANEL_DER[0]
+    assert not ws[f"{columna_der}{fila_rotulo}"].value, \
+        "sin estado, la columna de recepción no puede afirmar nada"
+    assert not ws[f"A{fila_rotulo + 1}"].value, \
+        "ni conforme ni recuperación: nadie lo ha declarado"
+
+    # La fotografía está anclada dentro de ese bloque, en la columna derecha.
+    inicio = fila_rotulo - layout.FILAS_IMAGEN
+    anclado = [im for im in ws._images
+               if inicio - 1 <= im.anchor._from.row + 1 <= fila_rotulo
+               and im.anchor._from.col + 1 >= 13]
+    assert anclado, "la foto de retorno no llegó al Excel"
+
+
 def test_la_recepcion_lleva_las_secciones_del_formato(recepcion):
     marcas = _titulos_por_fila(recepcion["xlsx"])
     textos = list(marcas.values())

@@ -3620,9 +3620,16 @@ var NEFER = (function () {
     });
 
     var franjas = franjasDeCierre();
-    var consumibles = cons.filter(function (c) { return c.estado; }).map(function (c) {
-      var o = { descripcion: c.descripcion, cantidad: c.cantidad || 1,
-                estado_recepcion: c.estado };
+    // Basta con que tenga nombre: una observación sin estado marcado es una
+    // observación a medio llenar, no una que haya que tirar. Antes se filtraba
+    // por estado y el acta perdía en silencio la descripción Y la fotografía
+    // que el operador acababa de tomar.
+    var consumibles = cons.filter(function (c) {
+      return (c.descripcion || "").trim();
+    }).map(function (c) {
+      var o = { descripcion: c.descripcion, cantidad: c.cantidad || 1 };
+      // Sin estado, la clave no viaja: el acta no declara lo que nadie dijo.
+      if (c.estado) o.estado_recepcion = c.estado;
       var enActa = comoEnActa(c);
       var reparto = window.ENTREGABLE
         ? window.ENTREGABLE.repartoConsumible(enActa) : null;
@@ -4179,6 +4186,13 @@ var ENTREGABLE = (function () {
     // falso.
     if (tipo === "DESPACHO") return "";
     var estado = cons.estado_recepcion;
+    // Sin estado y sin retorno parcial declarado, nadie ha dicho todavía si el
+    // equipo volvió con esto o sin esto. La celda va en blanco: la observación
+    // y su fotografía se imprimen igual, y el hecho lo declara quien firma.
+    if ((estado === undefined || estado === null) &&
+        (cons.cantidad_retorna === undefined || cons.cantidad_retorna === null)) {
+      return "";
+    }
     var sufijo = estado === "D" ? " DAÑADO(A)" : (estado === "OBS" ? " OBSERVADO(A)" : "");
     var r = repartoConsumible(cons);
     // Retorno parcial: la celda dice cuántas de cuántas volvieron. Decir sólo
@@ -4208,6 +4222,16 @@ var ENTREGABLE = (function () {
 
   function cierresConsumible(cons, tipo) {
     if (tipo === "DESPACHO") return [];
+    // Sin estado declarado no hay nada que cerrar: una franja CONFORME daría
+    // por bueno lo que nadie ha revisado, y una RECUPERACIÓN cobraría lo que
+    // nadie ha declarado perdido. Un texto escrito a mano sí es una
+    // declaración, y entonces la franja va con lo que diga ese texto.
+    var aMano = leyendasManuales(cons).some(function (t) { return t.trim(); });
+    if ((cons.estado_recepcion === undefined || cons.estado_recepcion === null) &&
+        (cons.cantidad_retorna === undefined || cons.cantidad_retorna === null) &&
+        !aMano) {
+      return [];
+    }
     var r = repartoConsumible(cons);
     var danado = ["D", "OBS"].indexOf(cons.estado_recepcion) !== -1;
     var cierres = [];

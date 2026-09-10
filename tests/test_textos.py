@@ -23,6 +23,36 @@ def test_recuperacion_manual_tiene_prioridad():
     assert textos.texto_recuperacion(cons, 1) == "TEXTO ACORDADO CON EL CLIENTE"
 
 
+def test_sin_estado_la_recepcion_no_afirma_nada():
+    """Una observacion a medio llenar se imprime, pero no declara un retorno.
+
+    El operador toma la foto y todavia no ha dicho si volvio o no volvio. El
+    bloque sale igual —con su descripcion y su fotografia—, y la columna de
+    recepcion queda vacia: decir "EL EQUIPO RETORNO CON" seria afirmar un
+    hecho que nadie declaro, y "CONFORME" seria darlo por bueno sin revisarlo.
+    """
+    cons = {"cantidad": 1, "descripcion": "BARRA PUESTA A TIERRA"}
+    assert textos.texto_consumible(cons, "DESPACHO") == "01 BARRA PUESTA A TIERRA DESPACHADO"
+    assert textos.texto_consumible(cons, "RECEPCIÓN") == ""
+    assert textos.cierres_consumible(cons) == []
+
+
+def test_sin_estado_pero_con_texto_a_mano_la_franja_va():
+    """Lo escrito a mano si es una declaracion: no se pierde."""
+    cons = {"cantidad": 1, "descripcion": "X", "recuperacion": "ACORDADO CON EL CLIENTE"}
+    cierres = textos.cierres_consumible(cons)
+    assert len(cierres) == 1
+    assert textos.texto_recuperacion(cons, 1) == "ACORDADO CON EL CLIENTE"
+
+
+def test_sin_estado_pero_con_retorno_parcial_declarado_la_franja_va():
+    """Declarar cuantas volvieron es declarar un hecho, y cierra el bloque."""
+    cons = {"cantidad": 2, "descripcion": "GANCHOS", "cantidad_retorna": 1}
+    cierres = textos.cierres_consumible(cons)
+    assert [c["recupera"] for c in cierres] == [True, False]
+    assert "01 DE 02 GANCHOS" in textos.texto_consumible(cons, "RECEPCIÓN")
+
+
 def test_control_por_categoria_de_equipo():
     diesel = [c["consumible"] for c in textos.control_consumibles_vacio("maquinaria_amarilla")]
     electrica = [c["consumible"] for c in textos.control_consumibles_vacio("plataforma_elevacion")]
