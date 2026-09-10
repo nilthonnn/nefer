@@ -79,7 +79,7 @@ def test_paneles_compartidos():
 pytest.importorskip("playwright.sync_api", reason="Playwright no esta instalado")
 from playwright.sync_api import sync_playwright  # noqa: E402
 
-from navegador import CHROME, HAY_CHROMIUM  # noqa: E402
+from navegador import HAY_CHROMIUM, opciones  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -92,7 +92,7 @@ def entregables(tmp_path_factory):
     fallos: list[str] = []
 
     with sync_playwright() as pw:
-        nav = pw.chromium.launch(executable_path=CHROME)
+        nav = pw.chromium.launch(**opciones())
         ctx = nav.new_context(viewport={"width": 390, "height": 844},
                               has_touch=True, is_mobile=True,
                               accept_downloads=True, permissions=[])
@@ -246,7 +246,7 @@ def recepcion(tmp_path_factory):
     fallos: list[str] = []
 
     with sync_playwright() as pw:
-        nav = pw.chromium.launch(executable_path=CHROME)
+        nav = pw.chromium.launch(**opciones())
         ctx = nav.new_context(viewport={"width": 390, "height": 844},
                               has_touch=True, is_mobile=True,
                               accept_downloads=True, permissions=[])
@@ -366,7 +366,7 @@ def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
 
     fallos: list[str] = []
     with sync_playwright() as pw:
-        nav = pw.chromium.launch(executable_path=CHROME)
+        nav = pw.chromium.launch(**opciones())
         ctx = nav.new_context(viewport={"width": 390, "height": 844},
                               has_touch=True, is_mobile=True,
                               accept_downloads=True, permissions=[])
@@ -486,7 +486,7 @@ def test_la_recepcion_arranca_sin_acta_de_despacho(tmp_path):
 
     fallos: list[str] = []
     with sync_playwright() as pw:
-        nav = pw.chromium.launch(executable_path=CHROME)
+        nav = pw.chromium.launch(**opciones())
         ctx = nav.new_context(viewport={"width": 390, "height": 844},
                               has_touch=True, is_mobile=True,
                               accept_downloads=True, permissions=[])
@@ -614,7 +614,7 @@ def test_la_descripcion_larga_se_reparte_en_dos_renglones():
         pytest.skip("no hay Chromium disponible")
     largo = "01 BASE DE EXTINTOR DE 6 KG CON SU SOPORTE DE PARED DESPACHADO"
     with sync_playwright() as pw:
-        nav = pw.chromium.launch(executable_path=CHROME)
+        nav = pw.chromium.launch(**opciones())
         pg = nav.new_page()
         pg.goto(APP.as_uri())
         pg.wait_for_timeout(400)
@@ -646,7 +646,7 @@ def parcial(tmp_path_factory):
     accesorios = [("GANCHOS DE IZAJE", "2", "1"), ('CONOS DE 28"', "2", "0")]
 
     with sync_playwright() as pw:
-        nav = pw.chromium.launch(executable_path=CHROME)
+        nav = pw.chromium.launch(**opciones())
         ctx = nav.new_context(viewport={"width": 390, "height": 844},
                               has_touch=True, is_mobile=True,
                               accept_downloads=True, permissions=[])

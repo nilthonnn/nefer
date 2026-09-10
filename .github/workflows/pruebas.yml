@@ -75,7 +75,7 @@ jobs:
           python - <<'PY'
           import shutil, sys
           sys.path.insert(0, "tests")
-          from navegador import CHROME, HAY_CHROMIUM
+          from navegador import CHROME, HAY_CHROMIUM, opciones
           from playwright.sync_api import sync_playwright
 
           faltan = [n for n, hay in (
@@ -85,10 +85,43 @@ jobs:
           if faltan:
               sys.exit("sin " + ", ".join(faltan) + ": las pruebas se saltarían solas")
 
+          SONDA = """async () => {
+            try {
+              const s = await navigator.mediaDevices.getUserMedia({video: true});
+              s.getTracks().forEach(t => t.stop());
+              return 'concedida';
+            } catch (e) { return 'rechazada:' + e.name; }
+          }"""
+
+          # Se abre el navegador y se le pide la cámara: es lo que hace la
+          # suite, y el binario recortado que Playwright usa por omisión no la
+          # trae. Comprobarlo aquí evita descubrirlo tres minutos después.
+          # Hace falta servirla: `getUserMedia` sólo existe en un origen
+          # seguro, y 127.0.0.1 lo es.
+          import functools, http.server, socketserver, threading
+
+          manejador = functools.partial(http.server.SimpleHTTPRequestHandler,
+                                        directory="docs/app")
+          manejador.log_message = lambda *a, **k: None
+
+          class Servidor(socketserver.TCPServer):
+              allow_reuse_address = True
+
+          servidor = Servidor(("127.0.0.1", 0), manejador)
+          threading.Thread(target=servidor.serve_forever, daemon=True).start()
+          puerto = servidor.server_address[1]
+
           with sync_playwright() as pw:
-              navegador = pw.chromium.launch(executable_path=CHROME)
+              navegador = pw.chromium.launch(
+                  **opciones(args=["--use-fake-device-for-media-stream"]))
+              pagina = navegador.new_context(permissions=["camera"]).new_page()
+              pagina.goto(f"http://127.0.0.1:{puerto}/")
+              camara = pagina.evaluate(SONDA)
               navegador.close()
-          print("Chromium abierto:", CHROME or "el que instaló Playwright")
+          servidor.shutdown()
+          print("Chromium:", CHROME or "el completo de Playwright", "· cámara:", camara)
+          if camara != "concedida":
+              sys.exit("el navegador no da la cámara (" + camara + ")")
 
           # Y las pruebas tienen que verlo igual que lo vio esta comprobación.
           if not HAY_CHROMIUM:

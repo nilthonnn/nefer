@@ -69,3 +69,20 @@ def _resolver() -> tuple[str | None, bool]:
 
 
 CHROME, HAY_CHROMIUM = _resolver()
+
+
+def opciones(**extra) -> dict:
+    """Como abrir Chromium, ademas de lo que pida quien llama.
+
+    Sin ruta explicita hay que pedir `channel="chromium"`: el binario que
+    Playwright usa por omision para el modo sin ventana es una version
+    recortada —`chrome-headless-shell`— que no trae captura de camara, y
+    `getUserMedia` falla ahi con NotSupportedError aunque el permiso este
+    concedido. Medido: con el navegador completo la sonda devuelve
+    `camara: concedida` y con el recortado `rechazada:NotSupportedError`.
+    """
+    if CHROME:
+        extra["executable_path"] = CHROME
+    else:
+        extra["channel"] = "chromium"
+    return extra

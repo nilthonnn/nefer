@@ -25,7 +25,7 @@ from PIL import Image  # noqa: E402
 
 APP = Path(__file__).resolve().parents[1] / "docs" / "app" / "index.html"
 
-from navegador import CHROME, HAY_CHROMIUM  # noqa: E402
+from navegador import HAY_CHROMIUM, opciones  # noqa: E402
 
 pytestmark = pytest.mark.skipif(not HAY_CHROMIUM, reason="no hay Chromium disponible")
 
@@ -151,7 +151,7 @@ class App:
 def _lanzar(pw, *, camara=False):
     args = (["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"]
             if camara else [])
-    return pw.chromium.launch(executable_path=CHROME, args=args)
+    return pw.chromium.launch(**opciones(args=args))
 
 
 def _contexto(nav, *, movil=False, camara=False, descargas=False):
@@ -639,8 +639,8 @@ def test_desde_un_archivo_local_la_camara_no_puede_concederse():
     se le puede conceder. Esta prueba fija el porque de todo lo demas.
     """
     with sync_playwright() as pw:
-        nav = pw.chromium.launch(executable_path=CHROME,
-                                 args=["--use-fake-device-for-media-stream"])
+        nav = pw.chromium.launch(
+            **opciones(args=["--use-fake-device-for-media-stream"]))
         # permissions=[] deniega sin preguntar: sin esto el dialogo se queda
         # abierto y la promesa nunca se resuelve.
         ctx = nav.new_context(viewport={"width": 390, "height": 844},
@@ -658,8 +658,8 @@ def test_desde_un_archivo_local_la_camara_no_puede_concederse():
 
 def test_servida_por_http_la_camara_se_concede(servidor):
     with sync_playwright() as pw:
-        nav = pw.chromium.launch(executable_path=CHROME,
-                                 args=["--use-fake-device-for-media-stream"])
+        nav = pw.chromium.launch(
+            **opciones(args=["--use-fake-device-for-media-stream"]))
         ctx = nav.new_context(viewport={"width": 390, "height": 844},
                               has_touch=True, is_mobile=True,
                               user_agent=UA_ANDROID, permissions=["camera"])
