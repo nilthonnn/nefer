@@ -180,8 +180,14 @@ def _validar_consumibles(consumibles, errores, raiz: Path | None,
         if not isinstance(c, dict):
             errores.append(f"{ruta}: debe ser un objeto.")
             continue
+        # La descripcion es obligatoria salvo que el bloque lleve fotografia.
+        # Una observacion fotografiada y sin nombre esta a medio llenar, pero
+        # tirarla del acta pierde la unica prueba que hay: la foto se tomo
+        # delante del equipo y no se puede volver a tomar.
         if not _es_texto(c.get("descripcion")):
-            errores.append(f"{ruta}.descripcion: obligatoria.")
+            con_foto = _es_texto(c.get("foto_despacho")) or _es_texto(c.get("foto_recepcion"))
+            if not con_foto:
+                errores.append(f"{ruta}.descripcion: obligatoria salvo con fotografía.")
         cantidad = c.get("cantidad", 1)
         if not isinstance(cantidad, int) or isinstance(cantidad, bool) or cantidad < 1:
             errores.append(f"{ruta}.cantidad: entero positivo.")

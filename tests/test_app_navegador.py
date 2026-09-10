@@ -437,6 +437,100 @@ def test_camara_recorre_las_casillas_y_cada_foto_cae_en_la_suya(servidor):
         nav.close()
 
 
+def test_el_despacho_admite_vistas_ademas_de_las_del_formato(servidor):
+    """En el patio aparece lo que aparece, y hay que fotografiarlo en la rejilla.
+
+    La vista se anade, se le escribe el rotulo, se fotografia como cualquier
+    otra y viaja en el acta como una vista mas. Se puede quitar sin descolocar
+    las demas.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        errores: list[str] = []
+        pg.on("pageerror", lambda e: errores.append(str(e)))
+        pg.goto(servidor)
+        app = App(pg).despacho()
+
+        del_formato = pg.eval_on_selector_all("#d-grid .slot", "n => n.length")
+        assert del_formato == 10
+
+        pg.click("#d-add-vista")
+        pg.wait_for_timeout(300)
+        assert pg.eval_on_selector_all("#d-grid .slot", "n => n.length") == del_formato + 1
+        assert pg.input_value("[data-vista-rotulo='0']") == "VISTA ADICIONAL 1"
+
+        # El rótulo se escribe encima, letra a letra, sin perder el foco.
+        pg.fill("[data-vista-rotulo='0']", "")
+        pg.click("[data-vista-rotulo='0']")
+        pg.keyboard.type("Enganche trasero", delay=25)
+        pg.wait_for_timeout(200)
+        assert pg.input_value("[data-vista-rotulo='0']") == "Enganche trasero"
+        assert pg.evaluate("() => document.activeElement.dataset.vistaRotulo") == "0"
+
+        # La cámara apunta a esa casilla, con su rótulo.
+        pg.query_selector_all("#d-grid .slot")[-1].click()
+        pg.wait_for_function("() => document.querySelector('#cam-video').videoWidth > 0",
+                             timeout=15000)
+        assert pg.inner_text("#cam-rotulo") == "ENGANCHE TRASERO"
+        pg.click("#cam-disparar")
+        pg.wait_for_timeout(1500)
+        pg.click("#cam-cerrar")
+        pg.wait_for_timeout(500)
+
+        # Y llega al acta como una vista más, en mayúsculas como las del formato.
+        assert app.rotulos() == [("ENGANCHE TRASERO", "fotos/11-enganche-trasero.jpg")]
+
+        # Una segunda que se quita: la primera se queda donde estaba.
+        pg.click("#d-add-vista")
+        pg.wait_for_timeout(300)
+        pg.click("[data-vista-quitar='1']")
+        pg.wait_for_timeout(300)
+        assert pg.eval_on_selector_all("[data-vista-rotulo]",
+                                       "n => n.map(x => x.value)") == ["Enganche trasero"]
+        assert app.rotulos() == [("ENGANCHE TRASERO", "fotos/11-enganche-trasero.jpg")]
+        assert errores == [], errores
+        nav.close()
+
+
+def test_la_camara_de_la_recepcion_pinta_la_foto_que_toma(servidor):
+    """La foto tiene que verse en la casilla, no solo guardarse.
+
+    Medido antes del arreglo: `$("#r-c3")` no existia, la linea lanzaba
+    TypeError y `pintar()` no llegaba a correr. La foto entraba en la bandeja y
+    la pantalla seguia igual —en el patio, «la camara no guarda la foto»—.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        errores: list[str] = []
+        pg.on("pageerror", lambda e: errores.append(str(e)))
+        pg.goto(servidor)
+        pg.wait_for_timeout(300)
+
+        pg.click("#tab-recepcion")
+        pg.wait_for_timeout(200)
+        pg.select_option("#r-cat", "grupo_electrogeno")
+        pg.click("#r-empezar")
+        pg.wait_for_timeout(600)
+
+        pg.click("#r-camara-app")
+        pg.wait_for_function("() => document.querySelector('#cam-video').videoWidth > 0",
+                             timeout=15000)
+        rotulo = pg.inner_text("#cam-rotulo")
+        pg.click("#cam-disparar")
+        pg.wait_for_timeout(1500)
+        pg.click("#cam-cerrar")
+        pg.wait_for_timeout(500)
+
+        assert errores == [], errores
+        # La casilla de esa vista quedó ocupada, a la vista del operador.
+        llenas = pg.eval_on_selector_all("#r-vistas .slot.lleno", "n => n.length")
+        assert llenas == 1, f"{rotulo}: la foto no se pintó en su casilla"
+        assert "1 foto(s)" in pg.inner_text("#r-e3").lower()
+        nav.close()
+
+
 def test_camara_saltar_deja_la_casilla_vacia(servidor):
     with sync_playwright() as pw:
         nav = _lanzar(pw, camara=True)

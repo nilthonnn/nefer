@@ -389,6 +389,18 @@
   .slot.hot { border-color:var(--accent); box-shadow:inset 0 0 0 2px var(--accent); }
   label.slot { cursor:pointer; }
   label.slot:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  /* Vista añadida a mano: su rótulo es un campo, y hace de pie de la casilla.
+     Va fuera del `label`, porque un campo dentro de una etiqueta abriría el
+     selector de fotos en cuanto se tocara para escribir. */
+  .slot-extra { display:flex; flex-direction:column; align-self:stretch; }
+  .slot-extra .slot { border-radius:5px 5px 0 0; flex:1; }
+  .rotulo-extra { display:flex; gap:.25rem; align-items:stretch;
+                  border:1px solid var(--rule); border-top:0;
+                  border-radius:0 0 5px 5px; padding:.22rem; background:var(--card-2); }
+  .rotulo-extra input { flex:1; min-width:0; font-size:.7rem; min-height:40px;
+                        text-transform:uppercase; }
+  .rotulo-extra button { min-height:40px; padding:.2rem .45rem; font-size:.8rem;
+                         line-height:1; flex:none; }
   .slot.propuesto .cap::after { content:"propuesta"; font-family:var(--mono);
                                 font-size:.5rem; color:var(--obs);
                                 background:var(--obs-soft); padding:.05rem .2rem;
@@ -755,6 +767,7 @@
           <h2>Rejilla del formato <span class="tally" id="d-t-rejilla">0 / 0</span></h2>
           <div class="panel-body">
             <div class="grid" id="d-grid"></div>
+            <button id="d-add-vista" type="button" style="margin-top:.5rem">+ Añadir vista</button>
 
             <h2 style="border:0;padding:.9rem 0 .3rem;font-size:.92rem;font-family:var(--cond);
                        text-transform:uppercase;margin:0">Observaciones</h2>
@@ -1113,7 +1126,7 @@ var NEFER = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-10 · observaciones";
+  var VERSION = "2026-09-10 · vistas añadidas";
 
   "use strict";
 
@@ -2245,10 +2258,19 @@ var NEFER = (function () {
     return a.nombre.localeCompare(b.nombre, "es", { numeric: true });
   }
 
+  /* Vistas añadidas a mano. El formato trae las de cada familia, pero en el
+     patio aparece lo que aparece —una fuga, un número de serie, el enganche—
+     y esas también hay que fotografiarlas en la rejilla, no como observación.
+     Van al final, con el rótulo que escriba el operador, y viajan en el acta
+     como una vista más: la recepción las hereda sin enterarse de nada. */
+  var extras = [];
+
+  function rotulos() { return VISTAS[$("#d-cat").value].concat(extras); }
+
   // Reasignar desde cero: borra la propuesta anterior y la vuelve a hacer.
   // Sólo se llama desde el botón y al cambiar de familia.
   function autoAsignar() {
-    var vistas = VISTAS[$("#d-cat").value];
+    var vistas = rotulos();
     casillas = vistas.map(function () { return null; });
     propuestas = vistas.map(function () { return false; });
     completar();
@@ -2257,7 +2279,7 @@ var NEFER = (function () {
   // Rellenar los huecos con lo que quede suelto, sin mover nada de lo ya
   // colocado: cargar más fotos no puede deshacer lo que el operador ordenó.
   function completar() {
-    var vistas = VISTAS[$("#d-cat").value];
+    var vistas = rotulos();
     if (casillas.length !== vistas.length) {
       casillas = vistas.map(function (_, i) { return casillas[i] !== undefined ? casillas[i] : null; });
       propuestas = vistas.map(function (_, i) { return !!propuestas[i]; });
@@ -2300,7 +2322,7 @@ var NEFER = (function () {
   function pintar() { NEFER.conFoco(repintar); }
 
   function repintar() {
-    var vistas = VISTAS[$("#d-cat").value];
+    var vistas = rotulos();
     if (casillas.length !== vistas.length) {
       casillas = vistas.map(function (_, i) { return casillas[i] !== undefined ? casillas[i] : null; });
       propuestas = vistas.map(function (_, i) { return !!propuestas[i]; });
@@ -2346,11 +2368,27 @@ var NEFER = (function () {
       }
       b.dataset.casilla = i;
       b.className = "slot" + (f ? " lleno" : "") + (f && propuestas[i] ? " propuesto" : "");
+      var k = i - VISTAS[$("#d-cat").value].length;   // -1 si es del formato
       b.innerHTML = (f ? '<img alt="" src="' + f.url + '">'
                        : '<span class="ph">' + PISTA_VACIA + '</span>') +
-        '<span class="cap"><span>' + esc(vista) + '</span>' +
-        '<span class="num">' + (i + 1) + '</span></span>';
-      grid.appendChild(b);
+        (k < 0 ? '<span class="cap"><span>' + esc(vista) + '</span>' +
+                 '<span class="num">' + (i + 1) + '</span></span>' : "");
+      if (k < 0) { grid.appendChild(b); return; }
+
+      // Vista añadida a mano: el rótulo se escribe, y se puede quitar.
+      var caja = document.createElement("div");
+      caja.className = "slot-extra";
+      caja.appendChild(b);
+      var pie = document.createElement("div");
+      pie.className = "rotulo-extra";
+      pie.innerHTML =
+        '<input type="text" data-vista-rotulo="' + k + '" value="' + esc(vista) +
+          '" placeholder="rótulo de la vista" aria-label="Rótulo de la vista añadida ' +
+          (k + 1) + '">' +
+        '<button type="button" class="ghost" data-vista-quitar="' + k +
+          '" aria-label="Quitar la vista añadida ' + (k + 1) + '">✕</button>';
+      caja.appendChild(pie);
+      grid.appendChild(caja);
     });
     $("#d-t-rejilla").textContent =
       casillas.filter(function (x) { return x !== null; }).length + " / " + vistas.length;
@@ -2441,15 +2479,17 @@ var NEFER = (function () {
   }
 
   function acta() {
-    var vistas = VISTAS[$("#d-cat").value], nombres = nombresDelPaquete();
+    var vistas = rotulos(), nombres = nombresDelPaquete();
     var registro = [], n = 0;
     casillas.forEach(function (id, i) {
       if (id === null) return;
-      registro.push({ foto_id: ++n, descripcion: vistas[i],
+      // En mayúsculas, como los rótulos del formato: los añadidos a mano se
+      // escriben como salga y el acta los iguala.
+      registro.push({ foto_id: ++n, descripcion: String(vistas[i]).trim().toUpperCase(),
                       archivo: "fotos/" + nombres[id] });
     });
     var consumibles = accesorios
-      .filter(function (a) { return a.nombre.trim(); })
+      .filter(function (a) { return a.nombre.trim() || a.fotoId; })
       .map(function (a) {
         var c = { descripcion: a.nombre.trim().toUpperCase(),
                   cantidad: a.cantidad || 1 };
@@ -2689,6 +2729,37 @@ var NEFER = (function () {
     pintar();
   });
 
+  /* ---------- vistas añadidas a mano ---------- */
+  $("#d-add-vista").addEventListener("click", function () {
+    extras.push("VISTA ADICIONAL " + (extras.length + 1));
+    casillas.push(null);
+    propuestas.push(false);
+    pintar();
+    // El rótulo se escribe encima del propuesto: se deja el cursor puesto.
+    var campo = $("[data-vista-rotulo='" + (extras.length - 1) + "']");
+    if (campo) { campo.focus(); campo.select(); }
+  });
+
+  $("#d-grid").addEventListener("input", function (e) {
+    var campo = e.target.closest("[data-vista-rotulo]");
+    if (!campo) return;
+    extras[+campo.dataset.vistaRotulo] = campo.value;
+    pintarSalida();
+  });
+
+  $("#d-grid").addEventListener("click", function (e) {
+    var quitar = e.target.closest("[data-vista-quitar]");
+    if (!quitar) return;
+    e.preventDefault();
+    var k = +quitar.dataset.vistaQuitar;
+    var i = VISTAS[$("#d-cat").value].length + k;
+    // Se va la vista y su casilla: la foto que tuviera vuelve a la bandeja.
+    extras.splice(k, 1);
+    casillas.splice(i, 1);
+    propuestas.splice(i, 1);
+    pintar();
+  });
+
   /* ---------- las rutas de entrada ---------- */
   ["d-file", "d-camara", "d-carpeta"].forEach(function (id) {
     $("#" + id).addEventListener("change", function (e) {
@@ -2718,7 +2789,7 @@ var NEFER = (function () {
   // Recorre las casillas vacías en orden: se abre la cámara una vez y se
   // dispara diez veces, cada foto a su casilla, sin salir de la app.
   function casillasPendientes() {
-    var vistas = VISTAS[$("#d-cat").value], lista = [];
+    var vistas = rotulos(), lista = [];
     casillas.forEach(function (id, i) {
       if (id === null) lista.push({ indice: i, rotulo: vistas[i] });
     });
@@ -2728,7 +2799,7 @@ var NEFER = (function () {
   function abrirCamara(soloEsta) {
     NEFER.camara.abrir({
       pendientes: soloEsta !== undefined && soloEsta !== null
-        ? [{ indice: soloEsta, rotulo: VISTAS[$("#d-cat").value][soloEsta] }]
+        ? [{ indice: soloEsta, rotulo: rotulos()[soloEsta] }]
         : casillasPendientes(),
       tomar: function (archivo, destino) {
         agregar([archivo], { casilla: destino ? destino.indice : null });
@@ -2937,7 +3008,7 @@ var NEFER = (function () {
   var CAMPOS = ["d-cliente","d-obra","d-equipo","d-modelo","d-empresa","d-acta",
                 "d-guia","d-fecha","d-horometro","d-resumen"];
   guardar = NEFER.recordar("despacho.v1", function () {
-    var v = { cat: $("#d-cat").value, campos: {},
+    var v = { cat: $("#d-cat").value, campos: {}, extras: extras.slice(),
               accesorios: accesorios.map(function (a) { return a.nombre; }) };
     CAMPOS.forEach(function (id) { v.campos[id] = $("#" + id).value; });
     return v;
@@ -2949,6 +3020,9 @@ var NEFER = (function () {
     });
     if (Array.isArray(v.accesorios)) {
       accesorios = v.accesorios.map(function (n) { return { nombre: n, fotoId: null }; });
+    }
+    if (Array.isArray(v.extras)) {
+      extras = v.extras.filter(function (x) { return typeof x === "string"; });
     }
   });
 
@@ -3194,7 +3268,7 @@ var NEFER = (function () {
         else retorno.push({ id: sig++, nombre: nombre, url: x.url, archivo: x.archivo });
       });
       var n = destino === "antes" ? Object.keys(antes).length : retorno.length;
-      var tarjeta = $("#" + tarjetaId);
+      var tarjeta = tarjetaId ? $("#" + tarjetaId) : null;
       if (tarjeta) tarjeta.classList.toggle("lista", n > 0);
       aviso.textContent = n + " foto(s)" + (r.rechazadas.length
         ? " · " + r.rechazadas.length + " no se pudo abrir (" +
@@ -3214,7 +3288,7 @@ var NEFER = (function () {
     $("#" + id).addEventListener("change", function (e) {
       var archivos = Array.prototype.slice.call(e.target.files);
       e.target.value = "";
-      cargarFotos(archivos, "retorno", "r-e3", "r-c3");
+      cargarFotos(archivos, "retorno", "r-e3", null);
     });
   });
   $("#r-carpeta").addEventListener("change", function (e) {
@@ -3225,7 +3299,7 @@ var NEFER = (function () {
   $("#r-carpeta3").addEventListener("change", function (e) {
     var archivos = Array.prototype.slice.call(e.target.files);
     e.target.value = "";
-    cargarFotos(archivos, "retorno", "r-e3", "r-c3");
+    cargarFotos(archivos, "retorno", "r-e3", null);
   });
 
   // Las mismas rutas que en despacho, y las mismas reglas: se muestra lo que
@@ -3264,9 +3338,14 @@ var NEFER = (function () {
             });
             vistas[destino.indice].fotoId = foto.id;
           }
-          $("#r-c3").classList.add("lista");
-          $("#r-e3").textContent = retorno.length + " foto(s)";
-          $("#r-e3").style.color = "var(--ok)";
+          // `#r-c3` no existe: la tarjeta se quitó al rehacer la barra y esta
+          // línea quedó atrás. Lanzaba TypeError aquí mismo, antes de pintar,
+          // así que la foto entraba en la bandeja y la pantalla no se enteraba.
+          var aviso = $("#r-e3");
+          if (aviso) {
+            aviso.textContent = retorno.length + " foto(s)";
+            aviso.style.color = "var(--ok)";
+          }
           pintar();
         });
       },
@@ -3627,12 +3706,12 @@ var NEFER = (function () {
     });
 
     var franjas = franjasDeCierre();
-    // Basta con que tenga nombre: una observación sin estado marcado es una
-    // observación a medio llenar, no una que haya que tirar. Antes se filtraba
-    // por estado y el acta perdía en silencio la descripción Y la fotografía
-    // que el operador acababa de tomar.
+    // Basta con que tenga nombre O fotografía. Una observación a medio llenar
+    // no es una que haya que tirar: la foto se tomó delante del equipo y no se
+    // puede volver a tomar, así que manda ella. Antes se filtraba por estado
+    // —y luego por nombre— y el acta perdía en silencio lo fotografiado.
     var consumibles = cons.filter(function (c) {
-      return (c.descripcion || "").trim();
+      return (c.descripcion || "").trim() || c.fotoId || c.foto_despacho;
     }).map(function (c) {
       var o = { descripcion: c.descripcion, cantidad: c.cantidad || 1 };
       // Sin estado, la clave no viaja: el acta no declara lo que nadie dijo.
@@ -3703,6 +3782,11 @@ var NEFER = (function () {
     if (sinFoto) falta.push(sinFoto + " vista(s) sin foto de retorno");
     var sinEstado = cons.filter(function (c) { return !c.estado; }).length;
     if (sinEstado) falta.push(sinEstado + " observación(es) sin estado");
+    // Entra en el acta con su foto, pero sin nombre está a medio llenar.
+    var sinNombre = cons.filter(function (c) {
+      return !(c.descripcion || "").trim() && (c.fotoId || c.foto_despacho);
+    }).length;
+    if (sinNombre) falta.push(sinNombre + " observación(es) sin nombre");
     var sinObs = insp.filter(function (c) {
       return (c.estado === "OBS" || c.estado === "D") && !c.observacion.trim();
     }).length;
@@ -4192,6 +4276,9 @@ var ENTREGABLE = (function () {
 
   function textoConsumible(cons, lado, tipo) {
     var cant = dosDigitos(cons.cantidad), desc = (cons.descripcion || "").trim();
+    // Sin nombre no hay nada que redactar: «01  DESPACHADO» no dice nada y
+    // ensucia el acta. El bloque se imprime igual, con su fotografía.
+    if (!desc) return "";
     if (lado === "DESPACHO") return cant + " " + desc + " DESPACHADO";
     // En un despacho el lado de recepción va en blanco: afirmar un retorno que
     // no ha ocurrido, en un papel que el cliente firma, sería declarar un hecho
@@ -4244,6 +4331,8 @@ var ENTREGABLE = (function () {
         !aMano) {
       return [];
     }
+    // Ni con estado: una franja «RECUPERACIÓN N° 1 : 01 » no nombra nada.
+    if (!(cons.descripcion || "").trim() && !aMano) return [];
     var r = repartoConsumible(cons);
     var danado = ["D", "OBS"].indexOf(cons.estado_recepcion) !== -1;
     var cierres = [];

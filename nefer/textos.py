@@ -92,6 +92,10 @@ def texto_consumible(cons: dict, lado: str, tipo_documento: str = "RECEPCION") -
     """
     cantidad = cons.get("cantidad", 1)
     descripcion = cons.get("descripcion", "").strip()
+    # Sin nombre no hay nada que redactar: «01  DESPACHADO» no dice nada y
+    # ensucia el acta. El bloque se imprime igual, con su fotografia.
+    if not descripcion:
+        return ""
     if lado == "DESPACHO":
         return f"{cantidad:02d} {descripcion} DESPACHADO"
     if tipo_documento == "DESPACHO":
@@ -130,9 +134,13 @@ def cierres_consumible(cons: dict, tipo_documento: str = "RECEPCION") -> list[di
     # que se da por bueno lo que nadie ha revisado, y una RECUPERACION cobraria
     # lo que nadie ha declarado perdido. Un texto escrito a mano si es una
     # declaracion, y entonces la franja va con lo que diga ese texto.
+    manual = any(t.strip() for t in _leyendas_manuales(cons))
     if (cons.get("estado_recepcion") is None
             and cons.get("cantidad_retorna") is None
-            and not any(t.strip() for t in _leyendas_manuales(cons))):
+            and not manual):
+        return []
+    # Ni con estado: una franja «RECUPERACION N° 1 : 01 » no nombra nada.
+    if not cons.get("descripcion", "").strip() and not manual:
         return []
     retorna, falta = reparto_consumible(cons)
     danado = cons.get("estado_recepcion") in {"D", "OBS"}

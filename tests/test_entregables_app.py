@@ -403,6 +403,69 @@ def test_una_observacion_sin_estado_conserva_su_fotografia(tmp_path):
     assert anclado, "la foto de retorno no llegó al Excel"
 
 
+def test_una_observacion_sin_nombre_conserva_su_fotografia():
+    """La fotografia manda: se tomo delante del equipo y no se repite.
+
+    Medido antes del arreglo: la observacion con foto pero sin nombre escrito
+    salia del acta en silencio —`consumibles: []`— y la foto se perdia. El
+    bloque se imprime ahora con su foto y los rotulos en blanco, y la pantalla
+    avisa de que le falta el nombre.
+    """
+    if not HAY_CHROMIUM:
+        pytest.skip("no hay Chromium disponible")
+
+    fallos: list[str] = []
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch(**opciones())
+        ctx = nav.new_context(viewport={"width": 390, "height": 844},
+                              has_touch=True, is_mobile=True,
+                              accept_downloads=True, permissions=[])
+        pg = ctx.new_page()
+        pg.on("pageerror", lambda e: fallos.append(str(e)))
+        pg.goto(APP.as_uri())
+        pg.wait_for_timeout(600)
+        pg.click("#btn-demo")
+        pg.wait_for_timeout(2500)
+        pg.click("#tab-recepcion")
+        pg.wait_for_timeout(300)
+        pg.click("#r-desde-despacho")
+        pg.wait_for_timeout(800)
+        pg.evaluate(RECEPCION_EN_EL_NAVEGADOR)
+        pg.wait_for_timeout(3000)
+        # Diez vistas y una foto de sobra: la última es para la observación.
+        for k in range(10):
+            pg.click("#r-tira .tile:first-child")
+            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
+            pg.wait_for_timeout(60)
+
+        # Observación nueva: sólo la fotografía, sin escribir el nombre.
+        # Desde un archivo local no hay cámara —el navegador la deniega—, así
+        # que la foto entra por la bandeja, que es la otra vía del operador.
+        pg.click("#r-add-cons")
+        pg.wait_for_timeout(400)
+        i = pg.eval_on_selector_all("[data-cons-nombre]",
+                                    "n => n[n.length - 1].dataset.consNombre")
+        pg.click("#r-tira .tile:first-child")
+        pg.click(f"#r-consumibles [data-destino='cons'][data-i='{i}']")
+        pg.wait_for_timeout(600)
+
+        pg.fill("#r-acta", "004-001159")
+        pg.fill("#r-horometro", "1770")
+        pg.wait_for_timeout(400)
+        acta = json.loads(pg.input_value("#r-salida"))
+        falta = " ".join(pg.inner_text("#r-estado-final").split())
+
+        nav.close()
+
+    assert fallos == [], fallos
+    # La del despacho sigue ahí, y la nueva no se perdió por no tener nombre.
+    sin_nombre = [c for c in acta["consumibles"] if not c["descripcion"]]
+    assert len(sin_nombre) == 1, acta["consumibles"]
+    assert sin_nombre[0].get("foto_recepcion"), "la fotografía tiene que viajar"
+    # Y la pantalla lo dice, para que no se quede a medias sin querer.
+    assert "sin nombre" in falta.lower(), falta
+
+
 def test_la_recepcion_lleva_las_secciones_del_formato(recepcion):
     marcas = _titulos_por_fila(recepcion["xlsx"])
     textos = list(marcas.values())
@@ -559,6 +622,23 @@ def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
                ws[f"{layout.PANEL_DER[0]}{fila}"].value
         impresos.append(ws[f"{layout.PANEL_IZQ[0]}{fila}"].value)
     assert impresos == salieron, impresos
+
+def test_ningun_id_referenciado_falta_del_documento():
+    """Un `$("#loquesea")` a un id que ya no existe devuelve null y revienta.
+
+    Paso de verdad: la tarjeta `#r-c3` se quito al rehacer la barra de fotos y
+    la linea que le anadia una clase quedo atras. Cada foto tomada con la
+    camara de la recepcion lanzaba TypeError justo antes de `pintar()`, asi que
+    la foto entraba en la bandeja y la pantalla no se enteraba. Un fallo mudo:
+    en el patio se ve como «la camara no guarda la foto».
+    """
+    declarados = set(re.findall(r'id="([A-Za-z0-9_-]+)"', FUENTE))
+    usados = set(re.findall(r'\$\("#([A-Za-z0-9_-]+)"\)', FUENTE))
+    usados |= set(re.findall(r'getElementById\("([A-Za-z0-9_-]+)"\)', FUENTE))
+    usados |= set(re.findall(r'querySelector\("#([A-Za-z0-9_-]+)"\)', FUENTE))
+    faltan = sorted(usados - declarados)
+    assert not faltan, f"la app referencia ids que no existen: {faltan}"
+
 
 def test_la_app_declara_su_version_y_el_trabajador_la_acompana():
     """Sirve para saber si el telefono que falla corre la version corregida.

@@ -148,6 +148,21 @@ Un acta a la que le falten los datos que la identifican **sale marcada como
 borrador sin valor para firma**, con una banda que dice exactamente qué falta.
 Es deliberado: un acta incompleta que parece completa es peor que ninguna.
 
+### 4.4 bis · Vistas además de las del formato
+
+La rejilla trae las vistas de cada familia de equipo, pero en el patio aparece
+lo que aparece: una fuga, el número de serie, el enganche. **+ Añadir vista**,
+debajo de la rejilla, agrega una casilla más **con el rótulo que usted
+escriba** — se propone `VISTA ADICIONAL 1` y se escribe encima.
+
+Es una vista como las demás: se fotografía igual, la cámara la anuncia con su
+rótulo, va en la rejilla del acta y **la recepción la hereda** al cargar el
+acta de despacho. La **✕** de su rótulo la quita; si tenía foto, la foto vuelve
+a la bandeja.
+
+Lo que va aquí es lo que se fotografía **del equipo**. Lo que sale con él
+—extintor, conos, barra— va en OBSERVACIONES, que es la sección siguiente.
+
 ### 4.5 Observaciones
 
 Es la sección **OBSERVACIONES** del acta, con su misma forma en pantalla: es
@@ -224,6 +239,11 @@ Cada uno lleva **cuántos salieron** y **cuántos vuelven**, y un estado:
 | **Observado** | Volvió con algo que anotar |
 | **Dañado** | Volvió roto |
 | **No retornó** | No volvió |
+
+**Si no le escribe el nombre, la observación se imprime igual**: manda la
+fotografía, que se tomó delante del equipo y no se puede repetir. El bloque
+sale con su foto y los rótulos en blanco, y el pie de la pantalla avisa —«N
+observación(es) sin nombre»— para que no se le quede a medias.
 
 **Si no marca el estado, la observación se imprime igual**: su descripción y su
 fotografía salen en el acta, y la columna de RECEPCIÓN queda en blanco, sin
