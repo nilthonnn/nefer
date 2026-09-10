@@ -298,6 +298,19 @@
                border-radius:7px; padding:.9rem 1rem; font-size:.9rem; }
   .cam-aviso b { display:block; margin-bottom:.3rem; }
 
+  /* Instalar en el teléfono: la app ya es instalable, pero el navegador lo
+     esconde en su menú. Esto lo pone donde se ve, y en iPhone —que no tiene
+     ese aviso— explica los dos toques que hacen falta. */
+  .instalar { display:flex; gap:.9rem; align-items:center; flex-wrap:wrap;
+              background:var(--card); border:1px solid var(--rule);
+              border-left:4px solid var(--accent); border-radius:0 7px 7px 0;
+              padding:.85rem 1rem; margin-top:1rem; }
+  .instalar > div { flex:1 1 14rem; min-width:0; }
+  .instalar b { font-family:var(--cond); text-transform:uppercase;
+                letter-spacing:.02em; font-size:1.05rem; }
+  .instalar p { margin:.15rem 0 0; color:var(--ink-2); font-size:.9rem; }
+  .instalar button { flex:none; }
+
   /* Objetivo táctil de 44 px: el mínimo para operar con guantes, de pie y con
      el equipo delante. WCAG 2.2 exige 24; en patio eso no basta. */
   button, select, input[type="text"], input[type="number"], input[type="date"] {
@@ -641,19 +654,19 @@
 
       <div class="aviso malo" id="aviso-contexto" hidden></div>
 
+      <div class="instalar" id="pista-instalar">
+        <div>
+          <b>Instálela en el teléfono</b>
+          <p>Queda con su icono en la pantalla de inicio, abre a pantalla
+             completa y <b>funciona sin señal</b>. Servida es, además, donde el
+             teléfono concede la cámara.<span id="como-instalar"></span></p>
+        </div>
+        <button class="primary" type="button" id="btn-instalar" hidden>Instalar</button>
+      </div>
+
       <div class="bar" id="bar-demo">
         <button class="primary" type="button" id="btn-demo">Ver un acta de ejemplo</button>
         <span class="lb">10 fotos de muestra, sin cargar nada</span>
-      </div>
-
-      <div class="aviso" id="pista-instalar">
-        <b>Instálala en la pantalla de inicio</b> para abrirla como aplicación, a
-        pantalla completa y sin barra del navegador.
-        <span id="como-instalar"></span>
-      </div>
-      <div class="bar" id="bar-instalar" style="display:none">
-        <button class="primary" type="button" id="btn-instalar">Instalar aplicación</button>
-        <span class="lb">se añade a la pantalla de inicio</span>
       </div>
 
       <h2 class="rot">Cómo encaja con el resto</h2>
@@ -1126,7 +1139,7 @@ var NEFER = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-10 · vistas añadidas";
+  var VERSION = "2026-09-10 · instalable";
 
   "use strict";
 
@@ -1299,22 +1312,32 @@ var NEFER = (function () {
   /* ---------- instalación ---------- */
   function instalacion() {
     var pendiente = null;
-    var bar = $("#bar-instalar"), boton = $("#btn-instalar");
+    var caja = $("#pista-instalar"), boton = $("#btn-instalar");
 
+    // Android y escritorio avisan de que se puede instalar, y ese aviso hay que
+    // guardarlo: el navegador solo lo ofrece una vez y sin él el boton no tiene
+    // nada que abrir. Mientras no llegue, el boton no se muestra —prometeria
+    // algo que no puede cumplir— y manda el texto de las instrucciones.
     window.addEventListener("beforeinstallprompt", function (e) {
       e.preventDefault();
       pendiente = e;
-      if (bar) bar.style.display = "";
+      if (boton) boton.hidden = false;
     });
     if (boton) boton.addEventListener("click", function () {
       if (!pendiente) return;
       pendiente.prompt();
-      pendiente.userChoice.then(function () { pendiente = null; if (bar) bar.style.display = "none"; });
+      pendiente.userChoice.then(function () {
+        pendiente = null;
+        boton.hidden = true;
+      });
     });
     window.addEventListener("appinstalled", function () {
-      if (bar) bar.style.display = "none";
-      var p = $("#pista-instalar");
-      if (p) { p.className = "aviso ok"; p.innerHTML = "<b>Instalada.</b> Ábrala desde su icono en la pantalla de inicio."; }
+      if (boton) boton.hidden = true;
+      if (caja) {
+        caja.className = "aviso ok";
+        caja.innerHTML = "<b>Instalada.</b> Ciérrela y ábrala desde su icono en " +
+          "la pantalla de inicio: desde ahí abre sin señal.";
+      }
     });
 
     // Instrucciones concretas según el navegador: en iOS no existe el diálogo
@@ -1325,17 +1348,28 @@ var NEFER = (function () {
     var txt = $("#como-instalar");
     if (txt) {
       txt.innerHTML = esIOS
-        ? " En este teléfono: botón <b>Compartir</b> (el cuadro con la flecha) → " +
-          "<b>Añadir a inicio</b>."
-        : " En este teléfono: menú <b>⋮</b> del navegador → <b>Instalar aplicación</b> " +
-          "o <b>Añadir a pantalla principal</b>.";
+        ? " <b>En este iPhone:</b> botón <b>Compartir</b> (el cuadro con la " +
+          "flecha, abajo) → <b>Añadir a pantalla de inicio</b> → <b>Añadir</b>."
+        : " <b>En este teléfono:</b> menú <b>⋮</b> del navegador → " +
+          "<b>Instalar aplicación</b> o <b>Añadir a pantalla principal</b>.";
+    }
+
+    // Desde un archivo descargado no hay nada que instalar: no hay origen, el
+    // navegador no registra el trabajador de servicio y la camara sale
+    // denegada. Se dice, con la direccion a la que hay que ir.
+    if (caja && !CONTEXTO.servida) {
+      caja.className = "aviso";
+      caja.innerHTML = "<b>Esto es el archivo descargado.</b> Para instalarla en " +
+        "el teléfono ábrala desde su dirección web —<code>" +
+        esc(DIRECCION_PUBLICADA) + "</code>— y desde ahí añádala a la pantalla " +
+        "de inicio. Es también el único sitio donde el teléfono concede la cámara.";
+      return;
     }
 
     var yaInstalada = window.matchMedia &&
       window.matchMedia("(display-mode: standalone)").matches;
     if (yaInstalada || navigator.standalone) {
-      var p = $("#pista-instalar");
-      if (p) p.classList.add("oculto");
+      if (caja) caja.classList.add("oculto");
     }
   }
 
