@@ -437,6 +437,63 @@ def test_camara_recorre_las_casillas_y_cada_foto_cae_en_la_suya(servidor):
         nav.close()
 
 
+def test_el_aviso_de_instalar_dice_lo_que_toca_en_cada_sitio(servidor):
+    """Instalarla es lo primero que hay que hacer en un telefono.
+
+    Y cada sitio necesita otra cosa: Android ofrece el dialogo del navegador,
+    iPhone no lo tiene y hay que decir los toques, y el archivo descargado no
+    se puede instalar en absoluto —hay que ir a la direccion web—.
+    """
+    UA_IOS = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) "
+              "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 "
+              "Mobile/15E148 Safari/604.1")
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+
+        # --- servida: el boton aparece cuando el navegador lo ofrece ---
+        pg = _contexto(nav, movil=True).new_page()
+        errores: list[str] = []
+        pg.on("pageerror", lambda e: errores.append(str(e)))
+        pg.goto(servidor)
+        pg.wait_for_timeout(500)
+        assert pg.is_visible("#pista-instalar")
+        assert not pg.is_visible("#btn-instalar"), \
+            "sin el aviso del navegador el botón no tendría nada que abrir"
+
+        pg.evaluate("""() => {
+          const e = new Event('beforeinstallprompt');
+          e.prompt = () => { window.__pidio = true; return Promise.resolve(); };
+          Object.defineProperty(e, 'userChoice',
+                                {value: Promise.resolve({outcome: 'accepted'})});
+          window.dispatchEvent(e);
+        }""")
+        pg.wait_for_timeout(200)
+        assert pg.is_visible("#btn-instalar")
+        pg.click("#btn-instalar")
+        pg.wait_for_timeout(300)
+        assert pg.evaluate("() => !!window.__pidio"), "el botón tiene que instalar"
+        assert errores == [], errores
+
+        # --- iPhone: no hay dialogo, hay instrucciones ---
+        ios = nav.new_context(viewport={"width": 390, "height": 844}, locale="es-PE",
+                              has_touch=True, is_mobile=True, permissions=[],
+                              user_agent=UA_IOS).new_page()
+        ios.goto(servidor)
+        ios.wait_for_timeout(500)
+        texto = " ".join(ios.inner_text("#como-instalar").split()).upper()
+        assert "COMPARTIR" in texto and "PANTALLA DE INICIO" in texto, texto
+        assert not ios.is_visible("#btn-instalar")
+
+        # --- archivo descargado: no hay nada que instalar ---
+        local = _contexto(nav, movil=True).new_page()
+        local.goto(APP.as_uri())
+        local.wait_for_timeout(500)
+        aviso = " ".join(local.inner_text("#pista-instalar").split()).lower()
+        assert "archivo descargado" in aviso, aviso
+        assert "github.io" in aviso, "tiene que decir a qué dirección ir"
+        nav.close()
+
+
 def test_el_despacho_admite_vistas_ademas_de_las_del_formato(servidor):
     """En el patio aparece lo que aparece, y hay que fotografiarlo en la rejilla.
 

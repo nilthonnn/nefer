@@ -12,6 +12,7 @@ import io
 import json
 import os
 import re
+import sys
 import zipfile
 from pathlib import Path
 
@@ -622,6 +623,44 @@ def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
                ws[f"{layout.PANEL_DER[0]}{fila}"].value
         impresos.append(ws[f"{layout.PANEL_IZQ[0]}{fila}"].value)
     assert impresos == salieron, impresos
+
+def test_el_archivo_descargable_es_la_misma_app_que_esta_publicada(tmp_path):
+    """La descarga del sitio no puede quedarse atras.
+
+    `docs/nefer-app.html` es la app entera en un archivo, y se sirve desde la
+    misma pagina. Si alguien cambia la app y se olvida de rehacerlo, quien lo
+    descargue se lleva una version vieja sin enterarse —y es justo lo que hace
+    imposible saber por que «sigue fallando»—.
+    """
+    import subprocess
+
+    descargable = APP.parent.parent / "nefer-app.html"
+    assert descargable.exists(), "falta docs/nefer-app.html"
+
+    recien = tmp_path / "recien.html"
+    herramienta = APP.parents[2] / "herramientas" / "empaquetar-demo.py"
+    subprocess.run([sys.executable, str(herramienta), str(recien)],
+                   check=True, capture_output=True)
+    assert descargable.read_bytes() == recien.read_bytes(), (
+        "docs/nefer-app.html no coincide con la app: "
+        "rehacerlo con `python herramientas/empaquetar-demo.py docs/nefer-app.html`")
+
+
+def test_el_qr_apunta_a_la_direccion_publicada():
+    """El QR del sitio es lo que se imprime y se pega en el taller."""
+    qr = (APP.parent.parent / "qr-app.svg").read_text(encoding="utf-8")
+    dentro = re.search(r"<title>([^<]+)</title>", qr)
+    assert dentro, "el QR tiene que decir a dónde apunta"
+
+    direccion = re.search(r'var DIRECCION_PUBLICADA = "([^"]+)"', FUENTE)
+    assert direccion, "la app declara su dirección publicada"
+    assert dentro.group(1) == direccion.group(1), (
+        f"el QR lleva a {dentro.group(1)} y la app dice {direccion.group(1)}")
+
+    portada = (APP.parent.parent / "index.html").read_text(encoding="utf-8")
+    assert direccion.group(1) in portada, "la portada tiene que dar la misma dirección"
+    assert 'href="nefer-app.html"' in portada, "y ofrecer la descarga del archivo"
+
 
 def test_ningun_id_referenciado_falta_del_documento():
     """Un `$("#loquesea")` a un id que ya no existe devuelve null y revienta.

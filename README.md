@@ -193,6 +193,20 @@ validado nada, y eso es peor que un rojo.
 
 ### Publicación
 
+### Cómo llega al teléfono
+
+`docs/index.html` es la página de descarga: lleva el **código QR** que se
+imprime y se pega en el taller —cada operario lo escanea y la instala—, los
+pasos de instalación de Android y iPhone, y la **descarga del archivo único**
+`docs/nefer-app.html`, la app entera en un solo fichero para probarla en una
+computadora o mandarla por WhatsApp.
+
+Ese archivo se rehace con `python herramientas/empaquetar-demo.py
+docs/nefer-app.html` y una prueba falla si se queda atrás respecto de la app.
+El QR se rehace con `python herramientas/generar-qr.py` (necesita `segno`,
+sólo para regenerarlo) y otra prueba comprueba que apunta a la dirección que
+la propia app declara.
+
 La app se publica **directamente desde la rama**, sin workflow: en *Ajustes →
 Pages → Build and deployment* se elige **Deploy from a branch**, rama `main`,
 carpeta **`/docs`**. Con eso GitHub publica `docs/` en cada cambio de `main` y

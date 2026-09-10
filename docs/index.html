@@ -5,69 +5,178 @@
 <title>nefer · actas de despacho y recepción</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#16191B">
+<meta name="description" content="Acta fotográfica de despacho y recepción de
+      equipos, levantada desde el celular y sin conexión.">
 <link rel="icon" type="image/png" sizes="192x192" href="app/icono-192.png">
+<link rel="apple-touch-icon" href="app/apple-touch-icon.png">
 <style>
   :root { color-scheme: light dark;
-          --papel:#F3F4F2; --tinta:#16191B; --tinta2:#4E5860; --regla:#D6DCDA;
-          --acento:#1E4B6B; --tarjeta:#FFFFFF; }
+          --papel:#F3F4F2; --tinta:#16191B; --tinta2:#4E5860; --tinta3:#7C878E;
+          --regla:#D6DCDA; --acento:#1E4B6B; --acento-suave:#E3ECF3;
+          --tarjeta:#FFFFFF; }
   @media (prefers-color-scheme: dark) {
-    :root { --papel:#14181A; --tinta:#E7ECEB; --tinta2:#A3AFB4; --regla:#2F383D;
-            --acento:#6FA8CE; --tarjeta:#1C2225; }
+    :root { --papel:#14181A; --tinta:#E7ECEB; --tinta2:#A3AFB4; --tinta3:#7E8B92;
+            --regla:#2F383D; --acento:#6FA8CE; --acento-suave:#1E2B35;
+            --tarjeta:#1C2225; }
   }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--papel); color:var(--tinta);
          font:16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-         padding:2.5rem 1.2rem 4rem; }
-  main { max-width:38rem; margin:0 auto; }
-  h1 { font-size:clamp(1.8rem,1.4rem+2vw,2.6rem); line-height:1.05; margin:0 0 .6rem;
-       text-transform:uppercase; letter-spacing:.01em; }
-  p { color:var(--tinta2); margin:0 0 1rem; }
+         padding-block:2.5rem 4rem; padding-left:1.2rem; padding-right:1.2rem; }
+  main { max-width:38rem; margin:0 auto; display:flex; flex-direction:column; gap:1.4rem; }
+  h1 { font-size:clamp(1.8rem,1.4rem+2vw,2.6rem); line-height:1.05; margin:0;
+       text-transform:uppercase; letter-spacing:.01em; text-wrap:balance; }
+  h2 { font-size:1.15rem; text-transform:uppercase; letter-spacing:.02em;
+       margin:0; padding-top:1.1rem; border-top:2px solid var(--tinta); }
+  p { color:var(--tinta2); margin:0; }
+  section { display:flex; flex-direction:column; gap:.8rem; }
+  .kicker { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.7rem;
+            letter-spacing:.16em; text-transform:uppercase; color:var(--tinta3); }
+
   .cta { display:flex; align-items:center; gap:.9rem; text-decoration:none;
          background:var(--tarjeta); border:1px solid var(--regla);
-         border-left:4px solid var(--acento); border-radius:8px;
-         padding:1rem 1.1rem; color:inherit; margin:1.6rem 0; }
+         border-left:4px solid var(--acento); border-radius:0 8px 8px 0;
+         padding:1rem 1.1rem; color:inherit; }
   .cta img { width:52px; height:52px; border-radius:10px; flex:none; }
   .cta strong { display:block; font-size:1.15rem; }
-  .cta span { color:var(--tinta2); font-size:.9rem; }
-  ul { color:var(--tinta2); padding-left:1.1rem; }
-  li { margin:.35rem 0; }
+  .cta em { font-style:normal; color:var(--tinta2); font-size:.9rem; }
+
+  .qr { display:flex; gap:1.1rem; align-items:center; flex-wrap:wrap;
+        background:var(--tarjeta); border:1px solid var(--regla);
+        border-radius:8px; padding:1rem; }
+  .qr img { width:150px; height:150px; flex:none; background:#fff;
+            border-radius:6px; padding:.3rem; }
+  .qr > div { flex:1 1 13rem; min-width:0; }
+  .qr b { display:block; }
+  .qr .dir { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.82rem;
+             word-break:break-all; color:var(--acento); }
+
+  ol, ul { color:var(--tinta2); padding-left:1.2rem; margin:0;
+           display:flex; flex-direction:column; gap:.4rem; }
+  strong { color:var(--tinta); }
   code { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.9em; }
   a { color:var(--acento); }
-  footer { margin-top:2.5rem; padding-top:1rem; border-top:1px solid var(--regla);
+  a:focus-visible, .cta:focus-visible { outline:2px solid var(--acento); outline-offset:3px; }
+
+  .aparte { background:var(--acento-suave); border-radius:6px; padding:.85rem 1rem;
+            font-size:.93rem; color:var(--tinta); }
+  .aparte b { display:block; }
+
+  table { border-collapse:collapse; width:100%; font-size:.92rem; }
+  th, td { text-align:left; padding:.45rem .5rem; border-bottom:1px solid var(--regla);
+           color:var(--tinta2); vertical-align:top; }
+  th { color:var(--tinta3); font-size:.72rem; text-transform:uppercase;
+       letter-spacing:.08em; }
+  td:first-child { color:var(--tinta); }
+
+  footer { padding-top:1rem; border-top:1px solid var(--regla);
            font-size:.85rem; color:var(--tinta2); }
 </style>
 </head>
 <body>
 <main>
-  <h1>Actas de campo</h1>
+
+  <header>
+    <p class="kicker">reporte fotográfico de equipos</p>
+    <h1>Actas de campo</h1>
+  </header>
+
   <p>
-    Reporte fotográfico de despacho y recepción de equipos: grupos electrógenos,
-    torres de iluminación, plataformas de elevación y maquinaria de construcción
-    y minería.
+    Acta de despacho y de recepción de grupos electrógenos, torres de
+    iluminación, plataformas de elevación y maquinaria pesada. Se levanta desde
+    el celular con el equipo delante, y el <strong>PDF y el Excel salen del
+    propio teléfono</strong>, sin conexión y sin enviar nada a ningún servidor.
   </p>
 
-  <a class="cta" href="app/">
-    <img src="app/icono-192.png" alt="">
-    <span>
-      <strong>Abrir la aplicación</strong>
-      <span>Instálela desde aquí en la pantalla de inicio</span>
-    </span>
-  </a>
+  <section>
+    <h2>Instalarla en el teléfono</h2>
+    <p>Es la forma buena: queda con su icono, abre sin señal y es donde el
+       teléfono concede la cámara.</p>
 
-  <p><strong>Ábrala desde esta dirección, no desde un archivo descargado.</strong>
-     Un archivo local no puede pedir la cámara del teléfono: el navegador se la
-     deniega siempre. Servida desde aquí, sí.</p>
+    <div class="qr">
+      <img src="qr-app.svg" alt="Código QR que lleva a la app de campo">
+      <div>
+        <b>Escanee este código</b>
+        <p>Con la cámara del teléfono. Imprímalo y péguelo en el taller: cada
+           operario lo escanea y la instala solo.</p>
+        <p class="dir">https://nilthonnn.github.io/nefer/app/</p>
+      </div>
+    </div>
 
-  <ul>
-    <li><strong>Android:</strong> menú ⋮ → <em>Instalar aplicación</em></li>
-    <li><strong>iPhone:</strong> Compartir → <em>Añadir a inicio</em></li>
-    <li>Una vez instalada abre sin señal. Las fotos no salen del teléfono.</li>
-  </ul>
+    <a class="cta" href="app/">
+      <img src="app/icono-192.png" alt="">
+      <span>
+        <strong>Abrir la aplicación</strong>
+        <em>Si ya está en el teléfono, ábrala desde aquí</em>
+      </span>
+    </a>
+
+    <ol>
+      <li><strong>Android:</strong> al abrirla sale un botón <em>Instalar</em>.
+          Si no aparece, menú <strong>⋮</strong> → <em>Instalar aplicación</em>.</li>
+      <li><strong>iPhone:</strong> <strong>Compartir</strong> (el cuadro con la
+          flecha) → <em>Añadir a pantalla de inicio</em> → <em>Añadir</em>.</li>
+      <li>La primera vez que toque una casilla, conceda el permiso de cámara.
+          Queda concedido para siempre.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Descargar el archivo</h2>
+    <p>
+      La aplicación entera en <strong>un solo archivo</strong>, para probarla en
+      una computadora, mandarla por WhatsApp o guardarla en un USB. No necesita
+      instalación ni conexión: se abre con doble clic.
+    </p>
+
+    <a class="cta" href="nefer-app.html" download="nefer-app.html">
+      <img src="app/icono-192.png" alt="">
+      <span>
+        <strong>Descargar nefer-app.html</strong>
+        <em>Un archivo · unos 420 KB · funciona sin conexión</em>
+      </span>
+    </a>
+
+    <div class="aparte">
+      <b>Una diferencia que importa</b>
+      Desde un archivo descargado el navegador <strong>deniega siempre</strong>
+      la cámara integrada, y no hay forma de concederla. La cámara del sistema y
+      la galería sí funcionan. Para el patio, instale la app desde el código de
+      arriba.
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>&nbsp;</th><th>Instalada</th><th>Archivo descargado</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Cámara dentro de la app</td><td>✅</td><td>❌</td></tr>
+        <tr><td>Cámara del sistema y galería</td><td>✅</td><td>✅</td></tr>
+        <tr><td>PDF, Excel y paquete .zip</td><td>✅</td><td>✅</td></tr>
+        <tr><td>Abre sin señal</td><td>✅</td><td>✅</td></tr>
+        <tr><td>Se actualiza sola</td><td>✅</td><td>❌ hay que volver a bajarlo</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Manuales</h2>
+    <ul>
+      <li><a href="MANUAL-APP.md">Manual de la aplicación</a> — pantalla por
+          pantalla y botón por botón.</li>
+      <li><a href="GUIA-OPERADOR.md">Guía del operador</a> y
+          <a href="GUIA-CLIENTE.md">guía del cliente</a>, las dos hojas que van
+          dentro del acta.</li>
+      <li><a href="MANUAL-OPERACION.md">Manual de operación</a> — la herramienta
+          de escritorio que genera el Excel y el PDF desde la computadora.</li>
+    </ul>
+  </section>
 
   <footer>
-    El código y la herramienta de escritorio que genera el Excel y el PDF están en
+    El código, la herramienta de escritorio y las pruebas están en
     <a href="https://github.com/nilthonnn/nefer">github.com/nilthonnn/nefer</a>.
   </footer>
+
 </main>
 </body>
 </html>

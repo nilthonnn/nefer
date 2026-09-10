@@ -43,10 +43,26 @@ vacía. Descargue el paquete antes de cerrar.
 
 ## 2. Instalarla en el teléfono
 
-Ábrala desde la dirección publicada y, en el menú del navegador (⋮ en Android,
-el cuadrado con la flecha en iPhone), elija **Instalar aplicación** o **Añadir
-a pantalla principal**. Queda como cualquier otra app: a pantalla completa, sin
-barra de navegador, y abre sin señal.
+Ábrala desde la dirección publicada:
+
+```
+https://nilthonnn.github.io/nefer/app/
+```
+
+En la pantalla de inicio, bajo las dos tarjetas, hay un recuadro
+**Instálela en el teléfono** que dice exactamente qué hacer en ese aparato:
+
+- **Android (Chrome).** Sale un botón **Instalar**: un toque y listo. Si no
+  aparece —algunos navegadores no lo ofrecen—, menú **⋮** → *Instalar
+  aplicación* o *Añadir a pantalla principal*.
+- **iPhone (Safari).** No existe ese botón; el recuadro lo dice y da los tres
+  toques: **Compartir** (el cuadro con la flecha, abajo) → **Añadir a pantalla
+  de inicio** → **Añadir**.
+- **Si abrió el archivo descargado**, el recuadro se lo dice y le recuerda la
+  dirección: un archivo suelto no se puede instalar.
+
+Instalada, queda como cualquier otra app: con su icono, a pantalla completa,
+sin barra de navegador, y **abre sin señal**.
 
 Instalarla no es un capricho estético. Hay una diferencia que importa:
 
