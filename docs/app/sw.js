@@ -4,7 +4,7 @@
 
 // La versión cambia con lo que se guarda: al subir, el trabajador nuevo
 // descarta la caché vieja y trae la tipografía.
-var CACHE = "nefer-v2";
+var CACHE = "nefer-2026-09-10";
 var PIEZAS = [
   "./",
   "./index.html",
