@@ -184,6 +184,16 @@ y en cada pull request, en dos trabajos:
 
 El primero da la señal enseguida, y así un error de lógica no se descubre un
 cuarto de hora después. El segundo comprueba antes de empezar que están
-Chromium, `pdftotext` y LibreOffice, y **falla si alguna prueba se salta**: una
-herramienta que falte deja verde una comprobación que no ha validado nada, y
-eso es peor que un rojo.
+Chromium, `pdftotext` y LibreOffice —y que el navegador da la cámara, porque el
+binario que Playwright usa por omisión no la trae—, y **falla si alguna prueba
+se salta**: una herramienta que falte deja verde una comprobación que no ha
+validado nada, y eso es peor que un rojo.
+
+### Publicación
+
+`.github/workflows/publicar.yml` sube `docs/` a GitHub Pages con cada cambio en
+`main`, y **enciende Pages solo** la primera vez, sin pasar por Ajustes. La app
+queda en `https://<usuario>.github.io/<repo>/app/`.
+
+Esto no es un lujo: desde un archivo descargado el navegador **deniega** el
+permiso de cámara y no hay forma de concederlo. La app tiene que servirse.
