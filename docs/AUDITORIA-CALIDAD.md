@@ -24,8 +24,8 @@ a tomar con los guiones que quedan en el repositorio.
 
 | Medida | Antes | Después |
 |---|---:|---:|
-| Arranque sin señal (hasta poder tocar) | 12 991 ms | **370 ms** |
-| Primer pintado sin señal | 12 888 ms | **192 ms** |
+| Arranque sin señal (hasta poder tocar) | 12 991 ms | **572 ms** |
+| Primer pintado sin señal | 12 888 ms | **272 ms** |
 | Llamadas a terceros | 1 | **0** |
 | Nombres en la API interna | 31 | **22** |
 | Funciones y estilos muertos | 7 | **0** |
@@ -62,13 +62,26 @@ Google la dirección IP del operador y la hora. En una herramienta que promete
 que «las fotos y los datos del cliente no salen de este teléfono», eso es una
 contradicción con el propio texto de la portada.
 
-**Corregido.** Se retiró la tipografía externa. Las familias del sistema
-—Roboto en Android, San Francisco en iPhone, Segoe en Windows— ya estaban
-declaradas como respaldo, así que el cambio es de aspecto, no de estructura.
-La aplicación no llama a nadie: **cero peticiones a terceros**.
+**Corregido en dos pasos.** Primero se retiró la petición externa. Después se
+alojó la tipografía en el propio repositorio, en `docs/app/tipografia/`: cinco
+cortes de Barlow y Barlow Condensed, subconjunto latin, 110 KB en total, con su
+licencia OFL. Van declarados con `font-display:swap`, que es lo que impide que
+esto vuelva a ser una espera: el texto se pinta de inmediato con la tipografía
+del sistema y cambia a Barlow cuando el archivo está.
 
-Si algún día se quiere recuperar la tipografía exacta, la vía correcta es
-alojarla en `docs/app/` (unos 80 KB), no volver a pedirla prestada.
+Medido con la tipografía ya alojada:
+
+| | |
+|---|---:|
+| Arranque hasta poder tocar | 572 ms |
+| Primer pintado | 272 ms |
+| Peticiones a terceros | **ninguna** |
+| Caras activas tras recargar **sin red** | las mismas |
+
+Sigue siendo **23 veces** más rápida que con la tipografía prestada, y ahora
+además conserva el aspecto de la marca. Los archivos van en la lista del
+trabajador de servicio, así que están desde la segunda visita aunque no haya
+señal.
 
 **Efecto secundario medido:** la suite de pruebas pasó de **721 s a 205 s** en
 un entorno sin salida a internet. Las 58 pruebas de navegador pagaban esa misma
@@ -99,12 +112,13 @@ el PDF de una misma acta se cortan por las mismas filas, comprobado por prueba.
 
 | Medida | Valor | Referencia |
 |---|---:|---|
-| Arranque hasta interactivo | 370 ms | < 5 s en 3G |
+| Arranque hasta interactivo | 572 ms | < 5 s en 3G |
 | Generar el PDF con 10 fotos | 161 ms | — |
 | Generar el Excel con 10 fotos | 93 ms | — |
 | Memoria JS en uso | 3,9 MB | — |
 | Nodos en el DOM | 500 | < 1 500 |
-| Peso comprimido | 77,6 KB | < 170 KB |
+| Peso comprimido (página) | 77,6 KB | < 170 KB |
+| Tipografía, una sola vez | 110 KB | — |
 
 Sin dependencias de terceros: ni React, ni jQuery, ni biblioteca de PDF. El
 PDF, el Excel y el ZIP se escriben a mano, byte a byte.
@@ -255,12 +269,15 @@ constantes del JavaScript desde `layout.py` en la comprobación automática y
 fallar si el archivo publicado no coincide. **No lo he hecho**: cambia cómo se
 construye el proyecto y merece decidirse aparte, no colarlo en una auditoría.
 
-### 7.2 La tipografía de la marca
+### 7.2 La tipografía de la marca — **cerrado**
 
-Se perdió el aspecto de Barlow. Si importa, la vía correcta es alojar los tres
-archivos en `docs/app/` (unos 80 KB, una sola vez, sin terceros). Dígalo y se
-hace; mientras tanto, el sistema pone una tipografía legible en todos los
-aparatos y la app abre en 370 ms.
+Barlow está alojada en `docs/app/tipografia/` con su licencia. Detalle en
+[tipografia/LEEME.md](app/tipografia/LEEME.md).
+
+Queda un matiz que conviene saber: el **demo descargado como archivo suelto**
+no lleva los `woff2` —es un solo `.html`— y ahí el texto sale con la tipografía
+del sistema. Se lee igual de bien; sólo cambia el aspecto. La versión servida,
+que es la que se usa en patio, sí lleva Barlow.
 
 ### 7.3 Sin medición en aparato real
 

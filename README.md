@@ -198,3 +198,7 @@ queda en `https://<usuario>.github.io/<repo>/app/`.
 
 Esto no es un lujo: desde un archivo descargado el navegador **deniega** el
 permiso de cámara y no hay forma de concederlo. La app tiene que servirse.
+
+La tipografía va alojada en `docs/app/tipografia/` (Barlow, SIL OFL 1.1) en vez
+de pedirse a un tercero: pedirla fuera bloqueaba el arranque casi trece
+segundos donde no hay señal. Ver [docs/app/tipografia/LEEME.md](docs/app/tipografia/LEEME.md).

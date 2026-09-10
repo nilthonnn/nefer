@@ -2,14 +2,22 @@
    sin señal. Sólo funciona servida por http(s); desde un archivo local el
    navegador no registra ninguno, y ahí el respaldo es el propio archivo. */
 
-var CACHE = "nefer-v1";
+// La versión cambia con lo que se guarda: al subir, el trabajador nuevo
+// descarta la caché vieja y trae la tipografía.
+var CACHE = "nefer-v2";
 var PIEZAS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./icono-192.png",
   "./icono-512.png",
-  "./apple-touch-icon.png"
+  "./apple-touch-icon.png",
+  // Sin esto la tipografía sólo estaría la primera vez, con señal.
+  "./tipografia/barlow-400.woff2",
+  "./tipografia/barlow-600.woff2",
+  "./tipografia/barlow-700.woff2",
+  "./tipografia/barlow-cond-600.woff2",
+  "./tipografia/barlow-cond-700.woff2"
 ];
 
 self.addEventListener("install", function (e) {

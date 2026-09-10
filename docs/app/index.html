@@ -8,13 +8,43 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Nefer">
-<!-- Sin tipografía externa. Medido: la hoja de estilos de Google bloqueaba
-     el primer pintado 12 988 ms cuando la red no la alcanzaba —que es la
-     condición para la que se hizo esta app— frente a 177 ms sin ella. Además
-     era la única llamada a un tercero: cada apertura del acta le contaba a
-     Google la IP del operador. Las familias del sistema van abajo. -->
+<!-- La tipografía se aloja aquí, en docs/app/tipografia/, no se pide fuera.
+     Medido: pedirla a Google bloqueaba el primer pintado 12 888 ms cuando la
+     red no respondía —la condición para la que se hizo esta app— y era la
+     única llamada a un tercero. Alojada y con font-display:swap no bloquea
+     nada: el texto sale con la del sistema y cambia cuando la fuente está.
+     Licencia y detalle en docs/app/tipografia/LEEME.md. -->
 
 <style>
+  /* ---------- Tipografía alojada (SIL OFL 1.1, ver tipografia/LEEME.md) ----
+     Subconjunto latin: cubre el español entero. `swap` es lo que impide que
+     esto vuelva a ser una espera con la pantalla en blanco. */
+  @font-face {
+    font-family:"Barlow"; font-style:normal; font-weight:400;
+    font-display:swap;                       /* nunca bloquea el pintado */
+    src:url("tipografia/barlow-400.woff2") format("woff2");
+  }
+  @font-face {
+    font-family:"Barlow"; font-style:normal; font-weight:600;
+    font-display:swap;                       /* nunca bloquea el pintado */
+    src:url("tipografia/barlow-600.woff2") format("woff2");
+  }
+  @font-face {
+    font-family:"Barlow"; font-style:normal; font-weight:700;
+    font-display:swap;                       /* nunca bloquea el pintado */
+    src:url("tipografia/barlow-700.woff2") format("woff2");
+  }
+  @font-face {
+    font-family:"Barlow Condensed"; font-style:normal; font-weight:600;
+    font-display:swap;                       /* nunca bloquea el pintado */
+    src:url("tipografia/barlow-cond-600.woff2") format("woff2");
+  }
+  @font-face {
+    font-family:"Barlow Condensed"; font-style:normal; font-weight:700;
+    font-display:swap;                       /* nunca bloquea el pintado */
+    src:url("tipografia/barlow-cond-700.woff2") format("woff2");
+  }
+
   /* ============================================================
      Nefer · una sola aplicación para despacho y recepción.
      Todo el procesamiento ocurre en el teléfono: ninguna foto,
@@ -31,11 +61,13 @@
     --mal:#96341F; --mal-soft:#F7E6E0; --mal-rule:#E0B2A2;
     --barra:#16191B; --barra-ink:#E7ECEB;
     --lift:0 1px 2px rgba(22,25,27,.05), 0 10px 26px -16px rgba(22,25,27,.28);
-    /* Las que ya trae el aparato: cero bytes, cero espera, cero terceros.
-       Roboto en Android, San Francisco en iPhone, Segoe en Windows. */
-    --cond:ui-sans-serif,system-ui,-apple-system,"Roboto Condensed",
-           "Segoe UI Semibold","Arial Narrow",sans-serif;
-    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    /* Barlow va alojada; detrás, siempre, la del sistema: si el archivo aún
+       no llegó o no está —el demo descargado como archivo suelto no lo
+       lleva—, el texto se lee igual desde el primer instante. */
+    --cond:"Barlow Condensed",ui-sans-serif,system-ui,-apple-system,
+           "Roboto Condensed","Arial Narrow",sans-serif;
+    --sans:"Barlow",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    /* La monoespaciada no se aloja: la del aparato es buena y cuesta 0 bytes. */
     --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
   }
   @media (prefers-color-scheme: dark) {
