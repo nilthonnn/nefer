@@ -194,8 +194,14 @@ validado nada, y eso es peor que un rojo.
 ### Publicación
 
 `.github/workflows/publicar.yml` sube `docs/` a GitHub Pages con cada cambio en
-`main`, y **enciende Pages solo** la primera vez, sin pasar por Ajustes. La app
-queda en `https://<usuario>.github.io/<repo>/app/`.
+`main`. La app queda en `https://<usuario>.github.io/<repo>/app/`.
+
+**La primera vez hay que encender Pages a mano**, una sola vez: *Ajustes →
+Pages → Build and deployment → Source: **GitHub Actions***. El workflow lo
+intenta solo —lleva `enablement: true`—, pero crear el sitio pide permiso de
+administración y el token de Actions no lo tiene: la API responde `Resource not
+accessible by integration`. Medido en este repositorio. Cuando el interruptor
+está puesto, el resto va solo con cada cambio.
 
 Esto no es un lujo: desde un archivo descargado el navegador **deniega** el
 permiso de cámara y no hay forma de concederlo. La app tiene que servirse.

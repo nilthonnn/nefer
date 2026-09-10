@@ -34,11 +34,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # `enablement` enciende Pages si estaba apagado, sin pasar por Ajustes.
+      # `enablement` intenta encender Pages si estaba apagado. Lo consigue
+      # cuando el sitio ya existe o el token puede crearlo; la primera vez de
+      # un repositorio no puede: crear el sitio pide permiso de administracion
+      # y GITHUB_TOKEN no lo tiene. Medido aqui: la API responde `Resource not
+      # accessible by integration`. Por eso no se deja morir el paso con ese
+      # error suelto, sino que se dice que falta y donde se pone.
       - name: Preparar Pages
+        id: preparar
+        continue-on-error: true
         uses: actions/configure-pages@v5
         with:
           enablement: true
+
+      - name: Decir qué falta si Pages está apagado
+        if: steps.preparar.outcome == 'failure'
+        run: |
+          {
+            echo "### Falta encender Pages, una sola vez"
+            echo ""
+            echo "**Ajustes → Pages → Build and deployment → Source: GitHub Actions.**"
+            echo ""
+            echo "Crear el sitio pide permiso de administración y el token de"
+            echo "Actions no lo tiene, así que este workflow no puede hacerlo"
+            echo "por su cuenta. Puesto el interruptor, se vuelve a lanzar este"
+            echo "workflow y la app queda publicada; los cambios siguientes ya"
+            echo "se publican solos."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::Pages está apagado: Ajustes → Pages → Source: GitHub Actions"
+          exit 1
 
       - name: Empaquetar docs/
         uses: actions/upload-pages-artifact@v3
