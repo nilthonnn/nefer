@@ -168,4 +168,22 @@ python -m playwright install chromium
 python -m pytest tests/test_app_navegador.py
 ```
 
-Sin Playwright instalado se saltan solas.
+Sin Playwright instalado se saltan solas. Para validar además los entregables
+hacen falta `poppler-utils` (el `pdftotext` que lee el PDF) y LibreOffice (que
+abre el Excel como lo abriría la oficina).
+
+### En cada cambio
+
+`.github/workflows/pruebas.yml` corre la suite en GitHub con cada push a `main`
+y en cada pull request, en dos trabajos:
+
+| Trabajo | Qué corre | Cuánto tarda |
+|---|---|---|
+| **núcleo** | generador, esquema, geometría y redacción | segundos |
+| **entregables** | navegador de verdad, Excel y PDF abiertos por sus lectores | unos minutos |
+
+El primero da la señal enseguida, y así un error de lógica no se descubre un
+cuarto de hora después. El segundo comprueba antes de empezar que están
+Chromium, `pdftotext` y LibreOffice, y **falla si alguna prueba se salta**: una
+herramienta que falte deja verde una comprobación que no ha validado nada, y
+eso es peor que un rojo.

@@ -79,19 +79,13 @@ def test_paneles_compartidos():
 pytest.importorskip("playwright.sync_api", reason="Playwright no esta instalado")
 from playwright.sync_api import sync_playwright  # noqa: E402
 
-CHROME = next(
-    (r for r in (
-        os.environ.get("NEFER_CHROMIUM"),
-        "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
-    ) if r and Path(r).exists()),
-    None,
-)
+from navegador import CHROME, HAY_CHROMIUM  # noqa: E402
 
 
 @pytest.fixture(scope="module")
 def entregables(tmp_path_factory):
     """Arma el acta de ejemplo y descarga el PDF y el Excel, una sola vez."""
-    if CHROME is None:
+    if not HAY_CHROMIUM:
         pytest.skip("no hay Chromium disponible")
     destino = tmp_path_factory.mktemp("entregables")
     salida = {}
@@ -245,7 +239,7 @@ RECEPCION_EN_EL_NAVEGADOR = """async () => {
 @pytest.fixture(scope="module")
 def recepcion(tmp_path_factory):
     """Un acta de recepcion completa: accesorio no retornado y un daño."""
-    if CHROME is None:
+    if not HAY_CHROMIUM:
         pytest.skip("no hay Chromium disponible")
     destino = tmp_path_factory.mktemp("recepcion")
     salida = {}
@@ -366,7 +360,7 @@ def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
     de poder compararse, y una casilla vacia es justamente el dato de que esa
     vista no se fotografio al volver.
     """
-    if CHROME is None:
+    if not HAY_CHROMIUM:
         pytest.skip("no hay Chromium disponible")
     from nefer import schema
 
@@ -486,7 +480,7 @@ def test_el_catalogo_de_accesorios_esta_publicado():
 
 def test_la_recepcion_arranca_sin_acta_de_despacho(tmp_path):
     """En el patio nadie lleva el acta.json del despacho en el telefono."""
-    if CHROME is None:
+    if not HAY_CHROMIUM:
         pytest.skip("no hay Chromium disponible")
     from nefer import schema
 
@@ -616,7 +610,7 @@ def test_el_pdf_y_el_excel_reparten_las_mismas_hojas(recepcion):
 
 def test_la_descripcion_larga_se_reparte_en_dos_renglones():
     """Una descripcion de accesorio no entra en un renglon; no se puede cortar."""
-    if CHROME is None:
+    if not HAY_CHROMIUM:
         pytest.skip("no hay Chromium disponible")
     largo = "01 BASE DE EXTINTOR DE 6 KG CON SU SOPORTE DE PARED DESPACHADO"
     with sync_playwright() as pw:
@@ -644,7 +638,7 @@ def test_la_descripcion_larga_se_reparte_en_dos_renglones():
 @pytest.fixture(scope="module")
 def parcial(tmp_path_factory):
     """Acta con un accesorio que vuelve en parte y otro que no vuelve."""
-    if CHROME is None:
+    if not HAY_CHROMIUM:
         pytest.skip("no hay Chromium disponible")
     destino = tmp_path_factory.mktemp("parcial")
     salida = {}

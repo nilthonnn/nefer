@@ -25,14 +25,9 @@ from PIL import Image  # noqa: E402
 
 APP = Path(__file__).resolve().parents[1] / "docs" / "app" / "index.html"
 
-CHROME = next(
-    (r for r in (
-        os.environ.get("NEFER_CHROMIUM"),
-        "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
-    ) if r and Path(r).exists()),
-    None,
-)
-pytestmark = pytest.mark.skipif(CHROME is None, reason="no hay Chromium disponible")
+from navegador import CHROME, HAY_CHROMIUM  # noqa: E402
+
+pytestmark = pytest.mark.skipif(not HAY_CHROMIUM, reason="no hay Chromium disponible")
 
 UA_ANDROID = ("Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/120 Mobile Safari/537.36")
