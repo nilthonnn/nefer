@@ -8,9 +8,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Nefer">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<!-- Sin tipografía externa. Medido: la hoja de estilos de Google bloqueaba
+     el primer pintado 12 988 ms cuando la red no la alcanzaba —que es la
+     condición para la que se hizo esta app— frente a 177 ms sin ella. Además
+     era la única llamada a un tercero: cada apertura del acta le contaba a
+     Google la IP del operador. Las familias del sistema van abajo. -->
 
 <style>
   /* ============================================================
@@ -29,9 +31,12 @@
     --mal:#96341F; --mal-soft:#F7E6E0; --mal-rule:#E0B2A2;
     --barra:#16191B; --barra-ink:#E7ECEB;
     --lift:0 1px 2px rgba(22,25,27,.05), 0 10px 26px -16px rgba(22,25,27,.28);
-    --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
-    --sans:"Barlow",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
-    --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+    /* Las que ya trae el aparato: cero bytes, cero espera, cero terceros.
+       Roboto en Android, San Francisco en iPhone, Segoe en Windows. */
+    --cond:ui-sans-serif,system-ui,-apple-system,"Roboto Condensed",
+           "Segoe UI Semibold","Arial Narrow",sans-serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -109,8 +114,6 @@
   .tabs button svg { width:20px; height:20px; stroke:currentColor; fill:none;
                      stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
   .tabs button[aria-selected="true"] { color:#FFFFFF; border-top-color:#6FA8CE; }
-  .tabs .aviso-pin { position:absolute; top:.35rem; right:22%; width:7px; height:7px;
-                     border-radius:50%; background:#D9A24E; }
 
   /* ---------- tipografía de sección ---------- */
   .encab { border-bottom:3px solid var(--ink); padding-bottom:.7rem; margin-bottom:.9rem; }
@@ -204,7 +207,7 @@
   .aviso { padding:.6rem .75rem; border-radius:5px; border:1px solid var(--obs-rule);
            background:var(--obs-soft); font-size:.85rem; color:var(--ink-2);
            margin-bottom:.75rem; }
-  .aviso.ok, .aviso.ok-msg {
+  .aviso.ok {
     border-color:color-mix(in srgb,var(--ok) 45%,transparent); background:var(--ok-soft); }
   .aviso.malo { border-color:var(--mal-rule); background:var(--mal-soft); }
   .aviso b { color:var(--ink); }
@@ -1371,12 +1374,13 @@ var NEFER = (function () {
     prueba.type = "file";
     var grueso = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
     var tactil = grueso || (!window.matchMedia && navigator.maxTouchPoints > 0);
+    // Sólo lo que alguien consulta de verdad. El pegado y el arrastre se
+    // enganchan siempre —no estorban donde no existen— y tener un indicador
+    // que nadie lee invita a creer que algo está apagado cuando no lo está.
     return {
       tactil: tactil,
       camara: tactil,
-      carpeta: !tactil && "webkitdirectory" in prueba,
-      pegar: "onpaste" in window,
-      arrastre: "draggable" in document.createElement("div")
+      carpeta: !tactil && "webkitdirectory" in prueba
     };
   })();
 
@@ -3166,18 +3170,6 @@ var NEFER = (function () {
            : '<span class="vacio">' + esc(textoVacio) + '</span>') + '</div>';
   }
 
-  function filaPar(clase, i, titulo, urlIzq, urlDer, extra, htmlTitulo) {
-    return '<div class="par ' + (urlDer ? "resuelto" : "pendiente") + '">' +
-      '<div class="par-top"><h3>' + (htmlTitulo || esc(titulo)) + '</h3>' +
-      '<span class="idx">' + (i + 1) + '</span></div>' +
-      '<div class="dupla">' +
-        '<div class="lado"><span class="tag">Antes · despacho</span>' +
-          marcoFijo(urlIzq, "sin foto de despacho", titulo) + '</div>' +
-        '<div class="lado"><span class="tag">Después · retorno</span>' +
-          marcoDestino(urlDer, clase, i, "Foto de retorno de " + titulo) + '</div>' +
-      '</div>' + (extra || "") + '</div>';
-  }
-
   /* Un bloque de OBSERVACIONES con la forma exacta del formato:
 
        ┌───────────────┬───────────────┐
@@ -3189,8 +3181,6 @@ var NEFER = (function () {
        ├───────────────┴───────────────┤
        │ RECUPERACIÓN 1 : 01 X         │   franja amarilla, editable
        └───────────────────────────────┘                                     */
-  // Qué número le toca a este accesorio dentro de su serie. El primero que
-  // falte es la RECUPERACIÓN N° 1, el siguiente la N° 2, y así.
   // El accesorio tal como viaja en el acta: en pantalla el estado se llama
   // `estado` y en el acta `estado_recepcion`.
   function comoEnActa(c) {
@@ -3813,7 +3803,6 @@ var ENTREGABLE = (function () {
   var A4 = { w: 595.28, h: 841.89 };
   var MARGEN = 24;
   var ANCHO = A4.w - MARGEN * 2;
-  var CAB_ALTO = 104;
   var HUECO = 6;
   var CELDA = (ANCHO - HUECO) / 2;
   // Tres franjas de dos fotos por página: seis, como en el formato impreso.
@@ -3822,7 +3811,6 @@ var ENTREGABLE = (function () {
   var FOTO_ALTO = 188;
   var ROTULO_ALTO = 15;
   var BLOQUE = FOTO_ALTO + ROTULO_ALTO;
-  var FOTOS_POR_PAGINA = 6;
 
   /* ---------- texto en WinAnsi ----------
      Helvetica con WinAnsiEncoding cubre el español entero. Sólo hay que
@@ -4017,12 +4005,6 @@ var ENTREGABLE = (function () {
     return "CONFORME N° " + numero + " : " + cant + " " + desc + " — SIN RECUPERACIÓN";
   }
 
-  function textoRecuperacion(cons, numero, tipo) {
-    var cierres = cierresConsumible(cons, tipo);
-    if (!cierres.length) return "";
-    return textoCierre(cons, cierres[0], numero, 0);
-  }
-
   function modelo(acta) {
     var enc = acta.encabezado || {};
     var tipo = enc.tipo_documento || "DESPACHO";
@@ -4167,18 +4149,16 @@ var ENTREGABLE = (function () {
     return Object.keys(vistas);
   }
 
+  // Lo que sale de aquí es lo que el resto de la app puede usar, y nada más:
+  // cuanto más estrecha la puerta, menos sitios donde algo puede desincronizarse.
   return { NUMEROS: NUMEROS, TITULO: TITULO, A4: A4, MARGEN: MARGEN, ANCHO: ANCHO,
-           CAB_ALTO: CAB_ALTO, HUECO: HUECO, CELDA: CELDA, FOTO_ALTO: FOTO_ALTO,
-           ROTULO_ALTO: ROTULO_ALTO, BLOQUE: BLOQUE, FOTOS_POR_PAGINA: FOTOS_POR_PAGINA,
-           Lienzo: Lienzo, ancho: ancho, recortar: recortar, envolver: envolver, escapar: escapar,
+           HUECO: HUECO, CELDA: CELDA, FOTO_ALTO: FOTO_ALTO,
+           ROTULO_ALTO: ROTULO_ALTO, BLOQUE: BLOQUE,
+           Lienzo: Lienzo, ancho: ancho, recortar: recortar, envolver: envolver,
            modelo: modelo, rutasCitadas: rutasCitadas, faltantes: faltantes,
            repartoConsumible: repartoConsumible, cierresConsumible: cierresConsumible,
-           textoCierre: textoCierre, reparto: reparto,
-           ALTO_CABECERA_PT: ALTO_CABECERA_PT, ALTO_BLOQUE_FOTO_PT: ALTO_BLOQUE_FOTO_PT,
-           ALTO_TITULO_SECCION_PT: ALTO_TITULO_SECCION_PT,
-           altoBloquePareadoPt: altoBloquePareadoPt, piezasDelActa: piezasDelActa,
-           textoConsumible: textoConsumible, textoRecuperacion: textoRecuperacion,
-           LEYENDA_ESTADO: LEYENDA_ESTADO,
+           textoCierre: textoCierre, textoConsumible: textoConsumible,
+           reparto: reparto, piezasDelActa: piezasDelActa,
            TITULO_OBSERVACIONES: "OBSERVACIONES" };
 })();
 </script>
@@ -4619,7 +4599,6 @@ var ENTREGABLE = (function () {
   // encabezado + 14 filas de imagen + descripción; debajo, una franja de
   // cierre por cada hecho que declarar.
   var FILAS_BASE_CONSUMIBLE = 16;
-  var ALTO_BLOQUE_CONSUMIBLE = FILAS_BASE_CONSUMIBLE + 1;
 
   function filaTituloObservaciones(franjas) {
     return FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * franjas;

@@ -291,12 +291,6 @@ def plan_secciones(n_bloques_foto: int, n_consumibles: int,
     }
 
 
-def ultima_fila(n_bloques_foto: int, n_consumibles: int,
-                n_comparativo: int = 0, n_danos: int = 0, bandas=None) -> int:
-    return plan_secciones(n_bloques_foto, n_consumibles,
-                          n_comparativo, n_danos, bandas)["ultima_fila"]
-
-
 # --- Reparto en hojas ---------------------------------------------------------
 # Alto de contenido que admite una hoja A4 vertical con esta rejilla. Medido:
 # la rejilla mide 634 pt y el ancho util de un A4 con estos margenes son 561,
