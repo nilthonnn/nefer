@@ -560,6 +560,27 @@ def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
         impresos.append(ws[f"{layout.PANEL_IZQ[0]}{fila}"].value)
     assert impresos == salieron, impresos
 
+def test_la_app_declara_su_version_y_el_trabajador_la_acompana():
+    """Sirve para saber si el telefono que falla corre la version corregida.
+
+    Un operador que dice «lo probe y sigue igual» y un aparato con una copia
+    vieja guardada se ven exactamente igual desde aqui. La version esta a la
+    vista en GUIA, y `sw.js` lleva la misma fecha para que la copia guardada
+    se renueve con ella.
+    """
+    version = re.search(r'var VERSION = "([^"]+)"', FUENTE)
+    assert version, "la app tiene que declarar su version"
+    fecha = re.match(r"(\d{4}-\d{2}-\d{2}) · .+", version.group(1))
+    assert fecha, f"formato AAAA-MM-DD · nota, no {version.group(1)!r}"
+
+    sw = (APP.parent / "sw.js").read_text(encoding="utf-8")
+    cache = re.search(r'var CACHE = "([^"]+)"', sw)
+    assert cache, "el trabajador de servicio tiene que nombrar su cache"
+    assert fecha.group(1) in cache.group(1), (
+        f"la cache {cache.group(1)!r} no lleva la fecha de la version "
+        f"{fecha.group(1)!r}: el telefono seguiria sirviendo la copia vieja")
+
+
 def test_las_vistas_de_la_app_son_las_de_layout():
     """La app y la herramienta de escritorio tienen que ofrecer las mismas.
 

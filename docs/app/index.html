@@ -950,6 +950,7 @@
         <p class="kicker">cómo se usa</p>
         <h1>Guía rápida</h1>
         <p class="sub">Lo mínimo para levantar un acta correcta la primera vez.</p>
+        <p class="lb" id="g-version" style="margin:.2rem 0 0"></p>
       </div>
 
       <h2 class="rot">Antes de salir al patio</h2>
@@ -1108,6 +1109,12 @@ nefer construir acta.json -o ACTA.xlsx --pdf</textarea>
    NÚCLEO · pestañas, tema, instalación, empaquetado y persistencia.
    ================================================================ */
 var NEFER = (function () {
+  /* Version de la app, visible en GUIA. Sirve para una sola cosa, pero
+     importante: saber si el telefono que falla esta corriendo la version
+     corregida o una copia vieja guardada. Se cambia con cada cambio que
+     el operador pueda notar, y `sw.js` lleva la misma fecha. */
+  var VERSION = "2026-09-10 · observaciones";
+
   "use strict";
 
   var $ = function (s, raiz) { return (raiz || document).querySelector(s); };
@@ -1986,7 +1993,7 @@ var NEFER = (function () {
   }
 
   return {
-    $: $, esc: esc, ir: ir, arrancar: arrancar, conFoco: conFoco,
+    $: $, esc: esc, ir: ir, arrancar: arrancar, conFoco: conFoco, VERSION: VERSION,
     armarZip: armarZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
     incrustada: incrustada,
@@ -3944,6 +3951,7 @@ var NEFER = (function () {
 
   function informar() {
     var l = [];
+    l.push("versión de la app: " + NEFER.VERSION);
     l.push("navegador: " + navigator.userAgent);
     l.push("dentro de otra página (marco): " + (NEFER.incrustada ? "sí" : "no"));
     l.push("origen: " + location.protocol + " " + (location.host || "(archivo local)"));
@@ -3962,6 +3970,10 @@ var NEFER = (function () {
     l.push("descarga por el anfitrión: " + (window.claude ? "sí" : "no"));
     notas.forEach(function (n) { l.push(n); });
     $("#dx-informe").value = l.join("\n");
+    // A la vista, sin tener que abrir el informe: es lo primero que hay que
+    // mirar cuando una corrección «no llegó» al teléfono.
+    var sello = $("#g-version");
+    if (sello) sello.innerHTML = "Versión de la app: <b>" + NEFER.esc(NEFER.VERSION) + "</b>";
   }
 
   $("#dx-file").addEventListener("change", function (e) {
