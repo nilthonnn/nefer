@@ -98,6 +98,11 @@ def texto_consumible(cons: dict, lado: str, tipo_documento: str = "RECEPCION") -
         return ""
 
     estado = cons.get("estado_recepcion")
+    # Sin estado y sin retorno parcial declarado, nadie ha dicho todavia si el
+    # equipo volvio con esto o sin esto. La celda va en blanco: la observacion
+    # y su fotografia se imprimen igual, y el hecho lo declara quien firma.
+    if estado is None and cons.get("cantidad_retorna") is None:
+        return ""
     retorna, falta = reparto_consumible(cons)
     # Retorno parcial: la celda dice cuantas de cuantas volvieron. Decir solo
     # "retorno sin" o solo "retorno con" seria falso en los dos sentidos.
@@ -120,6 +125,14 @@ def cierres_consumible(cons: dict, tipo_documento: str = "RECEPCION") -> list[di
     RECUPERACION bajo el mismo bloque.
     """
     if tipo_documento == "DESPACHO":
+        return []
+    # Sin estado declarado no hay nada que cerrar: una franja CONFORME diria
+    # que se da por bueno lo que nadie ha revisado, y una RECUPERACION cobraria
+    # lo que nadie ha declarado perdido. Un texto escrito a mano si es una
+    # declaracion, y entonces la franja va con lo que diga ese texto.
+    if (cons.get("estado_recepcion") is None
+            and cons.get("cantidad_retorna") is None
+            and not any(t.strip() for t in _leyendas_manuales(cons))):
         return []
     retorna, falta = reparto_consumible(cons)
     danado = cons.get("estado_recepcion") in {"D", "OBS"}

@@ -225,6 +225,12 @@ Cada uno lleva **cuántos salieron** y **cuántos vuelven**, y un estado:
 | **Dañado** | Volvió roto |
 | **No retornó** | No volvió |
 
+**Si no marca el estado, la observación se imprime igual**: su descripción y su
+fotografía salen en el acta, y la columna de RECEPCIÓN queda en blanco, sin
+franja de cierre. Es deliberado: el acta no puede decir «retornó conforme» ni
+cobrar una recuperación que nadie declaró. El pie de la pantalla se lo recuerda
+—«N observación(es) sin estado»— para que no se le quede a medias.
+
 La casilla **vuelven** es la que resuelve el caso incómodo. Si salieron dos
 ganchos y vuelve uno, escriba 1: el bloque cierra con **dos** franjas en vez de
 una.
