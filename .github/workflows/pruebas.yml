@@ -64,23 +64,36 @@ jobs:
             || sudo apt-get install -y --no-install-recommends libreoffice-calc
 
       # Si falta una herramienta, las pruebas que la usan se saltan solas y la
-      # comprobacion sale verde sin haber validado nada. Se mira antes de
+      # comprobacion sale verde sin haber validado nada. Se comprueba antes de
       # correr, para que la falta se vea como lo que es: un error.
+      #
+      # El navegador se abre de verdad en vez de buscar su archivo: la forma de
+      # la carpeta cambia entre versiones de Playwright y adivinarla es lo que
+      # hace que una suite se salte sola. Abrirlo no admite discusion.
       - name: Comprobar que están todas las herramientas
         run: |
           python - <<'PY'
           import shutil, sys
           sys.path.insert(0, "tests")
           from navegador import CHROME, HAY_CHROMIUM
+          from playwright.sync_api import sync_playwright
 
           faltan = [n for n, hay in (
-              ("Chromium", HAY_CHROMIUM),
               ("pdftotext", bool(shutil.which("pdftotext"))),
               ("LibreOffice", bool(shutil.which("soffice") or shutil.which("libreoffice"))),
           ) if not hay]
           if faltan:
               sys.exit("sin " + ", ".join(faltan) + ": las pruebas se saltarían solas")
-          print("Chromium:", CHROME or "el que instaló Playwright")
+
+          with sync_playwright() as pw:
+              navegador = pw.chromium.launch(executable_path=CHROME)
+              navegador.close()
+          print("Chromium abierto:", CHROME or "el que instaló Playwright")
+
+          # Y las pruebas tienen que verlo igual que lo vio esta comprobación.
+          if not HAY_CHROMIUM:
+              sys.exit("el navegador abre, pero las pruebas no lo dan por "
+                       "disponible y se saltarían: revisar tests/navegador.py")
           PY
 
       - name: Probar
