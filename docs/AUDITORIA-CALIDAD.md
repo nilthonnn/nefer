@@ -30,7 +30,7 @@ a tomar con los guiones que quedan en el repositorio.
 | Nombres en la API interna | 31 | **22** |
 | Funciones y estilos muertos | 7 | **0** |
 | Peso que viaja por la red | 77,7 KB | 77,6 KB |
-| La suite de pruebas completa | 721 s | **205 s** |
+| La suite de pruebas (sin salida a internet) | 721 s | **205 s** |
 
 Lo que valía la pena arreglar no era el peso: era **el tiempo y la privacidad**.
 
@@ -70,10 +70,16 @@ La aplicación no llama a nadie: **cero peticiones a terceros**.
 Si algún día se quiere recuperar la tipografía exacta, la vía correcta es
 alojarla en `docs/app/` (unos 80 KB), no volver a pedirla prestada.
 
-**Efecto secundario medido:** la suite de pruebas pasó de **721 s a 205 s**,
-tres veces y media más rápida. Las 58 pruebas de navegador estaban pagando esa
-misma espera cada vez que abrían la página. La comprobación automática de
-GitHub se abarata en la misma proporción.
+**Efecto secundario medido:** la suite de pruebas pasó de **721 s a 205 s** en
+un entorno sin salida a internet. Las 58 pruebas de navegador pagaban esa misma
+espera en cada carga.
+
+**Y aquí está lo importante del hallazgo.** En el runner de GitHub el trabajo
+tardó lo mismo antes y después (227 s → 247 s), porque allí
+`fonts.googleapis.com` **sí responde**: nunca se pagaba la espera. Es decir,
+este defecto era **invisible para cualquier infraestructura bien conectada**.
+Una comprobación automática en la nube no lo habría encontrado nunca. Sólo
+aparece en la condición para la que se hizo la aplicación: sin señal.
 
 ---
 
