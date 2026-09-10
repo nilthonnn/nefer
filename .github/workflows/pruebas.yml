@@ -1,0 +1,148 @@
+name: pruebas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Un push nuevo sobre la misma rama cancela la comprobacion anterior: importa
+# si la punta esta verde, no si lo estuvo hace tres commits.
+concurrency:
+  group: pruebas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nucleo:
+    name: núcleo (generador, esquema y textos)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Instalar
+        run: pip install -e ".[dev]"
+
+      - name: Probar
+        run: |
+          python -m pytest -q \
+            tests/test_build_extract.py \
+            tests/test_layout.py \
+            tests/test_schema.py \
+            tests/test_textos.py
+
+  entregables:
+    name: entregables (navegador, Excel y PDF de verdad)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Instalar
+        run: pip install -e ".[navegador]"
+
+      - name: Navegador
+        run: python -m playwright install --with-deps chromium
+
+      - name: Lector de PDF y hoja de cálculo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          command -v soffice >/dev/null \
+            || sudo apt-get install -y --no-install-recommends libreoffice-calc
+
+      # Si falta una herramienta, las pruebas que la usan se saltan solas y la
+      # comprobacion sale verde sin haber validado nada. Se comprueba antes de
+      # correr, para que la falta se vea como lo que es: un error.
+      #
+      # El navegador se abre de verdad en vez de buscar su archivo: la forma de
+      # la carpeta cambia entre versiones de Playwright y adivinarla es lo que
+      # hace que una suite se salte sola. Abrirlo no admite discusion.
+      - name: Comprobar que están todas las herramientas
+        run: |
+          python - <<'PY'
+          import shutil, sys
+          sys.path.insert(0, "tests")
+          from navegador import CHROME, HAY_CHROMIUM, opciones
+          from playwright.sync_api import sync_playwright
+
+          faltan = [n for n, hay in (
+              ("pdftotext", bool(shutil.which("pdftotext"))),
+              ("LibreOffice", bool(shutil.which("soffice") or shutil.which("libreoffice"))),
+          ) if not hay]
+          if faltan:
+              sys.exit("sin " + ", ".join(faltan) + ": las pruebas se saltarían solas")
+
+          SONDA = """async () => {
+            try {
+              const s = await navigator.mediaDevices.getUserMedia({video: true});
+              s.getTracks().forEach(t => t.stop());
+              return 'concedida';
+            } catch (e) { return 'rechazada:' + e.name; }
+          }"""
+
+          # Se abre el navegador y se le pide la cámara: es lo que hace la
+          # suite, y el binario recortado que Playwright usa por omisión no la
+          # trae. Comprobarlo aquí evita descubrirlo tres minutos después.
+          # Hace falta servirla: `getUserMedia` sólo existe en un origen
+          # seguro, y 127.0.0.1 lo es.
+          import functools, http.server, socketserver, threading
+
+          manejador = functools.partial(http.server.SimpleHTTPRequestHandler,
+                                        directory="docs/app")
+          manejador.log_message = lambda *a, **k: None
+
+          class Servidor(socketserver.TCPServer):
+              allow_reuse_address = True
+
+          servidor = Servidor(("127.0.0.1", 0), manejador)
+          threading.Thread(target=servidor.serve_forever, daemon=True).start()
+          puerto = servidor.server_address[1]
+
+          with sync_playwright() as pw:
+              navegador = pw.chromium.launch(
+                  **opciones(args=["--use-fake-device-for-media-stream"]))
+              pagina = navegador.new_context(permissions=["camera"]).new_page()
+              pagina.goto(f"http://127.0.0.1:{puerto}/")
+              camara = pagina.evaluate(SONDA)
+              navegador.close()
+          servidor.shutdown()
+          print("Chromium:", CHROME or "el completo de Playwright", "· cámara:", camara)
+          if camara != "concedida":
+              sys.exit("el navegador no da la cámara (" + camara + ")")
+
+          # Y las pruebas tienen que verlo igual que lo vio esta comprobación.
+          if not HAY_CHROMIUM:
+              sys.exit("el navegador abre, pero las pruebas no lo dan por "
+                       "disponible y se saltarían: revisar tests/navegador.py")
+          PY
+
+      - name: Probar
+        run: |
+          set -o pipefail
+          python -m pytest -q -rs \
+            tests/test_app_navegador.py \
+            tests/test_entregables_app.py | tee salida.txt
+
+      # Una prueba saltada aqui no es una prueba: deja pasar un fallo real sin
+      # que nadie lo note. Con las herramientas ya comprobadas, un salto solo
+      # puede venir de un descuido, y se trata como un fallo.
+      - name: Ninguna prueba se saltó
+        run: |
+          if grep -qE '[0-9]+ skipped' salida.txt; then
+            echo "::error::alguna prueba se saltó; aquí eso cuenta como fallo"
+            grep -E '^SKIPPED' salida.txt || true
+            exit 1
+          fi

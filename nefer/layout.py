@@ -29,7 +29,7 @@ COL_PRIMERA, COL_ULTIMA = "A", "Z"
 # Anchos de columna medidos en los reportes originales (unidades Excel).
 ANCHOS_COLUMNA = {
     "A": 5.00, "B": 4.29, "C": 3.71, "D": 2.29, "E": 4.00, "F": 1.71,
-    "G": 4.00, "H": 8.43, "I": 8.43, "J": 2.86, "K": 2.43, "L": 11.71,
+    "G": 4.00, "H": 4.00, "I": 4.00, "J": 2.86, "K": 2.43, "L": 11.71,
     "M": 1.43, "N": 2.71, "O": 1.57, "P": 1.14, "Q": 3.71, "R": 4.86,
     "S": 4.00, "T": 7.57, "U": 4.00, "V": 2.14, "W": 4.00, "X": 3.14,
     "Y": 0.43, "Z": 11.43,
@@ -57,11 +57,19 @@ CELDA_MARCA_RECEPCION = "Z6"
 
 # --- Rejilla fotografica -----------------------------------------------------
 FILA_INICIO_FOTOS = 11
+# El informe emparejado de una recepcion arranca donde arrancaria la rejilla.
+# `bloque_pareado` cuenta desde la fila del titulo de su seccion, y este
+# informe no lleva titulo: su fila de referencia es la del separador.
+FILA_VISTAS = FILA_SEPARADOR
 ALTO_BLOQUE_FOTO = 15         # 14 filas de imagen + 1 fila de rotulo
 FILAS_IMAGEN = 14
 
 # --- Bloques de consumibles / observaciones ----------------------------------
-ALTO_BLOQUE_CONSUMIBLE = 17   # rotulos + 14 filas de imagen + rotulos + recuperacion
+# encabezado + 14 filas de imagen + fila de descripcion. Debajo va una franja
+# de cierre por cada hecho que declarar: lo que falta se cobra y lo que volvio
+# se da por conforme, y un accesorio que vuelve en parte declara los dos.
+FILAS_BASE_CONSUMIBLE = 16
+ALTO_BLOQUE_CONSUMIBLE = FILAS_BASE_CONSUMIBLE + 1   # la forma corriente: una franja
 
 # --- Estilo ------------------------------------------------------------------
 FUENTE = "Cambria"
@@ -76,6 +84,9 @@ BLANCO = "FFFFFFFF"
 ALTO_FILA_ESTANDAR = 15.0
 ALTO_FILA_SEPARADOR = 10.5
 ALTO_FILA_ROTULO = 16.5
+# La fila donde va la descripcion de lo despachado y lo que retorno.
+# A 16,5 pt solo cabe una linea y las descripciones largas se cortaban.
+ALTO_FILA_TEXTO = 28.5        # dos lineas de Calibri 10 mas el margen
 
 # Bloque de control documental. Cada organizacion pone el suyo desde el
 # manifiesto: encabezado.codigo_formato, version_formato y fecha_formato.
@@ -83,6 +94,9 @@ CODIGO_FORMATO = "FO-DR-001"
 VERSION_FORMATO = "00"
 FECHA_FORMATO = ""
 TITULO_FORMATO = " REPORTE FOTOGRÁFICO \nDE DESPACHO Y RECEPCIÓN"
+# Ya no se imprime: la comparacion salida/retorno es el propio informe
+# fotografico. Se conserva para leer actas anteriores, que la traen como
+# seccion aparte al final, y para no confundir sus bloques con OBSERVACIONES.
 TITULO_COMPARATIVO = "COMPARATIVO DESPACHO / RECEPCIÓN"
 TITULO_DANOS = "DAÑOS Y OBSERVACIONES"
 
@@ -95,12 +109,22 @@ VISTAS_POR_CATEGORIA = {
         "VISTA FRONTAL DE MOTOR", "VISTA POSTERIOR DE MOTOR",
         "BATERÍAS", "TANQUE DE COMBUSTIBLE",
     ],
+    # Tomadas de un acta real de torre LED: la rejilla del formato termina en
+    # las dos vistas de motor, no en mastil ni estabilizadores.
     "torre_iluminacion": [
         "VISTA FRONTAL", "VISTA POSTERIOR",
         "VISTA LATERAL IZQUIERDA", "VISTA LATERAL DERECHA",
         "HORÓMETRO", "PANEL DE CONTROL",
-        "MÁSTIL Y WINCHE", "FOCOS",
-        "ESTABILIZADORES", "BATERÍAS",
+        "LUMINARIAS", "BATERÍA",
+        "VISTA FRONTAL DE MOTOR", "VISTA POSTERIOR DE MOTOR",
+    ],
+    # Compresor transportable: el motor se fotografia por sus dos costados.
+    "compresor": [
+        "VISTA FRONTAL", "VISTA POSTERIOR",
+        "VISTA LATERAL IZQUIERDA", "VISTA LATERAL DERECHA",
+        "HORÓMETRO", "PANEL DE CONTROL",
+        "BATERÍA",
+        "VISTA LATERAL IZQUIERDA DE MOTOR", "VISTA LATERAL DERECHA DE MOTOR",
     ],
     "plataforma_elevacion": [
         "VISTA FRONTAL", "VISTA POSTERIOR",
@@ -139,9 +163,11 @@ PISTAS_NOMBRE = [
     ("MANDO DE CONTROL", ("mando", "joystick", "botonera")),
     ("TANQUE DE COMBUSTIBLE", ("tanque", "combustible", "diesel", "fuel")),
     ("BATERÍAS", ("bateria", "baterias", "battery")),
+    ("VISTA LATERAL IZQUIERDA DE MOTOR", ("motorlatizq", "motorizquierda")),
+    ("VISTA LATERAL DERECHA DE MOTOR", ("motorlatder", "motorderecha")),
+    ("LUMINARIAS", ("luminaria", "luminarias", "foco", "focos", "luces", "lampara")),
     ("MÁSTIL Y WINCHE", ("mastil", "winche")),
-    ("FOCOS", ("foco", "focos", "luces", "lampara", "light")),
-    ("ESTABILIZADORES", ("estabilizador", "gato", "outrigger")),
+    ("ESTABILIZADORES", ("estabilizador", "outrigger")),
     ("PISO DE PLATAFORMA", ("piso", "plataforma", "canastilla")),
     ("LLAVE DE CONTACTO", ("llave", "contacto", "ignicion")),
     ("TACOS", ("taco", "tacos", "cuna")),
@@ -165,7 +191,8 @@ def vista_sugerida(nombre: str) -> str | None:
 
 
 # Equipos que llevan hoja de consumibles (equipos moviles / autopropulsados).
-CATEGORIAS_MOVILES = {"plataforma_elevacion", "maquinaria_amarilla", "torre_iluminacion"}
+CATEGORIAS_MOVILES = {"plataforma_elevacion", "maquinaria_amarilla",
+                      "torre_iluminacion", "compresor"}
 
 
 def bloque_foto(indice: int) -> dict:
@@ -178,27 +205,67 @@ def bloque_foto(indice: int) -> dict:
     }
 
 
-def fila_titulo_observaciones(n_bloques_foto: int) -> int:
-    return FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * n_bloques_foto
+def fin_informe_fotografico(n_bloques_foto: int, n_vistas: int = 0) -> int:
+    """Ultima fila del informe fotografico.
+
+    Son dos formas de lo mismo. Un acta de despacho lo lleva como rejilla: dos
+    vistas por franja, una foto cada una. Un acta de recepcion que trae las
+    fotos de la salida lo lleva emparejado: una franja por vista, con la foto
+    del despacho a la izquierda y la del retorno a la derecha, que es la misma
+    tabla con la que el formato levanta las OBSERVACIONES.
+
+    En los dos casos el informe empieza en `FILA_INICIO_FOTOS` y las
+    OBSERVACIONES siguen inmediatamente despues: van juntos, no separados por
+    otra seccion.
+    """
+    if n_vistas:
+        return fin_seccion_pareada(FILA_VISTAS, n_vistas)
+    return FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * n_bloques_foto - 1
 
 
-def bloque_consumible(indice: int, n_bloques_foto: int) -> dict:
-    """Filas del bloque de consumible `indice` (0-based)."""
-    base = fila_titulo_observaciones(n_bloques_foto) + 1 + ALTO_BLOQUE_CONSUMIBLE * indice
+def fila_titulo_observaciones(n_bloques_foto: int, n_vistas: int = 0) -> int:
+    return fin_informe_fotografico(n_bloques_foto, n_vistas) + 1
+
+
+def _bandas(indice: int, bandas) -> int:
+    """Franjas de cierre del bloque `indice`. Sin lista, una por bloque."""
+    if not bandas or indice >= len(bandas):
+        return 1
+    return max(1, int(bandas[indice]))
+
+
+def _desplazamiento(indice: int, bandas) -> int:
+    return sum(FILAS_BASE_CONSUMIBLE + _bandas(j, bandas) for j in range(indice))
+
+
+def bloque_consumible(indice: int, n_bloques_foto: int, bandas=None,
+                      n_vistas: int = 0) -> dict:
+    """Filas del bloque de consumible `indice` (0-based).
+
+    `bandas` lleva cuantas franjas de cierre ocupa cada bloque; omitirla
+    equivale a una por bloque, que es la forma corriente del formato.
+    """
+    base = (fila_titulo_observaciones(n_bloques_foto, n_vistas) + 1 +
+            _desplazamiento(indice, bandas))
+    primera = base + FILAS_IMAGEN + 2
+    n = _bandas(indice, bandas)
     return {
         "fila_encabezado": base,
         "fila_imagen_inicio": base + 1,
         "fila_imagen_fin": base + FILAS_IMAGEN,
         "fila_rotulo": base + FILAS_IMAGEN + 1,
-        "fila_recuperacion": base + FILAS_IMAGEN + 2,
+        "fila_recuperacion": primera,
+        "filas_recuperacion": [primera + k for k in range(n)],
     }
 
 
-def fin_consumibles(n_bloques_foto: int, n_consumibles: int) -> int:
+def fin_consumibles(n_bloques_foto: int, n_consumibles: int, bandas=None,
+                    n_vistas: int = 0) -> int:
     """Ultima fila ocupada por la seccion OBSERVACIONES."""
     if n_consumibles:
-        return bloque_consumible(n_consumibles - 1, n_bloques_foto)["fila_recuperacion"]
-    return fila_titulo_observaciones(n_bloques_foto)
+        return bloque_consumible(n_consumibles - 1, n_bloques_foto, bandas,
+                                 n_vistas)["filas_recuperacion"][-1]
+    return fila_titulo_observaciones(n_bloques_foto, n_vistas)
 
 
 # --- Secciones pareadas: solo en actas de recepcion ---------------------------
@@ -227,34 +294,68 @@ def fin_seccion_pareada(fila_titulo: int, n_bloques: int) -> int:
 
 
 def plan_secciones(n_bloques_foto: int, n_consumibles: int,
-                   n_comparativo: int = 0, n_danos: int = 0) -> dict:
+                   n_danos: int = 0, bandas=None, n_vistas: int = 0) -> dict:
     """Fila donde arranca cada seccion y donde termina el acta.
 
-    Las secciones se encadenan en el orden en que se imprimen: rejilla,
-    observaciones, comparativo despacho/recepcion y, al final, danos.
+    Las secciones se encadenan en el orden en que se imprimen: informe
+    fotografico —rejilla o vistas emparejadas—, observaciones y, al final,
+    danos. No hay seccion aparte para comparar la salida con el retorno: esa
+    comparacion es el propio informe fotografico, y separarla dejaba las
+    observaciones lejos de las fotos con las que se leen.
     """
-    fila = fin_consumibles(n_bloques_foto, n_consumibles)
-
-    titulo_comparativo = fila + 1 if n_comparativo else None
-    if n_comparativo:
-        fila = fin_seccion_pareada(titulo_comparativo, n_comparativo)
+    fila = fin_consumibles(n_bloques_foto, n_consumibles, bandas, n_vistas)
 
     titulo_danos = fila + 1 if n_danos else None
     if n_danos:
         fila = fin_seccion_pareada(titulo_danos, n_danos)
 
     return {
-        "fila_observaciones": fila_titulo_observaciones(n_bloques_foto) if n_consumibles else None,
-        "fila_comparativo": titulo_comparativo,
+        "fila_observaciones": (fila_titulo_observaciones(n_bloques_foto, n_vistas)
+                               if n_consumibles else None),
         "fila_danos": titulo_danos,
         "ultima_fila": fila,
     }
 
 
-def ultima_fila(n_bloques_foto: int, n_consumibles: int,
-                n_comparativo: int = 0, n_danos: int = 0) -> int:
-    return plan_secciones(n_bloques_foto, n_consumibles,
-                          n_comparativo, n_danos)["ultima_fila"]
+# --- Reparto en hojas ---------------------------------------------------------
+# Alto de contenido que admite una hoja A4 vertical con esta rejilla. Medido:
+# la rejilla mide 634 pt y el ancho util de un A4 con estos margenes son 561,
+# asi que el ajuste a lo ancho impone una escala del 88 %; a esa escala entran
+# 887 pt de contenido bajo el borde superior.
+CAJA_IMPRESION_PT = 887.0
+
+ALTO_CABECERA_PT = 9 * ALTO_FILA_ESTANDAR + ALTO_FILA_SEPARADOR      # 145,5
+ALTO_BLOQUE_FOTO_PT = FILAS_IMAGEN * ALTO_FILA_ESTANDAR + ALTO_FILA_ROTULO   # 226,5
+ALTO_TITULO_SECCION_PT = ALTO_FILA_ROTULO
+
+
+def alto_bloque_pareado_pt(bandas: int = 1) -> float:
+    """Alto de un bloque de observacion con `bandas` franjas de cierre."""
+    return (ALTO_FILA_ROTULO + FILAS_IMAGEN * ALTO_FILA_ESTANDAR
+            + ALTO_FILA_TEXTO + max(1, bandas) * ALTO_FILA_ROTULO)
+
+
+def reparto(piezas: list[dict], disponible: float = CAJA_IMPRESION_PT) -> list[int]:
+    """Numero de hoja (0-based) de cada pieza.
+
+    Una pieza es {"alto": pt, "abre_pagina": bool, "arrastra": bool}. `arrastra`
+    marca los titulos de seccion: un encabezado solo al pie de una hoja no dice
+    nada, asi que baja con su primer bloque. El reparto se hace por alto y no
+    por cuenta de bloques porque los bloques ya no miden todos lo mismo.
+    """
+    paginas, hoja, alto, cuantas = [], 0, 0.0, 0
+    for i, pieza in enumerate(piezas):
+        necesita = pieza["alto"]
+        if pieza.get("arrastra") and i + 1 < len(piezas):
+            necesita += piezas[i + 1]["alto"]
+        if cuantas and (pieza.get("abre_pagina") or alto + necesita > disponible):
+            hoja += 1
+            alto = 0.0
+            cuantas = 0
+        paginas.append(hoja)
+        alto += pieza["alto"]
+        cuantas += 1
+    return paginas
 
 
 def _ancho_px(col: str) -> int:

@@ -30,15 +30,27 @@ def _texto(ws, coordenada: str) -> str:
     return str(valor).replace("\r", "").strip()
 
 
-def _detectar_fin_fotos(ws) -> int:
-    """Cuantos bloques fotograficos tiene la hoja antes de OBSERVACIONES."""
+def _detectar_fin_fotos(ws) -> tuple[int, int]:
+    """Que forma tiene el informe fotografico: (franjas de rejilla, vistas).
+
+    Son dos formas y se distinguen por donde cae el titulo OBSERVACIONES: la
+    rejilla avanza de 15 en 15 filas y el informe emparejado de una recepcion
+    —una vista por franja, despacho y retorno lado a lado— de 17 en 17. Sin
+    OBSERVACIONES en la hoja, no hay nada que acotar y se devuelve (0, 0).
+    """
     for i in range(0, 40):
         fila = layout.fila_titulo_observaciones(i)
         if fila > ws.max_row:
-            return i
+            break
         if _RE_OBSERVACIONES.match(_texto(ws, f"A{fila}")):
-            return i
-    return 0
+            return i, 0
+    for n in range(1, 40):
+        fila = layout.fila_titulo_observaciones(0, n)
+        if fila > ws.max_row:
+            break
+        if _RE_OBSERVACIONES.match(_texto(ws, f"A{fila}")):
+            return 0, n
+    return 0, 0
 
 
 def _horometro(ws):
@@ -83,6 +95,8 @@ def _categoria(modelo: str) -> str:
         return "torre_iluminacion"
     if "PLATAFORMA" in m or "TIJERA" in m or "ELEVACI" in m:
         return "plataforma_elevacion"
+    if "COMPRESOR" in m:
+        return "compresor"
     if any(p in m for p in ("EXCAVADORA", "CARGADOR", "RETROEXCAVADORA",
                             "MINICARGADOR", "TRACTOR", "MOTONIVELADORA",
                             "RODILLO", "MONTACARGA")):
@@ -153,13 +167,13 @@ def _sufijo(nombre: str) -> str:
     return Path(nombre).suffix.lower()
 
 
-def _fotos_por_slot(xlsx: Path, n_bloques_foto: int) -> dict:
+def _fotos_por_slot(xlsx: Path, n_bloques_foto: int, n_vistas: int = 0) -> dict:
     """Mapa de posicion -> archivo de imagen.
 
     Claves: ("foto", bloque, panel) para la rejilla y ("cons", fila_encabezado,
     panel) para los bloques de consumibles. panel 0 = izquierda, 1 = derecha.
     """
-    fila_observaciones = layout.fila_titulo_observaciones(n_bloques_foto)
+    fila_observaciones = layout.fila_titulo_observaciones(n_bloques_foto, n_vistas)
     slots: dict = {}
     with zipfile.ZipFile(xlsx) as z:
         for col, fila_0, archivo in _anclas_de_imagen(z):
@@ -167,7 +181,12 @@ def _fotos_por_slot(xlsx: Path, n_bloques_foto: int) -> dict:
             if fila < layout.FILA_INICIO_FOTOS:
                 continue  # cabecera: es el logo del formato
             panel = 0 if col < 12 else 1
-            if fila < fila_observaciones:
+            if fila < fila_observaciones and n_vistas:
+                # Informe emparejado: cada vista ocupa un bloque como los de
+                # OBSERVACIONES, y su columna dice si la foto es de la salida
+                # o del retorno.
+                slots.setdefault(("vista", fila, panel), archivo)
+            elif fila < fila_observaciones:
                 bloque = (fila - layout.FILA_INICIO_FOTOS) // layout.ALTO_BLOQUE_FOTO
                 slots.setdefault(("foto", bloque, panel), archivo)
             else:
@@ -175,14 +194,23 @@ def _fotos_por_slot(xlsx: Path, n_bloques_foto: int) -> dict:
     return slots
 
 
-def _foto_consumible(slots: dict, fila_encabezado: int, panel: int) -> str | None:
-    """Imagen anclada dentro del bloque de consumible que arranca en esa fila."""
+def _foto_pareada(slots: dict, clase_buscada: str, fila_encabezado: int,
+                  panel: int) -> str | None:
+    """Imagen anclada dentro del bloque pareado que arranca en esa fila.
+
+    Vale para los bloques de OBSERVACIONES y para los del informe emparejado:
+    tienen la misma forma, y lo unico que cambia es de que lista salieron.
+    """
     inicio = fila_encabezado + 1
     fin = fila_encabezado + layout.FILAS_IMAGEN
     for (clase, fila, p), archivo in slots.items():
-        if clase == "cons" and p == panel and inicio - 1 <= fila <= fin:
+        if clase == clase_buscada and p == panel and inicio - 1 <= fila <= fin:
             return archivo
     return None
+
+
+def _foto_consumible(slots: dict, fila_encabezado: int, panel: int) -> str | None:
+    return _foto_pareada(slots, "cons", fila_encabezado, panel)
 
 
 def _extraer_medios(xlsx: Path, destino: Path, solo: set[str]) -> dict[str, str]:
@@ -213,14 +241,15 @@ def _extraer_medios(xlsx: Path, destino: Path, solo: set[str]) -> dict[str, str]
     return finales
 
 
-def _filas_encabezado_consumible(ws, n_bloques_foto: int) -> list[int]:
+def _filas_encabezado_consumible(ws, n_bloques_foto: int,
+                                 n_vistas: int = 0) -> list[int]:
     """Filas donde arranca un bloque de consumible.
 
     Se localizan por su par de rotulos DESPACHO/RECEPCION en vez de asumir un
     paso fijo de 17 filas: las actas llenadas a mano suelen traer filas
     insertadas que corren la rejilla hacia abajo.
     """
-    inicio = layout.fila_titulo_observaciones(n_bloques_foto) + 1
+    inicio = layout.fila_titulo_observaciones(n_bloques_foto, n_vistas) + 1
     # Las secciones pareadas de una recepcion usan los mismos rotulos DESPACHO /
     # RECEPCION, asi que el barrido se detiene en su titulo: si no, cada bloque
     # comparativo se leeria como un consumible mas.
@@ -243,9 +272,26 @@ def extraer(xlsx: str | Path, dir_fotos: str | Path | None = None) -> dict:
     ws = wb["REPORTE"] if "REPORTE" in wb.sheetnames else wb.worksheets[0]
 
     modelo = _texto(ws, layout.CELDA_EQUIPO)
-    n_bloques = _detectar_fin_fotos(ws)
+    n_bloques, n_vistas = _detectar_fin_fotos(ws)
 
     fotos = []
+    filas_vista: list[int] = []
+    if n_vistas:
+        # Informe emparejado: una vista por bloque, con la foto de la salida a
+        # la izquierda y la del retorno a la derecha. El rotulo va en las dos
+        # columnas; se lee el de la izquierda.
+        for i in range(n_vistas):
+            b = layout.bloque_pareado(i, layout.FILA_VISTAS)
+            descripcion = _texto(ws, f"{layout.PANEL_IZQ[0]}{b['fila_rotulo']}")
+            if not descripcion:
+                continue
+            filas_vista.append(b["fila_encabezado"])
+            fotos.append({
+                "foto_id": len(fotos) + 1,
+                "descripcion": descripcion,
+                "celda_excel_destino": f"{layout.PANEL_DER[0]}{b['fila_imagen_inicio']}",
+                "observacion": _texto(ws, f"A{b['fila_pie']}"),
+            })
     for pos in range(n_bloques * 2):
         bloque = layout.bloque_foto(pos // 2)
         columna = layout.PANEL_IZQ[0] if pos % 2 == 0 else layout.PANEL_DER[0]
@@ -260,7 +306,7 @@ def extraer(xlsx: str | Path, dir_fotos: str | Path | None = None) -> dict:
 
     consumibles = []
     filas_consumible = []
-    for fila_encabezado in _filas_encabezado_consumible(ws, n_bloques):
+    for fila_encabezado in _filas_encabezado_consumible(ws, n_bloques, n_vistas):
         fila_rotulo = fila_encabezado + layout.FILAS_IMAGEN + 1
         fila_recuperacion = fila_rotulo + 1
         texto_despacho = _texto(ws, f"{layout.PANEL_IZQ[0]}{fila_rotulo}")
@@ -317,13 +363,20 @@ def extraer(xlsx: str | Path, dir_fotos: str | Path | None = None) -> dict:
 
     if dir_fotos is not None:
         dir_fotos = Path(dir_fotos)
-        slots = _fotos_por_slot(xlsx, n_bloques)
+        slots = _fotos_por_slot(xlsx, n_bloques, n_vistas)
         base = dir_fotos.name
         pendientes: list[tuple[dict, str, str]] = []
-        for pos, foto in enumerate(manifiesto["registro_fotografico"]):
-            archivo = slots.get(("foto", pos // 2, pos % 2))
-            if archivo:
-                pendientes.append((foto, "archivo", archivo))
+        if n_vistas:
+            for foto, fila in zip(manifiesto["registro_fotografico"], filas_vista):
+                for panel, clave in ((0, "archivo_despacho"), (1, "archivo")):
+                    archivo = _foto_pareada(slots, "vista", fila, panel)
+                    if archivo:
+                        pendientes.append((foto, clave, archivo))
+        else:
+            for pos, foto in enumerate(manifiesto["registro_fotografico"]):
+                archivo = slots.get(("foto", pos // 2, pos % 2))
+                if archivo:
+                    pendientes.append((foto, "archivo", archivo))
         for cons, fila in zip(consumibles, filas_consumible):
             for panel, clave in ((0, "foto_despacho"), (1, "foto_recepcion")):
                 archivo = _foto_consumible(slots, fila, panel)

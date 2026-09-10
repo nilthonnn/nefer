@@ -39,6 +39,14 @@ CONTROL_BASE = {
         ("Refrigerante", "%"),
         ("Estado de baterías", "OK/OBS"),
     ],
+    "compresor": [
+        ("Combustible diésel", "%"),
+        ("Aceite de motor", "%"),
+        ("Aceite de compresor", "%"),
+        ("Refrigerante", "%"),
+        ("Filtros (aire / combustible)", "OK/OBS"),
+        ("Estado de baterías", "OK/OBS"),
+    ],
     "generico": [
         ("Combustible", "%"),
         ("Aceite de motor", "%"),
@@ -56,6 +64,25 @@ def control_consumibles_vacio(categoria: str) -> list[dict]:
             for nombre, unidad in base]
 
 
+SUFIJO_ESTADO = {"D": " DAÑADO(A)", "OBS": " OBSERVADO(A)"}
+
+
+def reparto_consumible(cons: dict) -> tuple[int, int]:
+    """Cuantas unidades volvieron y cuantas faltan.
+
+    `cantidad_retorna` es opcional: un acta que no lo declara se lee como
+    siempre —o vuelve todo, o no vuelve nada— y da el mismo resultado que
+    antes de que existiera el campo.
+    """
+    cantidad = max(1, int(cons.get("cantidad", 1) or 1))
+    if cons.get("cantidad_retorna") is None:
+        retorna = 0 if cons.get("estado_recepcion") == "NO_RETORNA" else cantidad
+    else:
+        retorna = int(cons["cantidad_retorna"])
+    retorna = max(0, min(cantidad, retorna))
+    return retorna, cantidad - retorna
+
+
 def texto_consumible(cons: dict, lado: str, tipo_documento: str = "RECEPCION") -> str:
     """Rotulo del bloque fotografico de un consumible/accesorio.
 
@@ -71,31 +98,68 @@ def texto_consumible(cons: dict, lado: str, tipo_documento: str = "RECEPCION") -
         return ""
 
     estado = cons.get("estado_recepcion")
+    retorna, falta = reparto_consumible(cons)
+    # Retorno parcial: la celda dice cuantas de cuantas volvieron. Decir solo
+    # "retorno sin" o solo "retorno con" seria falso en los dos sentidos.
+    if falta and retorna:
+        return (f"EL EQUIPO RETORNÓ CON {retorna:02d} DE {cantidad:02d} "
+                f"{descripcion}{SUFIJO_ESTADO.get(estado, '')}")
     if estado == "NO_RETORNA":
         return f"EL EQUIPO RETORNÓ SIN {cantidad:02d} {descripcion}"
-    if estado == "D":
-        return f"EL EQUIPO RETORNÓ CON {cantidad:02d} {descripcion} DAÑADO(A)"
-    if estado == "OBS":
-        return f"EL EQUIPO RETORNÓ CON {cantidad:02d} {descripcion} OBSERVADO(A)"
-    return f"EL EQUIPO RETORNÓ CON {cantidad:02d} {descripcion}"
+    return (f"EL EQUIPO RETORNÓ CON {cantidad:02d} {descripcion}"
+            f"{SUFIJO_ESTADO.get(estado, '')}")
+
+
+def cierres_consumible(cons: dict, tipo_documento: str = "RECEPCION") -> list[dict]:
+    """Franjas de cierre del bloque: una por cada hecho que hay que declarar.
+
+    Un accesorio que vuelve entero cierra con una sola franja. Uno que vuelve
+    en parte cierra con dos —lo que falta y lo que volvio— porque son dos
+    hechos distintos: uno se cobra y el otro se da por conforme. Es el caso
+    que en el formato llenado a mano acababa como dos lineas seguidas de
+    RECUPERACION bajo el mismo bloque.
+    """
+    if tipo_documento == "DESPACHO":
+        return []
+    retorna, falta = reparto_consumible(cons)
+    danado = cons.get("estado_recepcion") in {"D", "OBS"}
+    cierres = []
+    if falta:
+        cierres.append({"recupera": True, "cantidad": falta})
+    if retorna:
+        cierres.append({"recupera": danado, "cantidad": retorna})
+    return cierres
+
+
+def _leyendas_manuales(cons: dict) -> list[str]:
+    manual = cons.get("recuperaciones")
+    if manual is None and cons.get("recuperacion"):
+        manual = [cons["recuperacion"]]
+    return [str(x) for x in (manual or [])]
+
+
+def texto_cierre(cons: dict, cierre: dict, numero: int, indice: int = 0) -> str:
+    """Leyenda de una franja de cierre. La escrita a mano manda sobre la auto."""
+    manual = _leyendas_manuales(cons)
+    if indice < len(manual) and manual[indice].strip():
+        return manual[indice]
+    cantidad = cierre["cantidad"]
+    descripcion = cons.get("descripcion", "").strip()
+    # El numero es el ordinal dentro de su propia serie, no el del bloque: si
+    # el primer accesorio vuelve conforme, el segundo que falte es la
+    # RECUPERACION N° 1. Lo lleva quien llama.
+    if cierre["recupera"]:
+        return f"RECUPERACIÓN N° {numero} : {cantidad:02d} {descripcion}"
+    return f"CONFORME N° {numero} : {cantidad:02d} {descripcion} — SIN RECUPERACIÓN"
 
 
 def texto_recuperacion(cons: dict, numero: int,
                        tipo_documento: str = "RECEPCION") -> str:
-    """Leyenda amarilla de recuperacion (lo que se cobra o se da por conforme).
-
-    Solo tiene sentido en una recepcion: en el despacho todavia no hay nada
-    que recuperar ni que dar por conforme.
-    """
-    if tipo_documento == "DESPACHO":
+    """Leyenda amarilla de la primera franja de cierre del bloque."""
+    cierres = cierres_consumible(cons, tipo_documento)
+    if not cierres:
         return ""
-    if cons.get("recuperacion"):
-        return cons["recuperacion"]
-    cantidad = cons.get("cantidad", 1)
-    descripcion = cons.get("descripcion", "").strip()
-    if cons.get("estado_recepcion") in {"NO_RETORNA", "D", "OBS"}:
-        return f"RECUPERACIÓN N° {numero} : {cantidad:02d} {descripcion}"
-    return f"CONFORME N° {numero} : {cantidad:02d} {descripcion} — SIN RECUPERACIÓN"
+    return texto_cierre(cons, cierres[0], numero, 0)
 
 
 def _enc(manifiesto: dict) -> dict:
@@ -152,10 +216,14 @@ def guia_operador(manifiesto: dict) -> list[tuple[str, str]]:
         ("p", ""),
         ("s", "3. EN LA RECEPCIÓN"),
         ("p", "3.1 Repetir exactamente las mismas tomas del despacho para poder comparar."),
-        ("p", "3.2 Contrastar cada consumible: si retorna completo se marca conforme; si no "
-              "retorna o retorna dañado se genera la línea amarilla de RECUPERACIÓN, que es "
-              "la que sustenta el cobro al cliente."),
-        ("p", "3.3 Cerrar la hoja CONSUMIBLES con los niveles de retorno; el consumo se "
+        ("p", "3.2 Contrastar cada consumible y anotar cuántas unidades retornan. Si "
+              "retornan todas se marca conforme; si no retorna ninguna o retornan dañadas se "
+              "genera la línea amarilla de RECUPERACIÓN, que es la que sustenta el cobro al "
+              "cliente."),
+        ("p", "3.3 Si de dos salieron y vuelve una, se anota 1 en la cantidad que retorna: el "
+              "bloque cierra con dos líneas, la RECUPERACIÓN de lo que falta y el CONFORME de "
+              "lo que volvió. Contarlo como si no hubiera vuelto nada cobra de más."),
+        ("p", "3.4 Cerrar la hoja CONSUMIBLES con los niveles de retorno; el consumo se "
               "calcula solo."),
         ("p", ""),
         ("s", "4. CIERRE"),

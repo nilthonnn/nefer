@@ -191,10 +191,31 @@ def _validar_consumibles(consumibles, errores, raiz: Path | None,
                 f"{ruta}.estado_recepcion: uno de "
                 f"{sorted(ESTADOS | {'NO_RETORNA'})}, no {estado!r}."
             )
+        # Cuantas unidades volvieron. Es opcional; declararla permite el
+        # retorno parcial, que cierra el bloque con dos franjas: lo que falta
+        # se cobra y lo que volvio se da por conforme.
+        retorna = c.get("cantidad_retorna")
+        if retorna is not None:
+            if (not isinstance(retorna, int) or isinstance(retorna, bool)
+                    or retorna < 0):
+                errores.append(f"{ruta}.cantidad_retorna: entero no negativo.")
+            elif isinstance(cantidad, int) and not isinstance(cantidad, bool) \
+                    and retorna > cantidad:
+                errores.append(
+                    f"{ruta}.cantidad_retorna: no pueden volver {retorna} de "
+                    f"{cantidad} despachadas."
+                )
+        leyendas = c.get("recuperaciones")
+        if leyendas is not None and (
+                not isinstance(leyendas, list)
+                or not all(isinstance(x, str) for x in leyendas)):
+            errores.append(f"{ruta}.recuperaciones: lista de textos.")
+
         if tipo_documento == "DESPACHO":
             # En un despacho el equipo aun no ha vuelto: cualquier dato de
             # retorno es una contradiccion, no un descuido que se pueda ignorar.
-            for clave in ("estado_recepcion", "texto_recepcion", "foto_recepcion"):
+            for clave in ("estado_recepcion", "texto_recepcion", "foto_recepcion",
+                          "cantidad_retorna"):
                 if c.get(clave) is not None:
                     errores.append(
                         f"{ruta}.{clave}: un acta de DESPACHO no puede declarar "

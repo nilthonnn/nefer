@@ -84,7 +84,7 @@ python -m nefer validar acta.json
 | `version_formato` | no | Por defecto `00` |
 | `fecha_formato` | no | Fecha de emisión del formato. Vacía por defecto |
 
-Categorías: `grupo_electrogeno`, `torre_iluminacion`, `plataforma_elevacion`,
+Categorías: `grupo_electrogeno`, `torre_iluminacion`, `compresor`, `plataforma_elevacion`,
 `maquinaria_amarilla`, `generico`.
 
 ### Horómetro ilegible
@@ -131,20 +131,55 @@ bloque en la sección **OBSERVACIONES**: foto de despacho a la izquierda, foto d
 recepción a la derecha y una franja amarilla de recuperación.
 
 - `descripcion` (**obligatoria**), `cantidad` (entero, por defecto 1).
+- `cantidad_retorna`: cuántas unidades volvieron. Opcional; véase más abajo.
 - `estado_recepcion`: `OK`, `OBS`, `D` o `NO_RETORNA`.
 - `foto_despacho`, `foto_recepcion`: rutas relativas.
-- `texto_despacho`, `texto_recepcion`, `recuperacion`: sobreescriben la
-  redacción automática cuando se acordó otro texto con el cliente.
+- `texto_despacho`, `texto_recepcion`: sobreescriben la redacción automática
+  cuando se acordó otro texto con el cliente.
+- `recuperacion` / `recuperaciones`: sobreescriben las franjas de cierre. Con
+  una sola franja escrita a mano basta `recuperacion` (texto); con varias se
+  usa `recuperaciones` (lista, una entrada por franja).
 
 La franja amarilla dice `RECUPERACIÓN N° n` cuando el estado es `NO_RETORNA`,
-`D` u `OBS`; en cualquier otro caso dice `CONFORME — SIN RECUPERACIÓN`.
+`D` u `OBS`; en cualquier otro caso dice `CONFORME N° n — SIN RECUPERACIÓN`.
+Las dos series se numeran por separado: el primer accesorio que falte es la
+`RECUPERACIÓN N° 1` aunque no sea el primer bloque.
+
+### Retorno parcial
+
+Salieron dos ganchos y volvió uno. Eso no es «retornó» ni «no retornó»: son dos
+hechos distintos, y el bloque los declara en dos franjas —una se cobra y la otra
+se da por conforme—, que es como acaban las actas llenadas a mano cuando el
+retorno es incompleto.
+
+```json
+{"descripcion": "GANCHOS DE IZAJE", "cantidad": 2,
+ "estado_recepcion": "NO_RETORNA", "cantidad_retorna": 1}
+```
+
+```
+┌──────────────────────────────┬──────────────────────────────┐
+│ 02 GANCHOS DE IZAJE          │ EL EQUIPO RETORNÓ CON 01 DE  │
+│ DESPACHADO                   │ 02 GANCHOS DE IZAJE          │
+├──────────────────────────────┴──────────────────────────────┤
+│ RECUPERACIÓN N° 1 : 01 GANCHOS DE IZAJE                     │  amarillo
+├─────────────────────────────────────────────────────────────┤
+│ CONFORME N° 1 : 01 GANCHOS DE IZAJE — SIN RECUPERACIÓN      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+`cantidad_retorna` es opcional y sólo hace falta declararla cuando el retorno es
+parcial: sin ella, el acta lo deduce del estado —`NO_RETORNA` es cero, cualquier
+otro estado es todo— y da exactamente el mismo resultado que antes de que el
+campo existiera. Si el estado es `D` u `OBS`, lo que volvió tampoco se da por
+conforme: cierra con su propia franja de recuperación.
 
 ### Un despacho no declara el retorno
 
 En un acta de `DESPACHO` el equipo todavía no ha vuelto. Por eso:
 
-- `estado_recepcion`, `texto_recepcion` y `foto_recepcion` **son un error de
-  validación**, no un descuido que se ignore: describen un hecho que aún no
+- `estado_recepcion`, `texto_recepcion`, `foto_recepcion` y `cantidad_retorna`
+  **son un error de validación**, no un descuido que se ignore: describen un hecho que aún no
   ocurrió en un documento que el cliente firma.
 - La columna de recepción y la franja de recuperación salen en blanco, pero el
   bloque se imprime completo para poder cerrarlo a mano cuando el equipo

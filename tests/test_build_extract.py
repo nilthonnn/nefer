@@ -502,15 +502,32 @@ def _recepcion_con_pares(manifiesto, tmp_path):
     return manifiesto
 
 
-def test_comparativo_solo_con_las_vistas_que_tienen_antes(manifiesto, tmp_path):
+def test_con_fotos_de_salida_el_informe_va_emparejado(manifiesto, tmp_path):
+    """El informe fotográfico de la recepción es la tabla del formato."""
     from nefer import build
 
     m = _recepcion_con_pares(manifiesto, tmp_path)
     assert schema.validar(m, tmp_path) == []
-    entradas = build.entradas_comparativo(m)
-    assert len(entradas) == 2, "solo las vistas con archivo_despacho"
-    assert entradas[0]["texto_izq"].startswith("ANTES ·")
-    assert entradas[0]["texto_der"].startswith("DESPUÉS ·")
+    entradas = build.entradas_vistas(m)
+    assert len(entradas) == len(m["registro_fotografico"]), \
+        "todas las vistas, no sólo las que traen foto de salida"
+    # El rótulo va igual en las dos columnas: quien manda es el encabezado.
+    assert entradas[0]["texto_izq"] == entradas[0]["texto_der"] == \
+        m["registro_fotografico"][0]["descripcion"]
+    assert entradas[0]["foto_izq"] == "fotos/antes-frontal.png"
+    assert entradas[0]["foto_der"] == m["registro_fotografico"][0]["archivo"]
+    # La vista sin foto de salida entra igual, con su celda izquierda vacía.
+    assert entradas[1]["foto_izq"] is None
+
+
+def test_sin_fotos_de_salida_la_recepcion_conserva_la_rejilla(manifiesto, tmp_path):
+    """Sin nada que emparejar, la rejilla del formato ocupa la mitad de hojas."""
+    from nefer import build
+
+    m = _recepcion_con_pares(manifiesto, tmp_path)
+    for vista in m["registro_fotografico"]:
+        vista.pop("archivo_despacho", None)
+    assert build.entradas_vistas(m) == []
 
 
 def test_danos_solo_con_lo_observado_o_danado(manifiesto, tmp_path):
@@ -528,7 +545,7 @@ def test_un_despacho_no_lleva_secciones_pareadas(manifiesto, tmp_path):
 
     m = _recepcion_con_pares(manifiesto, tmp_path)
     m["encabezado"]["tipo_documento"] = "DESPACHO"
-    assert build.entradas_comparativo(m) == []
+    assert build.entradas_vistas(m) == []
     assert build.entradas_danos(m) == []
 
 
@@ -540,24 +557,39 @@ def test_despacho_rechaza_los_campos_de_comparacion(manifiesto, tmp_path):
     assert any("foto_recepcion: un acta de DESPACHO" in e for e in errores)
 
 
-def test_las_secciones_se_imprimen_en_orden(manifiesto, tmp_path):
+def test_las_observaciones_van_pegadas_al_informe_fotografico(manifiesto, tmp_path):
+    """Sin sección intermedia: las fotos del acta se leen seguidas.
+
+    Antes había una sección COMPARATIVO entre las observaciones y las fotos con
+    las que se leen, y cada foto del retorno se imprimía dos veces —una en la
+    rejilla y otra en el comparativo—.
+    """
     from nefer import build
 
     m = _recepcion_con_pares(manifiesto, tmp_path)
+    n_vistas = len(m["registro_fotografico"])
     salida, avisos = build.construir(m, tmp_path / "recepcion.xlsx", raiz=tmp_path)
     assert avisos == []
     ws = openpyxl.load_workbook(salida)["REPORTE"]
 
-    titulos = {}
-    for fila in range(1, ws.max_row + 1):
-        valor = ws.cell(row=fila, column=1).value
-        if valor in (layout.TITULO_COMPARATIVO, layout.TITULO_DANOS, "OBSERVACIONES"):
-            titulos[valor] = fila
-    assert titulos["OBSERVACIONES"] < titulos[layout.TITULO_COMPARATIVO] \
-           < titulos[layout.TITULO_DANOS]
+    columna_a = [ws.cell(row=f, column=1).value for f in range(1, ws.max_row + 1)]
+    assert layout.TITULO_COMPARATIVO not in columna_a, "esa sección ya no existe"
 
-    # 6 fotos + 1 consumible + 2 pares comparativo + 1 par de daños
-    assert len(ws._images) == 6 + 1 + 4 + 2
+    titulos = {v: f + 1 for f, v in enumerate(columna_a)
+               if v in (layout.TITULO_DANOS, "OBSERVACIONES")}
+    assert titulos["OBSERVACIONES"] < titulos[layout.TITULO_DANOS]
+
+    # El informe emparejado abre el acta, y OBSERVACIONES viene justo después.
+    ultima_vista = layout.bloque_pareado(n_vistas - 1, layout.FILA_VISTAS)
+    assert ws[f"A{layout.FILA_INICIO_FOTOS}"].value == "DESPACHO"
+    assert titulos["OBSERVACIONES"] == ultima_vista["fila_pie"] + 1
+
+    # 6 vistas con su foto de retorno + 2 fotos de salida + 1 consumible +
+    # 1 par de daños. Ninguna repetida.
+    assert len(ws._images) == 6 + 2 + 1 + 2
+    nombres = [im.ref.name if hasattr(im.ref, "name") else str(im.ref)
+               for im in ws._images]
+    assert len(nombres) == len(set(nombres)), "ninguna foto se imprime dos veces"
 
 
 def test_la_extraccion_no_confunde_los_pares_con_consumibles(manifiesto, tmp_path):
@@ -570,3 +602,51 @@ def test_la_extraccion_no_confunde_los_pares_con_consumibles(manifiesto, tmp_pat
     assert len(recuperado["consumibles"]) == 1, \
         "los bloques comparativos no son consumibles"
     assert recuperado["consumibles"][0]["descripcion"] == "EXTINTOR DE 6 KG"
+
+
+def test_el_retorno_parcial_ocupa_una_fila_mas_en_el_acta(manifiesto, tmp_path):
+    """El bloque de un accesorio que vuelve en parte crece una fila."""
+    man = manifiesto
+    man["consumibles"] = [
+        {"descripcion": "GANCHOS DE IZAJE", "cantidad": 2,
+         "estado_recepcion": "NO_RETORNA", "cantidad_retorna": 1},
+        {"descripcion": 'CONOS DE 28"', "cantidad": 2,
+         "estado_recepcion": "NO_RETORNA"},
+    ]
+    assert schema.validar(man, tmp_path) == []
+
+    salida = tmp_path / "acta.xlsx"
+    build.construir(man, salida, tmp_path)
+    ws = openpyxl.load_workbook(salida).active
+
+    bandas = {f: ws.cell(row=f, column=1).value
+              for f in range(1, ws.max_row + 1)
+              if isinstance(ws.cell(row=f, column=1).value, str)
+              and ws.cell(row=f, column=1).value.startswith(("RECUPERACIÓN", "CONFORME"))}
+    assert list(bandas.values()) == [
+        "RECUPERACIÓN N° 1 : 01 GANCHOS DE IZAJE",
+        "CONFORME N° 1 : 01 GANCHOS DE IZAJE — SIN RECUPERACIÓN",
+        'RECUPERACIÓN N° 2 : 02 CONOS DE 28"',
+    ]
+    # Las dos primeras van seguidas, y el bloque siguiente empieza despues.
+    filas = sorted(bandas)
+    assert filas[1] == filas[0] + 1
+    assert filas[2] == filas[1] + layout.ALTO_BLOQUE_CONSUMIBLE
+
+
+def test_una_cantidad_de_retorno_imposible_se_rechaza(manifiesto, tmp_path):
+    man = manifiesto
+    man["consumibles"] = [{"descripcion": "GANCHOS", "cantidad": 2,
+                           "estado_recepcion": "NO_RETORNA", "cantidad_retorna": 3}]
+    errores = schema.validar(man, tmp_path)
+    assert any("cantidad_retorna" in e for e in errores), errores
+
+
+def test_un_despacho_no_puede_declarar_cuantas_volvieron(manifiesto, tmp_path):
+    man = manifiesto
+    man["encabezado"]["tipo_documento"] = "DESPACHO"
+    man["inspeccion_componentes"] = []
+    man["consumibles"] = [{"descripcion": "GANCHOS", "cantidad": 2,
+                           "cantidad_retorna": 1}]
+    errores = schema.validar(man, tmp_path)
+    assert any("cantidad_retorna" in e for e in errores), errores

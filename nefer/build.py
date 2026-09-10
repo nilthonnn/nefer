@@ -71,7 +71,8 @@ def insertar_imagen(ws, ruta: Path, columna: str, fila: int,
 # --------------------------------------------------------------------------- #
 # Hoja principal: reporte fotografico
 # --------------------------------------------------------------------------- #
-def _dimensionar(ws, ultima_fila: int, n_bloques_foto: int, n_consumibles: int) -> None:
+def _dimensionar(ws, ultima_fila: int, n_bloques_foto: int, n_consumibles: int,
+                 bandas=None, n_vistas: int = 0) -> None:
     for col, ancho in layout.ANCHOS_COLUMNA.items():
         ws.column_dimensions[col].width = ancho
 
@@ -81,10 +82,16 @@ def _dimensionar(ws, ultima_fila: int, n_bloques_foto: int, n_consumibles: int) 
 
     for i in range(n_bloques_foto):
         ws.row_dimensions[layout.bloque_foto(i)["fila_rotulo"]].height = layout.ALTO_FILA_ROTULO
+    if n_consumibles:
+        ws.row_dimensions[
+            layout.fila_titulo_observaciones(n_bloques_foto, n_vistas)].height = \
+            layout.ALTO_TITULO_SECCION_PT
     for j in range(n_consumibles):
-        bloque = layout.bloque_consumible(j, n_bloques_foto)
-        for clave in ("fila_encabezado", "fila_rotulo", "fila_recuperacion"):
-            ws.row_dimensions[bloque[clave]].height = layout.ALTO_FILA_ROTULO
+        bloque = layout.bloque_consumible(j, n_bloques_foto, bandas, n_vistas)
+        ws.row_dimensions[bloque["fila_encabezado"]].height = layout.ALTO_FILA_ROTULO
+        ws.row_dimensions[bloque["fila_rotulo"]].height = layout.ALTO_FILA_TEXTO
+        for fila in bloque["filas_recuperacion"]:
+            ws.row_dimensions[fila].height = layout.ALTO_FILA_ROTULO
 
 
 def _ruta_logo(enc: dict, raiz: Path) -> Path | None:
@@ -147,7 +154,10 @@ def _cabecera(ws, enc: dict, raiz: Path, avisos: list[str]) -> None:
         st.escribir(ws, "S9:Z9", horometro, formato="0.0")
 
 
-def _rejilla_fotografica(ws, fotos: list[dict], raiz: Path, avisos: list[str]) -> int:
+def _rejilla_fotografica(ws, fotos: list[dict], raiz: Path, avisos: list[str],
+                         pintar: bool = True) -> int:
+    if not pintar:
+        return 0
     n_bloques = (len(fotos) + 1) // 2
     ancho = {layout.PANEL_IZQ[0]: layout.ancho_panel_px(layout.PANEL_IZQ),
              layout.PANEL_DER[0]: layout.ancho_panel_px(layout.PANEL_DER)}
@@ -177,12 +187,19 @@ def _rejilla_fotografica(ws, fotos: list[dict], raiz: Path, avisos: list[str]) -
     return n_bloques
 
 
+def bandas_de_cierre(consumibles: list[dict], tipo_documento: str) -> list[int]:
+    """Cuantas franjas de cierre ocupa cada bloque de observacion."""
+    return [max(1, len(textos.cierres_consumible(c, tipo_documento)))
+            for c in consumibles]
+
+
 def _bloques_consumibles(ws, consumibles: list[dict], n_bloques_foto: int,
                          raiz: Path, avisos: list[str],
-                         tipo_documento: str = "RECEPCION") -> None:
+                         tipo_documento: str = "RECEPCION", bandas=None,
+                         n_vistas: int = 0) -> None:
     if not consumibles:
         return
-    fila_titulo = layout.fila_titulo_observaciones(n_bloques_foto)
+    fila_titulo = layout.fila_titulo_observaciones(n_bloques_foto, n_vistas)
     st.escribir(ws, f"A{fila_titulo}:Z{fila_titulo}", "OBSERVACIONES",
                 fuente=st.FUENTE_META)
 
@@ -190,8 +207,12 @@ def _bloques_consumibles(ws, consumibles: list[dict], n_bloques_foto: int,
     ancho = {izq[0]: layout.ancho_panel_px(izq), der[0]: layout.ancho_panel_px(der)}
     alto = layout.alto_bloque_px()
 
+    # Dos contadores independientes: uno para lo que se recupera y otro para lo
+    # que vuelve conforme. Cada franja se numera dentro de su propia serie.
+    n_recuperacion = n_conforme = 0
+
     for j, cons in enumerate(consumibles):
-        b = layout.bloque_consumible(j, n_bloques_foto)
+        b = layout.bloque_consumible(j, n_bloques_foto, bandas, n_vistas)
         for panel, titulo, clave_foto, clave_texto in (
             (izq, "DESPACHO", "foto_despacho", "texto_despacho"),
             (der, "RECEPCIÓN", "foto_recepcion", "texto_recepcion"),
@@ -214,55 +235,86 @@ def _bloques_consumibles(ws, consumibles: list[dict], n_bloques_foto: int,
                         f"consumible {j + 1} ({titulo}): no se pudo incrustar {ruta.name}."
                     )
 
-        fila_rec = b["fila_recuperacion"]
-        leyenda = textos.texto_recuperacion(cons, j + 1, tipo_documento)
-        # Sin recuperacion que declarar, la franja va vacia y en blanco: una
-        # banda amarilla sin texto se lee como un dato que falta.
-        st.escribir(ws, f"A{fila_rec}:Z{fila_rec}", leyenda,
-                    fuente=st.FUENTE_ROTULO, alineacion=st.CENTRO_AJUSTADO,
-                    fill=st.FILL_RECUPERACION if leyenda else None)
+        cierres = textos.cierres_consumible(cons, tipo_documento)
+        for k, fila_rec in enumerate(b["filas_recuperacion"]):
+            leyenda = ""
+            if k < len(cierres):
+                if cierres[k]["recupera"]:
+                    n_recuperacion += 1
+                    numero = n_recuperacion
+                else:
+                    n_conforme += 1
+                    numero = n_conforme
+                leyenda = textos.texto_cierre(cons, cierres[k], numero, k)
+            # Sin nada que declarar la franja va vacia y en blanco: una banda
+            # amarilla sin texto se lee como un dato que falta.
+            st.escribir(ws, f"A{fila_rec}:Z{fila_rec}", leyenda,
+                        fuente=st.FUENTE_ROTULO, alineacion=st.CENTRO_AJUSTADO,
+                        fill=st.FILL_RECUPERACION if leyenda else None)
 
 
-# Bloques que caben en una hoja A4 vertical sin partirse.
-BLOQUES_FOTO_POR_PAGINA = 4
-BLOQUES_CONSUMIBLE_POR_PAGINA = 3
+def piezas_del_acta(n_bloques_foto: int, bandas: list[int], plan: dict,
+                    n_danos: int = 0, n_vistas: int = 0) -> list[dict]:
+    """El acta como una pila de piezas que no se pueden partir.
+
+    Cada pieza lleva su alto en puntos de la rejilla y la ultima fila que
+    ocupa. Con eso `layout.reparto` dice en que hoja cae cada una, y el mismo
+    reparto vale para el Excel y para el PDF: los dos entregables tienen que
+    poder cotejarse hoja contra hoja.
+    """
+    piezas = [{"alto": layout.ALTO_CABECERA_PT,
+               "fila_fin": layout.FILA_SEPARADOR}]
+    # El informe fotografico: emparejado por vista, o la rejilla del formato.
+    for i in range(n_vistas):
+        piezas.append({"alto": layout.alto_bloque_pareado_pt(1),
+                       "fila_fin": layout.bloque_pareado(i, layout.FILA_VISTAS)["fila_pie"]})
+    for i in range(n_bloques_foto):
+        piezas.append({"alto": layout.ALTO_BLOQUE_FOTO_PT,
+                       "fila_fin": layout.bloque_foto(i)["fila_rotulo"]})
+
+    if bandas:
+        piezas.append({"alto": layout.ALTO_TITULO_SECCION_PT,
+                       "fila_fin": layout.fila_titulo_observaciones(n_bloques_foto,
+                                                                   n_vistas),
+                       "abre_pagina": True, "arrastra": True})
+        for j, n in enumerate(bandas):
+            b = layout.bloque_consumible(j, n_bloques_foto, bandas, n_vistas)
+            piezas.append({"alto": layout.alto_bloque_pareado_pt(n),
+                           "fila_fin": b["filas_recuperacion"][-1]})
+
+    titulo = plan.get("fila_danos")
+    if titulo and n_danos:
+        piezas.append({"alto": layout.ALTO_TITULO_SECCION_PT, "fila_fin": titulo,
+                       "abre_pagina": True, "arrastra": True})
+        for j in range(n_danos):
+            piezas.append({"alto": layout.alto_bloque_pareado_pt(1),
+                           "fila_fin": layout.bloque_pareado(j, titulo)["fila_pie"]})
+    return piezas
 
 
-def _saltos_de_pagina(ws, n_bloques_foto: int, n_consumibles: int,
-                      plan: dict | None = None, n_comparativo: int = 0,
-                      n_danos: int = 0) -> None:
+def _saltos_de_pagina(ws, n_bloques_foto: int, bandas: list[int],
+                      plan: dict, n_danos: int = 0, n_vistas: int = 0) -> None:
     """Fuerza los cortes de pagina para que ningun bloque quede partido."""
-    filas = []
-    for i in range(BLOQUES_FOTO_POR_PAGINA - 1, n_bloques_foto - 1,
-                   BLOQUES_FOTO_POR_PAGINA):
-        filas.append(layout.bloque_foto(i)["fila_rotulo"])
-    if n_consumibles:
-        filas.append(layout.fila_titulo_observaciones(n_bloques_foto) - 1)
-        for j in range(BLOQUES_CONSUMIBLE_POR_PAGINA - 1, n_consumibles - 1,
-                       BLOQUES_CONSUMIBLE_POR_PAGINA):
-            filas.append(layout.bloque_consumible(j, n_bloques_foto)["fila_recuperacion"])
-    for titulo, cuantos in ((plan and plan.get("fila_comparativo"), n_comparativo),
-                            (plan and plan.get("fila_danos"), n_danos)):
-        if not titulo or not cuantos:
-            continue
-        filas.append(titulo - 1)
-        for j in range(BLOQUES_CONSUMIBLE_POR_PAGINA - 1, cuantos - 1,
-                       BLOQUES_CONSUMIBLE_POR_PAGINA):
-            filas.append(layout.bloque_pareado(j, titulo)["fila_pie"])
-
-    for fila in sorted({f for f in filas if f > 0}):
-        ws.row_breaks.append(Break(id=fila))
+    piezas = piezas_del_acta(n_bloques_foto, bandas, plan, n_danos, n_vistas)
+    hojas = layout.reparto(piezas)
+    for i in range(len(piezas) - 1):
+        if hojas[i + 1] != hojas[i]:
+            ws.row_breaks.append(Break(id=piezas[i]["fila_fin"]))
 
 
-def _seccion_pareada(ws, titulo: str, fila_titulo: int, entradas: list[dict],
+def _seccion_pareada(ws, titulo: str | None, fila_titulo: int, entradas: list[dict],
                      raiz: Path, avisos: list[str], resaltar_pie: bool = False) -> None:
     """Imprime una seccion de bloques «lo que salio / lo que volvio».
 
     Cada entrada es {rotulo, foto_izq, foto_der, texto_izq, texto_der, pie}.
+    Sin `titulo` no se escribe cabecera de seccion: es el caso del informe
+    fotografico emparejado, que abre el acta y no lleva rotulo propio.
     """
     if not entradas:
         return
-    st.escribir(ws, f"A{fila_titulo}:Z{fila_titulo}", titulo, fuente=st.FUENTE_META)
+    if titulo:
+        st.escribir(ws, f"A{fila_titulo}:Z{fila_titulo}", titulo, fuente=st.FUENTE_META)
+        ws.row_dimensions[fila_titulo].height = layout.ALTO_TITULO_SECCION_PT
 
     izq, der = layout.PANEL_IZQ, layout.PANEL_DER
     ancho = {izq[0]: layout.ancho_panel_px(izq), der[0]: layout.ancho_panel_px(der)}
@@ -270,6 +322,9 @@ def _seccion_pareada(ws, titulo: str, fila_titulo: int, entradas: list[dict],
 
     for i, entrada in enumerate(entradas):
         b = layout.bloque_pareado(i, fila_titulo)
+        for clave in ("fila_encabezado", "fila_pie"):
+            ws.row_dimensions[b[clave]].height = layout.ALTO_FILA_ROTULO
+        ws.row_dimensions[b["fila_rotulo"]].height = layout.ALTO_FILA_TEXTO
         for panel, cabecera, clave_foto, clave_texto in (
             (izq, "DESPACHO", "foto_izq", "texto_izq"),
             (der, "RECEPCIÓN", "foto_der", "texto_der"),
@@ -297,22 +352,33 @@ def _seccion_pareada(ws, titulo: str, fila_titulo: int, entradas: list[dict],
                     fill=st.FILL_RECUPERACION if (pie and resaltar_pie) else None)
 
 
-def entradas_comparativo(manifiesto: dict) -> list[dict]:
-    """Vistas del equipo con foto de salida y de retorno, para compararlas."""
+def entradas_vistas(manifiesto: dict) -> list[dict]:
+    """El informe fotografico de una recepcion, vista por vista y emparejado.
+
+    Cuando el acta trae las fotos de la salida, cada vista se imprime con la
+    forma del formato —DESPACHO a la izquierda, RECEPCION a la derecha— en vez
+    de como rejilla. Asi el informe fotografico y las OBSERVACIONES quedan
+    juntos y con la misma forma, y ninguna foto se imprime dos veces.
+
+    Sin ninguna foto de salida no hay nada que emparejar y el acta vuelve a la
+    rejilla, que es la forma de la plantilla y ocupa la mitad de hojas.
+    """
     if manifiesto["encabezado"].get("tipo_documento") != "RECEPCION":
         return []
+    vistas = manifiesto.get("registro_fotografico", [])
+    if not any(v.get("archivo_despacho") for v in vistas):
+        return []
     entradas = []
-    for foto in manifiesto.get("registro_fotografico", []):
-        antes = foto.get("archivo_despacho")
-        if not antes:
-            continue
+    for foto in vistas:
         rotulo = foto.get("descripcion", "")
         entradas.append({
             "rotulo": rotulo,
-            "foto_izq": antes,
+            "foto_izq": foto.get("archivo_despacho"),
             "foto_der": foto.get("archivo"),
-            "texto_izq": f"ANTES · {rotulo}",
-            "texto_der": f"DESPUÉS · {rotulo}",
+            # El rotulo va igual en las dos columnas: quien manda es el
+            # encabezado DESPACHO / RECEPCION, como en el formato.
+            "texto_izq": rotulo,
+            "texto_der": rotulo,
             "pie": foto.get("observacion") or "",
         })
     return entradas
@@ -358,25 +424,28 @@ def construir_hoja_reporte(wb: Workbook, manifiesto: dict, raiz: Path,
     fotos = manifiesto.get("registro_fotografico", [])
     consumibles = manifiesto.get("consumibles", [])
 
-    comparativo = entradas_comparativo(manifiesto)
+    vistas = entradas_vistas(manifiesto)
     danos = entradas_danos(manifiesto)
 
-    n_bloques = max(1, (len(fotos) + 1) // 2)
-    plan = layout.plan_secciones(n_bloques, len(consumibles),
-                                 len(comparativo), len(danos))
+    tipo = manifiesto["encabezado"].get("tipo_documento", "RECEPCION")
+    bandas = bandas_de_cierre(consumibles, tipo)
+
+    # Emparejado o en rejilla, pero no las dos cosas: si las vistas se imprimen
+    # emparejadas, la rejilla repetiria cada foto del retorno.
+    n_bloques = 0 if vistas else max(1, (len(fotos) + 1) // 2)
+    plan = layout.plan_secciones(n_bloques, len(consumibles), len(danos),
+                                 bandas, len(vistas))
     fin = plan["ultima_fila"]
 
-    _dimensionar(ws, fin, n_bloques, len(consumibles))
+    _dimensionar(ws, fin, n_bloques, len(consumibles), bandas, len(vistas))
     _cabecera(ws, manifiesto["encabezado"], raiz, avisos)
-    _rejilla_fotografica(ws, fotos, raiz, avisos)
-    _bloques_consumibles(ws, consumibles, n_bloques, raiz, avisos,
-                         manifiesto["encabezado"].get("tipo_documento", "RECEPCION"))
-    _seccion_pareada(ws, layout.TITULO_COMPARATIVO, plan["fila_comparativo"],
-                     comparativo, raiz, avisos)
+    _seccion_pareada(ws, None, layout.FILA_VISTAS, vistas, raiz, avisos)
+    _rejilla_fotografica(ws, fotos, raiz, avisos, pintar=not vistas)
+    _bloques_consumibles(ws, consumibles, n_bloques, raiz, avisos, tipo, bandas,
+                         len(vistas))
     _seccion_pareada(ws, layout.TITULO_DANOS, plan["fila_danos"],
                      danos, raiz, avisos, resaltar_pie=True)
-    _saltos_de_pagina(ws, n_bloques, len(consumibles), plan,
-                      len(comparativo), len(danos))
+    _saltos_de_pagina(ws, n_bloques, bandas, plan, len(danos), len(vistas))
     _configurar_pagina(ws, fin)
     return ws
 

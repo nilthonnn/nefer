@@ -34,6 +34,50 @@ cd nefer
 pip install -e .
 ```
 
+### Si algo no carga
+
+La pestaña **Guía** de la aplicación termina con una **comprobación del
+dispositivo**: dice si la página va dentro de otra aplicación, si hay acceso a
+la cámara, si el selector de archivos devuelve algo y si la foto que devolvió se
+pudo abrir. El botón *copiar informe* deja ese texto listo para pegarlo en un
+mensaje. Es lo primero que hay que mirar antes de suponer nada.
+
+Dos causas cubren casi todo:
+
+- **La app se abrió como archivo local.** Medido: desde `file://` el permiso de
+  cámara sale `denied` y no se puede conceder, aunque el teléfono tenga cámara.
+  Abra **https://nilthonnn.github.io/nefer/app/**.
+- **La app se abrió dentro del visor interno de una aplicación de mensajería.**
+  Ahí no se conceden ni el selector ni la cámara. Abra el enlace con **Chrome**
+  o **Safari**.
+
+La propia aplicación lo detecta y lo dice en un aviso, con la dirección
+correcta, antes de que lo descubra en el patio.
+
+### En el celular
+
+La computadora genera el Excel y el PDF; el celular es donde se levanta el acta,
+con el equipo delante. Para tenerlo ahí:
+
+1. Abra **https://nilthonnn.github.io/nefer/app/** en el navegador del celular.
+2. **Android:** menú ⋮ del navegador → *Instalar aplicación*.
+   **iPhone:** botón Compartir → *Añadir a inicio*.
+3. Queda un icono en la pantalla de inicio. Desde ahí abre a pantalla completa
+   y **sin conexión**: un trabajador de servicio guarda la aplicación en el
+   teléfono la primera vez.
+
+**Tiene que ser esa dirección, no un archivo descargado.** A una página abierta
+como archivo local (`file://`) el navegador le deniega la cámara siempre —el
+permiso sale `denied` y no hay forma de concederlo— y algunos visores tampoco
+le abren el selector de fotos. Servida por `https` funcionan las dos cosas.
+
+Para publicar esa dirección en el repositorio: **Settings → Pages → Source:
+Deploy from a branch → Branch: `main`, carpeta `/docs` → Save**. En un par de
+minutos la aplicación queda en `/app/`.
+
+En el patio no hace falta señal. El acta sale del teléfono como un paquete
+`.zip` que se envía o se pasa por cable cuando haya cobertura.
+
 ### Verificación
 
 ```bash
@@ -41,8 +85,25 @@ pip install -e ".[dev]"
 python -m pytest
 ```
 
-Debe terminar con **42 passed**. Si falla, no siga: el problema es del entorno,
+Debe terminar con **64 passed**. Si falla, no siga: el problema es del entorno,
 no de sus datos.
+
+Para comprobar además la aplicación de campo —la carga por galería y la
+cámara— contra un navegador de verdad:
+
+```bash
+pip install -e ".[navegador]"
+python -m playwright install chromium
+python -m pytest                       # ahora son 116
+```
+
+Las **27 pruebas** de `tests/test_app_navegador.py` abren el selector de
+archivos real, disparan una cámara simulada y comprueban que cada foto cae en
+su casilla, que lo que no se puede abrir se nombra con su motivo y que el
+paquete resultante genera el acta. Seis de ellas sirven la app por HTTP para
+fijar lo que sólo ahí funciona: que la cámara se conceda, que el manifiesto y
+el trabajador de servicio se registren, y que abra sin conexión. Sin Playwright
+instalado se saltan solas y la suite sigue en 64.
 
 ```bash
 nefer --version        # nefer 1.0.0
@@ -152,18 +213,97 @@ de toda la flota.
 
 Hay dos caminos. Use el que le acomode; el resultado es el mismo.
 
-#### Con la herramienta visual (recomendado la primera vez)
+#### Con la aplicación de campo (recomendado la primera vez)
 
-Abra **`herramientas/asignador-fotos.html`** en el navegador —basta doble clic,
-no necesita conexión ni instalar nada— y:
+Abra la aplicación —en el celular desde **https://nilthonnn.github.io/nefer/app/**, en la computadora también
+sirve abrir `docs/app/index.html` con doble clic— y entre en **Despacho**.
+
+**Las cinco vías por las que entra una foto.** La aplicación ofrece las que este
+aparato tiene, y sólo esas:
+
+| Vía | Dónde | Para qué |
+|---|---|---|
+| **Cámara** | donde haya una | Abre la cámara **dentro de la app** y recorre las casillas vacías en orden: se dispara diez veces y cada foto cae en la suya, con el rótulo en pantalla mientras apunta. La de menos errores, porque no hay paso de asignación donde equivocarse. |
+| Tocar una casilla vacía | donde haya cámara | Lo mismo, para esa casilla sola |
+| **Galería / Cargar fotos** | ambos | Las que ya tomó, de una vez |
+| **Cámara del sistema** | celular | La cámara normal del teléfono; la foto cae en la bandeja |
+| **Carpeta** o arrastrarla | computadora | La carpeta entera de un tirón, subcarpetas incluidas |
+| Pegar con `Ctrl+V` | computadora | Cuando la foto ya está en el portapapeles |
+
+La cámara de la app no usa el selector de archivos: pide la cámara directamente.
+Es la ruta que queda cuando el navegador o el visor donde se abrió la página no
+dejan abrir el selector. Si tampoco se concede, la app lo dice, ofrece la galería
+en el momento y deja de interponerse.
+
+Ninguna de las vías filtra por extensión: los selectores de Android y de iOS
+entregan a menudo nombres y tipos vacíos, y filtrar por ellos escondía la
+fototeca o hacía desaparecer fotos. Vale lo que el navegador sepa abrir.
+
+Vale cualquier archivo que **el navegador sepa abrir**, se llame como se llame:
+los selectores de Android entregan a menudo nombres sin extensión y sin tipo, y
+esos también entran. Lo que no se puede abrir se nombra con su motivo — HEIC del
+iPhone, RAW, vídeo — para que nunca desaparezca nada en silencio.
+
+Al entrar, cada foto se reduce a **1600 px** por su lado mayor. Una foto de
+celular baja de unos 4 MB a menos de 1: el paquete cabe en un mensaje y el Excel
+la imprime igual, porque en el formato ocupa un tercio de esa resolución.
+Desmarque **Reducir** antes de cargar si necesita los originales.
+
+Luego:
 
 1. Elija la familia del equipo.
-2. Arrastre la carpeta de fotos, o púlselas para cargarlas.
-3. La herramienta **propone** una asignación leyendo el nombre del archivo y la
+2. Cargue las fotos por cualquiera de las vías de arriba.
+3. La aplicación **propone** una asignación leyendo el nombre del archivo y la
    fecha de captura EXIF. Las casillas propuestas quedan marcadas.
 4. Corrija lo que haga falta: arrastre una foto a otra casilla, o tóquela y
-   luego toque su destino. Funciona igual en tableta.
-5. Pulse **Copiar JSON** y péguelo en `acta.json`.
+   luego toque su destino. Cargar más fotos **no deshace** lo que ya colocó.
+5. Rellene **Datos del acta** (va plegado, con el contador de lo que falta).
+6. Pulse **Guardar paquete .zip**: sale un archivo con `acta.json` y la carpeta
+   `fotos/` ya nombrada como el acta espera. Descomprímalo y siga en el paso 5.
+
+### El entregable, desde el propio teléfono
+
+Al pie de **Resultado** hay tres salidas:
+
+| Botón | Qué da | Para qué |
+|---|---|---|
+| **Descargar PDF** | El acta impresa, A4, seis fotos por página —las que entran— | Firmarla ahí mismo con el cliente |
+| **Descargar Excel** | El `.xlsx` con la rejilla y las fotos incrustadas | El archivo de la oficina |
+| **Paquete .zip** | `acta.json` + `fotos/` | Regenerar todo en la computadora, o guardar el respaldo |
+
+El informe fotográfico del acta de recepción lleva **todas las vistas que
+salieron**, tengan o no foto de retorno. La que no se fotografió sale rotulada
+y vacía, porque esa ausencia es un dato — y porque si desapareciera, las dos
+actas dejarían de poder compararse.
+
+Cuando el acta trae **las fotos de la salida**, ese informe se imprime
+**emparejado**: una franja por vista, con la foto del despacho a la izquierda y
+la del retorno a la derecha, bajo el encabezado `DESPACHO | RECEPCIÓN` del
+formato. Es la misma tabla con la que el formato levanta las OBSERVACIONES, y
+por eso las dos van seguidas: el informe fotográfico, y enseguida las
+observaciones, sin nada en medio. Sin fotos de salida no hay nada que emparejar
+y el acta vuelve a la **rejilla** de dos vistas por franja, que ocupa la mitad
+de hojas.
+
+Debajo, en un acta de recepción, van las secciones que sólo existen en un
+retorno: **OBSERVACIONES** con cada una en su bloque (lo despachado a la
+izquierda, lo retornado a la derecha) y su franja amarilla de **RECUPERACIÓN**;
+y **DAÑOS Y OBSERVACIONES** con lo observado o dañado. Una prueba comprueba que
+caen en las mismas filas que `nefer construir`.
+
+> Hasta la versión anterior había una sección aparte, **COMPARATIVO DESPACHO /
+> RECEPCIÓN**, al final del acta. Separaba las observaciones de las fotos con
+> las que se leen y **repetía cada foto del retorno**: una vez en la rejilla y
+> otra en el comparativo. La comparación no se perdió — es ahora el propio
+> informe fotográfico.
+
+El PDF y el Excel se arman dentro del teléfono, sin conexión. Son una segunda
+implementación del mismo formato que produce `nefer construir`: la geometría se
+copió de `nefer/layout.py` y hay pruebas que comparan ambas listas de constantes
+para que no se separen. Para el archivo definitivo, el que manda sigue siendo el
+de la computadora, porque es el que se validó contra las actas reales.
+
+También puede pulsar **copiar JSON** y pegarlo en un `acta.json` propio.
 
 Las fotos no salen de su equipo: todo ocurre en el navegador.
 
@@ -331,18 +471,89 @@ respaldo: con él se regenera el Excel y el PDF cuando haga falta.
 
 ### Levantar la recepción con el asistente
 
-Abra **`herramientas/asistente-recepcion.html`** en el navegador y cargue tres
-cosas: el `acta.json` del despacho, su carpeta `fotos/`, y las fotos del
-retorno que acaba de tomar.
+Abra la aplicación en **Recepción**. Hay dos caminos:
+
+**A — Sin acta de despacho.** Elija la familia del equipo y pulse *Empezar
+recepción*. La app arma las vistas del formato y el lado «antes» queda vacío.
+Es el camino normal en el patio, donde nadie lleva el `acta.json` en el
+teléfono.
+
+**B — Con el acta de despacho.** Cargue el `acta.json`, su carpeta `fotos/` y
+las fotos del retorno. Así cada foto de salida aparece al lado de la de vuelta.
+Si el despacho se levantó en ese mismo teléfono, basta pulsar *usar el acta de
+la pestaña Despacho*.
+
+La sección **Vistas del equipo** es una rejilla con **una casilla por cada
+vista del formato**, la misma que en despacho. En la esquina de cada casilla va
+la foto de salida en miniatura, para saber qué hay que encuadrar. Las
+observaciones viven en un panel plegable aparte, una por vista: en la rejilla
+no caben y sólo hacen falta cuando hay algo que decir.
+
+Las fotos del retorno entran **por las mismas vías que en despacho** —cámara
+integrada, cámara del sistema, galería y carpeta—, en una barra con la misma
+forma. Y como en despacho, **tocar un recuadro «DESPUÉS» vacío dispara la
+cámara para esa vista**: la foto entra donde toca, sin pasar por la bandeja.
+
+**Observaciones: la tabla del formato, en pantalla.** La sección se llama
+igual que en el acta —**OBSERVACIONES**— y cada una es un bloque con la misma
+forma que en el Excel:
+
+| | |
+|---|---|
+| **DESPACHO** | **RECEPCIÓN** |
+| foto — se toca y se fotografía | foto — se toca y se fotografía |
+| `02 CONOS DE 28" DESPACHADO` | `EL EQUIPO RETORNÓ SIN 02 CONOS DE 28"` |
+| **RECUPERACIÓN N° 1 : 02 CONOS DE 28"** — franja amarilla ||
+
+Las dos celdas cargan foto por cámara o galería. **Los tres textos —los dos
+rótulos y la franja— se redactan solos y se pueden reescribir**: la redacción
+automática es un punto de partida, no la última palabra del que firma. Lo que
+no se toca lo redacta el acta, así que la pantalla y el papel no pueden decir
+cosas distintas.
+
+La franja va **amarilla cuando hay algo que recuperar** y en blanco cuando no.
+Su número es el ordinal **dentro de su propia serie**: si el primer accesorio
+vuelve conforme, el segundo que falte es la `RECUPERACIÓN N° 1`, el siguiente
+la `N° 2`. Un accesorio conforme no gasta un número de recuperación.
+
+**Cuando vuelve una parte.** Junto a la cantidad despachada hay una casilla
+**«vuelven»**. Si de dos conos vuelve uno, se escribe 1 y el bloque cierra con
+dos franjas en vez de una:
+
+| | |
+|---|---|
+| **DESPACHO** | **RECEPCIÓN** |
+| `02 GANCHOS DE IZAJE DESPACHADO` | `EL EQUIPO RETORNÓ CON 01 DE 02 GANCHOS DE IZAJE` |
+| **RECUPERACIÓN N° 1 : 01 GANCHOS DE IZAJE** — amarilla ||
+| `CONFORME N° 1 : 01 GANCHOS DE IZAJE — SIN RECUPERACIÓN` ||
+
+Son dos hechos distintos —uno se cobra y el otro se da por conforme— y por eso
+van en dos líneas. Marcar el bloque entero como «no retornó» cobraría de más;
+marcarlo como «retornó» cobraría de menos. Si lo que volvió está dañado, esa
+segunda franja también es una recuperación, no un conforme.
+
+Las observaciones se añaden con **+ Añadir observación**, al pie tanto del
+despacho como de la recepción. Ofrece el catálogo de las que aparecen en las
+actas reales —conos, barra puesta a tierra, base de extintor, chapa de puerta,
+estrobos, gomas de acople, gata de tiro— sin dejar de aceptar cualquier otro
+texto, y no tiene límite: cada una es una fotografía más con su comentario, y
+es la vía para dejar constancia de cualquier cosa que no sea una vista de la
+rejilla.
+
+En **despacho** el bloque es el mismo, con la columna `RECEPCIÓN` apagada: el
+equipo aún no ha vuelto, y esa mitad se imprime vacía.
+
+El paquete `.zip` de recepción incluye las dos tandas de fotos —las del retorno
+en `fotos/`, las del despacho en `fotos/despacho/`— porque el acta cita ambas.
 
 Para cada vista muestra **la foto de salida al lado**, y le pide la del retorno.
-Para cada accesorio le pide el estado. Para cada componente marcado observado o
+Para cada observación le pide el estado. Para cada componente marcado observado o
 dañado le pide la foto de retorno y la observación escrita.
 
 Abajo indica en todo momento qué falta, y al final copia el acta de recepción
 completa. El acta resultante lleva `archivo_despacho` en cada vista, que es lo
-que hace aparecer en el PDF las secciones **COMPARATIVO DESPACHO / RECEPCIÓN**
-y **DAÑOS Y OBSERVACIONES**.
+que hace que el informe fotográfico salga **emparejado** —salida y retorno lado
+a lado— y que aparezca la sección **DAÑOS Y OBSERVACIONES**.
 
 > **El horómetro se teclea mirando la foto.** El asistente no lo adivina, y si
 > no se lee con certeza hay que escribir `REVISIÓN MANUAL REQUERIDA`.
@@ -435,8 +646,7 @@ que confirmarla igual, y en patio muchas veces no hay señal.
 | `nefer acta -e GE110-02 -c andina` | Acta con el encabezado ya lleno |
 | `nefer plantilla -o acta.json` | Manifiesto en blanco, sin catálogo |
 | `nefer fotos fotos/ -m acta.json` | Carga la carpeta de fotos en el manifiesto |
-| `herramientas/asignador-fotos.html` | Asignación visual de fotos, sin conexión |
-| `herramientas/asistente-recepcion.html` | Despacho → recepción, con antes y después |
+| `docs/app/` | Aplicación de campo: despacho y recepción, sin conexión |
 | `nefer validar acta.json` | Verifica el manifiesto y que las fotos existan |
 | `nefer validar acta.json --sin-verificar-fotos` | Solo el manifiesto, sin mirar el disco |
 | `nefer construir acta.json -o salida.xlsx` | Genera el Excel |
@@ -476,7 +686,7 @@ fotos y logo — debe existir.
 
 ### Categorías
 
-`grupo_electrogeno` · `torre_iluminacion` · `plataforma_elevacion` ·
+`grupo_electrogeno` · `torre_iluminacion` · `compresor` · `plataforma_elevacion` ·
 `maquinaria_amarilla` · `generico`
 
 Determinan los rótulos sugeridos y la tabla de fluidos de la hoja

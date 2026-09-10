@@ -85,8 +85,10 @@ python -m nefer pdf acta.xlsx                   # convertir un Excel ya generado
 | | |
 |---|---|
 | **[docs/MANUAL-OPERACION.md](docs/MANUAL-OPERACION.md)** | Cómo levantar un acta, de la primera prueba en patio al uso diario |
-| **[herramientas/asignador-fotos.html](herramientas/asignador-fotos.html)** | Asignación visual de fotos a las casillas del formato, en el navegador |
-| **[herramientas/asistente-recepcion.html](herramientas/asistente-recepcion.html)** | Convierte un acta de despacho en la de recepción, pareando antes y después |
+| **[docs/MANUAL-APP.md](docs/MANUAL-APP.md)** | La aplicación de campo pantalla por pantalla y botón por botón |
+| **[docs/app/](docs/app/)** | Aplicación de campo: despacho y recepción desde el celular, sin conexión. Cámara, galería, carpeta, arrastre y pegado; genera el PDF y el Excel en el propio teléfono |
+| **[docs/AUDITORIA-FORMATO.md](docs/AUDITORIA-FORMATO.md)** | Qué se midió del formato real, qué no cuadraba en el entregable y cómo se corrigió |
+| **[docs/AUDITORIA-CALIDAD.md](docs/AUDITORIA-CALIDAD.md)** | Revisión de la app guiada por ISO/IEC 25010: arranque, seguridad, código muerto y espacio |
 | **[docs/ESQUEMA-JSON.md](docs/ESQUEMA-JSON.md)** | Todos los campos del manifiesto |
 | **[docs/evaluacion-madurez.html](docs/evaluacion-madurez.html)** | Dónde está este proceso frente al estado del arte, y qué falta |
 | **[docs/GUIA-OPERADOR.md](docs/GUIA-OPERADOR.md)** | Procedimiento interno, también incluido en cada acta |
@@ -157,3 +159,62 @@ python -m pytest
 
 Cubren la geometría contra las actas reales, el validador, la redacción
 automática y la ida y vuelta completa manifiesto → Excel → manifiesto.
+
+La aplicación de campo tiene su propia suite, que conduce un navegador de
+verdad: abre el selector de archivos real y dispara una cámara simulada, para
+comprobar que cada foto entra y cae donde debe.
+
+```bash
+pip install -e ".[navegador]"
+python -m playwright install chromium
+python -m pytest tests/test_app_navegador.py
+```
+
+Sin Playwright instalado se saltan solas. Para validar además los entregables
+hacen falta `poppler-utils` (el `pdftotext` que lee el PDF) y LibreOffice (que
+abre el Excel como lo abriría la oficina).
+
+### En cada cambio
+
+`.github/workflows/pruebas.yml` corre la suite en GitHub con cada push a `main`
+y en cada pull request, en dos trabajos:
+
+| Trabajo | Qué corre | Cuánto tarda |
+|---|---|---|
+| **núcleo** | generador, esquema, geometría y redacción | segundos |
+| **entregables** | navegador de verdad, Excel y PDF abiertos por sus lectores | unos minutos |
+
+El primero da la señal enseguida, y así un error de lógica no se descubre un
+cuarto de hora después. El segundo comprueba antes de empezar que están
+Chromium, `pdftotext` y LibreOffice —y que el navegador da la cámara, porque el
+binario que Playwright usa por omisión no la trae—, y **falla si alguna prueba
+se salta**: una herramienta que falte deja verde una comprobación que no ha
+validado nada, y eso es peor que un rojo.
+
+### Publicación
+
+`.github/workflows/publicar.yml` sube `docs/` a GitHub Pages con cada cambio en
+`main`, y **enciende Pages solo** la primera vez, sin pasar por Ajustes. La app
+queda en `https://<usuario>.github.io/<repo>/app/`.
+
+Esto no es un lujo: desde un archivo descargado el navegador **deniega** el
+permiso de cámara y no hay forma de concederlo. La app tiene que servirse.
+
+La tipografía va alojada en `docs/app/tipografia/` (Barlow, SIL OFL 1.1) en vez
+de pedirse a un tercero: pedirla fuera bloqueaba el arranque casi trece
+segundos donde no hay señal. Ver [docs/app/tipografia/LEEME.md](docs/app/tipografia/LEEME.md).
+
+### Un demo en un solo archivo
+
+```bash
+python3 herramientas/empaquetar-demo.py nefer-app.html
+```
+
+Deja la app entera en un `.html` que se puede pasar por WhatsApp o correo, con
+la tipografía incrustada para que se vea igual que la publicada. Trae un demo
+de diez fotos y genera el PDF y el Excel sin conexión.
+
+Lo único que **no** funciona desde un archivo suelto es la cámara integrada: el
+navegador deniega ese permiso a los orígenes `file://` y no hay forma de
+concederlo. La app lo avisa en pantalla; la galería y la cámara del sistema sí
+funcionan.
