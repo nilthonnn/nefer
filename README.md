@@ -202,3 +202,18 @@ permiso de cámara y no hay forma de concederlo. La app tiene que servirse.
 La tipografía va alojada en `docs/app/tipografia/` (Barlow, SIL OFL 1.1) en vez
 de pedirse a un tercero: pedirla fuera bloqueaba el arranque casi trece
 segundos donde no hay señal. Ver [docs/app/tipografia/LEEME.md](docs/app/tipografia/LEEME.md).
+
+### Un demo en un solo archivo
+
+```bash
+python3 herramientas/empaquetar-demo.py nefer-app.html
+```
+
+Deja la app entera en un `.html` que se puede pasar por WhatsApp o correo, con
+la tipografía incrustada para que se vea igual que la publicada. Trae un demo
+de diez fotos y genera el PDF y el Excel sin conexión.
+
+Lo único que **no** funciona desde un archivo suelto es la cámara integrada: el
+navegador deniega ese permiso a los orígenes `file://` y no hay forma de
+concederlo. La app lo avisa en pantalla; la galería y la cámara del sistema sí
+funcionan.
