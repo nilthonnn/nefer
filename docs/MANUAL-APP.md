@@ -13,7 +13,7 @@ comandos, eso está en [MANUAL-OPERACION.md](MANUAL-OPERACION.md).
 - [5. Recepción](#5-recepción)
 - [6. La cámara](#6-la-cámara)
 - [7. Cómo entran las fotos](#7-cómo-entran-las-fotos)
-- [8. Accesorios y observaciones](#8-accesorios-y-observaciones)
+- [8. Observaciones](#8-observaciones)
 - [9. Componentes](#9-componentes)
 - [10. Los entregables](#10-los-entregables)
 - [11. Guía y comprobación del dispositivo](#11-guía-y-comprobación-del-dispositivo)
@@ -148,12 +148,31 @@ Un acta a la que le falten los datos que la identifican **sale marcada como
 borrador sin valor para firma**, con una banda que dice exactamente qué falta.
 Es deliberado: un acta incompleta que parece completa es peor que ninguna.
 
-### 4.5 Accesorios
+### 4.5 Observaciones
 
-**+ Añadir accesorio** abre un renglón con un catálogo de 17 accesorios de los
-que aparecen en las actas reales —conos, barra puesta a tierra, base de
-extintor, chapas, estrobos, ganchos, grilletes…— y acepta cualquier otro texto.
-Cada uno lleva su cantidad y su fotografía.
+Es la sección **OBSERVACIONES** del acta, con su misma forma en pantalla: es
+donde se deja constancia de lo que sale con el equipo y no es una vista de la
+rejilla —extintor, conos, barra puesta a tierra, chapas, estrobos, ganchos,
+grilletes— y de cualquier cosa que haya que fotografiar y comentar aparte.
+
+**+ Añadir observación**, al pie de la pestaña, abre un bloque nuevo. No hay
+límite: se añaden tantos como haga falta, y cada uno es una fotografía más con
+su comentario.
+
+Cada bloque lleva:
+
+| Campo | Qué es |
+|---|---|
+| **nombre** | Catálogo de 17 nombres de los que aparecen en las actas, y acepta cualquier otro texto |
+| **cantidad** | Cuántas unidades salen |
+| **foto de DESPACHO** | Se toca la celda y se fotografía |
+| **descripción** | El comentario que se imprime bajo la foto |
+
+La descripción se **redacta sola** —`02 CONOS DE SEGURIDAD DE 28" DESPACHADO`—
+mientras nadie la toque, y desde el momento en que se escribe encima manda lo
+escrito. La columna **RECEPCIÓN** aparece apagada, con la palabra `al retorno`:
+en un acta de salida el equipo todavía no ha vuelto y esa mitad no puede
+afirmar nada. Se rellena en la pestaña de recepción, y se imprime en blanco.
 
 ---
 
@@ -190,9 +209,14 @@ abre la cámara para esa vista.
 
 **Observaciones por vista** deja escribir lo que se ve en cada fotografía.
 
-### 5.2 Accesorios · el retorno parcial
+### 5.2 Observaciones · el retorno parcial
 
-Cada accesorio lleva **cuántos salieron** y **cuántos vuelven**, y un estado:
+Cada bloque de observación es el mismo del despacho con la mitad derecha ya
+viva: su foto de retorno, su comentario y su franja de cierre. **+ Añadir
+observación** sigue disponible al pie, para lo que aparezca al volver y no
+estuviera en la salida.
+
+Cada uno lleva **cuántos salieron** y **cuántos vuelven**, y un estado:
 
 | Estado | Significa |
 |---|---|
@@ -216,7 +240,7 @@ Son dos hechos distintos: uno se cobra y el otro se da por conforme. Marcarlo
 todo como «no retornó» cobra de más; marcarlo como «retornó» cobra de menos.
 
 Las dos series se numeran por separado: el primero que falte es la
-**RECUPERACIÓN N° 1** aunque no sea el primer accesorio de la lista.
+**RECUPERACIÓN N° 1** aunque no sea la primera observación de la lista.
 
 Los tres textos —los dos rótulos y la franja— se redactan solos y **se pueden
 reescribir**. La redacción automática es un punto de partida, no la última
@@ -233,9 +257,16 @@ arriba se lee el rótulo —`VISTA FRONTAL`— y la cuenta de cuántas faltan.
 |---|---|
 | **obturador** (el círculo) | Dispara y pasa a la casilla siguiente |
 | **Saltar** | Deja esa vista sin foto y pasa a la siguiente |
+| **Galería** | Sale a las fotos ya tomadas, **sin perder la casilla** a la que apuntaba |
 | **Cerrar** | Sale de la cámara |
 
 Así se pueden tomar las diez vistas seguidas sin salir de la aplicación.
+
+Las dos rutas de la foto —**disparar** y **elegir de la galería**— están en el
+mismo mando, y es el mismo en toda la aplicación: en las vistas del equipo y
+en las observaciones, en despacho y en recepción. Tocar una casilla vacía abre
+la cámara; **Galería** lleva a las fotos ya tomadas y la deja en esa misma
+casilla.
 
 Si el aparato no concede la cámara —el caso del archivo descargado—, en lugar
 de fallar en silencio muestra el motivo y un botón para usar la galería.
@@ -268,11 +299,28 @@ Formatos** elija **«Más compatible»**. El teléfono pasará a guardar en JPG.
 
 ---
 
-## 8. Accesorios y observaciones
+## 8. Observaciones
 
-En el acta impresa, cada accesorio ocupa un bloque con la forma exacta del
+En el acta impresa, cada observación ocupa un bloque con la forma exacta del
 formato: cabecera `DESPACHO | RECEPCIÓN`, las dos fotografías, los dos textos
 y la franja de cierre. Las dos celdas de foto se tocan y se fotografían.
+
+La pantalla dibuja ese mismo bloque, celda por celda, para que lo que se ve al
+levantarlo sea lo que sale impreso:
+
+```
+┌───────────────┬───────────────┐
+│   DESPACHO    │   RECEPCIÓN   │
+├───────────────┼───────────────┤
+│     foto      │     foto      │
+├───────────────┼───────────────┤
+│ 01 X DESPACH. │ EL EQUIPO ... │
+├───────────────┴───────────────┤
+│ RECUPERACIÓN N° 1 : 01 X      │
+└───────────────────────────────┘
+```
+
+En un acta de **despacho** la columna derecha va apagada y se imprime vacía.
 
 La franja va **amarilla cuando hay algo que recuperar** y en blanco cuando no.
 

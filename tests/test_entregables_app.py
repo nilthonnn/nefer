@@ -740,3 +740,36 @@ def test_el_pdf_parcial_dice_cuantas_de_cuantas_volvieron(parcial):
                      "RECUPERACIÓN N° 1 : 01 GANCHOS DE IZAJE",
                      "CONFORME N° 1 : 01 GANCHOS DE IZAJE"):
         assert esperado in texto, esperado
+
+
+def test_un_despacho_deja_en_blanco_la_columna_de_recepcion(entregables, tmp_path):
+    """El equipo aún no ha vuelto: esa celda no puede afirmar nada."""
+    openpyxl = pytest.importorskip("openpyxl")
+    from nefer import build as _build
+
+    ws = openpyxl.load_workbook(entregables["xlsx"]).active
+    izq, der = layout.PANEL_IZQ[0], layout.PANEL_DER[0]
+
+    # La sección OBSERVACIONES del acta de demostración lleva un accesorio.
+    filas = [f for f in range(1, ws.max_row + 1)
+             if ws[f"{izq}{f}"].value == "DESPACHO" and ws[f"{der}{f}"].value == "RECEPCIÓN"]
+    assert filas, "no se encontró ningún bloque de observación"
+
+    for encabezado in filas:
+        rotulo = encabezado + layout.FILAS_IMAGEN + 1
+        assert ws[f"{izq}{rotulo}"].value, "el lado de despacho no puede ir vacío"
+        assert not ws[f"{der}{rotulo}"].value, (
+            f"fila {rotulo}: un acta de DESPACHO no declara nada en recepción, "
+            f"y dice {ws[f'{der}{rotulo}'].value!r}")
+
+    # Y el generador de escritorio hace exactamente lo mismo.
+    carpeta = tmp_path / "abierto"
+    with zipfile.ZipFile(entregables["zip"]) as z:
+        z.extractall(carpeta)
+    manifiesto = json.loads((carpeta / "acta.json").read_text(encoding="utf-8"))
+    referencia = carpeta / "REFERENCIA.xlsx"
+    _build.construir(manifiesto, referencia, carpeta)
+    ref = openpyxl.load_workbook(referencia).active
+    for encabezado in filas:
+        rotulo = encabezado + layout.FILAS_IMAGEN + 1
+        assert ref[f"{der}{rotulo}"].value == ws[f"{der}{rotulo}"].value

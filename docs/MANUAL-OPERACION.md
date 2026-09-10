@@ -481,8 +481,9 @@ integrada, cámara del sistema, galería y carpeta—, en una barra con la misma
 forma. Y como en despacho, **tocar un recuadro «DESPUÉS» vacío dispara la
 cámara para esa vista**: la foto entra donde toca, sin pasar por la bandeja.
 
-**Accesorios: la tabla del formato, en pantalla.** Cada accesorio es un bloque
-con la misma forma que en el Excel:
+**Observaciones: la tabla del formato, en pantalla.** La sección se llama
+igual que en el acta —**OBSERVACIONES**— y cada una es un bloque con la misma
+forma que en el Excel:
 
 | | |
 |---|---|
@@ -518,16 +519,22 @@ van en dos líneas. Marcar el bloque entero como «no retornó» cobraría de m�
 marcarlo como «retornó» cobraría de menos. Si lo que volvió está dañado, esa
 segunda franja también es una recuperación, no un conforme.
 
-Los accesorios se añaden con **+ Añadir accesorio**, que ofrece el catálogo de
-los que aparecen en las actas reales —conos, barra puesta a tierra, base de
-extintor, chapa de puerta, estrobos, gomas de acople, gata de tiro— sin dejar
-de aceptar cualquier otro texto.
+Las observaciones se añaden con **+ Añadir observación**, al pie tanto del
+despacho como de la recepción. Ofrece el catálogo de las que aparecen en las
+actas reales —conos, barra puesta a tierra, base de extintor, chapa de puerta,
+estrobos, gomas de acople, gata de tiro— sin dejar de aceptar cualquier otro
+texto, y no tiene límite: cada una es una fotografía más con su comentario, y
+es la vía para dejar constancia de cualquier cosa que no sea una vista de la
+rejilla.
+
+En **despacho** el bloque es el mismo, con la columna `RECEPCIÓN` apagada: el
+equipo aún no ha vuelto, y esa mitad se imprime vacía.
 
 El paquete `.zip` de recepción incluye las dos tandas de fotos —las del retorno
 en `fotos/`, las del despacho en `fotos/despacho/`— porque el acta cita ambas.
 
 Para cada vista muestra **la foto de salida al lado**, y le pide la del retorno.
-Para cada accesorio le pide el estado. Para cada componente marcado observado o
+Para cada observación le pide el estado. Para cada componente marcado observado o
 dañado le pide la foto de retorno y la observación escrita.
 
 Abajo indica en todo momento qué falta, y al final copia el acta de recepción

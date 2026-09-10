@@ -273,9 +273,17 @@
                 font-weight:400; letter-spacing:.1em; color:#B9C6CC;
                 text-transform:none; margin-top:.15rem; }
   .cam-mandos { position:absolute; left:0; right:0; bottom:0;
-                display:flex; align-items:center; justify-content:space-between;
-                gap:1rem; padding:1rem 1.2rem calc(1rem + env(safe-area-inset-bottom));
+                display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+                gap:.6rem; padding:1rem 1rem calc(1rem + env(safe-area-inset-bottom));
                 background:linear-gradient(transparent, rgba(0,0,0,.55) 40%, rgba(0,0,0,.88)); }
+  /* Las dos rutas de la foto viven en el mismo mando: disparar y elegir de la
+     galeria. Sin esto, para usar una foto ya tomada habia que cerrar la camara
+     y buscar el boton en otra parte de la pantalla, perdiendo la casilla.
+     Los secundarios van en columna a proposito: en 360 px no caben los dos al
+     lado del obturador, y apilados conservan el ancho completo del objetivo
+     tactil en vez de encogerse hasta el limite. */
+  .cam-lado { display:flex; flex-direction:column; gap:.4rem; align-items:stretch; }
+  .cam-lado.der { align-items:flex-end; justify-content:flex-end; }
   /* Casi opacos a propósito: el fondo es vídeo, y sobre una toma clara un
      relleno translúcido dejaría el texto ilegible justo cuando hay sol. */
   .cam-mandos button { background:rgba(12,14,16,.85); border:1px solid rgba(255,255,255,.45);
@@ -512,6 +520,13 @@
                    place-items:center; padding:0; border:0; width:100%;
                    cursor:pointer; overflow:hidden; position:relative; }
   .obs-fotos img { width:100%; height:100%; object-fit:cover; display:block; }
+  /* Columna de recepción en un acta de despacho: existe en el formato, pero
+     todavía no hay nada que poner. Se muestra apagada en vez de esconderla,
+     para que se vea que el bloque tiene dos lados. */
+  .hueco-inerte { display:grid; place-items:center; padding:.4rem;
+                  background:var(--card-2); color:var(--ink-3);
+                  font-family:var(--mono); font-size:.55rem;
+                  letter-spacing:.08em; text-transform:uppercase; }
   .obs-fotos .hueco { font-family:var(--mono); font-size:.58rem; color:var(--ink-3);
                       text-align:center; white-space:pre-line; line-height:1.4;
                       padding:.3rem; }
@@ -742,13 +757,14 @@
             <div class="grid" id="d-grid"></div>
 
             <h2 style="border:0;padding:.9rem 0 .3rem;font-size:.92rem;font-family:var(--cond);
-                       text-transform:uppercase;margin:0">Accesorios y consumibles</h2>
+                       text-transform:uppercase;margin:0">Observaciones</h2>
             <p class="vacia" style="text-align:left;padding:0 0 .45rem">
-              Extintor, conos, barra de tierra, tacos. Van en <code>consumibles</code>,
-              no en la rejilla.
+              Lo que sale con el equipo y se cobra si no vuelve: extintor, conos,
+              barra de tierra, tacos. Cada uno con su foto y su descripción, tal
+              como salen en la sección OBSERVACIONES del acta.
             </p>
             <div class="cons" id="d-cons"></div>
-            <button id="d-add-cons" type="button" style="margin-top:.45rem">+ Añadir accesorio</button>
+            <button id="d-add-cons" type="button" style="margin-top:.45rem">+ Añadir observación</button>
           </div>
         </section>
       </div>
@@ -893,10 +909,10 @@
         </section>
 
         <section class="seccion">
-          <h2>Accesorios <span class="tally" id="r-t-cons">0 / 0</span></h2>
+          <h2>Observaciones <span class="tally" id="r-t-cons">0 / 0</span></h2>
           <p>Qué volvió y en qué estado. Lo que no retorna genera recuperación.</p>
           <div id="r-consumibles"></div>
-          <button id="r-add-cons" type="button" style="margin-top:.4rem">+ Añadir accesorio</button>
+          <button id="r-add-cons" type="button" style="margin-top:.4rem">+ Añadir observación</button>
         </section>
 
         <section class="seccion">
@@ -952,9 +968,12 @@
             la app y recorre las casillas vacías en orden: se dispara diez veces
             y cada foto cae en la suya, con el rótulo en pantalla mientras
             apunta. Es la vía con menos errores, porque no hay paso de asignación
-            donde equivocarse. <b>Saltar</b> pasa a la siguiente casilla.</span></li>
+            donde equivocarse. <b>Saltar</b> pasa a la siguiente casilla, y
+            <b>Galería</b> sale a las fotos ya tomadas sin perder la casilla a la
+            que apuntaba.</span></li>
         <li><span class="n">02</span><span><b>Tocar una casilla vacía.</b> Lo
-            mismo, pero sólo para esa casilla.</span></li>
+            mismo, pero sólo para esa casilla. Vale igual para las casillas de
+            la sección <b>OBSERVACIONES</b>, en despacho y en recepción.</span></li>
         <li><span class="n">03</span><span><b>Galería.</b> Las que ya tomó, de una
             vez. La app propone dónde va cada una.</span></li>
         <li><span class="n">04</span><span><b>Cámara del sistema.</b> La cámara
@@ -1046,10 +1065,16 @@ nefer construir acta.json -o ACTA.xlsx --pdf</textarea>
         <span class="cam-cuenta" id="cam-cuenta"></span></p>
     </div>
     <div class="cam-mandos">
-      <button type="button" id="cam-saltar">Saltar</button>
+      <div class="cam-lado">
+        <button type="button" id="cam-galeria" hidden
+                aria-label="Elegir una foto de la galería para esta casilla">Galería</button>
+        <button type="button" id="cam-saltar">Saltar</button>
+      </div>
       <button type="button" id="cam-disparar" class="obturador"
               aria-label="Tomar la fotografía"></button>
-      <button type="button" id="cam-cerrar">Cerrar</button>
+      <div class="cam-lado der">
+        <button type="button" id="cam-cerrar">Cerrar</button>
+      </div>
     </div>
   </div>
 
@@ -1604,18 +1629,22 @@ var NEFER = (function () {
     }
     function utilizable() { return sirve; }
 
+    // Salir a la galeria sin perder la casilla a la que apuntaba la camara:
+    // el respaldo que dejo quien la abrio sabe a donde va la foto.
+    function irAGaleria() {
+      var salida = alFallar;
+      cerrar();
+      if (salida) salida();
+    }
+
     function decir(titulo, cuerpo) {
       var caja = $("#cam-aviso");
       caja.hidden = false;
       caja.innerHTML = "<b>" + esc(titulo) + "</b>" + cuerpo +
-        '<p style="margin:.7rem 0 0"><button type="button" id="cam-galeria" ' +
+        '<p style="margin:.7rem 0 0"><button type="button" id="cam-galeria-aviso" ' +
         'class="primary">Elegir de la galería</button></p>';
-      var b = $("#cam-galeria");
-      if (b) b.addEventListener("click", function () {
-        var salida = alFallar;
-        cerrar();
-        if (salida) salida();
-      });
+      var b = $("#cam-galeria-aviso");
+      if (b) b.addEventListener("click", irAGaleria);
     }
 
     // El motivo no es el mismo en cada sitio, y la salida tampoco.
@@ -1658,6 +1687,8 @@ var NEFER = (function () {
       puntero = 0;
       alTomar = opciones && opciones.tomar;
       alFallar = opciones && opciones.respaldo;
+      // Sin respaldo no hay galeria que ofrecer: el boton mentiria.
+      $("#cam-galeria").hidden = !alFallar;
       $("#cam-aviso").hidden = true;
       $("#camara").hidden = false;
       pintarDestino();
@@ -1733,8 +1764,10 @@ var NEFER = (function () {
 
     function conectar() {
       var d = $("#cam-disparar"), x = $("#cam-cerrar"), sa = $("#cam-saltar");
+      var g = $("#cam-galeria");
       if (d) d.addEventListener("click", disparar);
       if (x) x.addEventListener("click", cerrar);
+      if (g) g.addEventListener("click", irAGaleria);
       if (sa) sa.addEventListener("click", function () {
         if (puntero < pendientes.length) { puntero++; pintarDestino(); }
       });
@@ -1915,8 +1948,45 @@ var NEFER = (function () {
     if (previa && VISTAS[previa] && previa !== "inicio") ir(previa);
   }
 
+  /* Repintar recrea los campos, y el navegador no devuelve el foco a un
+     elemento que ya no existe: sin esto el operador escribe una letra, el
+     bloque se vuelve a dibujar y tiene que volver a tocar el campo para
+     escribir la siguiente. Medido: al teclear «CONOS» quedaba «C».
+
+     Se recuerda quién estaba escribiendo por sus atributos `data-*` —que son
+     los que identifican cada campo en las dos pestañas— y se le devuelve el
+     cursor donde estaba. */
+  function conFoco(repintar) {
+    var antes = document.activeElement;
+    var selector = null, desde = null, hasta = null;
+    if (antes && (antes.tagName === "INPUT" || antes.tagName === "TEXTAREA")) {
+      var partes = [];
+      for (var clave in antes.dataset) {
+        partes.push("[data-" + clave.replace(/[A-Z]/g, function (c) {
+          return "-" + c.toLowerCase();
+        }) + '="' + antes.dataset[clave] + '"]');
+      }
+      if (partes.length) {
+        selector = partes.join("");
+        // Los campos numéricos no dejan leer la selección; no importa.
+        try { desde = antes.selectionStart; hasta = antes.selectionEnd; }
+        catch (e) { desde = null; }
+      }
+    }
+
+    repintar();
+
+    if (!selector) return;
+    var ahora = document.querySelector(selector);
+    if (!ahora || ahora === antes) return;
+    ahora.focus();
+    if (desde !== null) {
+      try { ahora.setSelectionRange(desde, hasta); } catch (e) { /* type=number */ }
+    }
+  }
+
   return {
-    $: $, esc: esc, ir: ir, arrancar: arrancar,
+    $: $, esc: esc, ir: ir, arrancar: arrancar, conFoco: conFoco,
     armarZip: armarZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
     incrustada: incrustada,
@@ -2118,7 +2188,11 @@ var NEFER = (function () {
       leerFechas(r.aceptadas.length, function () {
         // Una foto pedida para una casilla concreta va ahí y a ningún otro
         // sitio: es el único caso en que el operador ya dijo dónde quiere.
-        if (opciones.casilla !== undefined && opciones.casilla !== null) {
+        if (opciones.accesorio !== undefined && opciones.accesorio !== null) {
+          var obs = accesorios[opciones.accesorio];
+          if (obs) obs.fotoId = nuevas[0].id;
+          pintar();
+        } else if (opciones.casilla !== undefined && opciones.casilla !== null) {
           colocar(nuevas[0].id, opciones.casilla);
         } else {
           completar(); pintar();
@@ -2214,7 +2288,11 @@ var NEFER = (function () {
     return s;
   }
 
-  function pintar() {
+  // Todo repintado pasa por aquí: recrea los campos, y quien esté escribiendo
+  // tiene que seguir escribiendo.
+  function pintar() { NEFER.conFoco(repintar); }
+
+  function repintar() {
     var vistas = VISTAS[$("#d-cat").value];
     if (casillas.length !== vistas.length) {
       casillas = vistas.map(function (_, i) { return casillas[i] !== undefined ? casillas[i] : null; });
@@ -2274,22 +2352,63 @@ var NEFER = (function () {
     pintarSalida();
   }
 
+  /* Un bloque de OBSERVACIONES con la forma exacta del acta, igual que en
+     recepción. La columna de la derecha va apagada a propósito: en un despacho
+     el equipo todavía no ha vuelto, y afirmar lo contrario en un documento que
+     el cliente firma sería declarar un hecho que no ocurrió.
+
+       ┌───────────────┬───────────────┐
+       │   DESPACHO    │   RECEPCIÓN   │
+       ├───────────────┼───────────────┤
+       │     foto      │  (al retorno) │
+       ├───────────────┼───────────────┤
+       │ 02 CONOS ...  │  (al retorno) │
+       └───────────────┴───────────────┘                                     */
   function pintarAccesorios() {
     var cont = $("#d-cons"); cont.textContent = "";
     accesorios.forEach(function (a, i) {
-      var fila = document.createElement("div");
-      fila.className = "cons-row";
       var f = a.fotoId ? porId(a.fotoId) : null;
-      fila.innerHTML =
-        '<input type="text" list="lista-accesorios" data-acc-nombre="' + i +
-          '" placeholder="elija o escriba" value="' + esc(a.nombre) +
-          '" aria-label="Nombre del accesorio ' + (i + 1) + '">' +
-        '<span class="mini"><button type="button" class="slot" data-acc="' + i + '" ' +
-          'aria-label="Foto del accesorio ' + (i + 1) + '">' +
-          (f ? '<img alt="" src="' + f.url + '">' : '<span class="ph">foto</span>') +
-        '</button></span>' +
-        '<button type="button" class="ghost" data-acc-quitar="' + i + '">quitar</button>';
-      cont.appendChild(fila);
+      var cantidad = a.cantidad || 1;
+      var nombre = a.nombre.trim().toUpperCase();
+      var auto = nombre
+        ? ("0" + cantidad).slice(-2) + " " + nombre + " DESPACHADO"
+        : "";
+      var texto = a.texto !== undefined && a.texto !== null ? a.texto : auto;
+
+      var caja = document.createElement("div");
+      caja.className = "par " + (f ? "resuelto" : "pendiente");
+      caja.innerHTML =
+        '<div class="obs-cabecera">' +
+          '<input type="text" list="lista-accesorios" data-acc-nombre="' + i +
+            '" placeholder="elija o escriba" value="' + esc(a.nombre) +
+            '" aria-label="Nombre de la observación ' + (i + 1) + '">' +
+          '<input class="cantidad" type="number" min="1" step="1" data-acc-cant="' + i +
+            '" value="' + cantidad + '" aria-label="Cantidad despachada">' +
+          '<button type="button" class="ghost" data-acc-quitar="' + i + '">quitar</button>' +
+        '</div>' +
+        '<div class="obs-tabla">' +
+          '<div class="obs-fila obs-cab"><span>DESPACHO</span><span>RECEPCIÓN</span></div>' +
+          '<div class="obs-fila obs-fotos">' +
+            // La misma figura que las casillas de la rejilla: se toca y se
+            // fotografía, o se abre la galería si no hay cámara.
+            (f
+              ? '<button type="button" data-acc="' + i + '" aria-label="Foto de ' +
+                esc(a.nombre || "la observación " + (i + 1)) + ', tocar para quitarla">' +
+                '<img alt="" src="' + f.url + '"></button>'
+              : '<label for="d-slot" role="button" tabindex="0" data-acc="' + i +
+                '" aria-label="' + esc(a.nombre || "Observación " + (i + 1)) +
+                ', sin foto, tocar para añadir"><span class="hueco">' +
+                esc(PISTA_VACIA) + '</span></label>') +
+            '<span class="hueco-inerte">al retorno</span>' +
+          '</div>' +
+          '<div class="obs-fila obs-rotulos">' +
+            '<input type="text" data-acc-texto="' + i + '" value="' + esc(texto) +
+              '" placeholder="descripción de lo que sale" aria-label="Descripción ' +
+              (i + 1) + '">' +
+            '<span class="hueco-inerte">al retorno</span>' +
+          '</div>' +
+        '</div>';
+      cont.appendChild(caja);
     });
   }
 
@@ -2325,8 +2444,17 @@ var NEFER = (function () {
     var consumibles = accesorios
       .filter(function (a) { return a.nombre.trim(); })
       .map(function (a) {
-        var c = { descripcion: a.nombre.trim().toUpperCase(), cantidad: 1 };
+        var c = { descripcion: a.nombre.trim().toUpperCase(),
+                  cantidad: a.cantidad || 1 };
         if (a.fotoId) c.foto_despacho = "fotos/" + nombres[a.fotoId];
+        // Sólo viaja lo escrito a mano: si no, el acta lo redacta sola y las
+        // dos implementaciones no pueden discrepar.
+        var E = window.ENTREGABLE;
+        var auto = E ? E.textoConsumible(c, "DESPACHO", "DESPACHO") : "";
+        if (a.texto !== undefined && a.texto !== null &&
+            a.texto.trim() && a.texto !== auto) {
+          c.texto_despacho = a.texto;
+        }
         return c;
       });
     return {
@@ -2480,18 +2608,78 @@ var NEFER = (function () {
     var caja = e.target.closest("[data-acc]");
     if (!caja) return;
     var i = +caja.dataset.acc;
+
+    // Con una foto elegida en la bandeja, la casilla la recibe.
     if (elegida !== null) {
+      e.preventDefault();
       for (var k = 0; k < casillas.length; k++) if (casillas[k] === elegida) casillas[k] = null;
       accesorios[i].fotoId = elegida; elegida = null;
-    } else { accesorios[i].fotoId = null; }
-    pintar();
+      pintar();
+      return;
+    }
+    // Con foto puesta, se toca para quitarla.
+    if (accesorios[i].fotoId) {
+      e.preventDefault();
+      accesorios[i].fotoId = null; pintar();
+      return;
+    }
+    // Vacía: cámara si la hay, y si no la etiqueta abre la galería sola.
+    accesorioObjetivo = i;
+    if (NEFER.camara.hay()) {
+      e.preventDefault();
+      abrirCamaraAccesorio(i);
+    }
   });
+
+  // La etiqueta no responde al teclado por sí sola.
+  $("#d-cons").addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var t = e.target.closest("label[data-acc]");
+    if (!t) return;
+    e.preventDefault();
+    var i = +t.dataset.acc;
+    accesorioObjetivo = i;
+    if (NEFER.camara.hay()) { abrirCamaraAccesorio(i); return; }
+    $("#d-slot").click();
+  });
+
+  function abrirCamaraAccesorio(i) {
+    var rotulo = (accesorios[i].nombre || "").trim().toUpperCase() || "OBSERVACIÓN";
+    NEFER.camara.abrir({
+      pendientes: [{ indice: i, rotulo: rotulo }],
+      tomar: function (archivo) { agregar([archivo], { accesorio: i }); },
+      respaldo: function () { accesorioObjetivo = i; $("#d-slot").click(); }
+    });
+  }
+
   $("#d-cons").addEventListener("input", function (e) {
     var campo = e.target.closest("[data-acc-nombre]");
-    if (campo) { accesorios[+campo.dataset.accNombre].nombre = campo.value; pintarSalida(); }
+    if (campo) {
+      var a = accesorios[+campo.dataset.accNombre];
+      a.nombre = campo.value;
+      // La descripción se redacta sola mientras nadie la haya tocado.
+      if (a.texto === undefined || a.texto === null) pintar();
+      else pintarSalida();
+      return;
+    }
+    var cant = e.target.closest("[data-acc-cant]");
+    if (cant) {
+      accesorios[+cant.dataset.accCant].cantidad =
+        Math.max(1, parseInt(cant.value, 10) || 1);
+      pintar();
+      return;
+    }
+    // Lo escrito a mano manda: se guarda tal cual y deja de redactarse solo.
+    var texto = e.target.closest("[data-acc-texto]");
+    if (texto) {
+      accesorios[+texto.dataset.accTexto].texto = texto.value;
+      pintarSalida();
+    }
   });
+
   $("#d-add-cons").addEventListener("click", function () {
-    accesorios.push({ nombre: "", fotoId: null }); pintar();
+    accesorios.push({ nombre: "", cantidad: 1, fotoId: null, texto: null });
+    pintar();
   });
 
   /* ---------- las rutas de entrada ---------- */
@@ -2586,12 +2774,13 @@ var NEFER = (function () {
   // sin pasar por la bandeja. Es donde menos se equivoca uno, porque el
   // rótulo está a la vista mientras se dispara.
   var casillaObjetivo = null;
+  var accesorioObjetivo = null;
   $("#d-slot").addEventListener("change", function (e) {
-    var destino = casillaObjetivo;
-    casillaObjetivo = null;
+    var destino = casillaObjetivo, obs = accesorioObjetivo;
+    casillaObjetivo = null; accesorioObjetivo = null;
     var archivos = Array.prototype.slice.call(e.target.files);  // la FileList es viva
     e.target.value = "";
-    agregar(archivos, { casilla: destino });
+    agregar(archivos, obs !== null ? { accesorio: obs } : { casilla: destino });
   });
 
   $("#d-cat").addEventListener("change", function () { autoAsignar(); pintar(); });
@@ -3073,7 +3262,10 @@ var NEFER = (function () {
           $("#r-e3").style.color = "var(--ok)";
           pintar();
         });
-      }
+      },
+      // Sin casilla a la que apuntar, la galeria deja las fotos en la bandeja
+      // del retorno, que es de donde salen para repartirlas.
+      respaldo: function () { objetivo = null; $("#r-slot").click(); }
     });
   });
 
@@ -3265,7 +3457,7 @@ var NEFER = (function () {
         (c.nuevo
           ? '<input type="text" list="lista-accesorios" data-cons-nombre="' + i +
             '" value="' + esc(c.descripcion) + '" placeholder="elija o escriba" ' +
-            'aria-label="Nombre del accesorio ' + (i + 1) + '">'
+            'aria-label="Nombre de la observación ' + (i + 1) + '">'
           : '<b style="font-size:.9rem">' + esc(c.descripcion) + '</b>') +
         '<input class="cantidad" type="number" min="1" step="1" data-cons-cant="' + i +
           '" value="' + (c.cantidad || 1) + '" aria-label="Cantidad despachada">' +
@@ -3289,9 +3481,9 @@ var NEFER = (function () {
         '</div>' +
         '<div class="obs-fila obs-rotulos">' +
           '<input type="text" data-cons-tizq="' + i + '" value="' + esc(textoIzq) +
-            '" aria-label="Texto del despacho, accesorio ' + (i + 1) + '">' +
+            '" aria-label="Texto del despacho, observación ' + (i + 1) + '">' +
           '<input type="text" data-cons-tder="' + i + '" value="' + esc(textoDer) +
-            '" aria-label="Texto de la recepción, accesorio ' + (i + 1) + '">' +
+            '" aria-label="Texto de la recepción, observación ' + (i + 1) + '">' +
         '</div>' +
         // Una franja por cada hecho que se declara. Un accesorio que vuelve
         // en parte lleva dos: la recuperación de lo que falta y el conforme
@@ -3304,7 +3496,7 @@ var NEFER = (function () {
             '<input type="text" data-cons-recup="' + i + '" data-banda="' + k +
             '" value="' + esc(valor) + '" placeholder="' +
             (cierre.recupera ? "descripción de la recuperación" : "sin recuperación") +
-            '" aria-label="Cierre ' + (k + 1) + ' del accesorio ' + (i + 1) + '">' +
+            '" aria-label="Cierre ' + (k + 1) + ' de la observación ' + (i + 1) + '">' +
           '</div>';
         }).join("") +
       '</div>' +
@@ -3319,7 +3511,11 @@ var NEFER = (function () {
       }).join("") + '</div>';
   }
 
-  function pintar() {
+  // Todo repintado pasa por aquí: recrea los campos, y quien esté escribiendo
+  // tiene que seguir escribiendo.
+  function pintar() { NEFER.conFoco(repintar); }
+
+  function repintar() {
     if (!despacho) return;
 
     var u = usadas();
@@ -3356,7 +3552,7 @@ var NEFER = (function () {
     $("#r-consumibles").innerHTML = cons.map(function (c, i) {
       return bloqueObservacion(c, i, franjas);
     }).join("") ||
-      '<p class="lb">Sin accesorios. Añada los que salieron con el equipo.</p>';
+      '<p class="lb">Sin observaciones. Añada lo que salió con el equipo.</p>';
     $("#r-t-cons").textContent =
       cons.filter(function (c) { return c.estado; }).length + " / " + cons.length;
 
@@ -3492,7 +3688,7 @@ var NEFER = (function () {
     var sinFoto = vistas.filter(function (v) { return !v.fotoId; }).length;
     if (sinFoto) falta.push(sinFoto + " vista(s) sin foto de retorno");
     var sinEstado = cons.filter(function (c) { return !c.estado; }).length;
-    if (sinEstado) falta.push(sinEstado + " accesorio(s) sin estado");
+    if (sinEstado) falta.push(sinEstado + " observación(es) sin estado");
     var sinObs = insp.filter(function (c) {
       return (c.estado === "OBS" || c.estado === "D") && !c.observacion.trim();
     }).length;
@@ -4745,7 +4941,11 @@ var ENTREGABLE = (function () {
         fundir(panel[0] + b.encabezado + ":" + panel[1] + b.encabezado, l[1], 3);
         fusiones.push(panel[0] + b.imagenInicio + ":" + panel[1] + b.imagenFin);
         celda(panel[0] + b.imagenInicio, l[2] ? "" : "(sin fotografía)", l[2] ? 2 : 7);
-        fundir(panel[0] + b.rotulo + ":" + panel[1] + b.rotulo, l[3] || e.rotulo, 3);
+        // Sin respaldo al rótulo: en un acta de DESPACHO el texto de la columna
+        // de recepción es vacío A PROPÓSITO —el equipo aún no ha vuelto— y
+        // rellenarlo con la descripción declaraba un hecho que no ocurrió.
+        // El generador de escritorio nunca lo hizo; esto los vuelve a igualar.
+        fundir(panel[0] + b.rotulo + ":" + panel[1] + b.rotulo, l[3] || "", 3);
         anclar(l[2] ? imagenPara(l[2]) : null, panel, b.imagenInicio);
       });
       alturas[b.encabezado] = ALTO_FILA_ROTULO;

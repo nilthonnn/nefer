@@ -536,6 +536,124 @@ def test_camara_denegada_ofrece_la_galeria_sin_perder_la_casilla(fotos, servidor
         nav.close()
 
 
+def test_escribir_en_una_observacion_no_pierde_el_foco(servidor):
+    """Repintar recreaba el campo y el operador escribia de letra en letra.
+
+    Medido antes del arreglo: al teclear «CONOS» en el nombre quedaba «C», y
+    lo mismo en la recepcion. Un formulario asi no se puede llenar en el patio.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        errores: list[str] = []
+        pg.on("pageerror", lambda e: errores.append(str(e)))
+        pg.goto(servidor)
+
+        # --- despacho ---
+        pg.click("#tab-despacho")
+        pg.wait_for_timeout(200)
+        pg.click("#d-add-cons")
+        pg.click("[data-acc-nombre='0']")
+        pg.keyboard.type("CONOS", delay=40)
+        pg.wait_for_timeout(200)
+        assert pg.input_value("[data-acc-nombre='0']") == "CONOS"
+        assert pg.evaluate("() => document.activeElement.dataset.accNombre") == "0"
+        # Y la descripción se redacta sola con lo escrito.
+        assert pg.input_value("[data-acc-texto='0']") == "01 CONOS DESPACHADO"
+
+        # Escribir en medio de la descripción respeta el cursor.
+        pg.evaluate("""() => { const n = document.querySelector("[data-acc-texto='0']");
+                               n.focus(); n.setSelectionRange(3, 3); }""")
+        pg.keyboard.type("XY", delay=40)
+        pg.wait_for_timeout(200)
+        assert pg.input_value("[data-acc-texto='0']") == "01 XYCONOS DESPACHADO"
+        assert pg.eval_on_selector("[data-acc-texto='0']", "n => n.selectionStart") == 5
+
+        # --- recepción ---
+        pg.click("#tab-recepcion")
+        pg.wait_for_timeout(200)
+        pg.select_option("#r-cat", "grupo_electrogeno")
+        pg.click("#r-empezar")
+        pg.wait_for_timeout(400)
+        pg.click("#r-add-cons")
+        pg.click("[data-cons-nombre='0']")
+        pg.keyboard.type("EXTINTOR", delay=40)
+        pg.wait_for_timeout(200)
+        assert pg.input_value("[data-cons-nombre='0']") == "EXTINTOR"
+        assert pg.evaluate("() => document.activeElement.dataset.consNombre") == "0"
+
+        assert errores == []
+        nav.close()
+
+
+def test_la_camara_ofrece_la_galeria_sin_que_haga_falta_que_falle(fotos, servidor):
+    """Las dos vias de la foto viven en el mismo mando.
+
+    Antes, con camara concedida, elegir una foto ya tomada obligaba a cerrar
+    la camara y buscar el boton en otra parte de la pantalla; el destino se
+    perdia por el camino. El boton de galeria esta siempre, y respeta la
+    casilla a la que se apunto.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        app = App(pg).despacho()
+
+        casillas = pg.query_selector_all("#d-grid .slot")
+        casillas[4].click()                          # HORÓMETRO
+        pg.wait_for_function("() => document.querySelector('#cam-video').videoWidth > 0",
+                             timeout=15000)
+        assert pg.is_hidden("#cam-aviso")            # la camara funciona
+        assert pg.is_visible("#cam-galeria")
+
+        with pg.expect_file_chooser(timeout=10000) as fc:
+            pg.click("#cam-galeria")
+        fc.value.set_files([str(fotos["frontal"])])
+        pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
+                             timeout=30000)
+        pg.wait_for_timeout(500)
+
+        assert pg.is_hidden("#camara")
+        assert app.rotulos() == [("HORÓMETRO", "fotos/03-frontal.jpg")]
+        assert app.errores == []
+        nav.close()
+
+
+def test_la_observacion_se_fotografia_por_camara_o_por_galeria(fotos, servidor):
+    """El mismo mando en la seccion OBSERVACIONES, que es lo que se anade abajo."""
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        app = App(pg).despacho()
+
+        pg.click("#d-add-cons")
+        pg.fill("[data-acc-nombre='0']", 'CONOS DE SEGURIDAD DE 28"')
+        pg.wait_for_timeout(200)
+
+        pg.click("#d-cons label[data-acc='0']")
+        pg.wait_for_function("() => document.querySelector('#cam-video').videoWidth > 0",
+                             timeout=15000)
+        assert pg.inner_text("#cam-rotulo") == 'CONOS DE SEGURIDAD DE 28"'
+        assert pg.is_visible("#cam-galeria")
+
+        with pg.expect_file_chooser(timeout=10000) as fc:
+            pg.click("#cam-galeria")
+        fc.value.set_files([str(fotos["frontal"])])
+        pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
+                             timeout=30000)
+        pg.wait_for_timeout(500)
+
+        assert pg.is_hidden("#camara")
+        consumibles = app.acta["consumibles"]
+        assert len(consumibles) == 1
+        assert consumibles[0]["descripcion"] == 'CONOS DE SEGURIDAD DE 28"'
+        assert consumibles[0]["foto_despacho"] == "fotos/03-frontal.jpg"
+        assert app.errores == []
+        nav.close()
+
+
 def test_sin_camara_la_casilla_vacia_abre_el_selector(fotos):
     with sync_playwright() as pw:
         nav = _lanzar(pw)
