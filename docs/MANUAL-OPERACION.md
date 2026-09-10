@@ -271,18 +271,31 @@ Al pie de **Resultado** hay tres salidas:
 | **Descargar Excel** | El `.xlsx` con la rejilla y las fotos incrustadas | El archivo de la oficina |
 | **Paquete .zip** | `acta.json` + `fotos/` | Regenerar todo en la computadora, o guardar el respaldo |
 
-La rejilla del acta de recepción es **la misma que la del despacho**: lleva
-todas las vistas que salieron, tengan o no foto de retorno. La que no se
-fotografió sale rotulada y vacía, porque esa ausencia es un dato — y porque si
-desapareciera, las dos actas dejarían de poder compararse.
+El informe fotográfico del acta de recepción lleva **todas las vistas que
+salieron**, tengan o no foto de retorno. La que no se fotografió sale rotulada
+y vacía, porque esa ausencia es un dato — y porque si desapareciera, las dos
+actas dejarían de poder compararse.
 
-En un acta de **recepción** los dos entregables llevan además las secciones
-que el formato exige y que sólo existen en un retorno: **OBSERVACIONES** con
-cada accesorio en su bloque (lo despachado a la izquierda, lo retornado a la
-derecha) y su franja amarilla de **RECUPERACIÓN**; **COMPARATIVO DESPACHO /
-RECEPCIÓN** con la foto de salida al lado de la de vuelta; y **DAÑOS Y
-OBSERVACIONES** con lo observado o dañado. Una prueba comprueba que caen en las
-mismas filas que `nefer construir`.
+Cuando el acta trae **las fotos de la salida**, ese informe se imprime
+**emparejado**: una franja por vista, con la foto del despacho a la izquierda y
+la del retorno a la derecha, bajo el encabezado `DESPACHO | RECEPCIÓN` del
+formato. Es la misma tabla con la que el formato levanta las OBSERVACIONES, y
+por eso las dos van seguidas: el informe fotográfico, y enseguida las
+observaciones, sin nada en medio. Sin fotos de salida no hay nada que emparejar
+y el acta vuelve a la **rejilla** de dos vistas por franja, que ocupa la mitad
+de hojas.
+
+Debajo, en un acta de recepción, van las secciones que sólo existen en un
+retorno: **OBSERVACIONES** con cada una en su bloque (lo despachado a la
+izquierda, lo retornado a la derecha) y su franja amarilla de **RECUPERACIÓN**;
+y **DAÑOS Y OBSERVACIONES** con lo observado o dañado. Una prueba comprueba que
+caen en las mismas filas que `nefer construir`.
+
+> Hasta la versión anterior había una sección aparte, **COMPARATIVO DESPACHO /
+> RECEPCIÓN**, al final del acta. Separaba las observaciones de las fotos con
+> las que se leen y **repetía cada foto del retorno**: una vez en la rejilla y
+> otra en el comparativo. La comparación no se perdió — es ahora el propio
+> informe fotográfico.
 
 El PDF y el Excel se arman dentro del teléfono, sin conexión. Son una segunda
 implementación del mismo formato que produce `nefer construir`: la geometría se
@@ -539,8 +552,8 @@ dañado le pide la foto de retorno y la observación escrita.
 
 Abajo indica en todo momento qué falta, y al final copia el acta de recepción
 completa. El acta resultante lleva `archivo_despacho` en cada vista, que es lo
-que hace aparecer en el PDF las secciones **COMPARATIVO DESPACHO / RECEPCIÓN**
-y **DAÑOS Y OBSERVACIONES**.
+que hace que el informe fotográfico salga **emparejado** —salida y retorno lado
+a lado— y que aparezca la sección **DAÑOS Y OBSERVACIONES**.
 
 > **El horómetro se teclea mirando la foto.** El asistente no lo adivina, y si
 > no se lee con certeza hay que escribir `REVISIÓN MANUAL REQUERIDA`.

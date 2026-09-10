@@ -44,10 +44,13 @@ def test_geometria_compartida_con_layout():
     """Las cifras que la app copio de layout.py siguen siendo las mismas."""
     assert _constante_js("CODIGO_FORMATO") == layout.CODIGO_FORMATO
     assert _constante_js("VERSION_FORMATO") == layout.VERSION_FORMATO
-    assert _constante_js("TITULO_COMPARATIVO") == layout.TITULO_COMPARATIVO
     assert _constante_js("TITULO_DANOS") == layout.TITULO_DANOS
 
     assert int(_var_js("FILA_INICIO_FOTOS")) == layout.FILA_INICIO_FOTOS
+    # La app la declara en funcion de la anterior, y layout.py tambien: el
+    # informe emparejado arranca donde arrancaria la rejilla.
+    assert "var FILA_VISTAS = FILA_INICIO_FOTOS - 1;" in FUENTE
+    assert layout.FILA_VISTAS == layout.FILA_INICIO_FOTOS - 1
     assert int(_var_js("ALTO_BLOQUE_FOTO")) == layout.ALTO_BLOQUE_FOTO
     assert int(_var_js("FILAS_IMAGEN")) == layout.FILAS_IMAGEN
     assert float(_var_js("ALTO_FILA_ESTANDAR")) == layout.ALTO_FILA_ESTANDAR
@@ -309,8 +312,8 @@ def _titulos_por_fila(ruta_xlsx: Path) -> dict[int, str]:
         v = ws.cell(row=fila, column=1).value
         if not isinstance(v, str):
             continue
-        if any(t in v for t in ("OBSERVACIONES", layout.TITULO_COMPARATIVO,
-                                layout.TITULO_DANOS, "RECUPERACIÓN", "CONFORME")):
+        if any(t in v for t in ("OBSERVACIONES", layout.TITULO_DANOS,
+                                "RECUPERACIÓN", "CONFORME")):
             marcas[fila] = v
     return marcas
 
@@ -319,9 +322,34 @@ def test_la_recepcion_lleva_las_secciones_del_formato(recepcion):
     marcas = _titulos_por_fila(recepcion["xlsx"])
     textos = list(marcas.values())
     assert any("OBSERVACIONES" == t for t in textos), textos
-    assert layout.TITULO_COMPARATIVO in textos, textos
     assert layout.TITULO_DANOS in textos, textos
+    assert layout.TITULO_COMPARATIVO not in textos, "esa sección ya no existe"
     assert any(t.startswith("RECUPERACIÓN N° 1") for t in textos), textos
+
+
+def test_las_observaciones_van_pegadas_al_informe_fotografico(recepcion):
+    """Lo que pidió el patio: las fotos del acta se leen seguidas.
+
+    El informe fotográfico de la recepción es la tabla del formato repetida por
+    vista, y las OBSERVACIONES arrancan en la fila siguiente a la última vista.
+    """
+    openpyxl = pytest.importorskip("openpyxl")
+    ws = openpyxl.load_workbook(recepcion["xlsx"]).active
+
+    assert ws[f"{layout.PANEL_IZQ[0]}{layout.FILA_INICIO_FOTOS}"].value == "DESPACHO"
+    assert ws[f"{layout.PANEL_DER[0]}{layout.FILA_INICIO_FOTOS}"].value == "RECEPCIÓN"
+
+    filas = [f for f, v in _titulos_por_fila(recepcion["xlsx"]).items()
+             if v == "OBSERVACIONES"]
+    assert len(filas) == 1, filas
+    n_vistas = 10                       # las que ofrece la app para esta familia
+    ultima = layout.bloque_pareado(n_vistas - 1, layout.FILA_VISTAS)
+    assert filas[0] == ultima["fila_pie"] + 1
+
+    # Y ninguna foto se imprime dos veces.
+    nombres = [im.ref.name if hasattr(im.ref, "name") else str(im.ref)
+               for im in ws._images]
+    assert len(nombres) == len(set(nombres)), nombres
 
 
 def test_la_recepcion_cae_en_las_mismas_filas_que_el_escritorio(recepcion, tmp_path):
@@ -340,15 +368,19 @@ def test_la_recepcion_cae_en_las_mismas_filas_que_el_escritorio(recepcion, tmp_p
     assert _titulos_por_fila(recepcion["xlsx"]) == _titulos_por_fila(referencia)
 
 
-def test_el_pdf_de_recepcion_nombra_el_antes_y_el_despues(recepcion):
+def test_el_pdf_de_recepcion_empareja_y_no_repite_secciones(recepcion):
     texto = _texto_de_pdf(recepcion["pdf"])
     if texto is None:
         pytest.skip("pdftotext no esta disponible")
-    for esperado in (layout.TITULO_COMPARATIVO, layout.TITULO_DANOS,
-                     "ANTES · VISTA FRONTAL", "DESPUÉS · VISTA FRONTAL",
+    for esperado in (layout.TITULO_DANOS, "VISTA FRONTAL",
                      "EL EQUIPO RETORNÓ SIN 01 EXTINTOR DE 6 KG",
                      "RECUPERACIÓN N° 1", "JUNTA DE ESCAPE"):
         assert esperado in texto, esperado
+
+    assert layout.TITULO_COMPARATIVO not in texto, "esa sección ya no existe"
+    # El informe fotográfico abre el acta y OBSERVACIONES viene después de él.
+    assert texto.index("VISTA FRONTAL") < texto.index("OBSERVACIONES") \
+           < texto.index(layout.TITULO_DANOS)
 
     # La marca del tipo de documento tiene que decir RECEPCIÓN, no DESPACHO.
     assert "RECEPCIÓN" in texto
@@ -433,11 +465,14 @@ def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
     referencia = carpeta / "REFERENCIA.xlsx"
     build.construir(manifiesto, referencia, carpeta)
     ws = openpyxl.load_workbook(referencia).active
+    # El acta trae las fotos de la salida, asi que el informe va emparejado:
+    # una franja por vista, con el rotulo repetido en las dos columnas.
     impresos = []
-    for franja in range(5):
-        fila = layout.bloque_foto(franja)["fila_rotulo"]
+    for i in range(len(salieron)):
+        fila = layout.bloque_pareado(i, layout.FILA_VISTAS)["fila_rotulo"]
+        assert ws[f"{layout.PANEL_IZQ[0]}{fila}"].value == \
+               ws[f"{layout.PANEL_DER[0]}{fila}"].value
         impresos.append(ws[f"{layout.PANEL_IZQ[0]}{fila}"].value)
-        impresos.append(ws[f"{layout.PANEL_DER[0]}{fila}"].value)
     assert impresos == salieron, impresos
 
 def test_las_vistas_de_la_app_son_las_de_layout():

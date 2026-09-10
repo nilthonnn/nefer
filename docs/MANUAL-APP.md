@@ -352,6 +352,16 @@ El PDF y el Excel **se cortan por las mismas filas**: la hoja 3 de uno es la
 hoja 3 del otro. Eso permite cotejarlos hoja contra hoja, que es para lo que se
 firman.
 
+**En un acta de recepción con las fotos del despacho**, el informe fotográfico
+sale **emparejado**: una franja por vista, con la foto de salida a la izquierda
+y la de retorno a la derecha, bajo el encabezado `DESPACHO | RECEPCIÓN` del
+formato. Enseguida —sin nada en medio— van las **OBSERVACIONES**, con esa misma
+forma, y al final **DAÑOS Y OBSERVACIONES**. Ninguna foto se imprime dos veces,
+y el acta ocupa cerca de la mitad de hojas que antes.
+
+Sin fotos de salida no hay nada que emparejar: el informe vuelve a la rejilla
+de dos vistas por franja, que es la forma de la plantilla en blanco.
+
 El PDF repite en cada hoja una franja con número de acta, cliente, equipo,
 código, horómetro y «Pág. n de N». Una hoja suelta se puede identificar.
 

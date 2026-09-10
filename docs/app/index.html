@@ -4021,7 +4021,6 @@ var ENTREGABLE = (function () {
   var NUMEROS = {
     CODIGO_FORMATO: "FO-DR-001",
     VERSION_FORMATO: "00",
-    TITULO_COMPARATIVO: "COMPARATIVO DESPACHO / RECEPCIÓN",
     TITULO_DANOS: "DAÑOS Y OBSERVACIONES"
   };
 
@@ -4164,9 +4163,10 @@ var ENTREGABLE = (function () {
 
 
   /* ---------- el acta, por secciones ----------
-     El mismo orden que imprime nefer/build.py: rejilla, OBSERVACIONES con los
-     accesorios, COMPARATIVO DESPACHO / RECEPCIÓN y, al final, DAÑOS. Las tres
-     últimas sólo existen en un acta de recepción. */
+     El mismo orden que imprime nefer/build.py: el informe fotográfico —rejilla
+     en un despacho, vistas emparejadas en una recepción que trae las fotos de
+     salida—, enseguida OBSERVACIONES y, al final, DAÑOS, que sólo existe en un
+     acta de recepción. */
   var LEYENDA_ESTADO = { OK: "Funcional", OBS: "Observado", D: "Dañado" };
 
   function dosDigitos(n) { return ("0" + (n || 1)).slice(-2); }
@@ -4261,16 +4261,24 @@ var ENTREGABLE = (function () {
       };
     });
 
-    // Sólo las vistas que traen foto de salida se pueden comparar.
-    var comparativo = !esRecepcion ? [] :
-      (acta.registro_fotografico || []).filter(function (f) {
-        return f.archivo_despacho;
-      }).map(function (f) {
+    /* El informe fotográfico de una recepción que trae las fotos de la salida
+       no es una rejilla: es la misma tabla del formato repetida por vista, con
+       el DESPACHO a la izquierda y la RECEPCIÓN a la derecha. Va donde iría la
+       rejilla, y las OBSERVACIONES siguen inmediatamente después: juntas, con
+       la misma forma y sin repetir ninguna foto. Antes esto era una sección
+       aparte al final del acta —COMPARATIVO— y cada foto del retorno se
+       imprimía dos veces. */
+    var conAntes = esRecepcion && (acta.registro_fotografico || []).some(
+      function (f) { return f.archivo_despacho; });
+    var vistas = !conAntes ? [] :
+      (acta.registro_fotografico || []).map(function (f) {
         var r = f.descripcion || "";
         return {
           rotulo: r, cabeceraIzq: "DESPACHO", cabeceraDer: "RECEPCIÓN",
-          fotoIzq: f.archivo_despacho, fotoDer: f.archivo || null,
-          textoIzq: "ANTES · " + r, textoDer: "DESPUÉS · " + r,
+          fotoIzq: f.archivo_despacho || null, fotoDer: f.archivo || null,
+          // El rótulo va igual en las dos columnas: quien manda es el
+          // encabezado DESPACHO / RECEPCIÓN, como en el formato.
+          textoIzq: r, textoDer: r,
           bandas: [f.observacion || ""], bandaAmarilla: false
         };
       });
@@ -4290,8 +4298,10 @@ var ENTREGABLE = (function () {
         };
       });
 
-    return { tipo: tipo, fotos: fotos, consumibles: consumibles,
-             comparativo: comparativo, danos: danos };
+    // Emparejado o en rejilla, pero no las dos cosas: si las vistas van
+    // emparejadas, la rejilla repetiría cada foto del retorno.
+    return { tipo: tipo, fotos: vistas.length ? [] : fotos, vistas: vistas,
+             consumibles: consumibles, danos: danos };
   }
 
   /* Un acta a la que le faltan los datos que la identifican no puede salir con
@@ -4349,26 +4359,32 @@ var ENTREGABLE = (function () {
   function piezasDelActa(m, conCabecera) {
     var piezas = [];
     if (conCabecera) piezas.push({ tipo: "cabecera", alto: ALTO_CABECERA_PT });
+    // El informe fotográfico abre el acta: emparejado por vista, o en rejilla.
+    // El emparejado no lleva título de sección; es el informe, no un anexo.
+    (m.vistas || []).forEach(function (e, j) {
+      piezas.push({ tipo: "bloque", seccion: "vistas", entrada: e, indice: j,
+                    alto: altoBloquePareadoPt((e.bandas || [""]).length) });
+    });
     for (var i = 0; i < m.fotos.length; i += 2) {
       piezas.push({ tipo: "foto", alto: ALTO_BLOQUE_FOTO_PT, indice: i });
     }
-    [["OBSERVACIONES", m.consumibles], [NUMEROS.TITULO_COMPARATIVO, m.comparativo],
-     [NUMEROS.TITULO_DANOS, m.danos]].forEach(function (par) {
-      if (!par[1].length) return;
-      piezas.push({ tipo: "titulo", titulo: par[0], alto: ALTO_TITULO_SECCION_PT,
-                    abrePagina: true, arrastra: true });
-      par[1].forEach(function (e, j) {
-        piezas.push({ tipo: "bloque", alto: altoBloquePareadoPt((e.bandas || [""]).length),
-                      entrada: e, indice: j });
+    [["OBSERVACIONES", m.consumibles], [NUMEROS.TITULO_DANOS, m.danos]]
+      .forEach(function (par) {
+        if (!par[1].length) return;
+        piezas.push({ tipo: "titulo", titulo: par[0], alto: ALTO_TITULO_SECCION_PT,
+                      abrePagina: true, arrastra: true });
+        par[1].forEach(function (e, j) {
+          piezas.push({ tipo: "bloque", seccion: par[0], entrada: e, indice: j,
+                        alto: altoBloquePareadoPt((e.bandas || [""]).length) });
+        });
       });
-    });
     return piezas;
   }
 
   function rutasCitadas(m) {
     var vistas = {};
     m.fotos.forEach(function (f) { if (f.foto) vistas[f.foto] = true; });
-    [m.consumibles, m.comparativo, m.danos].forEach(function (lista) {
+    [m.vistas || [], m.consumibles, m.danos].forEach(function (lista) {
       lista.forEach(function (e) {
         if (e.fotoIzq) vistas[e.fotoIzq] = true;
         if (e.fotoDer) vistas[e.fotoDer] = true;
@@ -4828,7 +4844,13 @@ var ENTREGABLE = (function () {
   // cierre por cada hecho que declarar.
   var FILAS_BASE_CONSUMIBLE = 16;
 
-  function filaTituloObservaciones(franjas) {
+  // El informe emparejado no lleva título de sección, así que su fila de
+  // referencia es la del separador: el primer bloque cae en FILA_INICIO_FOTOS,
+  // donde caería la rejilla.
+  var FILA_VISTAS = FILA_INICIO_FOTOS - 1;
+
+  function filaTituloObservaciones(franjas, vistas, bandasVistas) {
+    if (vistas) return finPareada(FILA_VISTAS, vistas, bandasVistas) + 1;
     return FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * franjas;
   }
   // `bandas` lleva cuántas franjas de cierre ocupa cada bloque; sin lista, una
@@ -4847,15 +4869,6 @@ var ENTREGABLE = (function () {
     var d = 0;
     for (var j = 0; j < indice; j++) d += FILAS_BASE_CONSUMIBLE + cuantasBandas(j, bandas);
     return d;
-  }
-  function bloqueConsumible(indice, franjas, bandas) {
-    return bloqueEn(filaTituloObservaciones(franjas) + 1 + desplazamiento(indice, bandas),
-                    indice, bandas);
-  }
-  function finConsumibles(franjas, n, bandas) {
-    if (!n) return filaTituloObservaciones(franjas);
-    var b = bloqueConsumible(n - 1, franjas, bandas).bandas;
-    return b[b.length - 1];
   }
   function bloquePareadoFilas(indice, filaTitulo, bandas) {
     return bloqueEn(filaTitulo + 1 + desplazamiento(indice, bandas), indice, bandas);
@@ -4975,24 +4988,26 @@ var ENTREGABLE = (function () {
       });
     }
 
-    // --- OBSERVACIONES: los accesorios, con sus franjas de cierre ---
+    // --- el informe fotográfico emparejado, donde iría la rejilla ---
+    var vistas = m.vistas || [];
+    var bandasVistas = bandasDe(vistas);
+    vistas.forEach(function (e, j) {
+      escribirPareado(e, bloquePareadoFilas(j, FILA_VISTAS, bandasVistas), false);
+    });
+
+    // --- OBSERVACIONES: pegadas al informe, con sus franjas de cierre ---
     var bandasCons = bandasDe(m.consumibles);
+    var filaObs = filaTituloObservaciones(franjas, vistas.length, bandasVistas);
     if (m.consumibles.length) {
-      var filaObs = filaTituloObservaciones(franjas);
       fundir("A" + filaObs + ":Z" + filaObs, E.TITULO_OBSERVACIONES, 1);
       alturas[filaObs] = ALTO_FILA_ROTULO;
       m.consumibles.forEach(function (e, j) {
-        escribirPareado(e, bloqueConsumible(j, franjas, bandasCons), true);
+        escribirPareado(e, bloquePareadoFilas(j, filaObs, bandasCons), true);
       });
     }
 
-    var fila = finConsumibles(franjas, m.consumibles.length, bandasCons);
-    var filaComparativo = null, filaDanos = null;
-    if (m.comparativo.length) {
-      filaComparativo = fila + 1;
-      seccionPareada(E.NUMEROS.TITULO_COMPARATIVO, m.comparativo, filaComparativo, false);
-      fila = finPareada(filaComparativo, m.comparativo.length, bandasDe(m.comparativo));
-    }
+    var fila = finPareada(filaObs, m.consumibles.length, bandasCons);
+    var filaDanos = null;
     if (m.danos.length) {
       filaDanos = fila + 1;
       seccionPareada(E.NUMEROS.TITULO_DANOS, m.danos, filaDanos, true);
@@ -5004,10 +5019,13 @@ var ENTREGABLE = (function () {
     // lo mismo. La última fila de cada hoja lleva el salto.
     (function () {
       var piezas = E.piezasDelActa(m, true), filaFin = [];
-      var titulos = { OBSERVACIONES: filaTituloObservaciones(franjas) };
-      titulos[E.NUMEROS.TITULO_COMPARATIVO] = filaComparativo;
-      titulos[E.NUMEROS.TITULO_DANOS] = filaDanos;
-      var enSeccion = null, nSeccion = 0;
+      // Cada sección pareada, con la fila de su título y las franjas de cierre
+      // de sus bloques. La de las vistas cuelga del separador: no tiene título.
+      var secciones = {};
+      secciones.vistas = { fila: FILA_VISTAS, bandas: bandasVistas };
+      secciones.OBSERVACIONES = { fila: filaObs, bandas: bandasCons };
+      secciones[E.NUMEROS.TITULO_DANOS] = { fila: filaDanos,
+                                            bandas: bandasDe(m.danos) };
       piezas.forEach(function (pieza) {
         if (pieza.tipo === "cabecera") { filaFin.push(FILA_INICIO_FOTOS - 1); return; }
         if (pieza.tipo === "foto") {
@@ -5015,16 +5033,11 @@ var ENTREGABLE = (function () {
           return;
         }
         if (pieza.tipo === "titulo") {
-          enSeccion = pieza.titulo; nSeccion = 0;
-          filaFin.push(titulos[pieza.titulo]);
+          filaFin.push(secciones[pieza.titulo].fila);
           return;
         }
-        var b = enSeccion === "OBSERVACIONES"
-          ? bloqueConsumible(nSeccion, franjas, bandasCons)
-          : bloquePareadoFilas(nSeccion, titulos[enSeccion],
-                               bandasDe(enSeccion === E.NUMEROS.TITULO_COMPARATIVO
-                                        ? m.comparativo : m.danos));
-        nSeccion++;
+        var s = secciones[pieza.seccion];
+        var b = bloquePareadoFilas(pieza.indice, s.fila, s.bandas);
         filaFin.push(b.bandas[b.bandas.length - 1]);
       });
       var hojas = E.reparto(piezas);

@@ -57,6 +57,10 @@ CELDA_MARCA_RECEPCION = "Z6"
 
 # --- Rejilla fotografica -----------------------------------------------------
 FILA_INICIO_FOTOS = 11
+# El informe emparejado de una recepcion arranca donde arrancaria la rejilla.
+# `bloque_pareado` cuenta desde la fila del titulo de su seccion, y este
+# informe no lleva titulo: su fila de referencia es la del separador.
+FILA_VISTAS = FILA_SEPARADOR
 ALTO_BLOQUE_FOTO = 15         # 14 filas de imagen + 1 fila de rotulo
 FILAS_IMAGEN = 14
 
@@ -90,6 +94,9 @@ CODIGO_FORMATO = "FO-DR-001"
 VERSION_FORMATO = "00"
 FECHA_FORMATO = ""
 TITULO_FORMATO = " REPORTE FOTOGRÁFICO \nDE DESPACHO Y RECEPCIÓN"
+# Ya no se imprime: la comparacion salida/retorno es el propio informe
+# fotografico. Se conserva para leer actas anteriores, que la traen como
+# seccion aparte al final, y para no confundir sus bloques con OBSERVACIONES.
 TITULO_COMPARATIVO = "COMPARATIVO DESPACHO / RECEPCIÓN"
 TITULO_DANOS = "DAÑOS Y OBSERVACIONES"
 
@@ -198,8 +205,26 @@ def bloque_foto(indice: int) -> dict:
     }
 
 
-def fila_titulo_observaciones(n_bloques_foto: int) -> int:
-    return FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * n_bloques_foto
+def fin_informe_fotografico(n_bloques_foto: int, n_vistas: int = 0) -> int:
+    """Ultima fila del informe fotografico.
+
+    Son dos formas de lo mismo. Un acta de despacho lo lleva como rejilla: dos
+    vistas por franja, una foto cada una. Un acta de recepcion que trae las
+    fotos de la salida lo lleva emparejado: una franja por vista, con la foto
+    del despacho a la izquierda y la del retorno a la derecha, que es la misma
+    tabla con la que el formato levanta las OBSERVACIONES.
+
+    En los dos casos el informe empieza en `FILA_INICIO_FOTOS` y las
+    OBSERVACIONES siguen inmediatamente despues: van juntos, no separados por
+    otra seccion.
+    """
+    if n_vistas:
+        return fin_seccion_pareada(FILA_VISTAS, n_vistas)
+    return FILA_INICIO_FOTOS + ALTO_BLOQUE_FOTO * n_bloques_foto - 1
+
+
+def fila_titulo_observaciones(n_bloques_foto: int, n_vistas: int = 0) -> int:
+    return fin_informe_fotografico(n_bloques_foto, n_vistas) + 1
 
 
 def _bandas(indice: int, bandas) -> int:
@@ -213,13 +238,15 @@ def _desplazamiento(indice: int, bandas) -> int:
     return sum(FILAS_BASE_CONSUMIBLE + _bandas(j, bandas) for j in range(indice))
 
 
-def bloque_consumible(indice: int, n_bloques_foto: int, bandas=None) -> dict:
+def bloque_consumible(indice: int, n_bloques_foto: int, bandas=None,
+                      n_vistas: int = 0) -> dict:
     """Filas del bloque de consumible `indice` (0-based).
 
     `bandas` lleva cuantas franjas de cierre ocupa cada bloque; omitirla
     equivale a una por bloque, que es la forma corriente del formato.
     """
-    base = fila_titulo_observaciones(n_bloques_foto) + 1 + _desplazamiento(indice, bandas)
+    base = (fila_titulo_observaciones(n_bloques_foto, n_vistas) + 1 +
+            _desplazamiento(indice, bandas))
     primera = base + FILAS_IMAGEN + 2
     n = _bandas(indice, bandas)
     return {
@@ -232,12 +259,13 @@ def bloque_consumible(indice: int, n_bloques_foto: int, bandas=None) -> dict:
     }
 
 
-def fin_consumibles(n_bloques_foto: int, n_consumibles: int, bandas=None) -> int:
+def fin_consumibles(n_bloques_foto: int, n_consumibles: int, bandas=None,
+                    n_vistas: int = 0) -> int:
     """Ultima fila ocupada por la seccion OBSERVACIONES."""
     if n_consumibles:
-        return bloque_consumible(n_consumibles - 1, n_bloques_foto,
-                                 bandas)["filas_recuperacion"][-1]
-    return fila_titulo_observaciones(n_bloques_foto)
+        return bloque_consumible(n_consumibles - 1, n_bloques_foto, bandas,
+                                 n_vistas)["filas_recuperacion"][-1]
+    return fila_titulo_observaciones(n_bloques_foto, n_vistas)
 
 
 # --- Secciones pareadas: solo en actas de recepcion ---------------------------
@@ -266,26 +294,24 @@ def fin_seccion_pareada(fila_titulo: int, n_bloques: int) -> int:
 
 
 def plan_secciones(n_bloques_foto: int, n_consumibles: int,
-                   n_comparativo: int = 0, n_danos: int = 0,
-                   bandas=None) -> dict:
+                   n_danos: int = 0, bandas=None, n_vistas: int = 0) -> dict:
     """Fila donde arranca cada seccion y donde termina el acta.
 
-    Las secciones se encadenan en el orden en que se imprimen: rejilla,
-    observaciones, comparativo despacho/recepcion y, al final, danos.
+    Las secciones se encadenan en el orden en que se imprimen: informe
+    fotografico —rejilla o vistas emparejadas—, observaciones y, al final,
+    danos. No hay seccion aparte para comparar la salida con el retorno: esa
+    comparacion es el propio informe fotografico, y separarla dejaba las
+    observaciones lejos de las fotos con las que se leen.
     """
-    fila = fin_consumibles(n_bloques_foto, n_consumibles, bandas)
-
-    titulo_comparativo = fila + 1 if n_comparativo else None
-    if n_comparativo:
-        fila = fin_seccion_pareada(titulo_comparativo, n_comparativo)
+    fila = fin_consumibles(n_bloques_foto, n_consumibles, bandas, n_vistas)
 
     titulo_danos = fila + 1 if n_danos else None
     if n_danos:
         fila = fin_seccion_pareada(titulo_danos, n_danos)
 
     return {
-        "fila_observaciones": fila_titulo_observaciones(n_bloques_foto) if n_consumibles else None,
-        "fila_comparativo": titulo_comparativo,
+        "fila_observaciones": (fila_titulo_observaciones(n_bloques_foto, n_vistas)
+                               if n_consumibles else None),
         "fila_danos": titulo_danos,
         "ultima_fila": fila,
     }
