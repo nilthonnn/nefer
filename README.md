@@ -193,15 +193,18 @@ validado nada, y eso es peor que un rojo.
 
 ### Publicación
 
-`.github/workflows/publicar.yml` sube `docs/` a GitHub Pages con cada cambio en
-`main`. La app queda en `https://<usuario>.github.io/<repo>/app/`.
+La app se publica **directamente desde la rama**, sin workflow: en *Ajustes →
+Pages → Build and deployment* se elige **Deploy from a branch**, rama `main`,
+carpeta **`/docs`**. Con eso GitHub publica `docs/` en cada cambio de `main` y
+la app queda en `https://<usuario>.github.io/<repo>/app/`. El archivo
+`docs/.nojekyll` hace que los archivos se sirvan tal cual, sin procesarlos.
 
-**La primera vez hay que encender Pages a mano**, una sola vez: *Ajustes →
-Pages → Build and deployment → Source: **GitHub Actions***. El workflow lo
-intenta solo —lleva `enablement: true`—, pero crear el sitio pide permiso de
-administración y el token de Actions no lo tiene: la API responde `Resource not
-accessible by integration`. Medido en este repositorio. Cuando el interruptor
-está puesto, el resto va solo con cada cambio.
+Hubo antes un `.github/workflows/publicar.yml` que hacía lo mismo desde
+Actions. Se quitó: para funcionar, el sitio de Pages tiene que existir de
+antemano, y crearlo pide permiso de administración que el token de Actions no
+tiene —`Create Pages site failed. Error: Resource not accessible by
+integration`, medido cinco veces seguidas en este repositorio—. Publicar desde
+la rama no necesita permiso ninguno y crea el sitio al guardarlo.
 
 Esto no es un lujo: desde un archivo descargado el navegador **deniega** el
 permiso de cámara y no hay forma de concederlo. La app tiene que servirse.
