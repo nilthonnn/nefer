@@ -1,0 +1,21 @@
+{
+  "empresa": "RD RENTA",
+  "logo": "marca/logo.png",
+  "codigo_formato": "FO-DR-001",
+  "version_formato": "00",
+  "fecha_formato": "",
+  "clientes": [
+    {
+      "id": "ejemplo",
+      "razon_social": "CONSTRUCTORA EJEMPLO S.A.C.",
+      "obras": ["OBRA PRINCIPAL — CIUDAD"]
+    }
+  ],
+  "equipos": [
+    {
+      "codigo": "GE110-01",
+      "modelo": "GRUPO ELECTRÓGENO INSONORIZADO DE 110 KW (POT. CONTINUA)",
+      "categoria": "grupo_electrogeno"
+    }
+  ]
+}

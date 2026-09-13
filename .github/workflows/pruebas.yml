@@ -37,6 +37,35 @@ jobs:
             tests/test_schema.py \
             tests/test_textos.py
 
+  clon-rd-renta:
+    name: núcleo de la copia de RD RENTA
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: clientes/rd-renta
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: clientes/rd-renta/pyproject.toml
+
+      - name: Instalar
+        run: pip install -e ".[dev]"
+
+      # La copia arrastra el mismo motor: si se toca aqui y alli no, esto lo
+      # dice. Las pruebas de navegador no se repiten; la app es la misma.
+      - name: Probar
+        run: |
+          python -m pytest -q \
+            tests/test_build_extract.py \
+            tests/test_layout.py \
+            tests/test_schema.py \
+            tests/test_textos.py
+
   entregables:
     name: entregables (navegador, Excel y PDF de verdad)
     runs-on: ubuntu-latest
