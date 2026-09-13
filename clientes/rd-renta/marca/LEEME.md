@@ -40,9 +40,29 @@ generador avisa:
 logo: no existe .../marca/logo.png; el acta sale sin logo.
 ```
 
-## Lo que no lleva logo
+## El logo en la aplicación de campo
 
-La aplicación de campo (`docs/app/`) arma su Excel en el teléfono y hoy no
-incrusta logo: emite a nombre de **RD RENTAL** —el campo «Empresa» viene
-prellenado— con el bloque de control `RD-FO-DE-022 / 00 / 25-11-2024`, y el
-logo se añade al pasar el acta por `rdrenta construir`.
+La aplicación (`docs/app/`) arma el Excel y el PDF dentro del teléfono, sin
+pasar por el motor, y lleva **su propia copia del logo incrustada** en el
+código: `var LOGO` en la sección de entregables, en JPEG sobre blanco y a 2×
+del hueco. Va dentro del archivo y no al lado porque la app funciona sin señal
+y se reparte como un `.html` suelto, que no tiene vecinos de donde cargarlo.
+
+Si el logo cambia, hay que cambiarlo **en los dos sitios**: `marca/logo.png`
+para el motor y esa constante para la app. Para rehacer la constante:
+
+```bash
+python3 - <<'FIN'
+import base64, io
+from PIL import Image
+src = Image.open("marca/logo.png")
+im = src.resize((src.width * 2, src.height * 2), Image.LANCZOS)
+fondo = Image.new("RGB", im.size, "white")
+fondo.paste(im, mask=im.split()[-1])
+buf = io.BytesIO(); fondo.save(buf, "JPEG", quality=94, optimize=True)
+print(fondo.size, base64.b64encode(buf.getvalue()).decode())
+FIN
+```
+
+Después, `python3 herramientas/empaquetar-demo.py docs/rdrenta-app.html` para
+que el archivo único lo lleve también.

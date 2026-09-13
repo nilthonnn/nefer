@@ -13,7 +13,9 @@ siendo independiente de cualquier organización: todo lo que identifica a la
 empresa son datos, no código, y se cambia sin tocar el paquete.
 
 El logo (`marca/logo.png`) se sacó del informe `C375-40` que entregó el
-cliente, donde va incrustado en `A1:F3`. Ver [`marca/LEEME.md`](marca/LEEME.md).
+cliente, donde va incrustado en `A1:F3`. El motor lo coloca en ese mismo hueco,
+y la aplicación de campo lleva su propia copia para el Excel y el PDF que arma
+en el teléfono. Ver [`marca/LEEME.md`](marca/LEEME.md).
 
 De un manifiesto JSON y una carpeta de fotos salen, en un solo paso, el Excel
 del acta, el PDF firmable, la hoja de consumibles y las dos guías (operador y

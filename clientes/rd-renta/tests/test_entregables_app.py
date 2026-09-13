@@ -137,7 +137,8 @@ def test_el_pdf_es_valido_y_lleva_el_acta(entregables):
     assert paginas == 3, paginas
 
     # Cada foto entra como JPEG incrustado, sin recodificar en el lector.
-    assert len(re.findall(rb"/Subtype /Image", datos)) == 10
+    # Once, no diez: el logo de la cabecera es una imagen mas del PDF.
+    assert len(re.findall(rb"/Subtype /Image", datos)) == 11
 
     texto = _texto_de_pdf(entregables["pdf"])
     if texto is None:
@@ -145,6 +146,34 @@ def test_el_pdf_es_valido_y_lleva_el_acta(entregables):
     for esperado in ("REPORTE FOTOGRÁFICO", "004-001155", "MINERA EJEMPLO S.A.C.",
                      "GE-0142", "1548.7", "VISTA LATERAL IZQUIERDA", "HORÓMETRO"):
         assert esperado in texto, esperado
+
+
+def test_el_logo_del_formato_va_en_los_dos_entregables(entregables):
+    """El acta de papel lleva el logo en A1:F3; las del telefono, tambien.
+
+    Sin esto, el Excel y el PDF que salen del celular llegan al cliente sin
+    marca y alguien tiene que pegarla a mano en cada acta.
+    """
+    m = re.search(r"var LOGO = \{ w: (\d+), h: (\d+),", FUENTE)
+    assert m, "no se encontro el logo incrustado en la app"
+    ancho_logo, alto_logo = int(m.group(1)), int(m.group(2))
+
+    # --- el Excel: anclado en A1, dentro del hueco y sin deformarse ---
+    openpyxl = pytest.importorskip("openpyxl")
+    ws = openpyxl.load_workbook(entregables["xlsx"]).active
+    logo = ws._images[0]
+    assert (logo.anchor._from.col, logo.anchor._from.row) == (0, 0)
+
+    hueco_ancho = sum(round(layout.ANCHOS_COLUMNA[c] * 7) + 5 for c in "ABCDEF")
+    hueco_alto = layout.alto_bloque_px(3)
+    puesto_ancho = logo.anchor.ext.cx / 9525
+    puesto_alto = logo.anchor.ext.cy / 9525
+    assert puesto_ancho <= hueco_ancho and puesto_alto <= hueco_alto
+    assert abs(puesto_ancho / puesto_alto - ancho_logo / alto_logo) < 0.05
+
+    # --- el PDF: el logo es un objeto imagen con sus propias medidas ---
+    datos = entregables["pdf"].read_bytes()
+    assert f"/Width {ancho_logo} /Height {alto_logo}".encode() in datos
 
 
 def _texto_de_pdf(ruta: Path):
@@ -162,7 +191,7 @@ def test_el_excel_lo_abre_openpyxl_con_sus_fotos(entregables):
     ws = wb.active
 
     assert ws.title == "REPORTE"
-    assert len(ws._images) == 10
+    assert len(ws._images) == 11          # las diez fotos y el logo
 
     assert ws[layout.CELDA_ACTA].value == "004-001155"
     assert ws[layout.CELDA_CLIENTE].value == "MINERA EJEMPLO S.A.C."
