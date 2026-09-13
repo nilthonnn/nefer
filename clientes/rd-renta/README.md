@@ -1,18 +1,19 @@
-# rdrenta — actas de despacho y recepción de RD RENTA
+# rdrenta — actas de despacho y recepción de RD RENTAL
 
 Automatiza el **reporte fotográfico de despacho y recepción** de equipos:
 grupos electrógenos, torres de iluminación, plataformas de elevación y
 maquinaria de construcción y minería.
 
-Es una copia del proyecto `nefer` preparada para **RD RENTA**: el catálogo
-(`catalogo.json`) ya declara la razón social, el bloque de control documental
-del formato en uso —`FO-DR-001`, versión `00`— y la ruta del logo; la
-aplicación de campo emite a nombre de RD RENTA. El motor sigue siendo
-independiente de cualquier organización: todo lo que identifica a la empresa
-son datos, no código, y se cambia en `catalogo.json` sin tocar el paquete.
+Es una copia del proyecto `nefer` preparada para **RD RENTAL**: el catálogo
+(`catalogo.json`) declara la razón social, el logo y el bloque de control
+documental del formato en uso —`RD-FO-DE-022`, versión `00`, fechado el
+25/11/2024—, los mismos que imprime el informe que entregó el cliente. La
+aplicación de campo emite a su nombre y con el mismo bloque. El motor sigue
+siendo independiente de cualquier organización: todo lo que identifica a la
+empresa son datos, no código, y se cambia sin tocar el paquete.
 
-**Falta un archivo para que el acta salga completa:** `marca/logo.png`. Ver
-[`marca/LEEME.md`](marca/LEEME.md) para el formato y el tamaño del hueco.
+El logo (`marca/logo.png`) se sacó del informe `C375-40` que entregó el
+cliente, donde va incrustado en `A1:F3`. Ver [`marca/LEEME.md`](marca/LEEME.md).
 
 De un manifiesto JSON y una carpeta de fotos salen, en un solo paso, el Excel
 del acta, el PDF firmable, la hoja de consumibles y las dos guías (operador y
@@ -134,13 +135,13 @@ formato genérico.
 En esta copia no hay que escribirlos a mano en cada acta: `catalogo.json` los
 lleva y `rdrenta acta` los copia al encabezado.
 
-| Campo | Valor de RD RENTA |
+| Campo | Valor de RD RENTAL |
 |---|---|
-| `empresa` | `RD RENTA` |
-| `logo` | `marca/logo.png` — el archivo lo aporta el cliente |
-| `codigo_formato` | `FO-DR-001` |
+| `empresa` | `RD RENTAL` |
+| `logo` | `marca/logo.png` |
+| `codigo_formato` | `RD-FO-DE-022` |
 | `version_formato` | `00` |
-| `fecha_formato` | vacío, como en las actas en uso |
+| `fecha_formato` | `25/11/2024` |
 
 La razón social exacta (`S.A.C.`, `E.I.R.L.`, …) se corrige en
 `catalogo.json`; aquí figura sólo el nombre comercial, que es como llegó.

@@ -1,12 +1,14 @@
-# Marca de RD RENTA
+# Marca de RD RENTAL
 
-Aquí va el único archivo que este proyecto no puede generar solo: el logo.
+`logo.png` es el logo de RD RENTAL, extraído del informe `C375-40` que entregó
+el cliente: allí va incrustado en `A1:F3`, el mismo hueco que este proyecto
+reserva.
 
 ## El archivo
 
 | | |
 |---|---|
-| Ruta | `marca/logo.png` |
+| Ruta | `marca/logo.png` — 275 × 77 px, PNG con transparencia |
 | Formato | PNG (también sirve JPEG; no SVG, Excel no lo incrusta) |
 | Hueco en el acta | `A1:F3`, **177 × 60 px** — proporción ≈ 3:1, horizontal |
 | Fondo | Transparente o blanco; la celda de abajo es blanca |
@@ -31,7 +33,7 @@ este archivo. Dos formas de que siempre encuentre el logo:
 - O escribir en `catalogo.json` una ruta absoluta
   (`/home/usuario/rd-renta/marca/logo.png`), si las actas viven en otra parte.
 
-Mientras el archivo no exista, el acta sale igual pero sin logo y el
+Si el archivo se borra o se mueve, el acta sale igual pero sin logo y el
 generador avisa:
 
 ```
@@ -41,6 +43,6 @@ logo: no existe .../marca/logo.png; el acta sale sin logo.
 ## Lo que no lleva logo
 
 La aplicación de campo (`docs/app/`) arma su Excel en el teléfono y hoy no
-incrusta logo: emite a nombre de **RD RENTA** —el campo «Empresa» viene
-prellenado— con el bloque de control `FO-DR-001 / 00`, y el logo se añade al
-pasar el acta por `rdrenta construir`.
+incrusta logo: emite a nombre de **RD RENTAL** —el campo «Empresa» viene
+prellenado— con el bloque de control `RD-FO-DE-022 / 00 / 25-11-2024`, y el
+logo se añade al pasar el acta por `rdrenta construir`.

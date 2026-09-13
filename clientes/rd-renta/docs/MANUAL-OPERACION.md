@@ -201,8 +201,8 @@ Falta por llenar a mano:
   resumen_ejecutivo  máximo 20 palabras
 ```
 
-Esta copia ya trae un `catalogo.json` en la raíz con la identidad de RD RENTA
-—razón social, logo y bloque de control `FO-DR-001 / 00`— y una ficha de
+Esta copia ya trae un `catalogo.json` en la raíz con la identidad de RD RENTAL
+—razón social, logo y bloque de control `RD-FO-DE-022 / 00`— y una ficha de
 cliente y otra de equipo de ejemplo, para reemplazar por las reales. En una
 instalación desde cero, el catálogo se crea con `rdrenta catalogo --crear` y se
 completa con sus clientes y su parque. Se busca junto al acta, en el directorio actual y en

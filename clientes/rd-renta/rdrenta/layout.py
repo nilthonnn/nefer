@@ -90,9 +90,9 @@ ALTO_FILA_TEXTO = 28.5        # dos lineas de Calibri 10 mas el margen
 
 # Bloque de control documental. Cada organizacion pone el suyo desde el
 # manifiesto: encabezado.codigo_formato, version_formato y fecha_formato.
-CODIGO_FORMATO = "FO-DR-001"
+CODIGO_FORMATO = "RD-FO-DE-022"
 VERSION_FORMATO = "00"
-FECHA_FORMATO = ""
+FECHA_FORMATO = "25/11/2024"
 TITULO_FORMATO = " REPORTE FOTOGRÁFICO \nDE DESPACHO Y RECEPCIÓN"
 # Ya no se imprime: la comparacion salida/retorno es el propio informe
 # fotografico. Se conserva para leer actas anteriores, que la traen como

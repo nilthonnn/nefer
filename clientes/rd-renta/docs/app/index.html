@@ -740,7 +740,7 @@
             <label class="campo"><span class="lb">Modelo</span>
               <input type="text" id="d-modelo" placeholder="C90D5 / 90 kVA"></label>
             <label class="campo"><span class="lb">Empresa (opcional)</span>
-              <input type="text" id="d-empresa" value="RD RENTA" placeholder="razón social que emite"></label>
+              <input type="text" id="d-empresa" value="RD RENTAL" placeholder="razón social que emite"></label>
             <label class="campo"><span class="lb">N° acta</span>
               <input type="text" id="d-acta" placeholder="004-001155"></label>
             <label class="campo"><span class="lb">N° guía</span>
@@ -4156,8 +4156,9 @@ var ENTREGABLE = (function () {
 
   // Copiado de rdrenta/layout.py y rdrenta/build.py. Si cambia allí, cambia aquí.
   var NUMEROS = {
-    CODIGO_FORMATO: "FO-DR-001",
+    CODIGO_FORMATO: "RD-FO-DE-022",
     VERSION_FORMATO: "00",
+    FECHA_FORMATO: "25/11/2024",
     TITULO_DANOS: "DAÑOS Y OBSERVACIONES"
   };
 
@@ -5064,7 +5065,7 @@ var ENTREGABLE = (function () {
     // El formato lleva etiqueta y valor en una sola celda de control.
     fundir("S1:Z1", "CÓDIGO: " + (enc.codigo_formato || E.NUMEROS.CODIGO_FORMATO), 1);
     fundir("S2:Z2", "VERSIÓN: " + (enc.version_formato || E.NUMEROS.VERSION_FORMATO), 1);
-    fundir("S3:Z3", "FECHA: " + (enc.fecha_formato || ""), 1);
+    fundir("S3:Z3", "FECHA: " + (enc.fecha_formato || E.NUMEROS.FECHA_FORMATO), 1);
 
     [[4, "N° ACTA:", enc.n_acta || ""], [5, "N° GUÍA:", enc.n_guia || ""],
      [7, "CLIENTE:", enc.cliente || ""], [8, "EQUIPO:", enc.modelo_equipo || ""]

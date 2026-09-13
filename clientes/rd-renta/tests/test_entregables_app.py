@@ -45,6 +45,10 @@ def test_geometria_compartida_con_layout():
     """Las cifras que la app copio de layout.py siguen siendo las mismas."""
     assert _constante_js("CODIGO_FORMATO") == layout.CODIGO_FORMATO
     assert _constante_js("VERSION_FORMATO") == layout.VERSION_FORMATO
+    # La fecha del formato tambien la imprime la app por su cuenta: si el
+    # cliente publica una version nueva del formulario, las dos tienen que
+    # moverse juntas o las actas del telefono citarian una fecha vieja.
+    assert _constante_js("FECHA_FORMATO") == layout.FECHA_FORMATO
     assert _constante_js("TITULO_DANOS") == layout.TITULO_DANOS
 
     assert int(_var_js("FILA_INICIO_FOTOS")) == layout.FILA_INICIO_FOTOS

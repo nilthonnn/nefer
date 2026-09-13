@@ -1,14 +1,16 @@
 {
-  "empresa": "RD RENTA",
+  "empresa": "RD RENTAL",
   "logo": "marca/logo.png",
-  "codigo_formato": "FO-DR-001",
+  "codigo_formato": "RD-FO-DE-022",
   "version_formato": "00",
-  "fecha_formato": "",
+  "fecha_formato": "25/11/2024",
   "clientes": [
     {
       "id": "ejemplo",
       "razon_social": "CONSTRUCTORA EJEMPLO S.A.C.",
-      "obras": ["OBRA PRINCIPAL — CIUDAD"]
+      "obras": [
+        "OBRA PRINCIPAL — CIUDAD"
+      ]
     }
   ],
   "equipos": [

@@ -154,7 +154,7 @@ propia con `nefer extraer`.
 ## Copias por cliente
 
 `clientes/rd-renta/` es una copia completa del proyecto —motor, app de campo,
-pruebas y documentación— preparada para **RD RENTA**: paquete `rdrenta`,
+pruebas y documentación— preparada para **RD RENTAL**: paquete `rdrenta`,
 catálogo con su razón social y su bloque de control (`FO-DR-001`, versión
 `00`) y el hueco del logo en `marca/`. Es un árbol independiente, pensado para
 mudarse a su propio repositorio; mientras viva aquí, GitHub Pages no la
