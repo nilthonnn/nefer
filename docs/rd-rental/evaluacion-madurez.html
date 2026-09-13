@@ -1,0 +1,432 @@
+<title>Evaluación de madurez</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Spectral:ital,wght@0,500;0,700;1,400&display=swap">
+
+<style>
+  :root {
+    --papel:   #F5F4F1;
+    --hoja:    #FFFFFF;
+    --hoja-2:  #ECEAE5;
+    --tinta:   #171614;
+    --tinta-2: #4C4944;
+    --tinta-3: #605C55;
+    --linea:   #DAD6CE;
+    --linea-2: #E8E5DE;
+    --cobre:   #8A5426;
+    --cobre-w: #F2E7DC;
+    --verde:   #2C6047;
+    --verde-w: #E2EEE7;
+    --rojo:    #8E3521;
+    --rojo-w:  #F5E3DD;
+    --sombra:  0 1px 2px rgba(23,22,20,.05), 0 12px 28px -18px rgba(23,22,20,.3);
+    --serif: "Spectral", Georgia, "Times New Roman", serif;
+    --sans:  "Barlow", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono:  "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel:#141412; --hoja:#1D1C1A; --hoja-2:#262421;
+      --tinta:#EDEAE4; --tinta-2:#B3AEA5; --tinta-3:#9A948A;
+      --linea:#332F2A; --linea-2:#2A2723;
+      --cobre:#D08A4F; --cobre-w:#2C2018;
+      --verde:#7BC0A0; --verde-w:#16281F;
+      --rojo:#DE8E76; --rojo-w:#2C1B15;
+      --sombra:0 1px 2px rgba(0,0,0,.5), 0 14px 32px -20px rgba(0,0,0,.85);
+    }
+  }
+  :root[data-theme="dark"] {
+    --papel:#141412; --hoja:#1D1C1A; --hoja-2:#262421;
+    --tinta:#EDEAE4; --tinta-2:#B3AEA5; --tinta-3:#9A948A;
+    --linea:#332F2A; --linea-2:#2A2723;
+    --cobre:#D08A4F; --cobre-w:#2C2018;
+    --verde:#7BC0A0; --verde-w:#16281F;
+    --rojo:#DE8E76; --rojo-w:#2C1B15;
+    --sombra:0 1px 2px rgba(0,0,0,.5), 0 14px 32px -20px rgba(0,0,0,.85);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--papel); color:var(--tinta);
+         font-family:var(--sans); font-size:16px; line-height:1.62;
+         -webkit-font-smoothing:antialiased; }
+  .hoja { max-width:52rem; margin:0 auto; padding:3rem 1.25rem 5rem; }
+
+  /* ---------- portada ---------- */
+  .portada { border-bottom:1px solid var(--tinta); padding-bottom:1.5rem;
+             margin-bottom:2.5rem; }
+  .sello { font-family:var(--mono); font-size:.68rem; letter-spacing:.18em;
+           text-transform:uppercase; color:var(--cobre); margin:0 0 1rem; }
+  h1 { font-family:var(--serif); font-weight:700;
+       font-size:clamp(2.1rem,1.5rem + 2.8vw,3.3rem); line-height:1.04;
+       letter-spacing:-.014em; margin:0 0 .8rem; text-wrap:balance; }
+  .bajada { font-family:var(--serif); font-style:italic; font-size:1.12rem;
+            color:var(--tinta-2); margin:0; max-width:38rem; }
+
+  /* ---------- veredicto ---------- */
+  .veredicto { background:var(--hoja); border:1px solid var(--linea);
+               border-left:4px solid var(--cobre); border-radius:4px;
+               box-shadow:var(--sombra); padding:1.2rem 1.4rem; margin-bottom:2.5rem; }
+  .veredicto p { margin:0 0 .7rem; }
+  .veredicto p:last-child { margin-bottom:0; }
+  .veredicto strong { color:var(--tinta); }
+
+  /* ---------- secciones ---------- */
+  section { margin-top:3rem; }
+  h2 { font-family:var(--serif); font-weight:700; font-size:1.62rem;
+       line-height:1.16; margin:0 0 .3rem; letter-spacing:-.01em;
+       text-wrap:balance; }
+  .dek { font-family:var(--mono); font-size:.68rem; letter-spacing:.14em;
+         text-transform:uppercase; color:var(--cobre); margin:0 0 1.1rem; }
+  h3 { font-size:1.02rem; font-weight:700; margin:1.7rem 0 .5rem; }
+  p { margin:0 0 .9rem; color:var(--tinta-2); max-width:40rem; }
+  p strong, li strong { color:var(--tinta); font-weight:600; }
+  ul, ol { margin:0 0 1rem; padding-left:1.15rem; color:var(--tinta-2);
+           max-width:40rem; }
+  li { margin-bottom:.35rem; }
+  code { font-family:var(--mono); font-size:.86em; background:var(--hoja-2);
+         border-radius:3px; padding:.08em .32em; color:var(--tinta); }
+
+  /* ---------- escalera de madurez ---------- */
+  .escalera { display:flex; flex-direction:column; gap:.3rem; margin:0 0 1.2rem; }
+  .peldano { display:grid; grid-template-columns:2.6rem 1fr; gap:.9rem;
+             align-items:start; padding:.7rem .9rem; border-radius:4px;
+             background:var(--hoja); border:1px solid var(--linea-2); }
+  .peldano .nv { font-family:var(--mono); font-size:.72rem; font-weight:500;
+                 color:var(--tinta-3); padding-top:.15rem; }
+  .peldano h4 { margin:0 0 .12rem; font-size:.96rem; font-weight:700; }
+  .peldano p { margin:0; font-size:.88rem; max-width:none; }
+  .peldano.aqui { border-color:var(--cobre); background:var(--cobre-w);
+                  box-shadow:var(--sombra); }
+  .peldano.aqui .nv { color:var(--cobre); font-weight:600; }
+  .peldano.aqui h4::after { content:"está aquí"; font-family:var(--mono);
+    font-size:.6rem; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--cobre); background:var(--hoja); border:1px solid var(--cobre);
+    border-radius:3px; padding:.1rem .35rem; margin-left:.5rem;
+    vertical-align:.12em; white-space:nowrap; }
+  .peldano.pasado { opacity:.62; }
+
+  /* ---------- fichas ---------- */
+  .fichas { display:flex; flex-direction:column; gap:.55rem; margin:0 0 1.2rem; }
+  .ficha { background:var(--hoja); border:1px solid var(--linea);
+           border-left:3px solid var(--verde); border-radius:4px;
+           padding:.75rem .95rem; }
+  .ficha.brecha { border-left-color:var(--rojo); }
+  .ficha h4 { margin:0 0 .25rem; font-size:.98rem; font-weight:700;
+              display:flex; gap:.6rem; align-items:baseline;
+              justify-content:space-between; flex-wrap:wrap; }
+  .ficha .coste { font-family:var(--mono); font-size:.62rem; font-weight:400;
+                  letter-spacing:.08em; text-transform:uppercase; flex:none;
+                  padding:.12rem .4rem; border-radius:3px; }
+  .coste.alto  { background:var(--rojo-w); color:var(--rojo); }
+  .coste.medio { background:var(--cobre-w); color:var(--cobre); }
+  .coste.bajo  { background:var(--verde-w); color:var(--verde); }
+  .ficha p { margin:0; font-size:.9rem; max-width:none; }
+
+  /* ---------- tablas ---------- */
+  .tw { overflow-x:auto; margin:0 0 1.2rem; }
+  table { border-collapse:collapse; width:100%; min-width:26rem; font-size:.9rem; }
+  th, td { text-align:left; padding:.5rem .7rem; vertical-align:top;
+           border-bottom:1px solid var(--linea-2); color:var(--tinta-2); }
+  th { font-family:var(--mono); font-size:.66rem; letter-spacing:.1em;
+       text-transform:uppercase; color:var(--tinta-3);
+       border-bottom:1px solid var(--linea); white-space:nowrap; }
+  td:first-child { color:var(--tinta); font-weight:500; }
+  td.num { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  .mejor { color:var(--verde); font-weight:600; }
+  .peor  { color:var(--rojo); font-weight:600; }
+
+  .nota { border-top:1px solid var(--linea); margin-top:2.5rem; padding-top:1.1rem;
+          font-size:.85rem; color:var(--tinta-3); max-width:40rem; }
+  .nota strong { color:var(--tinta-2); }
+
+  @media (max-width:34rem) {
+    .hoja { padding:1.6rem .85rem 3.5rem; }
+    .peldano { grid-template-columns:2.1rem 1fr; gap:.6rem; padding:.6rem .7rem; }
+    .peldano.aqui h4::after { display:block; margin:.25rem 0 0; width:fit-content; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+
+<div class="hoja" lang="es">
+
+  <header class="portada">
+    <p class="sello">Evaluación de proceso · entrada y salida de equipos</p>
+    <h1>Dónde está este trabajo frente al estado del arte</h1>
+    <p class="bajada">
+      Lectura desde la práctica de las operaciones mineras y constructoras más
+      avanzadas: qué ya está por encima de la media, qué falta, y en qué orden
+      conviene cerrarlo.
+    </p>
+  </header>
+
+  <div class="veredicto">
+    <p>
+      <strong>Veredicto.</strong> El trabajo sale del terreno de «formato Excel
+      llenado a mano» y entra en el de <strong>proceso con datos
+      estructurados</strong>. Es un salto real, no cosmético: hay un esquema,
+      hay validación que rechaza actas incoherentes, y el documento se genera en
+      vez de transcribirse.
+    </p>
+    <p>
+      Dos decisiones lo colocan <strong>por encima de bastantes sistemas
+      comerciales</strong>: negarse a rellenar el horómetro por OCR tras medir
+      que falla, y prohibir que un acta de despacho declare datos de retorno.
+      Son invariantes de integridad documental que muchos formularios digitales
+      no tienen.
+    </p>
+    <p>
+      La brecha con el primer nivel de la industria es concreta y se llama
+      <strong>telemetría, firma digital e integridad de la evidencia</strong>.
+      Nada de eso exige rehacer lo hecho.
+    </p>
+  </div>
+
+  <section>
+    <p class="dek">La escala</p>
+    <h2>Cinco niveles de madurez</h2>
+    <p>
+      Así se ordena, en la práctica, el control de entrada y salida de equipos.
+      Cada nivel supone el anterior resuelto.
+    </p>
+
+    <div class="escalera">
+      <div class="peldano pasado">
+        <span class="nv">01</span>
+        <div><h4>Papel</h4>
+        <p>Formato impreso, llenado a mano, archivado en un cajón. La comparación
+        despacho-recepción depende de que alguien encuentre el acta anterior.</p></div>
+      </div>
+      <div class="peldano pasado">
+        <span class="nv">02</span>
+        <div><h4>Ofimática</h4>
+        <p>Excel llenado a mano y PDF por correo. Las fotos se pegan una a una. No
+        hay datos, hay documentos: nada es consultable ni agregable.</p></div>
+      </div>
+      <div class="peldano aqui">
+        <span class="nv">03</span>
+        <div><h4>Datos estructurados y documento generado</h4>
+        <p>Un esquema define el acta, un validador la rechaza si es incoherente, y
+        el Excel y el PDF salen de ahí. Funciona sin conexión. El histórico en
+        papel se puede digitalizar.</p></div>
+      </div>
+      <div class="peldano">
+        <span class="nv">04</span>
+        <div><h4>Evidencia verificable e integración</h4>
+        <p>Horómetro leído de la máquina, no tecleado. Firma digital con validez
+        legal. Fotos con integridad comprobable. El maestro de equipos es el mismo
+        que el del ERP y el de mantenimiento.</p></div>
+      </div>
+      <div class="peldano">
+        <span class="nv">05</span>
+        <div><h4>Ciclo cerrado</h4>
+        <p>La recuperación se convierte en un reclamo con responsable, costo y
+        fecha. Las horas facturables llegan solas a la factura. La utilización de
+        flota se mide sin que nadie la reporte.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="dek">Lo bueno</p>
+    <h2>Lo que ya está por encima de la media</h2>
+
+    <div class="fichas">
+      <div class="ficha">
+        <h4>Reglas que protegen una firma</h4>
+        <p>Un horómetro ilegible se declara, no se estima. Un componente observado
+        sin observación escrita rechaza el acta. Un despacho no puede afirmar un
+        retorno. Son invariantes, no advertencias, y eso es raro incluso en
+        software de pago.</p>
+      </div>
+      <div class="ficha">
+        <h4>Decisiones tomadas con evidencia, no con moda</h4>
+        <p>El OCR del horómetro se descartó tras medirlo sobre una foto real:
+        acertó 2 de 48 combinaciones, y su lectura más frecuente era falsa y
+        plausible a la vez. Ese es el criterio correcto para decidir qué
+        automatizar.</p>
+      </div>
+      <div class="ficha">
+        <h4>Funciona sin conexión, por construcción</h4>
+        <p>Ni el generador ni las dos herramientas de campo necesitan red. En patio
+        y en mina eso no es una comodidad: es la diferencia entre usarse y no
+        usarse.</p>
+      </div>
+      <div class="ficha">
+        <h4>Sin dependencia de proveedor</h4>
+        <p>JSON, Excel, PDF y HTML. El acta se puede regenerar dentro de diez años
+        sin licencia de nadie, y el histórico en papel se puede importar.</p>
+      </div>
+      <div class="ficha">
+        <h4>El antes y después está en el documento</h4>
+        <p>La recepción compara cada vista con su foto de salida y separa los daños
+        en su propia sección. Es exactamente lo que un revisor de factura busca, y
+        muchos sistemas lo dejan en un adjunto suelto.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="dek">Las brechas</p>
+    <h2>Lo que falta, ordenado por lo que cuesta dinero</h2>
+
+    <div class="fichas">
+      <div class="ficha brecha">
+        <h4>Horómetro tecleado en vez de leído de la máquina
+            <span class="coste alto">impacto alto</span></h4>
+        <p>La industria resolvió esto con telemetría. La norma
+        <strong>ISO 15143-3</strong>, conocida como AEMP 2.0, define una interfaz
+        común que los principales fabricantes exponen: horas acumuladas,
+        ubicación, combustible y códigos de falla. Un equipo conectado no necesita
+        que nadie lea su horómetro, y las horas facturables dejan de depender de un
+        dígito bien tecleado.</p>
+      </div>
+      <div class="ficha brecha">
+        <h4>El acta se firma en papel
+            <span class="coste alto">impacto alto</span></h4>
+        <p>Generar un PDF impecable para imprimirlo, firmarlo y escanearlo es
+        volver al nivel dos en el último metro. Una firma digital con validez legal
+        cierra el documento y elimina la versión escaneada.
+        <strong>Conviene verificar el marco vigente en Perú</strong> —certificados
+        acreditados y obligaciones de guía de remisión electrónica— antes de
+        elegir proveedor.</p>
+      </div>
+      <div class="ficha brecha">
+        <h4>Nada impide sustituir una foto después
+            <span class="coste medio">impacto medio</span></h4>
+        <p>El acta referencia archivos por nombre. Si mañana alguien cambia
+        <code>fotos/lateral-izq.jpg</code> por otra imagen, el acta se regenera
+        igual y nadie lo nota. Para un documento que sustenta un cobro, la
+        evidencia debería llevar huella: un resumen criptográfico por foto,
+        guardado dentro del acta.</p>
+      </div>
+      <div class="ficha brecha">
+        <h4>No hay rastro de quién hizo qué
+            <span class="coste medio">impacto medio</span></h4>
+        <p>Si un cliente discute una recuperación seis meses después, no hay forma
+        de saber quién levantó el acta, cuándo, ni si el JSON se editó luego. Un
+        registro de auditoría mínimo —autor, momento, versión— es barato y decide
+        discusiones.</p>
+      </div>
+      <div class="ficha brecha">
+        <h4>La recuperación muere en el PDF
+            <span class="coste medio">impacto medio</span></h4>
+        <p>Hoy es una franja amarilla. En una operación madura es un reclamo con
+        estado, responsable, monto y fecha de cierre, y alguien responde por él.
+        Sin eso, lo que se recupera depende de que el jefe de patio se acuerde.</p>
+      </div>
+      <div class="ficha brecha">
+        <h4>El maestro de equipos vive suelto
+            <span class="coste bajo">impacto bajo</span></h4>
+        <p>El catálogo es un archivo local. Mientras la flota sea pequeña funciona;
+        cuando el mismo equipo exista con códigos distintos en facturación, en
+        mantenimiento y en patio, empieza el problema clásico de datos maestros. La
+        solución no es técnica: es decidir cuál es el sistema de origen.</p>
+      </div>
+      <div class="ficha brecha">
+        <h4>La obra se escribe, no se captura
+            <span class="coste bajo">impacto bajo</span></h4>
+        <p>Las coordenadas del teléfono al tomar la foto prueban dónde estaba el
+        equipo. Es un campo EXIF que ya se está leyendo para la fecha.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="dek">Lo medido</p>
+    <h2>Accesibilidad: auditoría antes y después</h2>
+    <p>
+      Las dos herramientas de campo se auditaron en Chromium a 390 px, en tema
+      claro y oscuro, con criterios WCAG. Los hallazgos eran de los que importan
+      cuando se trabaja de pie, con guantes y con el equipo delante.
+    </p>
+
+    <div class="tw"><table>
+      <tr><th>Criterio</th><th>Antes</th><th>Después</th></tr>
+      <tr><td>Textos bajo 4.5:1 de contraste</td>
+          <td class="num peor">10 · el peor 2.97:1</td>
+          <td class="num mejor">0</td></tr>
+      <tr><td>Objetivos táctiles bajo 44×44 px</td>
+          <td class="num peor">10 · entre 28 y 31 px</td>
+          <td class="num mejor">0</td></tr>
+      <tr><td>Controles sin nombre accesible</td>
+          <td class="num peor">2</td>
+          <td class="num mejor">0</td></tr>
+      <tr><td>Idioma del contenido declarado</td>
+          <td class="num peor">no</td>
+          <td class="num mejor">sí</td></tr>
+    </table></div>
+
+    <p>
+      WCAG 2.2 exige 24×24 px de objetivo táctil. Ese mínimo no contempla a
+      alguien con guantes de trabajo: el umbral práctico son
+      <strong>44 px</strong>, y es el que se aplicó.
+    </p>
+
+    <h3>Lo que la auditoría automática no cubre</h3>
+    <p>
+      Queda pendiente de probar en campo, y no se puede simular desde un
+      navegador: legibilidad bajo <strong>sol directo</strong>, operación con
+      <strong>guantes reales</strong>, uso <strong>a una mano</strong> mientras la
+      otra sostiene algo, y comportamiento con lector de pantalla. Ninguna
+      medición sustituye a un operador probándolo en patio.
+    </p>
+  </section>
+
+  <section>
+    <p class="dek">El camino</p>
+    <h2>Qué haría a continuación, y en qué orden</h2>
+
+    <div class="tw"><table>
+      <tr><th>Orden</th><th>Qué</th><th>Por qué en ese lugar</th></tr>
+      <tr><td class="num">1</td>
+          <td>Piloto en patio con un equipo real</td>
+          <td>Ninguna de las brechas siguientes importa si el operador no puede
+          levantar el acta. Es la única prueba que falta y no cuesta nada.</td></tr>
+      <tr><td class="num">2</td>
+          <td>Huella criptográfica de cada foto</td>
+          <td>Barato, no cambia el flujo, y convierte la evidencia en algo que se
+          sostiene ante una discusión.</td></tr>
+      <tr><td class="num">3</td>
+          <td>Registro de autor y momento</td>
+          <td>Igual de barato. Decide reclamos meses después.</td></tr>
+      <tr><td class="num">4</td>
+          <td>Firma digital del PDF</td>
+          <td>Cierra el ciclo documental y elimina el escaneo. Requiere decisión
+          comercial, no técnica.</td></tr>
+      <tr><td class="num">5</td>
+          <td>Telemetría donde el equipo la exponga</td>
+          <td>El mayor salto, pero depende de qué máquinas están conectadas.
+          Empezar por las que ya lo estén.</td></tr>
+      <tr><td class="num">6</td>
+          <td>Recuperaciones con seguimiento</td>
+          <td>Cuando el volumen de actas justifique dejar de seguirlas de
+          memoria.</td></tr>
+    </table></div>
+
+    <h3>Lo que no recomendaría</h3>
+    <ul>
+      <li><strong>Clasificar las fotos con visión artificial.</strong> El operador
+      sabe qué es cada foto al tomarla; un modelo recuperaría información que nunca
+      se perdió, y falla justo en distinguir lateral izquierda de derecha.</li>
+      <li><strong>Leer el horómetro con un modelo de visión.</strong> Leería mejor
+      que Tesseract, pero en un documento que se firma hay que confirmar la lectura
+      igual, y añade una dependencia de red que en patio no existe.</li>
+      <li><strong>Migrar a una plataforma comercial todavía.</strong> Hasta que el
+      proceso no esté rodado con actas reales, cualquier plataforma se configura
+      sobre supuestos.</li>
+    </ul>
+  </section>
+
+  <p class="nota">
+    <strong>Sobre las referencias.</strong> ISO 15143-3 (AEMP 2.0) es la norma de
+    intercambio de datos telemáticos que exponen los principales fabricantes de
+    maquinaria; conviene confirmar con cada proveedor qué campos entrega para los
+    modelos concretos de la flota. Las obligaciones peruanas de firma digital y de
+    guía de remisión electrónica cambian con el tiempo:
+    <strong>verifíquelas con su asesor antes de decidir</strong>. Esta evaluación
+    juzga el proceso y el software construido; no audita el cumplimiento normativo
+    de la operación.
+  </p>
+
+</div>

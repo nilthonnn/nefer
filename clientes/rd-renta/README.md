@@ -1,12 +1,21 @@
-# nefer — actas de despacho y recepción de maquinaria
+# rdrenta — actas de despacho y recepción de RD RENTAL
 
 Automatiza el **reporte fotográfico de despacho y recepción** de equipos:
 grupos electrógenos, torres de iluminación, plataformas de elevación y
 maquinaria de construcción y minería.
 
-La herramienta es independiente de cualquier organización. El nombre de la
-empresa, el logo y el bloque de control documental (código, versión, fecha del
-formato) se declaran en el manifiesto; el paquete no trae ninguno por defecto.
+Es una copia del proyecto `nefer` preparada para **RD RENTAL**: el catálogo
+(`catalogo.json`) declara la razón social, el logo y el bloque de control
+documental del formato en uso —`RD-FO-DE-022`, versión `00`, fechado el
+25/11/2024—, los mismos que imprime el informe que entregó el cliente. La
+aplicación de campo emite a su nombre y con el mismo bloque. El motor sigue
+siendo independiente de cualquier organización: todo lo que identifica a la
+empresa son datos, no código, y se cambia sin tocar el paquete.
+
+El logo (`marca/logo.png`) se sacó del informe `C375-40` que entregó el
+cliente, donde va incrustado en `A1:F3`. El motor lo coloca en ese mismo hueco,
+y la aplicación de campo lleva su propia copia para el Excel y el PDF que arma
+en el teléfono. Ver [`marca/LEEME.md`](marca/LEEME.md).
 
 De un manifiesto JSON y una carpeta de fotos salen, en un solo paso, el Excel
 del acta, el PDF firmable, la hoja de consumibles y las dos guías (operador y
@@ -44,7 +53,7 @@ brew install --cask libreoffice           # macOS
 ### Generar un acta completa
 
 ```bash
-python -m nefer construir acta.json -o salidas/acta.xlsx --pdf
+python -m rdrenta construir acta.json -o salidas/acta.xlsx --pdf
 ```
 
 `--pdf` acepta una ruta opcional. `--sin-guias` omite las dos hojas de guía.
@@ -52,7 +61,7 @@ python -m nefer construir acta.json -o salidas/acta.xlsx --pdf
 ### Validar antes de generar
 
 ```bash
-python -m nefer validar acta.json
+python -m rdrenta validar acta.json
 ```
 
 Devuelve la lista completa de errores en un solo pase: campos faltantes, fechas
@@ -64,20 +73,20 @@ se han descargado las fotos de la cámara.
 ### Digitalizar un acta antigua
 
 ```bash
-python -m nefer extraer acta-2025.xlsx -o acta-2025.json --fotos fotos-acta-2025
+python -m rdrenta extraer acta-2025.xlsx -o acta-2025.json --fotos fotos-acta-2025
 ```
 
 Lee un reporte llenado a mano y devuelve el manifiesto equivalente, con las
 fotos volcadas a disco y ya asociadas a su rótulo. Recupera también las
 fotografías pegadas desde Word, que quedan incrustadas como metarchivos EMF y
-que ninguna librería de Python lee directamente (ver `nefer/emf.py`).
+que ninguna librería de Python lee directamente (ver `rdrenta/emf.py`).
 
 ### Otros comandos
 
 ```bash
-python -m nefer plantilla -o acta-nueva.json    # manifiesto en blanco
-python -m nefer guias -o docs/                  # guías en Markdown
-python -m nefer pdf acta.xlsx                   # convertir un Excel ya generado
+python -m rdrenta plantilla -o acta-nueva.json    # manifiesto en blanco
+python -m rdrenta guias -o docs/                  # guías en Markdown
+python -m rdrenta pdf acta.xlsx                   # convertir un Excel ya generado
 ```
 
 ## Documentación
@@ -125,6 +134,20 @@ Todo lo que identifica a la empresa vive en `encabezado` y es opcional:
 Si se omiten, el acta sale sin logo, sin razón social y con un código de
 formato genérico.
 
+En esta copia no hay que escribirlos a mano en cada acta: `catalogo.json` los
+lleva y `rdrenta acta` los copia al encabezado.
+
+| Campo | Valor de RD RENTAL |
+|---|---|
+| `empresa` | `RD RENTAL` |
+| `logo` | `marca/logo.png` |
+| `codigo_formato` | `RD-FO-DE-022` |
+| `version_formato` | `00` |
+| `fecha_formato` | `25/11/2024` |
+
+La razón social exacta (`S.A.C.`, `E.I.R.L.`, …) se corrige en
+`catalogo.json`; aquí figura sólo el nombre comercial, que es como llegó.
+
 Tres reglas que el validador hace cumplir porque de ellas depende una firma:
 
 - Un horómetro ilegible se declara `"REVISIÓN MANUAL REQUERIDA"`. Nunca se
@@ -136,36 +159,20 @@ Tres reglas que el validador hace cumplir porque de ellas depende una firma:
 
 En `ejemplos/` hay dos manifiestos de referencia con datos ficticios. No
 incluyen fotografías; para probar el flujo completo, extráigalas de un acta
-propia con `nefer extraer`.
+propia con `rdrenta extraer`.
 
 ## Estructura
 
 | Módulo | Responsabilidad |
 |---|---|
-| `nefer/layout.py` | Geometría del formato: filas, columnas, bloques, anchos |
-| `nefer/schema.py` | Esquema del manifiesto y validación |
-| `nefer/build.py` | Manifiesto → Excel (rejilla, anclaje de fotos, saltos de página) |
-| `nefer/extract.py` | Excel llenado → manifiesto |
-| `nefer/emf.py` | Recupera fotos incrustadas como metarchivo EMF |
-| `nefer/textos.py` | Redacción automática de rótulos, recuperaciones y guías |
-| `nefer/pdf.py` | Excel → PDF vía LibreOffice headless |
-| `nefer/cli.py` | Línea de comandos |
-
-## Copias por cliente
-
-`clientes/rd-renta/` es una copia completa del proyecto —motor, app de campo,
-pruebas y documentación— preparada para **RD RENTAL**: paquete `rdrenta`,
-catálogo con su razón social y su bloque de control (`FO-DR-001`, versión
-`00`) y el hueco del logo en `marca/`. Es un árbol independiente, pensado para
-mudarse a su propio repositorio, y sus pruebas de núcleo corren en su propio
-trabajo de CI.
-
-Su aplicación de campo **sí se publica desde aquí**: Pages sirve `docs/` y nada
-más, así que una copia vive en `docs/rd-rental/` y queda servida en
-`https://nilthonnn.github.io/nefer/rd-rental/app/`, con su página de descarga y
-su QR en `https://nilthonnn.github.io/nefer/rd-rental/`. La copia se rehace con
-`python3 herramientas/publicar-clon.py` y `tests/test_publicacion_clon.py`
-falla si se queda atrás.
+| `rdrenta/layout.py` | Geometría del formato: filas, columnas, bloques, anchos |
+| `rdrenta/schema.py` | Esquema del manifiesto y validación |
+| `rdrenta/build.py` | Manifiesto → Excel (rejilla, anclaje de fotos, saltos de página) |
+| `rdrenta/extract.py` | Excel llenado → manifiesto |
+| `rdrenta/emf.py` | Recupera fotos incrustadas como metarchivo EMF |
+| `rdrenta/textos.py` | Redacción automática de rótulos, recuperaciones y guías |
+| `rdrenta/pdf.py` | Excel → PDF vía LibreOffice headless |
+| `rdrenta/cli.py` | Línea de comandos |
 
 ## Pruebas
 
@@ -209,16 +216,27 @@ validado nada, y eso es peor que un rojo.
 
 ### Publicación
 
+Esta copia vive hoy dentro del repositorio `nefer`, en
+`clientes/rd-renta/`. **Desde ahí GitHub Pages no la publica**: Pages sirve la
+carpeta `docs/` de la raíz del repositorio, no la de una subcarpeta. La app y
+el QR ya apuntan a `https://nilthonnn.github.io/nefer/rd-rental/app/`, que es la
+dirección que tendrá cuando este árbol se mueva a su propio repositorio
+`rd-renta` —un `git init` en esta carpeta y Pages apuntando a `/docs`—.
+
+Si el destino termina siendo otro, se cambia en dos sitios y se rehace el QR:
+`DIRECCION` en `herramientas/generar-qr.py` y `DIRECCION_PUBLICADA` en
+`docs/app/index.html`. Una prueba falla si quedan distintos.
+
 ### Cómo llega al teléfono
 
 `docs/index.html` es la página de descarga: lleva el **código QR** que se
 imprime y se pega en el taller —cada operario lo escanea y la instala—, los
 pasos de instalación de Android y iPhone, y la **descarga del archivo único**
-`docs/nefer-app.html`, la app entera en un solo fichero para probarla en una
+`docs/rdrenta-app.html`, la app entera en un solo fichero para probarla en una
 computadora o mandarla por WhatsApp.
 
 Ese archivo se rehace con `python herramientas/empaquetar-demo.py
-docs/nefer-app.html` y una prueba falla si se queda atrás respecto de la app.
+docs/rdrenta-app.html` y una prueba falla si se queda atrás respecto de la app.
 El QR se rehace con `python herramientas/generar-qr.py` (necesita `segno`,
 sólo para regenerarlo) y otra prueba comprueba que apunta a la dirección que
 la propia app declara.
@@ -246,7 +264,7 @@ segundos donde no hay señal. Ver [docs/app/tipografia/LEEME.md](docs/app/tipogr
 ### Un demo en un solo archivo
 
 ```bash
-python3 herramientas/empaquetar-demo.py nefer-app.html
+python3 herramientas/empaquetar-demo.py rdrenta-app.html
 ```
 
 Deja la app entera en un `.html` que se puede pasar por WhatsApp o correo, con
