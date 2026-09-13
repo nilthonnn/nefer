@@ -157,8 +157,15 @@ propia con `nefer extraer`.
 pruebas y documentación— preparada para **RD RENTAL**: paquete `rdrenta`,
 catálogo con su razón social y su bloque de control (`FO-DR-001`, versión
 `00`) y el hueco del logo en `marca/`. Es un árbol independiente, pensado para
-mudarse a su propio repositorio; mientras viva aquí, GitHub Pages no la
-publica y sus pruebas de núcleo corren en su propio trabajo de CI.
+mudarse a su propio repositorio, y sus pruebas de núcleo corren en su propio
+trabajo de CI.
+
+Su aplicación de campo **sí se publica desde aquí**: Pages sirve `docs/` y nada
+más, así que una copia vive en `docs/rd-rental/` y queda servida en
+`https://nilthonnn.github.io/nefer/rd-rental/app/`, con su página de descarga y
+su QR en `https://nilthonnn.github.io/nefer/rd-rental/`. La copia se rehace con
+`python3 herramientas/publicar-clon.py` y `tests/test_publicacion_clon.py`
+falla si se queda atrás.
 
 ## Pruebas
 

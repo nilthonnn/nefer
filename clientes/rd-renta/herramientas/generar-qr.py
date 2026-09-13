@@ -21,7 +21,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-DIRECCION = "https://nilthonnn.github.io/rd-renta/app/"
+DIRECCION = "https://nilthonnn.github.io/nefer/rd-rental/app/"
 SALIDA = Path(__file__).resolve().parents[1] / "docs" / "qr-app.svg"
 TINTA = "#16191B"
 

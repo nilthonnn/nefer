@@ -219,7 +219,7 @@ validado nada, y eso es peor que un rojo.
 Esta copia vive hoy dentro del repositorio `nefer`, en
 `clientes/rd-renta/`. **Desde ahí GitHub Pages no la publica**: Pages sirve la
 carpeta `docs/` de la raíz del repositorio, no la de una subcarpeta. La app y
-el QR ya apuntan a `https://nilthonnn.github.io/rd-renta/app/`, que es la
+el QR ya apuntan a `https://nilthonnn.github.io/nefer/rd-rental/app/`, que es la
 dirección que tendrá cuando este árbol se mueva a su propio repositorio
 `rd-renta` —un `git init` en esta carpeta y Pages apuntando a `/docs`—.
 
