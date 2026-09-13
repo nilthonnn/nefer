@@ -313,6 +313,25 @@ casilla.
 Si el aparato no concede la cámara —el caso del archivo descargado—, en lugar
 de fallar en silencio muestra el motivo y un botón para usar la galería.
 
+### 6.1 El sello de fecha y hora
+
+Cada disparo sale con la **fecha y la hora quemadas en la imagen**, abajo a la
+derecha y en ámbar, como las que estampa la cámara del teléfono:
+
+```
+13/09/2026  18:39
+```
+
+Es la hora del teléfono **en el momento del disparo**, no la del acta: si se
+fotografía hoy y el acta se cierra mañana, la foto sigue diciendo cuándo se
+tomó. El sello va dentro del archivo, así que viaja con la foto al Excel, al
+PDF y al ZIP, y no se puede quitar después sin volver a fotografiar.
+
+Sólo lo llevan las fotos **disparadas dentro de la app**. Las que entran por
+galería o por la cámara del sistema se guardan tal como llegan: si esa cámara
+estampa su propia fecha, se ve la suya; si no, no se les añade ninguna, porque
+la app no puede saber cuándo se tomaron más que por lo que diga su EXIF.
+
 ---
 
 ## 7. Cómo entran las fotos

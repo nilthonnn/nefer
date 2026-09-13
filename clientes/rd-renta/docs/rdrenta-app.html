@@ -1793,6 +1793,9 @@ var RDRENTA = (function () {
       var c = document.createElement("canvas");
       c.width = Math.round(w * f); c.height = Math.round(h * f);
       c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+      // El disparo se sella con la hora de este momento, antes de codificar:
+      // lo que se guarda ya lleva la fecha dentro de la imagen.
+      sellarFecha(c, new Date());
 
       var destino = pendientes[puntero] || null;
       var sello = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
@@ -1959,6 +1962,43 @@ var RDRENTA = (function () {
 
   function hoy() { return new Date().toISOString().slice(0, 10); }
 
+  /* ---------- el sello de fecha y hora de las fotos ----------
+     La cámara del teléfono quema la fecha en la foto y el acta se firma días
+     después: sin ese sello, una foto de despacho y una de recepción son
+     indistinguibles, y es justo lo que hay que poder demostrar cuando el
+     cliente discute qué salió y qué volvió. Se escribe con la hora del
+     teléfono en el momento del disparo, no con la del acta. */
+  function dos(n) { return (n < 10 ? "0" : "") + n; }
+
+  function selloFecha(cuando) {
+    var d = cuando || new Date();
+    return dos(d.getDate()) + "/" + dos(d.getMonth() + 1) + "/" + d.getFullYear() +
+           "  " + dos(d.getHours()) + ":" + dos(d.getMinutes());
+  }
+
+  /* Abajo a la derecha, donde el equipo no suele estar, en ámbar y con sombra:
+     una foto de patio tiene cielo blanco arriba y asfalto oscuro abajo, y el
+     sello tiene que leerse sobre los dos. Devuelve lo que escribió. */
+  function sellarFecha(lienzo, cuando) {
+    var texto = selloFecha(cuando);
+    var g = lienzo.getContext("2d");
+    if (!g) return texto;
+    var pt = Math.max(11, Math.round(Math.min(lienzo.width, lienzo.height) * 0.045));
+    var margen = Math.round(pt * 0.75);
+
+    g.save();
+    g.font = "bold " + pt + 'px ui-monospace, "DejaVu Sans Mono", monospace';
+    g.textAlign = "right";
+    g.textBaseline = "alphabetic";
+    g.shadowColor = "rgba(0, 0, 0, 0.9)";
+    g.shadowBlur = Math.round(pt * 0.4);
+    g.shadowOffsetY = Math.max(1, Math.round(pt * 0.08));
+    g.fillStyle = "#FFB300";
+    g.fillText(texto, lienzo.width - margen, lienzo.height - margen);
+    g.restore();
+    return texto;
+  }
+
   /* Si la cámara no puede funcionar aquí, se dice antes de que el operador
      lo descubra en el patio, y se dice dónde sí funciona. */
   function avisarContexto() {
@@ -2048,6 +2088,7 @@ var RDRENTA = (function () {
     $: $, esc: esc, ir: ir, arrancar: arrancar, conFoco: conFoco, VERSION: VERSION,
     armarZip: armarZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
+    selloFecha: selloFecha, sellarFecha: sellarFecha,
     incrustada: incrustada,
     RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo, camara: camara,
     archivosArrastrados: archivosArrastrados, imagenesPegadas: imagenesPegadas,

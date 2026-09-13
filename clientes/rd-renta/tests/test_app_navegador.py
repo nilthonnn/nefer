@@ -437,6 +437,71 @@ def test_camara_recorre_las_casillas_y_cada_foto_cae_en_la_suya(servidor):
         nav.close()
 
 
+PIXELES_DEL_SELLO = """
+(sel) => new Promise((ok) => {
+  const el = document.querySelector(sel);
+  const i = new Image();
+  i.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = i.naturalWidth; c.height = i.naturalHeight;
+    const g = c.getContext("2d");
+    g.drawImage(i, 0, 0);
+    function ambar(x, y, w, h) {
+      const d = g.getImageData(x, y, w, h).data;
+      let n = 0;
+      for (let k = 0; k < d.length; k += 4) {
+        if (d[k] > 200 && d[k+1] > 120 && d[k+1] < 215 && d[k+2] < 100) n++;
+      }
+      return n;
+    }
+    const w = Math.round(c.width * 0.45), h = Math.round(c.height * 0.16);
+    ok({ esquina: ambar(c.width - w, c.height - h, w, h),
+         resto: ambar(0, 0, c.width, c.height - h) });
+  };
+  i.onerror = () => ok(null);
+  i.src = el.src;
+})
+"""
+
+
+def test_la_foto_de_la_camara_sale_con_la_fecha_y_la_hora_quemadas(servidor):
+    """Como la camara del telefono: el sello va dentro de la imagen.
+
+    El acta se firma dias despues del despacho y se compara con la de
+    recepcion. Sin fecha en la foto, las dos son indistinguibles, y es
+    justo lo que hay que poder demostrar cuando el cliente discute que
+    salio y que volvio.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        app = App(pg).despacho()
+
+        # El texto se arma en un solo sitio: dia, mes, ano, hora y minuto.
+        assert pg.evaluate(
+            "() => RDRENTA.selloFecha(new Date(2026, 8, 13, 7, 5))") == "13/09/2026  07:05"
+
+        pg.click("#d-camara-app")
+        pg.wait_for_function(
+            "() => { const v = document.querySelector('#cam-video');"
+            "        return v && v.videoWidth > 0; }", timeout=15000)
+        pg.click("#cam-disparar")
+        pg.wait_for_timeout(1500)
+        pg.click("#cam-cerrar")
+        pg.wait_for_timeout(300)
+
+        assert app.llenas == 1
+        cuenta = pg.evaluate(PIXELES_DEL_SELLO, "#d-grid .slot.lleno img")
+        assert cuenta is not None, "la foto no se pudo volver a abrir"
+        # El ambar del sello no sale de ninguna camara: si esta, lo pusimos
+        # nosotros. Y solo abajo a la derecha, que es donde no tapa el equipo.
+        assert cuenta["esquina"] > 500, cuenta
+        assert cuenta["resto"] == 0, cuenta
+        assert app.errores == []
+        nav.close()
+
+
 def test_el_aviso_de_instalar_dice_lo_que_toca_en_cada_sitio(servidor):
     """Instalarla es lo primero que hay que hacer en un telefono.
 
