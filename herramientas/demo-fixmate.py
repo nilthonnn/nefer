@@ -333,8 +333,13 @@ def demo_api(carpeta: Path) -> None:
                 datos = {k: v for k, v in datos.items()
                          if k not in ("evidencia_historica", "reincidencias")}
             print(f"  {respuesta.status_code}")
-            print("  " + json.dumps(datos, ensure_ascii=False, indent=2)[:700]
-                  .replace("\n", "\n  "))
+            # Se recorta por lineas enteras y se marca: un JSON cortado a
+            # mitad de palabra parece malformado, y no lo esta.
+            lineas = json.dumps(datos, ensure_ascii=False, indent=2).splitlines()
+            for linea in lineas[:22]:
+                print("  " + (linea if len(linea) <= 200 else linea[:199] + "…"))
+            if len(lineas) > 22:
+                print(f"  … ({len(lineas) - 22} lineas mas)")
     parrafo("El 404 de la ultima no es una averia: es la respuesta. No hay "
             "antecedentes de eso, y decirlo vale mas que inventar uno.")
 
