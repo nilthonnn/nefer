@@ -33,6 +33,7 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_build_extract.py \
+            tests/test_demo_fixmate.py \
             tests/test_fixmate_api.py \
             tests/test_fixmate_aprendizaje.py \
             tests/test_fixmate_cierre.py \

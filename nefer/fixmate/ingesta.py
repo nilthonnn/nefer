@@ -274,6 +274,10 @@ def de_manifiesto(manifiesto: dict, fuente: str = "") -> list[Fragmento]:
         fragmentos.append(Fragmento(
             id=f"acta:{base}:c{n}", texto=cuerpo, fuente=fuente or base, tipo="acta",
             metadatos={**comun, "item": descripcion, "estado": estado,
+                       # Una barra de tierra que no volvio es una recuperacion
+                       # que se factura, no una averia del equipo. Se indexa
+                       # —se busca por ella— pero no cuenta como falla.
+                       "clase": "consumible",
                        "codigos_dtc": _texto.codigos_dtc(cuerpo)}))
 
     # Cada componente observado o dañado es un antecedente por si mismo: la
@@ -287,6 +291,7 @@ def de_manifiesto(manifiesto: dict, fuente: str = "") -> list[Fragmento]:
         fragmentos.append(Fragmento(
             id=f"acta:{base}:{n}", texto=cuerpo, fuente=fuente or base, tipo="acta",
             metadatos={**comun, "item": item, "estado": componente.get("estado"),
+                       "clase": "componente",
                        "codigos_dtc": _texto.codigos_dtc(cuerpo)}))
     return fragmentos
 

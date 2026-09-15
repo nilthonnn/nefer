@@ -163,3 +163,60 @@ def test_la_flota_ordena_por_lo_que_mas_trabajo_da():
 def test_una_flota_vacia_lo_dice_en_vez_de_devolver_ceros():
     resumen = prediccion.flota(Indice(), HOY)
     assert resumen["equipos"] == [] and resumen["avisos"]
+
+
+# ------------------------------- lo que no es una falla, y el dato torcido
+
+def _consumible(n, fecha, descripcion, equipo="GE074-01"):
+    return Fragmento(id=f"acta:{n}:c1", tipo="acta", fuente="acta.xlsx",
+                     texto=f"CONSUMIBLE {descripcion}",
+                     metadatos={"codigo_equipo": equipo, "fecha": fecha,
+                                "item": descripcion, "estado": "NO_RETORNA",
+                                "clase": "consumible", "n_acta": n})
+
+
+def _componente(n, fecha, descripcion, equipo="GE074-01"):
+    return Fragmento(id=f"acta:{n}:1", tipo="acta", fuente="acta.xlsx",
+                     texto=f"COMPONENTE {descripcion}",
+                     metadatos={"codigo_equipo": equipo, "fecha": fecha,
+                                "item": descripcion, "estado": "D",
+                                "clase": "componente", "n_acta": n})
+
+
+def test_un_extintor_que_no_retorno_no_es_una_falla_del_equipo():
+    # Es una recuperacion que se factura. Contarla como averia hincha el
+    # MTBF y llena de extintores la lista de lo que le vuelve a pasar.
+    indice = _indice(CON_HISTORIA + [
+        _consumible("A9", "2026-08-26", "EXTINTOR DE 6 KG"),
+        _consumible("A9b", "2026-08-26", "BARRA PUESTA A TIERRA")])
+    parte = prediccion.pronostico(indice, "GE074-01", HOY)
+
+    causas = [r.causa for r in parte.reincidencias]
+    assert not any("EXTINTOR" in c for c in causas)
+    assert not any("BARRA" in c for c in causas)
+
+
+def test_un_componente_dañado_en_un_acta_si_es_una_falla():
+    indice = _indice(CON_HISTORIA + [
+        _componente("A9", "2026-08-26", "Barra de puesta a tierra")])
+    causas = [r.causa for r in prediccion.pronostico(indice, "GE074-01", HOY).reincidencias]
+    assert any("Barra de puesta a tierra" in c for c in causas)
+
+
+def test_un_horometro_que_retrocede_se_dice_y_no_se_promedia():
+    # Alguien anoto 1548 en agosto despues de haber anotado 2050 en julio.
+    # Restar la primera de la ultima da un ritmo que no vivio ninguna maquina.
+    indice = _indice([
+        _acta("A1", "2026-01-10", 1200.0),
+        _acta("A2", "2026-03-11", 1750.0),
+        _acta("A3", "2026-04-20", 1548.7),      # mal anotada
+    ])
+    uso = prediccion.uso_de(prediccion.eventos(indice, "GE074-01"))
+
+    assert uso.retrocesos == ["2026-03-11 → 2026-04-20"]
+    assert uso.ritmo_horas_dia == 9.17          # (1750 - 1200) / 60 dias
+    assert uso.horometro == 1750.0              # la mayor, con su propia fecha
+    assert uso.fecha == "2026-03-11"
+
+    parte = prediccion.pronostico(indice, "GE074-01", HOY)
+    assert any("no desanda horas" in a for a in parte.avisos)

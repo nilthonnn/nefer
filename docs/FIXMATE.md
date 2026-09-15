@@ -46,6 +46,38 @@ FIXMATE_INDICE=indice.json nefer fixmate servir --puerto 8000
 | `servir` | Levantar la API HTTP |
 | `sql` | Imprimir el esquema de PostgreSQL con pgvector |
 
+## Verlo funcionando en un minuto
+
+```bash
+python3 herramientas/demo-fixmate.py
+```
+
+Arma en una carpeta temporal lo que hay en la oficina de un taller —el
+historial en Excel con su membrete, un manual en Word con sus títulos, otro
+en PDF y un acta de nefer— y corre encima **los mismos comandos** que correría
+usted. Lo que sale en pantalla no es una imitación de la salida: es la salida.
+
+| Demo | Qué enseña |
+|---|---|
+| `formatos` | PDF, Word y Excel leídos sin instalar nada |
+| `indexar` | La primera pasada y la segunda, que no relee lo que no cambió |
+| `consultar` | Una falla preguntada como la describe el mecánico |
+| `aprendizaje` | Cuando el historial entero corrige a la búsqueda por palabras |
+| `prediccion` | Ritmo de uso, próximo servicio y lo que le vuelve a pasar |
+| `cierre` | Registrar la falla resuelta y encontrarla en el acto |
+| `api` | Las respuestas HTTP que consume la app de campo |
+
+```bash
+python3 herramientas/demo-fixmate.py prediccion cierre   # solo esas dos
+python3 herramientas/demo-fixmate.py --dir /tmp/taller   # deja el taller en pie
+python3 herramientas/demo-fixmate.py servir              # levanta la API con ese corpus
+```
+
+Con `--dir` la carpeta queda para seguir probando con sus propias consultas.
+No hace falta red ni clave de ningún servicio: es el camino local completo,
+el mismo que corre en el patio. `tests/test_demo_fixmate.py` corre la demo
+entera en cada cambio, porque una demo rota se descubre delante del cliente.
+
 ## Los tres insumos
 
 | Insumo | Formato | Qué aporta |

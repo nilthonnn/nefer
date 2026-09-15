@@ -116,6 +116,16 @@ herramienta se lee como un dato—:
   salió, y una evidencia floja se rotula como pista, no como diagnóstico.
   Con menos de doce casos confirmados, el clasificador no opina.
 
+Para verlo funcionando sin preparar nada:
+
+```bash
+python3 herramientas/demo-fixmate.py
+```
+
+Arma un taller de mentira —historial en Excel, manuales en Word y PDF, un
+acta— y corre encima los comandos de verdad, uno por uno, explicando qué
+enseña cada paso.
+
 Todo el detalle —los formatos que lee, la API HTTP, la consulta dictada,
 PostgreSQL con pgvector y lo que falta— está en
 **[docs/FIXMATE.md](docs/FIXMATE.md)**.

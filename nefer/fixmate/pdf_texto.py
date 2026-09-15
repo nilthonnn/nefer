@@ -20,6 +20,8 @@ que pasarlo por OCR.
 from __future__ import annotations
 
 import base64
+import contextlib
+import os
 import re
 import shutil
 import subprocess
@@ -89,24 +91,50 @@ def _con_pdftotext(ruta: Path) -> str:
     return proceso.stdout.decode("utf-8", "replace")
 
 
+@contextlib.contextmanager
+def _sin_ruido():
+    """Tapa la salida de error del proceso mientras dura el bloque.
+
+    Una extension nativa mal instalada no escribe su queja con `print`: la
+    escribe en el descriptor 2 desde C o desde Rust, y eso no se atrapa con
+    `try`. Aqui se tapa solo mientras se prueba pypdf, porque el fallo ya se
+    recoge y se cuenta despues: sin esto, el tecnico ve un volcado de pila
+    en pantalla antes de recibir su respuesta.
+    """
+    try:
+        copia = os.dup(2)
+    except OSError:
+        yield
+        return
+    try:
+        with open(os.devnull, "wb") as nulo:
+            os.dup2(nulo.fileno(), 2)
+        yield
+    finally:
+        os.dup2(copia, 2)
+        os.close(copia)
+
+
 def _con_pypdf(ruta: Path) -> str:
     # Se atrapa BaseException, que casi nunca esta bien y aqui si: una
     # extension nativa mal instalada no lanza una excepcion de Python, entra
     # en panico, y eso no puede tumbar la lectura de un manual cuando queda
     # otro lector por probar. Ctrl-C y la salida del proceso siguen pasando.
-    try:
-        from pypdf import PdfReader
-    except BaseException as exc:
-        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
-            raise
-        raise _SinLector(f"no utilizable ({type(exc).__name__})") from exc
-    try:
-        lector = PdfReader(str(ruta))
-        return "\n\n".join((pagina.extract_text() or "") for pagina in lector.pages)
-    except BaseException as exc:
-        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
-            raise
-        raise _SinLector(f"fallo al leer ({type(exc).__name__}: {exc})") from exc
+    with _sin_ruido():
+        try:
+            from pypdf import PdfReader
+        except BaseException as exc:
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
+            raise _SinLector(f"no utilizable ({type(exc).__name__})") from exc
+        try:
+            lector = PdfReader(str(ruta))
+            return "\n\n".join((pagina.extract_text() or "")
+                                 for pagina in lector.pages)
+        except BaseException as exc:
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
+            raise _SinLector(f"fallo al leer ({type(exc).__name__}: {exc})") from exc
 
 
 def _con_lector_propio(ruta: Path) -> str:

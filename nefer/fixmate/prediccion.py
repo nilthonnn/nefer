@@ -58,6 +58,8 @@ class Uso:
     fecha: str
     ritmo_horas_dia: float
     dias_observados: int
+    # Tramos en los que el horometro anotado bajo: dato para revisar.
+    retrocesos: list[str] = field(default_factory=list)
 
     def a_dict(self) -> dict:
         return asdict(self)
@@ -154,6 +156,24 @@ def _numero(valor) -> float | None:
     return float(m.group(0).replace(",", ".")) if m else None
 
 
+def _causa_de(meta: dict) -> str:
+    """Que cuenta como falla de este equipo, y que no.
+
+    Una causa raiz confirmada siempre cuenta. Un componente observado o
+    dañado en un acta tambien: es una averia, aunque nadie abriera una orden.
+    Un consumible que no retorno, no: es una recuperacion que se factura, y
+    contarla como falla hincha el MTBF y llena de extintores la lista de lo
+    que le vuelve a pasar a la maquina.
+    """
+    causa = str(meta.get("causa_raiz") or "").strip()
+    if causa:
+        return causa
+    item = str(meta.get("item") or "").strip()
+    if item and meta.get("clase") == "componente":
+        return f"Componente {str(meta.get('estado') or '').strip()}: {item}".strip()
+    return ""
+
+
 def eventos(indice, equipo: str | None = None) -> list[Evento]:
     """Los hechos fechados del indice, de un equipo o de toda la flota."""
     buscado = _texto.normalizar(equipo) if equipo else None
@@ -169,7 +189,7 @@ def eventos(indice, equipo: str | None = None) -> list[Evento]:
         encontrados.append(Evento(
             fecha=fecha,
             equipo=codigo,
-            causa=str(meta.get("causa_raiz") or meta.get("item") or "").strip(),
+            causa=_causa_de(meta),
             referencia=str(meta.get("codigo_ot") or meta.get("n_acta") or fragmento.id),
             horometro=_numero(meta.get("horometro")),
             repuestos=[str(r) for r in (meta.get("repuestos") or [])],
@@ -192,17 +212,33 @@ def uso_de(eventos_equipo: list[Evento]) -> Uso | None:
     if len(por_fecha) < MINIMO_PARA_RITMO:
         return None
 
+    # Un horometro no retrocede: si lo hace, alguien anoto mal. Se suman solo
+    # los tramos que avanzan, en vez de restar la primera lectura de la ultima
+    # y sacar un ritmo que no vivio ninguna maquina.
     fechas = sorted(por_fecha)
-    dias = (fechas[-1] - fechas[0]).days
-    avance = por_fecha[fechas[-1]] - por_fecha[fechas[0]]
-    if dias <= 0 or avance < 0:
+    avance = 0.0
+    dias = 0
+    retrocesos = []
+    for antes, despues in zip(fechas, fechas[1:]):
+        salto = por_fecha[despues] - por_fecha[antes]
+        if salto < 0:
+            retrocesos.append((antes.isoformat(), despues.isoformat()))
+            continue
+        avance += salto
+        dias += (despues - antes).days
+    if dias <= 0 or avance <= 0:
         return None
+    # Se informa la lectura mas alta con la fecha en que se tomo: un
+    # horometro no baja, asi que esa es la unica que puede seguir siendo
+    # cierta si otra se anoto mal.
+    mayor = max(fechas, key=lambda f: por_fecha[f])
     return Uso(
         lecturas=len(por_fecha),
-        horometro=round(por_fecha[fechas[-1]], 1),
-        fecha=fechas[-1].isoformat(),
+        horometro=round(por_fecha[mayor], 1),
+        fecha=mayor.isoformat(),
         ritmo_horas_dia=round(avance / dias, 2),
         dias_observados=dias,
+        retrocesos=[f"{a} → {b}" for a, b in retrocesos],
     )
 
 
@@ -308,6 +344,12 @@ def pronostico(indice, equipo: str, hoy: _dt.date | None = None) -> Pronostico:
         parte.avisos.append(
             "Sin dos lecturas de horometro con fecha distinta no se puede "
             "estimar el ritmo de uso ni el proximo servicio.")
+    elif parte.uso.retrocesos:
+        parte.avisos.append(
+            "El horometro anotado baja entre "
+            + "; ".join(parte.uso.retrocesos)
+            + ". Una maquina no desanda horas: revise esas actas. El ritmo "
+              "se calculo solo con los tramos que avanzan.")
     if not any(r.intervalo_medio_dias for r in parte.reincidencias):
         parte.avisos.append(
             "Ninguna causa se repitio todavia en este equipo: lo que hay son "
