@@ -1,0 +1,87 @@
+{
+  "informes": [
+    {
+      "codigo_ot": "OT-2026-0412",
+      "fecha": "2026-03-14",
+      "codigo_equipo": "GE074-01",
+      "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW",
+      "categoria": "grupo_electrogeno",
+      "codigos_dtc": ["P0300"],
+      "resumen_falla": "Humo negro abundante y pérdida de potencia al tomar carga por encima del 60% en faena a 4100 msnm.",
+      "causa_raiz": "Filtro de aire colmatado por polvo de mina; la restricción de admisión empobreció la mezcla de aire y el motor pasó a quemar rico.",
+      "solucion_aplicada": "Se reemplazó el elemento primario y secundario del filtro de aire, se limpió el porta filtro y se verificó el indicador de restricción. Se ajustó el intervalo de cambio a 250 horas por la altura y el polvo.",
+      "pasos": [
+        "Bloquear el arranque y esperar a que el turbo se detenga por completo.",
+        "Abrir la caja del filtro de aire y revisar el indicador de restricción.",
+        "Reemplazar elemento primario y secundario; no soplar con aire comprimido.",
+        "Revisar la manguera de admisión y sus abrazaderas en busca de entradas falsas.",
+        "Arrancar en vacío y tomar carga escalonada verificando el color del escape."
+      ],
+      "herramientas": ["Llave de 13 mm", "Linterna de inspección"],
+      "repuestos": ["Filtro de aire primario P533781", "Filtro de aire secundario P533782"],
+      "horas_hombre": 1.5
+    },
+    {
+      "codigo_ot": "OT-2026-0455",
+      "fecha": "2026-04-02",
+      "codigo_equipo": "GE074-02",
+      "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW",
+      "categoria": "grupo_electrogeno",
+      "codigos_dtc": ["P0300", "SPN 157"],
+      "resumen_falla": "Humo negro y marcha inestable en frío; el tablero registró falla de inyección en el cilindro 3.",
+      "causa_raiz": "Inyector del cilindro 3 con retorno excesivo por asiento de aguja desgastado.",
+      "solucion_aplicada": "Se midió el retorno de cada inyector en banco de probetas, se reemplazó el inyector del cilindro 3 y se purgó el sistema de combustible.",
+      "pasos": [
+        "Medir el retorno de inyectores con juego de probetas, motor en ralentí.",
+        "Reemplazar el inyector fuera de tolerancia y su arandela de asiento.",
+        "Apretar el prisionero del inyector a 30 N·m y la tuerca de la cañería a 25 N·m.",
+        "Purgar el sistema de combustible y verificar que no queden fugas.",
+        "Registrar el retorno de los cuatro inyectores después del cambio."
+      ],
+      "herramientas": ["Juego de probetas de retorno", "Torquímetro de 5 a 60 N·m"],
+      "repuestos": ["Inyector 0445110xxx", "Arandela de asiento de inyector"],
+      "horas_hombre": 3.0
+    },
+    {
+      "codigo_ot": "OT-2026-0501",
+      "fecha": "2026-05-09",
+      "codigo_equipo": "EX336-03",
+      "modelo_equipo": "EXCAVADORA SOBRE ORUGAS DE 36 T",
+      "categoria": "maquinaria_amarilla",
+      "codigos_dtc": [],
+      "resumen_falla": "Fuga de aceite hidráulico en el cilindro del brazo; charco bajo la máquina después de una noche parada.",
+      "causa_raiz": "Sello del vástago cortado por una rebaba en el cromado del cilindro del brazo.",
+      "solucion_aplicada": "Se desmontó el cilindro, se pulió la rebaba del cromado y se reemplazó el juego completo de sellos del vástago.",
+      "pasos": [
+        "Apoyar el implemento en el suelo y aliviar la presión del circuito antes de desconectar mangueras.",
+        "Desmontar el cilindro del brazo y drenarlo en bandeja.",
+        "Inspeccionar el cromado del vástago; pulir rebabas con piedra fina.",
+        "Reemplazar el juego completo de sellos, nunca solo el que se ve dañado.",
+        "Montar y apretar los pernos de la tapa del cilindro a 210 N·m en cruz."
+      ],
+      "herramientas": ["Puente grúa o eslinga de 2 t", "Torquímetro de 60 a 340 N·m", "Piedra de pulir fina"],
+      "repuestos": ["Juego de sellos de vástago", "Aceite hidráulico ISO 68"],
+      "horas_hombre": 6.0
+    },
+    {
+      "codigo_ot": "OT-2026-0533",
+      "fecha": "2026-06-21",
+      "codigo_equipo": "TI09-04",
+      "modelo_equipo": "TORRE DE ILUMINACIÓN DE 4 FOCOS LED",
+      "categoria": "torre_iluminacion",
+      "codigos_dtc": [],
+      "resumen_falla": "El mástil no sube y la bomba manual hace vacío.",
+      "causa_raiz": "Nivel de aceite hidráulico por debajo de la toma de la bomba manual, por fuga lenta en el acople rápido.",
+      "solucion_aplicada": "Se reemplazó el acople rápido, se rellenó el depósito y se purgó la bomba manual.",
+      "pasos": [
+        "Bajar el mástil por completo y trabar el seguro mecánico.",
+        "Verificar el nivel del depósito con el mástil abajo, nunca arriba.",
+        "Reemplazar el acople rápido con fuga y rellenar con aceite ISO 46.",
+        "Purgar la bomba manual accionándola con el retorno abierto."
+      ],
+      "herramientas": ["Llave de 19 mm", "Embudo con filtro"],
+      "repuestos": ["Acople rápido 1/4\"", "Aceite hidráulico ISO 46"],
+      "horas_hombre": 1.0
+    }
+  ]
+}

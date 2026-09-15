@@ -72,6 +72,35 @@ fotos volcadas a disco y ya asociadas a su rótulo. Recupera también las
 fotografías pegadas desde Word, que quedan incrustadas como metarchivos EMF y
 que ninguna librería de Python lee directamente (ver `nefer/emf.py`).
 
+### Diagnosticar una falla en campo
+
+```bash
+python -m nefer fixmate -i indice.json indexar historial.json manuales/ actas/
+python -m nefer fixmate -i indice.json consultar "humo negro y pierde fuerza en la subida" --dtc P0300
+```
+
+**FixMate AI** indexa el historial de fallas propio, los manuales del
+fabricante y las actas que este mismo paquete genera, y responde a una falla
+descrita como la describe un mecánico —no como la titula un capítulo— con la
+causa raíz que se confirmó, el procedimiento que funcionó y las herramientas
+y repuestos que hicieron falta.
+
+Funciona sin red: el índice es un archivo que se copia al teléfono y el
+buscador no llama a ningún servicio. Con `OPENAI_API_KEY` en el entorno, un
+modelo de lenguaje redacta mejor sobre la misma evidencia, y si no contesta
+la respuesta sale igual por el camino local.
+
+Tres reglas, las mismas de un acta y por el mismo motivo —lo que imprime una
+herramienta se lee como un dato—:
+
+- Sin antecedente en el índice no hay diagnóstico. Se dice que no lo hay.
+- Ningún par de apriete se estima: se copia literal de la fuente o no se da.
+- Cada respuesta cita la orden de trabajo o la sección de manual de la que
+  salió, y una evidencia floja se rotula como pista, no como diagnóstico.
+
+Todo el detalle —la API HTTP, el esquema del historial, PostgreSQL con
+pgvector y lo que falta— está en **[docs/FIXMATE.md](docs/FIXMATE.md)**.
+
 ### Otros comandos
 
 ```bash
@@ -86,6 +115,7 @@ python -m nefer pdf acta.xlsx                   # convertir un Excel ya generado
 |---|---|
 | **[docs/MANUAL-OPERACION.md](docs/MANUAL-OPERACION.md)** | Cómo levantar un acta, de la primera prueba en patio al uso diario |
 | **[docs/MANUAL-APP.md](docs/MANUAL-APP.md)** | La aplicación de campo pantalla por pantalla y botón por botón |
+| **[docs/FIXMATE.md](docs/FIXMATE.md)** | FixMate AI: el asistente de diagnóstico sobre el historial de fallas y los manuales OEM |
 | **[docs/app/](docs/app/)** | Aplicación de campo: despacho y recepción desde el celular, sin conexión. Cámara, galería, carpeta, arrastre y pegado; genera el PDF y el Excel en el propio teléfono |
 | **[docs/AUDITORIA-FORMATO.md](docs/AUDITORIA-FORMATO.md)** | Qué se midió del formato real, qué no cuadraba en el entregable y cómo se corrigió |
 | **[docs/AUDITORIA-CALIDAD.md](docs/AUDITORIA-CALIDAD.md)** | Revisión de la app guiada por ISO/IEC 25010: arranque, seguridad, código muerto y espacio |
@@ -136,7 +166,9 @@ Tres reglas que el validador hace cumplir porque de ellas depende una firma:
 
 En `ejemplos/` hay dos manifiestos de referencia con datos ficticios. No
 incluyen fotografías; para probar el flujo completo, extráigalas de un acta
-propia con `nefer extraer`.
+propia con `nefer extraer`. En `ejemplos/fixmate/` hay un historial de fallas
+y un extracto de manual, también ficticios, con los que probar el asistente de
+diagnóstico.
 
 ## Estructura
 
@@ -150,6 +182,7 @@ propia con `nefer extraer`.
 | `nefer/textos.py` | Redacción automática de rótulos, recuperaciones y guías |
 | `nefer/pdf.py` | Excel → PDF vía LibreOffice headless |
 | `nefer/cli.py` | Línea de comandos |
+| `nefer/fixmate/` | FixMate AI: índice, búsqueda híbrida, diagnóstico y API |
 
 ## Copias por cliente
 
@@ -174,7 +207,8 @@ python -m pytest
 ```
 
 Cubren la geometría contra las actas reales, el validador, la redacción
-automática y la ida y vuelta completa manifiesto → Excel → manifiesto.
+automática, la ida y vuelta completa manifiesto → Excel → manifiesto y el
+motor de diagnóstico de FixMate, incluida su API.
 
 La aplicación de campo tiene su propia suite, que conduce un navegador de
 verdad: abre el selector de archivos real y dispara una cámara simulada, para

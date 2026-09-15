@@ -1,0 +1,305 @@
+"""Indice de fragmentos: busqueda hibrida, filtros y persistencia en un archivo.
+
+Hibrida quiere decir dos busquedas sumadas. BM25 encuentra lo que se llama
+igual —un codigo de falla, un numero de parte, el nombre de un componente— y
+el coseno de los vectores encuentra lo que se dice parecido. Por separado cada
+una falla donde la otra acierta: 'P0300' no se parece a nada, y 'humo negro'
+casi nunca esta escrito con esas dos palabras en el informe que lo resolvio.
+
+El indice vive en un solo archivo JSON que se copia al telefono. No hay
+servidor que levantar ni base que migrar; en `almacen_pg.py` esta la version
+con PostgreSQL para quien ya tenga una flota entera cargada.
+"""
+
+from __future__ import annotations
+
+import json
+import math
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Iterable, Sequence
+
+from . import embeddings, texto as _texto
+
+VERSION_FORMATO = 1
+
+# Reparto entre las dos busquedas. Medido contra el corpus de ejemplo: por
+# debajo de 0.5 el codigo de falla exacto se pierde entre sinonimos, por
+# encima de 0.7 una consulta dictada en voz alta deja de encontrar su informe.
+PESO_VECTOR = 0.6
+PESO_LEXICO = 0.4
+
+# Lo que suma cada metadato preferido que coincide (el equipo, la familia).
+# Suma en vez de filtrar: un manual no dice de que equipo de la flota habla, y
+# descartarlo por eso deja al tecnico sin el procedimiento.
+BONO_PREFERENCIA = 0.08
+
+K1 = 1.5   # saturacion de frecuencia del BM25
+B = 0.75   # cuanto penaliza la longitud del fragmento
+
+
+@dataclass
+class Fragmento:
+    """Un trozo indexable: un informe, una seccion de manual o un acta."""
+
+    id: str
+    texto: str
+    fuente: str = ""
+    tipo: str = "documento"          # informe | manual | acta
+    metadatos: dict = field(default_factory=dict)
+    vector: list[float] | None = None
+
+    def a_dict(self) -> dict:
+        d = asdict(self)
+        if self.vector is not None:
+            d["vector"] = [round(v, 6) for v in self.vector]
+        return d
+
+    @classmethod
+    def de_dict(cls, d: dict) -> "Fragmento":
+        return cls(
+            id=str(d["id"]),
+            texto=d.get("texto", ""),
+            fuente=d.get("fuente", ""),
+            tipo=d.get("tipo", "documento"),
+            metadatos=dict(d.get("metadatos") or {}),
+            vector=list(d["vector"]) if d.get("vector") else None,
+        )
+
+
+@dataclass
+class Coincidencia:
+    """Un fragmento recuperado, con el desglose de por que salio."""
+
+    fragmento: Fragmento
+    similitud: float        # coseno del vector, [-1, 1]
+    lexico: float           # BM25 ya normalizado a [0, 1]
+    puntaje: float          # la mezcla de los dos, [0, 1]
+
+
+class ErrorIndice(ValueError):
+    """El indice no se puede usar tal como esta."""
+
+
+def _coseno(a: Sequence[float], b: Sequence[float]) -> float:
+    """Los vectores se guardan normalizados, asi que basta el producto punto."""
+    return sum(x * y for x, y in zip(a, b))
+
+
+class Indice:
+    def __init__(self, embebedor: embeddings.Embebedor | None = None):
+        self.embebedor = embebedor or embeddings.EmbebedorLocal()
+        self.fragmentos: list[Fragmento] = []
+        self._tokens: list[list[str]] = []
+        self._frecuencias: list[dict[str, int]] = []
+        self._documentos_por_token: dict[str, int] = {}
+        self._largo_medio = 0.0
+
+    # ---------------------------------------------------------------- carga
+
+    def agregar(self, fragmentos: Iterable[Fragmento]) -> int:
+        """Añade fragmentos y calcula de una sola vez los que no traen vector.
+
+        Un id que ya estaba se reemplaza en su sitio. Indexar dos veces la
+        misma carpeta —o una carpeta y un archivo de dentro— es lo normal, y
+        el resultado tiene que ser el mismo informe una vez, no dos veces el
+        mismo antecedente ocupando los tres primeros lugares.
+        """
+        nuevos = list(fragmentos)
+        if not nuevos:
+            return 0
+        pendientes = [f for f in nuevos if f.vector is None]
+        if pendientes:
+            vectores = self.embebedor.embeber([f.texto for f in pendientes])
+            for fragmento, vector in zip(pendientes, vectores):
+                fragmento.vector = vector
+
+        posicion = {f.id: i for i, f in enumerate(self.fragmentos)}
+        agregados = 0
+        for fragmento in nuevos:
+            if fragmento.id in posicion:
+                self.fragmentos[posicion[fragmento.id]] = fragmento
+            else:
+                posicion[fragmento.id] = len(self.fragmentos)
+                self.fragmentos.append(fragmento)
+                agregados += 1
+        self._reindexar()
+        return agregados
+
+    def _reindexar(self) -> None:
+        self._tokens = [_texto.tokenizar(f"{f.texto} {self._texto_metadatos(f)}")
+                        for f in self.fragmentos]
+        self._frecuencias = []
+        self._documentos_por_token = {}
+        for tokens in self._tokens:
+            frecuencia: dict[str, int] = {}
+            for token in tokens:
+                frecuencia[token] = frecuencia.get(token, 0) + 1
+            self._frecuencias.append(frecuencia)
+            for token in frecuencia:
+                self._documentos_por_token[token] = self._documentos_por_token.get(token, 0) + 1
+        self._largo_medio = (sum(len(t) for t in self._tokens) / len(self._tokens)
+                             if self._tokens else 0.0)
+
+    @staticmethod
+    def _texto_metadatos(fragmento: Fragmento) -> str:
+        """Los metadatos tambien se buscan: la OT y el codigo de falla se dictan."""
+        partes = []
+        for clave, valor in fragmento.metadatos.items():
+            if clave.startswith("_"):
+                continue
+            if isinstance(valor, (list, tuple)):
+                partes.extend(str(v) for v in valor)
+            elif isinstance(valor, (str, int, float)):
+                partes.append(str(valor))
+        return " ".join(partes)
+
+    # ------------------------------------------------------------ busqueda
+
+    def buscar(self, consulta: str, limite: int = 3,
+               filtros: dict | None = None, umbral: float = 0.0,
+               preferencias: dict | None = None) -> list[Coincidencia]:
+        """Los `limite` fragmentos mas parecidos a la consulta, mejor primero.
+
+        `filtros` descarta lo que no case; `preferencias` no descarta nada, solo
+        empuja hacia arriba lo que ademas coincide.
+        """
+        if not self.fragmentos:
+            return []
+        if limite < 1:
+            raise ValueError("el limite de resultados no baja de 1.")
+
+        candidatos = [i for i in range(len(self.fragmentos))
+                      if _pasa_filtros(self.fragmentos[i], filtros)]
+        if not candidatos:
+            return []
+
+        vector_consulta = self.embebedor.embeber([consulta])[0]
+        lexicos = self._bm25(consulta, candidatos)
+        # BM25 no tiene tope: se lleva al [0, 1] del coseno con el mayor del
+        # propio lote, que es lo unico comparable dentro de una consulta.
+        mayor = max(lexicos.values()) if lexicos else 0.0
+
+        resultados = []
+        for i in candidatos:
+            fragmento = self.fragmentos[i]
+            similitud = _coseno(vector_consulta, fragmento.vector or [])
+            lexico = (lexicos.get(i, 0.0) / mayor) if mayor > 0 else 0.0
+            puntaje = PESO_VECTOR * max(similitud, 0.0) + PESO_LEXICO * lexico
+            puntaje = min(1.0, puntaje + BONO_PREFERENCIA * _preferencias_que_casan(
+                fragmento, preferencias))
+            if puntaje >= umbral:
+                resultados.append(Coincidencia(fragmento, round(similitud, 4),
+                                               round(lexico, 4), round(puntaje, 4)))
+        # A igualdad de puntaje gana el id, para que dos corridas del mismo
+        # indice devuelvan el mismo orden.
+        resultados.sort(key=lambda c: (-c.puntaje, c.fragmento.id))
+        return resultados[:limite]
+
+    def _bm25(self, consulta: str, candidatos: list[int]) -> dict[int, float]:
+        tokens = _texto.tokenizar(consulta)
+        if not tokens or not self._largo_medio:
+            return {}
+        total = len(self.fragmentos)
+        puntajes: dict[int, float] = {}
+        for token in set(tokens):
+            documentos = self._documentos_por_token.get(token, 0)
+            if not documentos:
+                continue
+            idf = math.log(1 + (total - documentos + 0.5) / (documentos + 0.5))
+            for i in candidatos:
+                frecuencia = self._frecuencias[i].get(token, 0)
+                if not frecuencia:
+                    continue
+                largo = len(self._tokens[i])
+                denominador = frecuencia + K1 * (1 - B + B * largo / self._largo_medio)
+                puntajes[i] = puntajes.get(i, 0.0) + idf * frecuencia * (K1 + 1) / denominador
+        return puntajes
+
+    # --------------------------------------------------------- persistencia
+
+    def guardar(self, ruta: str | Path) -> Path:
+        destino = Path(ruta)
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        datos = {
+            "version": VERSION_FORMATO,
+            "embebedor": self.embebedor.nombre,
+            "dimension": self.embebedor.dimension,
+            "fragmentos": [f.a_dict() for f in self.fragmentos],
+        }
+        destino.write_text(json.dumps(datos, ensure_ascii=False, indent=1) + "\n",
+                           encoding="utf-8")
+        return destino
+
+    @classmethod
+    def cargar(cls, ruta: str | Path,
+               embebedor: embeddings.Embebedor | None = None) -> "Indice":
+        origen = Path(ruta)
+        if not origen.is_file():
+            raise ErrorIndice(
+                f"no existe el indice {origen}. Constrúyalo con: nefer fixmate indexar")
+        try:
+            datos = json.loads(origen.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ErrorIndice(f"{origen}: no es un indice legible ({exc}).") from exc
+        if datos.get("version") != VERSION_FORMATO:
+            raise ErrorIndice(
+                f"{origen}: indice en formato v{datos.get('version')}, "
+                f"este nefer lee v{VERSION_FORMATO}. Vuelva a indexar.")
+
+        nombre = datos.get("embebedor", "local")
+        embebedor = embebedor or embeddings.obtener(nombre)
+        # Buscar con un embebedor distinto del que construyo el indice no da
+        # error en ningun lado: da resultados sin sentido, que es peor.
+        if embebedor.nombre != nombre:
+            raise ErrorIndice(
+                f"{origen}: se indexo con '{nombre}' y se esta buscando con "
+                f"'{embebedor.nombre}'. Vuelva a indexar o use el mismo embebedor.")
+
+        indice = cls(embebedor)
+        indice.fragmentos = [Fragmento.de_dict(d) for d in datos.get("fragmentos", [])]
+        sin_vector = [f.id for f in indice.fragmentos if not f.vector]
+        if sin_vector:
+            raise ErrorIndice(
+                f"{origen}: {len(sin_vector)} fragmentos sin vector "
+                f"(el primero, {sin_vector[0]}). Vuelva a indexar.")
+        indice._reindexar()
+        return indice
+
+    def __len__(self) -> int:
+        return len(self.fragmentos)
+
+
+def _preferencias_que_casan(fragmento: Fragmento, preferencias: dict | None) -> int:
+    """Cuantas preferencias cumple el fragmento. Ninguna es obligatoria."""
+    if not preferencias:
+        return 0
+    return sum(1 for clave, valor in preferencias.items()
+               if valor not in (None, "", [])
+               and _pasa_filtros(fragmento, {clave: valor}))
+
+
+def _pasa_filtros(fragmento: Fragmento, filtros: dict | None) -> bool:
+    """Un filtro vacio no filtra; uno con valor exige coincidencia exacta.
+
+    Los valores de lista casan por pertenencia: un informe con
+    `codigos_dtc: ['P0300', 'SPN157']` pasa el filtro `codigo_dtc='P0300'`.
+    """
+    if not filtros:
+        return True
+    for clave, esperado in filtros.items():
+        if esperado in (None, "", []):
+            continue
+        real = fragmento.metadatos.get(clave)
+        if real is None and clave.endswith("s"):
+            real = fragmento.metadatos.get(clave[:-1])
+        if real is None and not clave.endswith("s"):
+            real = fragmento.metadatos.get(clave + "s")
+        if real is None:
+            return False
+        reales = real if isinstance(real, (list, tuple, set)) else [real]
+        esperados = esperado if isinstance(esperado, (list, tuple, set)) else [esperado]
+        normal = {_texto.normalizar(str(v)) for v in reales}
+        if not any(_texto.normalizar(str(e)) in normal for e in esperados):
+            return False
+    return True

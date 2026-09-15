@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   nucleo:
-    name: núcleo (generador, esquema y textos)
+    name: núcleo (generador, esquema, textos y FixMate)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,6 +33,11 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_build_extract.py \
+            tests/test_fixmate_api.py \
+            tests/test_fixmate_indice.py \
+            tests/test_fixmate_ingesta.py \
+            tests/test_fixmate_motor.py \
+            tests/test_fixmate_texto.py \
             tests/test_layout.py \
             tests/test_publicacion_clon.py \
             tests/test_schema.py \
