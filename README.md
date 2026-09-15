@@ -75,20 +75,37 @@ que ninguna librería de Python lee directamente (ver `nefer/emf.py`).
 ### Diagnosticar una falla en campo
 
 ```bash
-python -m nefer fixmate -i indice.json indexar historial.json manuales/ actas/
+python -m nefer fixmate -i indice.json indexar historial.xlsx manuales/ actas/
 python -m nefer fixmate -i indice.json consultar "humo negro y pierde fuerza en la subida" --dtc P0300
 ```
 
 **FixMate AI** indexa el historial de fallas propio, los manuales del
-fabricante y las actas que este mismo paquete genera, y responde a una falla
-descrita como la describe un mecánico —no como la titula un capítulo— con la
-causa raíz que se confirmó, el procedimiento que funcionó y las herramientas
-y repuestos que hicieron falta.
+fabricante —en PDF, Word o Excel, como estén— y las actas que este mismo
+paquete genera, y responde a una falla descrita como la describe un mecánico
+—no como la titula un capítulo— con la causa raíz que se confirmó, el
+procedimiento que funcionó y las herramientas y repuestos que hicieron falta.
 
 Funciona sin red: el índice es un archivo que se copia al teléfono y el
 buscador no llama a ningún servicio. Con `OPENAI_API_KEY` en el entorno, un
-modelo de lenguaje redacta mejor sobre la misma evidencia, y si no contesta
-la respuesta sale igual por el camino local.
+modelo de lenguaje redacta mejor sobre la misma evidencia y se puede dictar
+la consulta por audio; si el servicio no contesta, la respuesta sale igual
+por el camino local.
+
+Además de buscar, **aprende del historial entero**: un clasificador
+bayesiano entrenado con las causas raíz confirmadas dice a qué termina
+pareciéndose una descripción así, publica su acierto medido al lado del
+porcentaje y corrige a la búsqueda cuando esta se fue por un parecido de
+palabras. Y **predice con lo que hay**: del horómetro anotado a mano y de las
+fechas de las órdenes salen el ritmo de uso, el próximo servicio en fecha y
+las causas que reinciden y ya están vencidas.
+
+```bash
+python -m nefer fixmate -i indice.json predecir GE074-01
+python -m nefer fixmate -i indice.json cerrar --falla "..." --causa "..." --solucion "..."
+```
+
+`cerrar` cierra el círculo: la falla resuelta hoy entra al historial y al
+índice en el acto, y la encuentra el compañero que pregunte mañana.
 
 Tres reglas, las mismas de un acta y por el mismo motivo —lo que imprime una
 herramienta se lee como un dato—:
@@ -97,9 +114,11 @@ herramienta se lee como un dato—:
 - Ningún par de apriete se estima: se copia literal de la fuente o no se da.
 - Cada respuesta cita la orden de trabajo o la sección de manual de la que
   salió, y una evidencia floja se rotula como pista, no como diagnóstico.
+  Con menos de doce casos confirmados, el clasificador no opina.
 
-Todo el detalle —la API HTTP, el esquema del historial, PostgreSQL con
-pgvector y lo que falta— está en **[docs/FIXMATE.md](docs/FIXMATE.md)**.
+Todo el detalle —los formatos que lee, la API HTTP, la consulta dictada,
+PostgreSQL con pgvector y lo que falta— está en
+**[docs/FIXMATE.md](docs/FIXMATE.md)**.
 
 ### Otros comandos
 
@@ -182,7 +201,7 @@ diagnóstico.
 | `nefer/textos.py` | Redacción automática de rótulos, recuperaciones y guías |
 | `nefer/pdf.py` | Excel → PDF vía LibreOffice headless |
 | `nefer/cli.py` | Línea de comandos |
-| `nefer/fixmate/` | FixMate AI: índice, búsqueda híbrida, diagnóstico y API |
+| `nefer/fixmate/` | FixMate AI: lectura de documentos, búsqueda híbrida, diagnóstico, predicción y API |
 
 ## Copias por cliente
 
@@ -207,8 +226,9 @@ python -m pytest
 ```
 
 Cubren la geometría contra las actas reales, el validador, la redacción
-automática, la ida y vuelta completa manifiesto → Excel → manifiesto y el
-motor de diagnóstico de FixMate, incluida su API.
+automática, la ida y vuelta completa manifiesto → Excel → manifiesto y todo
+FixMate: los lectores de PDF, Word y Excel, la búsqueda, el clasificador de
+causas, la predicción, el cierre del círculo y la API.
 
 La aplicación de campo tiene su propia suite, que conduce un navegador de
 verdad: abre el selector de archivos real y dispara una cámara simulada, para

@@ -185,3 +185,122 @@ def test_el_corpus_de_ejemplo_se_indexa_entero():
     assert len(indice) >= 8
     tipos = {f.tipo for f in indice.fragmentos}
     assert tipos == {"informe", "manual"}
+
+
+# ------------------------------- el historial como esta de verdad: en Excel
+
+def _libro(tmp_path, filas, nombre="historial.xlsx", hoja="HISTORIAL"):
+    from openpyxl import Workbook
+
+    libro = Workbook()
+    hoja_activa = libro.active
+    hoja_activa.title = hoja
+    for fila in filas:
+        hoja_activa.append(fila)
+    ruta = tmp_path / nombre
+    libro.save(ruta)
+    return ruta
+
+
+FILAS_TALLER = [
+    ["MAQUINARIAS DEL SUR S.A.C."],
+    ["Historial de fallas 2026"],
+    [],
+    ["N° OT", "Fecha", "Equipo", "Código de falla", "Falla reportada",
+     "Causa raíz", "Trabajo realizado", "Repuestos", "Técnico", "HH"],
+    ["OT-2026-0412", "2026-03-14", "GE074-01", "P0300",
+     "Humo negro y pérdida de potencia a 4100 msnm", "Filtro de aire colmatado",
+     "Cambio de elemento primario y secundario", "Filtro P533781; Filtro P533782",
+     "J. Quispe", 1.5],
+    ["OT-2026-0455", "2026-04-02", "GE074-02", "P0300; SPN 157",
+     "Marcha inestable en frío", "Inyector con retorno excesivo",
+     "Reemplazo de inyector y purga", "Inyector 0445110xxx", "M. Ríos", 3],
+]
+
+
+def test_el_historial_en_excel_se_lee_fila_por_fila(tmp_path):
+    fragmentos = ingesta.de_archivo(_libro(tmp_path, FILAS_TALLER))
+    assert len(fragmentos) == 2
+    assert all(f.tipo == "informe" for f in fragmentos)
+
+    primero = fragmentos[0].metadatos
+    assert primero["codigo_ot"] == "OT-2026-0412"
+    assert primero["codigo_equipo"] == "GE074-01"
+    assert primero["causa_raiz"] == "Filtro de aire colmatado"
+    assert primero["solucion_aplicada"].startswith("Cambio de elemento")
+    assert primero["repuestos"] == ["Filtro P533781", "Filtro P533782"]
+
+
+def test_las_columnas_se_reconocen_como_las_escribe_el_taller(tmp_path):
+    # "N° OT", "Falla reportada" y "Trabajo realizado" no son los nombres del
+    # esquema; son los que estan en el libro de la oficina.
+    assert ingesta.clave_columna("N° OT") == "n ot"
+    assert ingesta.clave_columna("Nº de Orden") == "no de orden"
+    assert ingesta.clave_columna("CAUSA RAÍZ:") == "causa raiz"
+
+
+def test_los_codigos_de_falla_de_una_celda_se_separan(tmp_path):
+    fragmentos = ingesta.de_archivo(_libro(tmp_path, FILAS_TALLER))
+    assert fragmentos[1].metadatos["codigos_dtc"] == ["P0300", "SPN157"]
+
+
+def test_las_columnas_que_no_son_del_esquema_no_se_tiran(tmp_path):
+    # Por el tecnico que la atendio tambien se busca.
+    fragmento = ingesta.de_archivo(_libro(tmp_path, FILAS_TALLER))[0]
+    assert "J. Quispe" in fragmento.texto
+    assert fragmento.metadatos["col_tecnico"] == "J. Quispe"
+
+
+def test_un_excel_sin_columna_de_falla_ni_de_causa_lo_dice(tmp_path):
+    ruta = _libro(tmp_path, [["Cliente", "Monto"], ["ANDINA", 1200]],
+                  nombre="facturas.xlsx")
+    with pytest.raises(ingesta.ErrorIngesta, match="Falla"):
+        ingesta.de_historial_xlsx(ruta)
+
+
+def test_un_excel_que_no_es_historial_se_indexa_como_manual(tmp_path):
+    ruta = _libro(tmp_path, [["Par de apriete", "30 N·m"], ["Código", "P0300"]],
+                  nombre="tabla-de-torques.xlsx", hoja="Inyección")
+    fragmentos = ingesta.de_archivo(ruta)
+    assert fragmentos[0].tipo == "manual"
+    assert fragmentos[0].metadatos["torques"] == ["30 N·m"]
+
+
+def test_un_acta_de_nefer_en_excel_se_reconoce_como_acta(tmp_path):
+    from nefer import build
+
+    manifiesto = dict(MANIFIESTO, consumibles=[
+        {"descripcion": "BARRA PUESTA A TIERRA", "estado_recepcion": "NO_RETORNA",
+         "texto_recepcion": "EL EQUIPO RETORNO SIN BARRA PUESTA A TIERRA"}])
+    xlsx, _ = build.construir(manifiesto, tmp_path / "acta.xlsx", raiz=tmp_path)
+
+    assert ingesta.es_acta_de_nefer(xlsx)
+    fragmentos = ingesta.de_archivo(xlsx)
+    assert fragmentos[0].tipo == "acta"
+    assert any("BARRA PUESTA A TIERRA" in f.texto for f in fragmentos)
+
+
+def test_cada_fragmento_sabe_de_que_archivo_salio(tmp_path):
+    ruta = _libro(tmp_path, FILAS_TALLER)
+    assert all(f.metadatos["_origen"] == str(ruta) for f in ingesta.de_archivo(ruta))
+
+
+def test_un_manual_en_word_entra_como_manual(tmp_path):
+    import zipfile
+
+    W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+    ruta = tmp_path / "manual.docx"
+    with zipfile.ZipFile(ruta, "w") as z:
+        z.writestr("[Content_Types].xml", "<Types/>")
+        z.writestr("word/document.xml",
+                   f'<?xml version="1.0"?><w:document {W}><w:body>'
+                   '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>'
+                   '<w:r><w:t>Sistema de inyeccion</w:t></w:r></w:p>'
+                   '<w:p><w:r><w:t>Par de apriete del prisionero: 30 N.m. '
+                   'El codigo P0300 indica fallo de combustion.</w:t></w:r></w:p>'
+                   '</w:body></w:document>')
+    fragmentos = ingesta.de_archivo(ruta)
+    assert fragmentos[0].tipo == "manual"
+    assert fragmentos[0].metadatos["seccion"] == "Sistema de inyeccion"
+    assert fragmentos[0].metadatos["torques"] == ["30 N.m"]
+    assert fragmentos[0].metadatos["codigos_dtc"] == ["P0300"]

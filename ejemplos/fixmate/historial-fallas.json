@@ -6,9 +6,10 @@
       "codigo_equipo": "GE074-01",
       "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW",
       "categoria": "grupo_electrogeno",
+      "horometro": 1180.5,
       "codigos_dtc": ["P0300"],
       "resumen_falla": "Humo negro abundante y pérdida de potencia al tomar carga por encima del 60% en faena a 4100 msnm.",
-      "causa_raiz": "Filtro de aire colmatado por polvo de mina; la restricción de admisión empobreció la mezcla de aire y el motor pasó a quemar rico.",
+      "causa_raiz": "Filtro de aire colmatado por polvo de mina; la restricción de admisión empobreció la mezcla y el motor pasó a quemar rico.",
       "solucion_aplicada": "Se reemplazó el elemento primario y secundario del filtro de aire, se limpió el porta filtro y se verificó el indicador de restricción. Se ajustó el intervalo de cambio a 250 horas por la altura y el polvo.",
       "pasos": [
         "Bloquear el arranque y esperar a que el turbo se detenga por completo.",
@@ -27,6 +28,7 @@
       "codigo_equipo": "GE074-02",
       "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW",
       "categoria": "grupo_electrogeno",
+      "horometro": 2260.0,
       "codigos_dtc": ["P0300", "SPN 157"],
       "resumen_falla": "Humo negro y marcha inestable en frío; el tablero registró falla de inyección en el cilindro 3.",
       "causa_raiz": "Inyector del cilindro 3 con retorno excesivo por asiento de aguja desgastado.",
@@ -48,6 +50,7 @@
       "codigo_equipo": "EX336-03",
       "modelo_equipo": "EXCAVADORA SOBRE ORUGAS DE 36 T",
       "categoria": "maquinaria_amarilla",
+      "horometro": 7420.0,
       "codigos_dtc": [],
       "resumen_falla": "Fuga de aceite hidráulico en el cilindro del brazo; charco bajo la máquina después de una noche parada.",
       "causa_raiz": "Sello del vástago cortado por una rebaba en el cromado del cilindro del brazo.",
@@ -69,6 +72,7 @@
       "codigo_equipo": "TI09-04",
       "modelo_equipo": "TORRE DE ILUMINACIÓN DE 4 FOCOS LED",
       "categoria": "torre_iluminacion",
+      "horometro": 3110.0,
       "codigos_dtc": [],
       "resumen_falla": "El mástil no sube y la bomba manual hace vacío.",
       "causa_raiz": "Nivel de aceite hidráulico por debajo de la toma de la bomba manual, por fuga lenta en el acople rápido.",
@@ -82,6 +86,277 @@
       "herramientas": ["Llave de 19 mm", "Embudo con filtro"],
       "repuestos": ["Acople rápido 1/4\"", "Aceite hidráulico ISO 46"],
       "horas_hombre": 1.0
+    },
+    {
+      "codigo_ot": "OT-2025-0318",
+      "fecha": "2025-11-12",
+      "codigo_equipo": "GE074-01",
+      "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW",
+      "categoria": "grupo_electrogeno",
+      "horometro": 690.0,
+      "codigos_dtc": ["P0300"],
+      "resumen_falla": "El equipo humea negro al subir carga y el escape ensucia la caseta.",
+      "causa_raiz": "Filtro de aire colmatado por polvo de mina.",
+      "solucion_aplicada": "Se cambió el elemento primario y se dejó registrado el indicador de restricción en la bitácora.",
+      "pasos": [
+        "Revisar el indicador de restricción antes de abrir la caja.",
+        "Cambiar el elemento primario y anotar el horómetro del cambio."
+      ],
+      "herramientas": ["Llave de 13 mm"],
+      "repuestos": ["Filtro de aire primario P533781"],
+      "horas_hombre": 1.0
+    },
+    {
+      "codigo_ot": "OT-2026-0140",
+      "fecha": "2026-01-18",
+      "codigo_equipo": "GE074-03",
+      "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW",
+      "categoria": "grupo_electrogeno",
+      "horometro": 4015.0,
+      "codigos_dtc": ["P0300"],
+      "resumen_falla": "Pérdida de potencia con humo oscuro en obra con mucha tierra.",
+      "causa_raiz": "Filtro de aire colmatado; la restricción de admisión dejó al motor sin aire.",
+      "solucion_aplicada": "Cambio de elemento primario y secundario y limpieza del porta filtro.",
+      "pasos": [
+        "Bloquear el arranque antes de abrir la caja del filtro.",
+        "Cambiar ambos elementos y revisar las abrazaderas de admisión."
+      ],
+      "herramientas": ["Llave de 13 mm"],
+      "repuestos": ["Filtro de aire primario P533781", "Filtro de aire secundario P533782"],
+      "horas_hombre": 1.5
+    },
+    {
+      "codigo_ot": "OT-2025-0402",
+      "fecha": "2025-12-03",
+      "codigo_equipo": "GE074-02",
+      "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW",
+      "categoria": "grupo_electrogeno",
+      "horometro": 1890.0,
+      "codigos_dtc": ["P0300"],
+      "resumen_falla": "Motor con cascabeleo y humo en ralentí; consumo de combustible por encima de lo normal.",
+      "causa_raiz": "Inyector con retorno excesivo por aguja desgastada.",
+      "solucion_aplicada": "Se midió el retorno de los cuatro inyectores y se reemplazó el que estaba fuera de tolerancia.",
+      "pasos": [
+        "Medir el retorno de inyectores en banco de probetas.",
+        "Reemplazar el inyector fuera de tolerancia y purgar el sistema."
+      ],
+      "herramientas": ["Juego de probetas de retorno", "Torquímetro de 5 a 60 N·m"],
+      "repuestos": ["Inyector 0445110xxx"],
+      "horas_hombre": 3.5
+    },
+    {
+      "codigo_ot": "OT-2026-0572",
+      "fecha": "2026-07-08",
+      "codigo_equipo": "GE074-01",
+      "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW",
+      "categoria": "grupo_electrogeno",
+      "horometro": 2050.0,
+      "codigos_dtc": ["SPN 157"],
+      "resumen_falla": "Ralentí irregular y olor a diésel en la caseta; falla de combustión intermitente.",
+      "causa_raiz": "Inyector con retorno excesivo por asiento de aguja desgastado.",
+      "solucion_aplicada": "Reemplazo del inyector afectado, arandela nueva y purga del sistema de combustible.",
+      "pasos": [
+        "Medir retorno de inyectores con el motor a temperatura de trabajo.",
+        "Apretar el prisionero del inyector a 30 N·m.",
+        "Purgar el sistema y verificar que no queden fugas."
+      ],
+      "herramientas": ["Juego de probetas de retorno", "Torquímetro de 5 a 60 N·m"],
+      "repuestos": ["Inyector 0445110xxx", "Arandela de asiento de inyector"],
+      "horas_hombre": 3.0
+    },
+    {
+      "codigo_ot": "OT-2026-0233",
+      "fecha": "2026-02-11",
+      "codigo_equipo": "GE074-03",
+      "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW",
+      "categoria": "grupo_electrogeno",
+      "horometro": 4180.0,
+      "codigos_dtc": [],
+      "resumen_falla": "No arranca en la mañana; el motor de arranque gira lento y el tablero se reinicia.",
+      "causa_raiz": "Baterías sulfatadas con densidad por debajo de 1.220 en dos vasos.",
+      "solucion_aplicada": "Se reemplazó el banco de baterías, se limpiaron los bornes y se apretaron a 8 N·m.",
+      "pasos": [
+        "Medir densidad de cada vaso con el equipo frío.",
+        "Reemplazar el banco completo, nunca una sola batería del par.",
+        "Limpiar bornes y apretarlos a 8 N·m."
+      ],
+      "herramientas": ["Densímetro", "Llave de 10 mm", "Cepillo de bornes"],
+      "repuestos": ["Batería 12V 100Ah (x2)", "Protector de bornes"],
+      "horas_hombre": 1.5
+    },
+    {
+      "codigo_ot": "OT-2026-0611",
+      "fecha": "2026-08-02",
+      "codigo_equipo": "TI09-02",
+      "modelo_equipo": "TORRE DE ILUMINACIÓN DE 4 FOCOS LED",
+      "categoria": "torre_iluminacion",
+      "horometro": 2740.0,
+      "codigos_dtc": [],
+      "resumen_falla": "El equipo no arranca y las luces del tablero se apagan al intentar.",
+      "causa_raiz": "Baterías sulfatadas por descargas profundas durante el almacenamiento.",
+      "solucion_aplicada": "Cambio de batería, limpieza de bornes y carga de mantenimiento antes de despachar.",
+      "pasos": [
+        "Medir densidad y voltaje en reposo.",
+        "Reemplazar la batería y dejar carga de mantenimiento 12 horas."
+      ],
+      "herramientas": ["Densímetro", "Cargador de mantenimiento"],
+      "repuestos": ["Batería 12V 100Ah"],
+      "horas_hombre": 1.0
+    },
+    {
+      "codigo_ot": "OT-2025-0377",
+      "fecha": "2025-11-28",
+      "codigo_equipo": "EX336-03",
+      "modelo_equipo": "EXCAVADORA SOBRE ORUGAS DE 36 T",
+      "categoria": "maquinaria_amarilla",
+      "horometro": 6980.0,
+      "codigos_dtc": [],
+      "resumen_falla": "Goteo de aceite en el cilindro del cucharón y pérdida de fuerza al cargar.",
+      "causa_raiz": "Sello del vástago cortado por rebaba en el cromado.",
+      "solucion_aplicada": "Desmontaje del cilindro, pulido del cromado y cambio del juego de sellos.",
+      "pasos": [
+        "Aliviar la presión del circuito antes de desconectar mangueras.",
+        "Pulir el cromado y cambiar el juego completo de sellos.",
+        "Apretar los pernos de la tapa a 210 N·m en cruz."
+      ],
+      "herramientas": ["Torquímetro de 60 a 340 N·m", "Piedra de pulir fina"],
+      "repuestos": ["Juego de sellos de vástago", "Aceite hidráulico ISO 68"],
+      "horas_hombre": 5.5
+    },
+    {
+      "codigo_ot": "OT-2026-0288",
+      "fecha": "2026-02-24",
+      "codigo_equipo": "EX336-01",
+      "modelo_equipo": "EXCAVADORA SOBRE ORUGAS DE 36 T",
+      "categoria": "maquinaria_amarilla",
+      "horometro": 9120.0,
+      "codigos_dtc": [],
+      "resumen_falla": "Charco de aceite hidráulico bajo la máquina al amanecer y nivel del depósito bajo.",
+      "causa_raiz": "Sello del vástago cortado en el cilindro de levante.",
+      "solucion_aplicada": "Cambio del juego de sellos del vástago y relleno del circuito.",
+      "pasos": [
+        "Apoyar el implemento y aliviar presión.",
+        "Cambiar el juego completo de sellos y rellenar con ISO 68."
+      ],
+      "herramientas": ["Torquímetro de 60 a 340 N·m"],
+      "repuestos": ["Juego de sellos de vástago", "Aceite hidráulico ISO 68"],
+      "horas_hombre": 6.0
+    },
+    {
+      "codigo_ot": "OT-2026-0349",
+      "fecha": "2026-03-30",
+      "codigo_equipo": "EX336-01",
+      "modelo_equipo": "EXCAVADORA SOBRE ORUGAS DE 36 T",
+      "categoria": "maquinaria_amarilla",
+      "horometro": 9410.0,
+      "codigos_dtc": [],
+      "resumen_falla": "Manguera hidráulica reventada en el brazo, con pérdida de aceite en chorro.",
+      "causa_raiz": "Manguera rozada contra el chasis por abrazadera suelta.",
+      "solucion_aplicada": "Se reemplazó la manguera, se repuso la abrazadera y se revisó todo el tendido en busca de otros roces.",
+      "pasos": [
+        "Despresurizar el circuito y recoger el aceite derramado.",
+        "Reemplazar la manguera y reponer la abrazadera.",
+        "Recorrer el tendido completo buscando roces contra el chasis."
+      ],
+      "herramientas": ["Juego de llaves de corona", "Bandeja de recolección"],
+      "repuestos": ["Manguera hidráulica 1/2\" x 1200 mm", "Abrazadera de tendido"],
+      "horas_hombre": 2.5
+    },
+    {
+      "codigo_ot": "OT-2026-0498",
+      "fecha": "2026-05-04",
+      "codigo_equipo": "EX336-03",
+      "modelo_equipo": "EXCAVADORA SOBRE ORUGAS DE 36 T",
+      "categoria": "maquinaria_amarilla",
+      "horometro": 7350.0,
+      "codigos_dtc": [],
+      "resumen_falla": "Chorro de aceite en la línea del martillo al accionar el pedal.",
+      "causa_raiz": "Manguera rozada contra la estructura por falta de abrazadera.",
+      "solucion_aplicada": "Cambio de manguera y colocación de abrazaderas nuevas en dos puntos del tendido.",
+      "pasos": [
+        "Despresurizar antes de desconectar.",
+        "Cambiar la manguera y asegurar el tendido con abrazaderas."
+      ],
+      "herramientas": ["Juego de llaves de corona"],
+      "repuestos": ["Manguera hidráulica 3/4\" x 900 mm", "Abrazadera de tendido"],
+      "horas_hombre": 2.0
+    },
+    {
+      "codigo_ot": "OT-2026-0205",
+      "fecha": "2026-02-02",
+      "codigo_equipo": "TI09-04",
+      "modelo_equipo": "TORRE DE ILUMINACIÓN DE 4 FOCOS LED",
+      "categoria": "torre_iluminacion",
+      "horometro": 2880.0,
+      "codigos_dtc": [],
+      "resumen_falla": "El mástil sube a medias y baja solo durante la noche.",
+      "causa_raiz": "Fuga lenta en el acople rápido del circuito del mástil.",
+      "solucion_aplicada": "Reemplazo del acople rápido y relleno del depósito con ISO 46.",
+      "pasos": [
+        "Bajar el mástil y trabar el seguro mecánico.",
+        "Cambiar el acople y purgar la bomba manual."
+      ],
+      "herramientas": ["Llave de 19 mm"],
+      "repuestos": ["Acople rápido 1/4\"", "Aceite hidráulico ISO 46"],
+      "horas_hombre": 1.0
+    },
+    {
+      "codigo_ot": "OT-2026-0620",
+      "fecha": "2026-08-14",
+      "codigo_equipo": "TI09-02",
+      "modelo_equipo": "TORRE DE ILUMINACIÓN DE 4 FOCOS LED",
+      "categoria": "torre_iluminacion",
+      "horometro": 2810.0,
+      "codigos_dtc": [],
+      "resumen_falla": "Dos focos no encienden y el resto parpadea al acelerar el motor.",
+      "causa_raiz": "Driver de focos LED dañado por vibración en el traslado.",
+      "solucion_aplicada": "Se reemplazaron los dos drivers y se aseguraron los conectores con amarras.",
+      "pasos": [
+        "Verificar tensión de salida del alternador antes de culpar a los focos.",
+        "Reemplazar los drivers dañados y asegurar los conectores."
+      ],
+      "herramientas": ["Multímetro", "Llave Allen de 5 mm"],
+      "repuestos": ["Driver LED 150 W (x2)", "Amarras plásticas"],
+      "horas_hombre": 2.0
+    },
+    {
+      "codigo_ot": "OT-2026-0666",
+      "fecha": "2026-08-28",
+      "codigo_equipo": "GE074-02",
+      "modelo_equipo": "GRUPO ELECTRÓGENO INSONORIZADO DE 74 KW",
+      "categoria": "grupo_electrogeno",
+      "horometro": 2540.0,
+      "codigos_dtc": [],
+      "resumen_falla": "Temperatura alta y parada por protección después de dos horas con carga.",
+      "causa_raiz": "Radiador obstruido con polvo y pelusa; el ventilador movía aire pero no atravesaba el panal.",
+      "solucion_aplicada": "Lavado del radiador a baja presión desde el lado del ventilador, revisión de correa y de nivel de refrigerante.",
+      "pasos": [
+        "Esperar a que el equipo enfríe antes de abrir la tapa del radiador.",
+        "Lavar el panal a baja presión desde el lado del ventilador hacia afuera.",
+        "Revisar tensión de la correa y nivel de refrigerante."
+      ],
+      "herramientas": ["Hidrolavadora a baja presión", "Llave de 13 mm"],
+      "repuestos": ["Refrigerante concentrado 4 L"],
+      "horas_hombre": 2.0
+    },
+    {
+      "codigo_ot": "OT-2026-0301",
+      "fecha": "2026-03-05",
+      "codigo_equipo": "PLT010-02",
+      "modelo_equipo": "PLATAFORMA DE ELEVACIÓN TIJERA 10 M",
+      "categoria": "plataforma_elevacion",
+      "horometro": 1450.0,
+      "codigos_dtc": [],
+      "resumen_falla": "La plataforma no eleva y el testigo de batería queda encendido.",
+      "causa_raiz": "Baterías sulfatadas por cargas incompletas entre alquileres.",
+      "solucion_aplicada": "Cambio del banco de baterías y carga completa antes del despacho.",
+      "pasos": [
+        "Medir densidad con el equipo frío.",
+        "Reemplazar el banco completo y cargar 12 horas."
+      ],
+      "herramientas": ["Densímetro", "Cargador de mantenimiento"],
+      "repuestos": ["Batería 6V 225Ah (x4)"],
+      "horas_hombre": 2.5
     }
   ]
 }

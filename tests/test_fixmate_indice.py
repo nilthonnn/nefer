@@ -143,3 +143,132 @@ def test_los_filtros_viajan_como_parametros_y_no_pegados_al_sql():
 def test_sin_filtros_no_hay_clausula_where():
     sql, parametros = sql_busqueda(None)
     assert "WHERE" not in sql and parametros == []
+
+
+# ------------------------------------------- reindexar solo lo que cambio
+
+def _carpeta(tmp_path):
+    (tmp_path / "manual.md").write_text(
+        "# Admision\n\nEl indicador de restriccion se lee sin carga.\n",
+        encoding="utf-8")
+    (tmp_path / "historial.json").write_text(json.dumps({"informes": [
+        {"codigo_ot": "OT-1", "resumen_falla": "humo negro al tomar carga",
+         "causa_raiz": "Filtro de aire colmatado",
+         "solucion_aplicada": "Cambio de filtro"}]}), encoding="utf-8")
+    return tmp_path
+
+
+def test_la_firma_mira_el_contenido_y_no_la_fecha(tmp_path):
+    from nefer.fixmate.indice import firma_de
+
+    uno = tmp_path / "a.md"
+    uno.write_text("mismo texto", encoding="utf-8")
+    otro = tmp_path / "b.md"
+    otro.write_text("mismo texto", encoding="utf-8")
+    # Copiar la carpeta compartida cambia todas las fechas y ninguna coma.
+    assert firma_de(uno) == firma_de(otro)
+
+    uno.write_text("texto cambiado", encoding="utf-8")
+    assert firma_de(uno) != firma_de(otro)
+
+
+def test_lo_que_no_cambio_no_se_vuelve_a_leer(tmp_path):
+    from nefer.fixmate import actualizar, indexar
+
+    carpeta = _carpeta(tmp_path)
+    indice = indexar([carpeta])
+    antes = len(indice)
+
+    parte = actualizar(indice, [carpeta])
+    assert parte.iguales and not parte.hubo_cambios
+    assert len(indice) == antes
+
+
+def test_un_archivo_editado_se_reindexa_entero_y_solo_el(tmp_path):
+    from nefer.fixmate import actualizar, indexar
+
+    carpeta = _carpeta(tmp_path)
+    indice = indexar([carpeta])
+    (carpeta / "manual.md").write_text(
+        "# Admision\n\nEl indicador se lee sin carga.\n\n"
+        "# Inyeccion\n\nPrisionero a 30 N·m.\n", encoding="utf-8")
+
+    parte = actualizar(indice, [carpeta])
+    assert parte.cambiados == [str(carpeta / "manual.md")]
+    assert len(parte.iguales) == 1
+    secciones = {f.metadatos.get("seccion") for f in indice.fragmentos}
+    assert "Inyeccion" in secciones
+
+
+def test_un_manual_retirado_deja_de_responder(tmp_path):
+    from nefer.fixmate import actualizar, indexar
+
+    carpeta = _carpeta(tmp_path)
+    indice = indexar([carpeta])
+    (carpeta / "manual.md").unlink()
+
+    parte = actualizar(indice, [carpeta])
+    assert parte.eliminados == [str(carpeta / "manual.md")]
+    assert all(f.tipo != "manual" for f in indice.fragmentos)
+
+
+def test_indexar_una_carpeta_no_borra_lo_que_esta_fuera_de_ella(tmp_path):
+    from nefer.fixmate import actualizar, indexar
+
+    carpeta = tmp_path / "taller"
+    carpeta.mkdir()
+    _carpeta(carpeta)
+    aparte = tmp_path / "otra"
+    aparte.mkdir()
+    (aparte / "otro.md").write_text("# Otro\n\nTexto del otro manual.\n",
+                                    encoding="utf-8")
+    indice = indexar([carpeta, aparte])
+    (aparte / "otro.md").unlink()
+
+    # Se reindexa solo la primera carpeta: lo de la otra sigue en pie.
+    parte = actualizar(indice, [carpeta])
+    assert parte.eliminados == []
+    assert any(f.metadatos.get("seccion") == "Otro" for f in indice.fragmentos)
+
+
+def test_las_fuentes_viajan_con_el_indice_a_disco(tmp_path):
+    from nefer.fixmate import actualizar, indexar
+
+    carpeta = _carpeta(tmp_path)
+    indice = indexar([carpeta])
+    ruta = indice.guardar(tmp_path / "indice.json")
+
+    recuperado = Indice.cargar(ruta)
+    assert recuperado.fuentes == indice.fuentes
+    # Y por eso, recien cargado, no vuelve a leer nada.
+    assert not actualizar(recuperado, [carpeta]).hubo_cambios
+
+
+def test_el_indice_no_se_indexa_a_si_mismo(tmp_path):
+    # El indice se guarda casi siempre dentro de la carpeta que indexa.
+    from nefer.fixmate import actualizar, indexar
+
+    carpeta = _carpeta(tmp_path)
+    indice = indexar([carpeta])
+    indice.guardar(carpeta / "indice.json")
+
+    parte = actualizar(indice, [carpeta])
+    assert not parte.hubo_cambios
+    assert all("indice.json" not in o for o in indice.fuentes)
+
+
+def test_apuntar_al_indice_en_vez_de_a_los_documentos_lo_dice(tmp_path):
+    from nefer.fixmate import indexar
+    from nefer.fixmate.ingesta import ErrorIngesta
+
+    indice = indexar([_carpeta(tmp_path)])
+    ruta = indice.guardar(tmp_path / "guardado" / "indice.json")
+    with pytest.raises(ErrorIngesta, match="es un indice de FixMate"):
+        indexar([ruta])
+
+
+def test_se_puede_filtrar_con_una_regla_escrita_en_python():
+    indice = _indice()
+    solo_manual = indice.buscar("aceite", limite=5,
+                                acepta=lambda f: f.tipo == "manual")
+    assert [c.fragmento.id for c in solo_manual] == ["c"]

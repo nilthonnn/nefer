@@ -209,7 +209,7 @@ def test_un_json_sin_diagnostico_no_vale():
 def test_el_modelo_redacta_sobre_la_evidencia_recuperada():
     vistos = {}
 
-    def redactor(consulta, coincidencias):
+    def redactor(consulta, coincidencias, causas_probables=None, medicion=None):
         vistos["contexto"] = m.contexto(coincidencias)
         return {"diagnostico_probabilistico": "Lo redacto el modelo.",
                 "causa_raiz_mas_probable": "Inyector.",
@@ -227,7 +227,7 @@ def test_el_modelo_redacta_sobre_la_evidencia_recuperada():
 
 
 def test_si_el_modelo_no_contesta_la_respuesta_sale_igual():
-    def redactor(consulta, coincidencias):
+    def redactor(consulta, coincidencias, causas_probables=None, medicion=None):
         raise m.ErrorRedactor("el modelo no respondio: timeout")
 
     diagnostico = _motor(redactor=redactor).consultar(m.Consulta("humo negro"))
@@ -250,3 +250,177 @@ def test_el_diagnostico_se_serializa_entero_a_json():
                       "pasos_recomendados", "herramientas_y_repuestos", "torques",
                       "evidencia_historica", "confianza", "redactor", "avisos"}
     assert isinstance(d["evidencia_historica"][0], dict)
+
+
+# ------------------------- cuando la busqueda y el historial no coinciden
+
+CAUSAS_REPETIDAS = [
+    ("humo negro al tomar carga", "Filtro de aire colmatado"),
+    ("perdida de potencia y humo negro en altura", "Filtro de aire colmatado por polvo"),
+    ("humo negro en pendiente con carga", "Filtro de aire colmatado; admision restringida"),
+    ("el motor no levanta carga y humea", "Filtro de aire colmatado por polvo de mina"),
+    ("marcha inestable en frio", "Inyector con retorno excesivo"),
+    ("cascabeleo y humo en ralenti", "Inyector con retorno excesivo por aguja"),
+    ("falla de combustion en un cilindro", "Inyector con retorno excesivo"),
+    ("ralenti irregular y olor a diesel", "Inyector con retorno excesivo por asiento"),
+    ("fuga de aceite hidraulico y perdida de fuerza al cargar",
+     "Sello del vastago cortado"),
+    ("charco de aceite bajo la maquina", "Sello del vastago cortado por rebaba"),
+    ("goteo en el cilindro del brazo", "Sello del vastago cortado en el brazo"),
+    ("perdida de aceite por el vastago", "Sello del vastago cortado"),
+    ("no arranca en la mañana", "Baterias sulfatadas"),
+    ("el arranque gira lento", "Baterias sulfatadas por descargas profundas"),
+]
+
+
+def _indice_con_historial() -> Indice:
+    indice = Indice()
+    indice.agregar([
+        Fragmento(id=f"ot:OT-{n}", tipo="informe", fuente="historial.json",
+                  texto=f"ORDEN DE TRABAJO OT-{n}\nFalla: {falla}\nCausa: {causa}",
+                  metadatos={"codigo_ot": f"OT-{n}", "resumen_falla": falla,
+                             "causa_raiz": causa,
+                             "solucion_aplicada": f"Se corrigio: {causa}",
+                             "pasos": [f"Paso propio de OT-{n}"]})
+        for n, (falla, causa) in enumerate(CAUSAS_REPETIDAS)])
+    return indice
+
+
+def test_el_historial_completo_corrige_lo_que_trajo_la_busqueda():
+    # «pierde fuerza» aparece literal en el informe de un sello de vastago, y
+    # por parecido de palabras ese se cuela arriba. El historial entero dice
+    # otra cosa, y esa es la que manda: la respuesta sale del antecedente de
+    # la causa que el historial respalda, no del primero de la lista.
+    motor = m.Motor(_indice_con_historial())
+    diagnostico = motor.consultar(m.Consulta("sale humo negro y pierde fuerza", limite=3))
+
+    assert "Filtro de aire colmatado" in diagnostico.causa_raiz_mas_probable
+    assert diagnostico.causas_probables[0]["causa"].startswith("Filtro de aire")
+    assert diagnostico.pasos_recomendados, "tiene que traer el procedimiento de esa causa"
+
+
+def test_si_la_busqueda_no_trajo_esa_causa_se_va_a_buscar_al_indice():
+    # Se simula el caso malo: la busqueda devolvio solo antecedentes de otra
+    # averia. El motor va al indice por el de la causa que el historial
+    # respalda, en vez de contestar con el primero que le llego.
+    motor = m.Motor(_indice_con_historial())
+    consulta = m.Consulta("sale humo negro y pierde fuerza")
+    otros = [c for c in motor.indice.buscar(consulta.texto, limite=5, umbral=0.0)
+             if "Filtro" not in str(c.fragmento.metadatos.get("causa_raiz"))][:2]
+    causas = motor.causas_probables(consulta)
+
+    apoyo = motor.apoyo_estadistico(consulta, otros, causas)
+    assert apoyo is not None
+    assert "Filtro de aire" in apoyo.fragmento.metadatos["causa_raiz"]
+    assert apoyo.fragmento.id in {f.id for f in motor.indice.fragmentos}
+
+
+def test_si_la_busqueda_ya_trajo_esa_causa_no_se_añade_nada():
+    motor = m.Motor(_indice_con_historial())
+    consulta = m.Consulta("humo negro al tomar carga")
+    coincidencias = motor.indice.buscar(consulta.texto, limite=3, umbral=0.0)
+    assert motor.apoyo_estadistico(
+        consulta, coincidencias, motor.causas_probables(consulta)) is None
+
+
+def test_una_estadistica_floja_no_mueve_la_evidencia():
+    motor = m.Motor(_indice_con_historial())
+    consulta = m.Consulta("humo negro")
+    flojas = [{"causa": "Filtro de aire colmatado", "probabilidad": 0.2, "casos": 4}]
+    assert motor.apoyo_estadistico(consulta, [], flojas) is None
+
+
+def test_cuando_se_añade_evidencia_se_avisa():
+    motor = m.Motor(_indice_con_historial())
+    consulta = m.Consulta("sale humo negro y pierde fuerza")
+    # El aviso sale cuando el apoyo entra; se comprueba sobre el mismo camino
+    # que usa `consultar`.
+    coincidencias, avisos = motor.recuperar(consulta)
+    causas = motor.causas_probables(consulta)
+    if motor.apoyo_estadistico(consulta, coincidencias, causas) is not None:
+        assert m.AVISO_APOYO in motor.consultar(consulta).avisos
+    else:
+        assert m.AVISO_APOYO not in motor.consultar(consulta).avisos
+
+
+def test_lo_que_se_añade_sale_del_indice_y_no_de_la_nada():
+    motor = m.Motor(_indice_con_historial())
+    diagnostico = motor.consultar(m.Consulta("sale humo negro y pierde fuerza"))
+    en_indice = {f.id for f in motor.indice.fragmentos}
+    assert all(e.id in en_indice for e in diagnostico.evidencia_historica)
+
+
+def test_sin_clasificador_entrenado_no_se_toca_el_orden_de_la_busqueda():
+    motor = _motor()      # tres fragmentos: no hay con que entrenar
+    diagnostico = motor.consultar(m.Consulta("humo negro y marcha inestable"))
+    assert diagnostico.causas_probables == []
+    assert diagnostico.precision_medida is None
+    assert m.AVISO_APOYO not in diagnostico.avisos
+
+
+def test_la_estadistica_se_publica_con_su_respaldo():
+    diagnostico = m.Motor(_indice_con_historial()).consultar(
+        m.Consulta("no arranca y el arranque gira lento"))
+    medida = diagnostico.precision_medida
+
+    assert medida["casos"] == len(CAUSAS_REPETIDAS)
+    assert 0.0 <= medida["precision"] <= 1.0
+    assert "linea_base" in medida, "un acierto sin linea base no significa nada"
+    # Y el texto del diagnostico lo dice, no solo el JSON.
+    assert "%" in diagnostico.diagnostico_probabilistico
+    assert str(medida["casos"]) in diagnostico.diagnostico_probabilistico
+
+
+def test_el_diagnostico_dice_que_consulta_entendio():
+    diagnostico = _motor().consultar(m.Consulta("humo negro y marcha inestable"))
+    assert diagnostico.consulta_interpretada == "humo negro y marcha inestable"
+
+
+def test_el_modelo_tambien_ve_lo_que_dice_el_historial_completo():
+    visto = {}
+
+    def redactor(consulta, coincidencias, causas_probables=None, medicion=None):
+        visto["causas"] = causas_probables
+        visto["medicion"] = medicion
+        return {"diagnostico_probabilistico": "x", "causa_raiz_mas_probable": "y",
+                "pasos_recomendados": [], "herramientas_y_repuestos": [], "torques": []}
+
+    m.Motor(_indice_con_historial(), redactor=redactor).consultar(
+        m.Consulta("humo negro al tomar carga"))
+    assert visto["causas"][0]["causa"].startswith("Filtro de aire")
+    assert visto["medicion"]["casos"] == len(CAUSAS_REPETIDAS)
+
+
+def test_una_falla_nueva_le_gana_a_la_estadistica():
+    # El informe que se registro ayer describe exactamente esto y sale
+    # primero, con mucho parecido. El clasificador aprendio de las averias
+    # viejas y no puede saberlo todavia: aqui manda la evidencia, no la
+    # estadistica. Si no, el asistente nunca aprenderia nada nuevo.
+    indice = _indice_con_historial()
+    indice.agregar([Fragmento(
+        id="ot:OT-NUEVA", tipo="informe", fuente="historial.json",
+        texto="ORDEN DE TRABAJO OT-NUEVA\nFalla: el ventilador no gira y el "
+              "motor se calienta\nCausa: correa del ventilador partida",
+        metadatos={"codigo_ot": "OT-NUEVA",
+                   "resumen_falla": "El ventilador no gira y el motor se calienta",
+                   "causa_raiz": "Correa del ventilador partida",
+                   "solucion_aplicada": "Se cambio la correa",
+                   "pasos": ["Cambiar la correa y alinear la polea"]})])
+
+    diagnostico = m.Motor(indice).consultar(
+        m.Consulta("el ventilador no gira y el motor se calienta"))
+
+    assert diagnostico.causa_raiz_mas_probable == "Correa del ventilador partida"
+    assert diagnostico.pasos_recomendados == ["Cambiar la correa y alinear la polea"]
+    # La estadistica no desaparece: queda como segunda opinion, en el texto.
+    assert diagnostico.causas_probables
+    assert m.AVISO_APOYO not in diagnostico.avisos
+
+
+def test_con_evidencia_fuerte_no_se_va_a_buscar_mas():
+    motor = m.Motor(_indice_con_historial())
+    consulta = m.Consulta("marcha inestable en frio")
+    coincidencias = motor.indice.buscar(consulta.texto, limite=3, umbral=0.0)
+    assert coincidencias[0].puntaje >= m.UMBRAL_EVIDENCIA_FUERTE
+    assert motor.apoyo_estadistico(
+        consulta, coincidencias, motor.causas_probables(consulta)) is None

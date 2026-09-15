@@ -34,10 +34,15 @@ jobs:
           python -m pytest -q \
             tests/test_build_extract.py \
             tests/test_fixmate_api.py \
+            tests/test_fixmate_aprendizaje.py \
+            tests/test_fixmate_cierre.py \
+            tests/test_fixmate_documentos.py \
             tests/test_fixmate_indice.py \
             tests/test_fixmate_ingesta.py \
             tests/test_fixmate_motor.py \
+            tests/test_fixmate_prediccion.py \
             tests/test_fixmate_texto.py \
+            tests/test_fixmate_transcripcion.py \
             tests/test_layout.py \
             tests/test_publicacion_clon.py \
             tests/test_schema.py \

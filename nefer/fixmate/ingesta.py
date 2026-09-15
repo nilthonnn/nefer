@@ -2,10 +2,12 @@
 
 Tres insumos, que son los tres que existen de verdad en un taller:
 
-- el **historial de fallas** en JSON, una orden de trabajo por entrada: que
-  fallo, cual resulto ser la causa y que se hizo;
-- los **manuales** del fabricante en Markdown o texto plano, troceados por
-  seccion para que un procedimiento no se recupere partido a la mitad;
+- el **historial de fallas**, una orden de trabajo por entrada: que fallo,
+  cual resulto ser la causa y que se hizo. En JSON si alguien lo exporto asi,
+  y en Excel —que es donde esta de verdad— con una fila por orden;
+- los **manuales** del fabricante, en PDF, Word, Excel, Markdown o texto
+  plano, troceados por seccion para que un procedimiento no se recupere
+  partido a la mitad;
 - las **actas** de despacho y recepcion que ya genera nefer —el manifiesto
   JSON o el propio Excel llenado—, de donde salen los componentes observados
   o dañados con su observacion escrita.
@@ -13,6 +15,10 @@ Tres insumos, que son los tres que existen de verdad en un taller:
 Lo ultimo es lo que hace que esto no sea un buscador de manuales mas: el
 historial de la flota propia, con la observacion que el tecnico escribio a
 mano, es la fuente que ningun manual OEM trae.
+
+Que un Excel sea un historial, un acta o un manual no se pregunta: se mira.
+Un acta de nefer trae su hoja REPORTE con el titulo del formato; un historial
+trae columnas que se llaman falla, causa y solucion; lo demas es un manual.
 """
 
 from __future__ import annotations
@@ -21,15 +27,15 @@ import json
 import re
 from pathlib import Path
 
-from . import texto as _texto
+from . import documentos, texto as _texto
 from .indice import Fragmento
 
-EXTENSIONES_MANUAL = {".md", ".txt", ".markdown"}
-EXTENSIONES = EXTENSIONES_MANUAL | {".json", ".xlsx"}
+EXTENSIONES_MANUAL = documentos.EXTENSIONES
+EXTENSIONES = EXTENSIONES_MANUAL | {".json"}
 
 CAMPOS_INFORME = ("codigo_ot", "fecha", "codigo_equipo", "modelo_equipo",
                   "categoria", "resumen_falla", "causa_raiz", "solucion_aplicada",
-                  "horas_hombre")
+                  "horas_hombre", "horometro")
 
 
 class ErrorIngesta(ValueError):
@@ -62,6 +68,10 @@ def de_informe(informe: dict, fuente: str = "", n: int = 0) -> Fragmento:
         lineas.append("Herramientas: " + ", ".join(herramientas))
     if repuestos:
         lineas.append("Repuestos: " + ", ".join(repuestos))
+    otros = informe.get("otros_campos") or {}
+    for clave, valor in otros.items():
+        if str(valor).strip():
+            lineas.append(f"{clave}: {valor}")
     cuerpo = "\n".join(lineas)
 
     declarados = informe.get("codigos_dtc") or informe.get("codigo_dtc") or []
@@ -73,6 +83,11 @@ def de_informe(informe: dict, fuente: str = "", n: int = 0) -> Fragmento:
             codigos.append(codigo)
 
     metadatos = {clave: informe[clave] for clave in CAMPOS_INFORME if informe.get(clave)}
+    for clave, valor in otros.items():
+        # Con prefijo, para no pisar un campo del esquema con una columna que
+        # se llamaba igual en el Excel de la oficina.
+        metadatos.setdefault("col_" + (clave_columna(clave).replace(" ", "_") or "x"),
+                             str(valor))
     metadatos.update({
         "codigo_ot": ot,
         "codigos_dtc": codigos,
@@ -91,6 +106,110 @@ def de_historial(datos, fuente: str = "") -> list[Fragmento]:
     if not isinstance(informes, list):
         raise ErrorIngesta(f"{fuente}: se esperaba una lista de informes.")
     return [de_informe(informe, fuente, n) for n, informe in enumerate(informes)]
+
+
+# Como se llama cada campo en el Excel del taller. Primero lo que se busca,
+# luego todas las formas en que esta escrito en los libros de verdad.
+COLUMNAS_INFORME = {
+    "codigo_ot": ("ot", "n ot", "nro ot", "num ot", "numero ot", "orden",
+                  "orden de trabajo", "codigo ot", "ot n", "n orden", "os"),
+    "fecha": ("fecha", "fecha de atencion", "fecha atencion", "fecha cierre",
+              "fecha de cierre", "dia"),
+    "codigo_equipo": ("equipo", "codigo equipo", "cod equipo", "codigo de equipo",
+                      "unidad", "maquina", "flota", "placa", "interno"),
+    "modelo_equipo": ("modelo", "descripcion del equipo", "marca modelo"),
+    "categoria": ("categoria", "familia", "tipo de equipo", "linea"),
+    "codigos_dtc": ("dtc", "codigo de falla", "codigo falla", "cod falla",
+                    "codigo dtc", "spn", "fmi", "codigo de error"),
+    "resumen_falla": ("falla", "sintoma", "sintomas", "descripcion de la falla",
+                      "problema", "reporte", "falla reportada", "descripcion",
+                      "detalle de la falla"),
+    "causa_raiz": ("causa", "causa raiz", "causa basica", "diagnostico",
+                   "causa de la falla", "origen"),
+    "solucion_aplicada": ("solucion", "solucion aplicada", "trabajo realizado",
+                          "accion", "accion correctiva", "reparacion",
+                          "actividad realizada", "correctivo"),
+    "pasos": ("pasos", "procedimiento", "secuencia"),
+    "herramientas": ("herramientas", "herramienta", "herramental"),
+    "repuestos": ("repuestos", "repuesto", "materiales", "partes", "insumos"),
+    "horas_hombre": ("horas hombre", "hh", "horas", "tiempo"),
+    "horometro": ("horometro", "horas de equipo", "km", "kilometraje"),
+}
+
+CAMPOS_LISTA = ("pasos", "herramientas", "repuestos", "codigos_dtc")
+
+
+def clave_columna(nombre: str) -> str:
+    """El nombre de una columna, comparable: sin tildes, sin simbolos ni N°."""
+    limpio = re.sub(r"[^a-z0-9]+", " ", _texto.normalizar(nombre))
+    return re.sub(r"\s+", " ", limpio).strip()
+
+
+def _mapa_de_columnas(encabezados) -> dict[str, str]:
+    """Que columna del Excel alimenta que campo del informe."""
+    mapa: dict[str, str] = {}
+    usados: set[str] = set()
+    normales = {col: clave_columna(col) for col in encabezados if col}
+    for campo, sinonimos in COLUMNAS_INFORME.items():
+        for exacto in (True, False):
+            for columna, normal in normales.items():
+                if columna in usados:
+                    continue
+                casa = (normal in sinonimos if exacto else
+                        any(s in normal or normal in s for s in sinonimos
+                            if len(s) > 2))
+                if casa:
+                    mapa[campo] = columna
+                    usados.add(columna)
+                    break
+            if campo in mapa:
+                break
+    return mapa
+
+
+def _lista_de_celda(valor) -> list[str]:
+    """Una celda con varias cosas dentro: separadas por ; o por salto de linea."""
+    partes = re.split(r"[;\n·•]+|(?<=[a-z0-9])\s*,\s*(?=[A-Za-zÁÉÍÓÚÑ])", str(valor))
+    return [p.strip(" .-") for p in partes if p.strip(" .-")]
+
+
+def de_historial_xlsx(ruta: str | Path, hoja: str | None = None) -> list[Fragmento]:
+    """El historial de fallas tal como esta en el taller: una fila por orden."""
+    ruta = Path(ruta)
+    try:
+        registros = documentos.tabla(ruta, hoja=hoja)
+    except documentos.ErrorDocumento as exc:
+        raise ErrorIngesta(str(exc)) from exc
+    if not registros:
+        raise ErrorIngesta(f"{ruta.name}: la hoja esta vacia.")
+
+    mapa = _mapa_de_columnas(registros[0].keys())
+    if "resumen_falla" not in mapa and "causa_raiz" not in mapa:
+        raise ErrorIngesta(
+            f"{ruta.name}: no se reconoce ninguna columna de falla ni de causa "
+            f"(columnas: {', '.join(list(registros[0])[:8])}). Renombre la "
+            "columna de la falla a 'Falla' o la de la causa a 'Causa raiz'.")
+
+    informes = []
+    for registro in registros:
+        informe = {}
+        for campo, columna in mapa.items():
+            valor = registro.get(columna, "")
+            if not str(valor).strip():
+                continue
+            informe[campo] = _lista_de_celda(valor) if campo in CAMPOS_LISTA else valor
+        # Lo que no se supo mapear no se tira: el tecnico que la escribio, el
+        # sistema afectado o el costo son columnas por las que se busca.
+        otros = {c: v for c, v in registro.items()
+                 if c not in mapa.values() and str(v).strip()}
+        if otros:
+            informe["otros_campos"] = otros
+        if any(informe.get(c) for c in ("resumen_falla", "causa_raiz",
+                                        "solucion_aplicada")):
+            informes.append(informe)
+    if not informes:
+        raise ErrorIngesta(f"{ruta.name}: ninguna fila trae falla, causa ni solucion.")
+    return [de_informe(informe, ruta.name, n) for n, informe in enumerate(informes)]
 
 
 # ----------------------------------------------------------------- actas
@@ -114,6 +233,11 @@ def de_manifiesto(manifiesto: dict, fuente: str = "") -> list[Fragmento]:
         "tipo_documento": tipo_doc,
     }
     comun = {k: v for k, v in comun.items() if v}
+    # El horometro es el unico dato de uso que existe en toda la flota: de el
+    # sale el ritmo de horas por dia y el proximo servicio.
+    if isinstance(enc.get("horometro"), (int, float)) and not isinstance(
+            enc.get("horometro"), bool):
+        comun["horometro"] = enc["horometro"]
 
     cabecera = (f"ACTA DE {tipo_doc or 'MOVIMIENTO'} {acta}".strip()
                 + f"\nEquipo: {equipo} {comun.get('modelo_equipo', '')}".rstrip())
@@ -241,27 +365,97 @@ def _secciones(contenido: str) -> list[tuple[str, str]]:
 
 # ------------------------------------------------------------- recorrido
 
+def es_acta_de_nefer(ruta: Path) -> bool:
+    """Un Excel generado por nefer trae su hoja REPORTE y el titulo del formato."""
+    try:
+        from openpyxl import load_workbook
+
+        libro = load_workbook(ruta, read_only=True, data_only=True)
+    except Exception:
+        return False
+    try:
+        if not any(h.upper().startswith("REPORTE") for h in libro.sheetnames):
+            return False
+        hoja = libro.worksheets[0]
+        for fila in hoja.iter_rows(min_row=1, max_row=3, values_only=True):
+            for valor in fila:
+                if isinstance(valor, str) and "REPORTE FOTOGR" in valor.upper():
+                    return True
+        return False
+    finally:
+        libro.close()
+
+
+def de_excel(ruta: str | Path) -> list[Fragmento]:
+    """Un Excel puede ser tres cosas distintas; aqui se decide cual es.
+
+    Se prueba de lo mas especifico a lo mas general: acta de nefer, historial
+    de fallas con columnas reconocibles y, si no es ninguno, un manual con
+    una seccion por hoja.
+    """
+    ruta = Path(ruta)
+    if es_acta_de_nefer(ruta):
+        return de_acta_xlsx(ruta)
+    try:
+        return de_historial_xlsx(ruta)
+    except ErrorIngesta:
+        return de_manual(documentos.leer(ruta), fuente=ruta.name)
+
+
 def de_archivo(ruta: str | Path) -> list[Fragmento]:
     """Fragmentos de un archivo, deduciendo que es por su forma."""
     ruta = Path(ruta)
     sufijo = ruta.suffix.lower()
-    if sufijo == ".xlsx":
-        return de_acta_xlsx(ruta)
-    if sufijo in EXTENSIONES_MANUAL:
-        return de_manual(ruta.read_text(encoding="utf-8"), fuente=ruta.name)
     if sufijo == ".json":
         try:
             datos = json.loads(ruta.read_text(encoding="utf-8"))
         except json.JSONDecodeError as exc:
             raise ErrorIngesta(f"{ruta}: JSON ilegible ({exc}).") from exc
         if isinstance(datos, dict) and "encabezado" in datos:
-            return de_manifiesto(datos, fuente=ruta.name)
-        if isinstance(datos, list) or "informes" in datos:
-            return de_historial(datos, fuente=ruta.name)
+            fragmentos = de_manifiesto(datos, fuente=ruta.name)
+        elif isinstance(datos, list) or "informes" in datos:
+            fragmentos = de_historial(datos, fuente=ruta.name)
+        else:
+            raise ErrorIngesta(
+                f"{ruta}: no parece ni un acta (falta 'encabezado') ni un "
+                "historial (falta 'informes').")
+    elif sufijo in (".xlsx", ".xlsm"):
+        fragmentos = de_excel(ruta)
+    elif sufijo in EXTENSIONES_MANUAL:
+        try:
+            fragmentos = de_manual(documentos.leer(ruta), fuente=ruta.name)
+        except documentos.ErrorDocumento as exc:
+            raise ErrorIngesta(str(exc)) from exc
+        if not fragmentos:
+            raise ErrorIngesta(f"{ruta.name}: no se saco texto del documento.")
+    else:
         raise ErrorIngesta(
-            f"{ruta}: no parece ni un acta (falta 'encabezado') ni un historial "
-            "(falta 'informes').")
-    raise ErrorIngesta(f"{ruta}: extension no soportada ({sufijo or 'sin extension'}).")
+            f"{ruta}: extension no soportada ({sufijo or 'sin extension'}).")
+
+    # De donde salio cada fragmento, para poder reindexar solo lo que cambio.
+    # Con guion bajo delante: los metadatos internos no entran en la busqueda.
+    origen = str(ruta)
+    for fragmento in fragmentos:
+        fragmento.metadatos["_origen"] = origen
+    return fragmentos
+
+
+def es_indice(ruta: Path) -> bool:
+    """Si el archivo es un indice de FixMate y no un documento.
+
+    Pasa constantemente: el indice se guarda dentro de la misma carpeta que
+    se indexa. Sin esto, la segunda pasada intenta leerse a si misma.
+    """
+    if ruta.suffix.lower() != ".json":
+        return False
+    try:
+        with open(ruta, "rb") as fh:
+            cabeza = fh.read(400)
+    except OSError:
+        return False
+    # Las dos primeras llaves que escribe `Indice.guardar`. Los vectores
+    # vienen mucho despues y un indice grande no cabe en una olfateada.
+    return b'"version"' in cabeza and b'"embebedor"' in cabeza
 
 
 def recorrer(rutas) -> list[Path]:
@@ -273,8 +467,12 @@ def recorrer(rutas) -> list[Path]:
             encontrados.extend(sorted(
                 a for a in ruta.rglob("*")
                 if a.is_file() and a.suffix.lower() in EXTENSIONES
-                and not a.name.startswith(".")))
+                and not a.name.startswith(".") and not es_indice(a)))
         elif ruta.is_file():
+            if es_indice(ruta):
+                raise ErrorIngesta(
+                    f"{ruta}: es un indice de FixMate, no un documento. Indexe "
+                    "la carpeta con los manuales y el historial.")
             encontrados.append(ruta)
         else:
             raise ErrorIngesta(f"no existe: {ruta}")

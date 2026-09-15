@@ -13,6 +13,7 @@ con PostgreSQL para quien ya tenga una flota entera cargada.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from dataclasses import asdict, dataclass, field
@@ -90,6 +91,9 @@ class Indice:
     def __init__(self, embebedor: embeddings.Embebedor | None = None):
         self.embebedor = embebedor or embeddings.EmbebedorLocal()
         self.fragmentos: list[Fragmento] = []
+        # De que archivo salio cada cosa y como estaba ese archivo cuando se
+        # leyo: es lo que permite reindexar solo lo que cambio.
+        self.fuentes: dict[str, str] = {}
         self._tokens: list[list[str]] = []
         self._frecuencias: list[dict[str, int]] = []
         self._documentos_por_token: dict[str, int] = {}
@@ -126,6 +130,23 @@ class Indice:
         self._reindexar()
         return agregados
 
+    def olvidar(self, origen: str) -> int:
+        """Quita todo lo que vino de un archivo. Devuelve cuantos fragmentos eran."""
+        quedan = [f for f in self.fragmentos if f.metadatos.get("_origen") != origen]
+        quitados = len(self.fragmentos) - len(quedan)
+        self.fragmentos = quedan
+        self.fuentes.pop(origen, None)
+        if quitados:
+            self._reindexar()
+        return quitados
+
+    def anotar_fuente(self, origen: str, firma: str) -> None:
+        """Deja constancia de como estaba el archivo cuando se indexo."""
+        self.fuentes[str(origen)] = firma
+
+    def sin_cambios(self, origen: str, firma: str) -> bool:
+        return self.fuentes.get(str(origen)) == firma
+
     def _reindexar(self) -> None:
         self._tokens = [_texto.tokenizar(f"{f.texto} {self._texto_metadatos(f)}")
                         for f in self.fragmentos]
@@ -158,11 +179,13 @@ class Indice:
 
     def buscar(self, consulta: str, limite: int = 3,
                filtros: dict | None = None, umbral: float = 0.0,
-               preferencias: dict | None = None) -> list[Coincidencia]:
+               preferencias: dict | None = None, acepta=None) -> list[Coincidencia]:
         """Los `limite` fragmentos mas parecidos a la consulta, mejor primero.
 
         `filtros` descarta lo que no case; `preferencias` no descarta nada, solo
-        empuja hacia arriba lo que ademas coincide.
+        empuja hacia arriba lo que ademas coincide; `acepta` es un filtro
+        escrito en Python, para lo que no se puede expresar comparando
+        metadatos —por ejemplo, «la misma causa raiz, escrita como sea».
         """
         if not self.fragmentos:
             return []
@@ -170,7 +193,8 @@ class Indice:
             raise ValueError("el limite de resultados no baja de 1.")
 
         candidatos = [i for i in range(len(self.fragmentos))
-                      if _pasa_filtros(self.fragmentos[i], filtros)]
+                      if _pasa_filtros(self.fragmentos[i], filtros)
+                      and (acepta is None or acepta(self.fragmentos[i]))]
         if not candidatos:
             return []
 
@@ -225,6 +249,7 @@ class Indice:
             "version": VERSION_FORMATO,
             "embebedor": self.embebedor.nombre,
             "dimension": self.embebedor.dimension,
+            "fuentes": self.fuentes,
             "fragmentos": [f.a_dict() for f in self.fragmentos],
         }
         destino.write_text(json.dumps(datos, ensure_ascii=False, indent=1) + "\n",
@@ -257,6 +282,7 @@ class Indice:
                 f"'{embebedor.nombre}'. Vuelva a indexar o use el mismo embebedor.")
 
         indice = cls(embebedor)
+        indice.fuentes = {str(k): str(v) for k, v in (datos.get("fuentes") or {}).items()}
         indice.fragmentos = [Fragmento.de_dict(d) for d in datos.get("fragmentos", [])]
         sin_vector = [f.id for f in indice.fragmentos if not f.vector]
         if sin_vector:
@@ -277,6 +303,22 @@ def _preferencias_que_casan(fragmento: Fragmento, preferencias: dict | None) -> 
     return sum(1 for clave, valor in preferencias.items()
                if valor not in (None, "", [])
                and _pasa_filtros(fragmento, {clave: valor}))
+
+
+def firma_de(ruta) -> str:
+    """Como esta un archivo ahora mismo: tamaño y huella de su contenido.
+
+    Por contenido y no por fecha: copiar la carpeta compartida a otra maquina
+    cambia todas las fechas sin cambiar una coma, y reindexar un manual de
+    cuatrocientas paginas por eso cuesta tiempo y, con embeddings de pago,
+    dinero.
+    """
+    ruta = Path(ruta)
+    huella = hashlib.blake2b(digest_size=16)
+    with open(ruta, "rb") as fh:
+        for bloque in iter(lambda: fh.read(1 << 20), b""):
+            huella.update(bloque)
+    return f"{ruta.stat().st_size}:{huella.hexdigest()}"
 
 
 def _pasa_filtros(fragmento: Fragmento, filtros: dict | None) -> bool:

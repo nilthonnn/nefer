@@ -26,7 +26,7 @@ import os
 import re
 from dataclasses import asdict, dataclass, field
 
-from . import texto as _texto
+from . import aprendizaje, texto as _texto
 from .indice import Coincidencia, Indice
 
 # Por debajo de esto, lo recuperado se parece mas al ruido del corpus que a la
@@ -39,6 +39,16 @@ UMBRAL_CONFIANZA = 0.30
 # donde va la linea.
 UMBRAL_MINIMO = 0.20
 
+# Cuando el clasificador apunta a una causa con al menos esta probabilidad y
+# la busqueda no trajo ningun antecedente de esa causa, se va a buscar uno.
+APOYO_ESTADISTICO_MINIMO = 0.35
+
+# Pero por encima de esto la busqueda ya encontro el antecedente bueno y la
+# estadistica no manda. Es el caso de la falla nueva: el informe que se
+# registro ayer describe exactamente esto, y el clasificador —que aprendio de
+# las averias viejas— no puede saberlo todavia. La evidencia fuerte gana.
+UMBRAL_EVIDENCIA_FUERTE = 0.50
+
 AVISO_TORQUE = ("Contraste cada par de apriete con el manual OEM del equipo "
                 "antes de aplicarlo.")
 AVISO_SIN_FILTRO = ("Ningun antecedente cita ese codigo de falla; lo que sigue "
@@ -50,6 +60,10 @@ AVISO_LLM = ("El redactor con modelo de lenguaje no respondio; el diagnostico "
              "se armo con el historial recuperado, sin redaccion asistida.")
 AVISO_SIN_PROCEDIMIENTO = ("Ningun antecedente trae un procedimiento escrito. Lea "
                            "el extracto de la evidencia: ahi esta lo que hay.")
+AVISO_APOYO = ("La busqueda por palabras y el historial completo apuntaban a "
+               "causas distintas. Se añadio a la evidencia el antecedente de la "
+               "causa que respalda el historial; compare los dos antes de "
+               "desarmar nada.")
 
 
 class SinEvidencia(LookupError):
@@ -117,6 +131,12 @@ class Diagnostico:
     confianza: str = "media"
     redactor: str = "extractivo"
     avisos: list[str] = field(default_factory=list)
+    # Lo que dice el historial entero, no solo el informe mas parecido.
+    causas_probables: list[dict] = field(default_factory=list)
+    precision_medida: dict | None = None
+    # Lo que el motor entendio que se le pregunto. Importa cuando la consulta
+    # llego dictada: el tecnico tiene que poder leer que oyo la maquina.
+    consulta_interpretada: str = ""
 
     def a_dict(self) -> dict:
         d = asdict(self)
@@ -175,6 +195,26 @@ def _unicos(valores) -> list[str]:
     return salida
 
 
+def _frase_estadistica(causas_probables, medicion) -> str:
+    """Lo que dice el historial completo, con el respaldo que tiene.
+
+    Va siempre con el numero de casos y con el acierto medido. Un 62% sin
+    esos dos numeros al lado es un adorno.
+    """
+    if not causas_probables:
+        return ""
+    mejor = causas_probables[0]
+    frase = (f" En todo el historial, las descripciones parecidas a esta "
+             f"terminaron en «{mejor['causa']}» el {mejor['probabilidad'] * 100:.0f}% "
+             f"de las veces ({mejor['casos']} casos registrados)")
+    if medicion:
+        frase += (f"; el clasificador acierta el {medicion['precision'] * 100:.0f}% "
+                  f"midiendolo contra sus propios {medicion['casos']} casos, y "
+                  f"contestar siempre la causa mas comun acertaria el "
+                  f"{medicion['linea_base'] * 100:.0f}%")
+    return frase + "."
+
+
 def _pasos_de(coincidencia: Coincidencia) -> list[str]:
     """Los pasos de un antecedente: los declarados o los de su solucion.
 
@@ -192,63 +232,110 @@ def _pasos_de(coincidencia: Coincidencia) -> list[str]:
     return []
 
 
-def redactar_extractivo(consulta: Consulta, coincidencias: list[Coincidencia]) -> dict:
-    """Arma el diagnostico recortando la evidencia. Sin red y sin invenciones."""
-    mejor = coincidencias[0]
-    meta = mejor.fragmento.metadatos
+def _con_causa(coincidencias: list[Coincidencia]) -> list[Coincidencia]:
+    return [c for c in coincidencias if str(c.fragmento.metadatos.get("causa_raiz") or "").strip()]
 
-    causas = _unicos(c.fragmento.metadatos.get("causa_raiz", "") for c in coincidencias)
-    causa = causas[0] if causas else ""
-    if not causa:
-        # Un manual no confirma causas: documenta. Devolver el titulo de la
-        # seccion como "causa raiz" es dar por confirmado lo que nadie
-        # confirmo.
-        donde = str(meta.get("seccion") or meta.get("item") or "").strip()
-        if mejor.fragmento.tipo == "manual":
-            causa = ("No consta una causa raiz confirmada en el historial; lo "
-                     f"recuperado es documentacion del manual («{donde}»)."
-                     if donde else
-                     "No consta una causa raiz confirmada en el historial; lo "
-                     "recuperado es documentacion del manual.")
-        else:
-            causa = ("No consta una causa raiz confirmada; el antecedente solo "
-                     f"registra el hecho («{donde}»)." if donde else
-                     "No consta una causa raiz confirmada en el historial.")
 
-    coinciden = sum(1 for c in coincidencias[1:]
-                    if _texto.normalizar(str(c.fragmento.metadatos.get("causa_raiz", "")))
-                    == _texto.normalizar(causa) and causa)
+def _respaldado(coincidencias: list[Coincidencia], causas_probables):
+    """El antecedente cuya causa respalda todo el historial, si lo hay.
 
-    referencia = (meta.get("codigo_ot") or meta.get("n_acta")
-                  or meta.get("seccion") or mejor.fragmento.fuente or mejor.fragmento.id)
+    Recuperar ordena por parecido de palabras, y la falla mas parecida no
+    siempre es la misma averia: «humo negro y pierde fuerza» se parece tanto
+    al informe del filtro de aire como al de un cilindro que perdia fuerza
+    por otra cosa. Cuando el clasificador, que ha visto el historial entero,
+    apunta a una causa y hay un antecedente recuperado con esa causa, se
+    responde con ese. Sigue siendo evidencia recuperada: no se inventa nada,
+    se elige mejor entre lo que ya salio.
+    """
+    con_causa = _con_causa(coincidencias)
+    if not causas_probables or not con_causa:
+        return None
+    # La busqueda ya trajo un antecedente que encaja de sobra: se responde con
+    # ese aunque el historial viejo apunte a otra cosa.
+    if con_causa[0].puntaje >= UMBRAL_EVIDENCIA_FUERTE:
+        return None
+    esperada = causas_probables[0]["causa"]
+    for coincidencia in con_causa:
+        if aprendizaje.misma_causa(coincidencia.fragmento.metadatos["causa_raiz"],
+                                   esperada):
+            return coincidencia
+    return None
+
+
+def _referencia_de(coincidencia: Coincidencia) -> str:
+    meta = coincidencia.fragmento.metadatos
+    return str(meta.get("codigo_ot") or meta.get("n_acta") or meta.get("seccion")
+               or coincidencia.fragmento.fuente or coincidencia.fragmento.id)
+
+
+def _detalle_de(coincidencia: Coincidencia) -> str:
+    meta = coincidencia.fragmento.metadatos
     item = str(meta.get("item") or "").strip()
     estado = str(meta.get("estado") or "").strip()
-    detalle = str(meta.get("resumen_falla") or meta.get("observacion")
-                  or (f"{item} ({estado})" if item and estado else item)
-                  or _recortar(mejor.fragmento.texto, 220))
+    return str(meta.get("resumen_falla") or meta.get("observacion")
+               or (f"{item} ({estado})" if item and estado else item)
+               or _recortar(coincidencia.fragmento.texto, 220))
+
+
+def _causa_no_confirmada(coincidencia: Coincidencia) -> str:
+    """Que decir cuando lo recuperado no confirma ninguna causa."""
+    meta = coincidencia.fragmento.metadatos
+    donde = str(meta.get("seccion") or meta.get("item") or "").strip()
+    if coincidencia.fragmento.tipo == "manual":
+        return ("No consta una causa raiz confirmada en el historial; lo "
+                f"recuperado es documentacion del manual («{donde}»)." if donde else
+                "No consta una causa raiz confirmada en el historial; lo "
+                "recuperado es documentacion del manual.")
+    return ("No consta una causa raiz confirmada; el antecedente solo registra "
+            f"el hecho («{donde}»)." if donde else
+            "No consta una causa raiz confirmada en el historial.")
+
+
+def redactar_extractivo(consulta: Consulta, coincidencias: list[Coincidencia],
+                        causas_probables=None, medicion=None) -> dict:
+    """Arma el diagnostico recortando la evidencia. Sin red y sin invenciones."""
+    mejor = coincidencias[0]
+
+    # De donde sale la respuesta: el antecedente que el historial respalda si
+    # lo hay, y si no el primero que traiga una causa confirmada.
+    respaldado = _respaldado(coincidencias, causas_probables)
+    con_causa = _con_causa(coincidencias)
+    origen = respaldado or (con_causa[0] if con_causa else mejor)
+    causa = str(origen.fragmento.metadatos.get("causa_raiz") or "").strip()
+    if not causa:
+        causa = _causa_no_confirmada(mejor)
 
     diagnostico = (
         f"{len(coincidencias)} antecedente(s) —historial y manuales— coinciden "
         f"con «{consulta.texto}». "
-        f"El mas parecido ({referencia}, {mejor.puntaje * 100:.0f}%) registra: {detalle}")
-    if coinciden:
-        diagnostico += (f" Otros {coinciden} antecedente(s) terminaron en la misma "
-                        f"causa, lo que la refuerza.")
-    otras = [c for c in coincidencias[1:]
-             if c.fragmento.metadatos.get("causa_raiz")
-             and _texto.normalizar(str(c.fragmento.metadatos["causa_raiz"])) != _texto.normalizar(causa)]
+        f"El mas parecido ({_referencia_de(mejor)}, {mejor.puntaje * 100:.0f}%) "
+        f"registra: {_detalle_de(mejor)}")
+
+    iguales = [c for c in coincidencias if c is not origen and
+               str(c.fragmento.metadatos.get("causa_raiz") or "").strip()
+               and aprendizaje.misma_causa(c.fragmento.metadatos["causa_raiz"], causa)]
+    if iguales:
+        diagnostico += (f" Otros {len(iguales)} antecedente(s) terminaron en la "
+                        f"misma causa, lo que la refuerza.")
+    otras = [c for c in con_causa
+             if c is not origen and c is not mejor and c not in iguales]
     if otras:
-        referencias = ", ".join(
-            str(c.fragmento.metadatos.get("codigo_ot") or c.fragmento.id) for c in otras)
-        diagnostico += (f" Otros antecedentes ({referencias}) terminaron en otra causa; "
-                        f"estan en la evidencia, con su propio procedimiento.")
+        referencias = ", ".join(_referencia_de(c) for c in otras)
+        diagnostico += (f" Otros antecedentes ({referencias}) terminaron en otra "
+                        f"causa; estan en la evidencia, con su propio procedimiento.")
     if consulta.codigo_dtc:
         diagnostico += f" Filtrado por el codigo {consulta.codigo_dtc}."
+    diagnostico += _frase_estadistica(causas_probables, medicion)
+    if respaldado is not None and respaldado is not mejor:
+        diagnostico += (f" La causa y el procedimiento salen de "
+                        f"{_referencia_de(respaldado)}, que es el antecedente "
+                        f"recuperado que coincide con esa estadistica.")
 
-    # Los pasos salen de UN antecedente, el mejor que traiga alguno. Encadenar
-    # el procedimiento de dos causas distintas produce una lista que se lee
-    # como un solo trabajo y no lo es; el resto queda citado en la evidencia.
-    origen = next((c for c in coincidencias if _pasos_de(c)), mejor)
+    # Los pasos salen de UN antecedente: el que da la causa, si trae
+    # procedimiento. Encadenar el de dos causas distintas produce una lista
+    # que se lee como un solo trabajo y no lo es.
+    if not _pasos_de(origen):
+        origen = next((c for c in coincidencias if _pasos_de(c)), origen)
     pasos = _pasos_de(origen)
 
     herramientas = list(origen.fragmento.metadatos.get("herramientas") or [])
@@ -374,14 +461,26 @@ class RedactorLLM:
         self._cliente = OpenAI(api_key=self._clave)
         return self._cliente
 
-    def __call__(self, consulta: Consulta, coincidencias: list[Coincidencia]) -> dict:
+    def __call__(self, consulta: Consulta, coincidencias: list[Coincidencia],
+                 causas_probables=None, medicion=None) -> dict:
         cliente = self._obtener_cliente()
+        estadistica = ""
+        if causas_probables:
+            renglones = "; ".join(
+                f"{c['causa']}: {c['probabilidad'] * 100:.0f}% ({c['casos']} casos)"
+                for c in causas_probables)
+            estadistica = (f"\n\nLo que dice el historial completo para una "
+                           f"descripcion asi: {renglones}.")
+            if medicion:
+                estadistica += (f" Ese clasificador acierta el "
+                                f"{medicion['precision'] * 100:.0f}% medido sobre "
+                                f"{medicion['casos']} casos.")
         usuario = (
             f"Consulta del tecnico en campo: {consulta.texto}\n"
             f"Codigo de falla: {consulta.codigo_dtc or 'no especificado'}\n"
             f"Equipo: {consulta.codigo_equipo or 'no especificado'}\n\n"
             f"Antecedentes recuperados del historial y de los manuales:\n"
-            f"{contexto(coincidencias)}")
+            f"{contexto(coincidencias)}{estadistica}")
         try:
             respuesta = cliente.chat.completions.create(
                 model=self.modelo,
@@ -401,12 +500,39 @@ class RedactorLLM:
 # ----------------------------------------------------------------- motor
 
 class Motor:
-    """Une el indice con el redactor. Es lo que la API y la CLI llaman."""
+    """Une el indice, el redactor y el clasificador. Lo que llaman API y CLI.
 
-    def __init__(self, indice: Indice, redactor=None, umbral: float = UMBRAL_MINIMO):
+    Un redactor es cualquier invocable con la firma
+
+        redactor(consulta, coincidencias, causas_probables=None, medicion=None)
+
+    que devuelva el diccionario con las llaves de `LLAVES`, o levante
+    `ErrorRedactor` para que la respuesta salga por el camino extractivo.
+    """
+
+    def __init__(self, indice: Indice, redactor=None, umbral: float = UMBRAL_MINIMO,
+                 clasificador=None, aprender: bool = True):
         self.indice = indice
         self.redactor = redactor
         self.umbral = umbral
+        # El clasificador se entrena al construir el motor: son milisegundos
+        # sobre el indice que ya esta en memoria, y si no hay casos
+        # suficientes se declara sin entrenar y no estorba.
+        if clasificador is None and aprender:
+            clasificador = aprendizaje.desde_indice(indice)
+        self.clasificador = clasificador
+        self._medicion = None
+        self._medido = False
+
+    def medicion(self) -> dict | None:
+        """Que tan bien acierta el clasificador. Se mide una vez y se guarda."""
+        if not self._medido:
+            self._medido = True
+            medida = (self.clasificador.evaluar()
+                      if self.clasificador is not None
+                      and getattr(self.clasificador, "entrenado", False) else None)
+            self._medicion = medida.a_dict() if medida else None
+        return self._medicion
 
     def recuperar(self, consulta: Consulta) -> tuple[list[Coincidencia], list[str]]:
         """Antecedentes para la consulta, y los avisos que deja la busqueda."""
@@ -430,19 +556,58 @@ class Motor:
                 "Registre el caso al cerrarlo y el proximo tecnico si los tendra.")
         return coincidencias, avisos
 
+    def causas_probables(self, consulta: Consulta, limite: int = 3) -> list[dict]:
+        """Lo que dice el historial entero sobre una descripcion asi."""
+        if self.clasificador is None or not getattr(self.clasificador, "entrenado", False):
+            return []
+        return [c.a_dict() for c in self.clasificador.predecir(consulta.texto, limite)]
+
+    def apoyo_estadistico(self, consulta: Consulta, coincidencias, causas):
+        """Trae el antecedente de la causa que el historial respalda, si falta.
+
+        Sin esto, una consulta puede recuperar por parecido de palabras tres
+        antecedentes de otra averia y contestar con la causa del primero,
+        mientras el historial entero apuntaba a otra cosa. El antecedente que
+        se añade sale del mismo indice: no se inventa evidencia, se busca la
+        que faltaba.
+        """
+        if not causas or causas[0]["probabilidad"] < APOYO_ESTADISTICO_MINIMO:
+            return None
+        con_causa = _con_causa(coincidencias)
+        # Con un antecedente fuerte ya recuperado no hace falta ir a buscar
+        # otro: la estadistica queda como segunda opinion, en el texto.
+        if con_causa and con_causa[0].puntaje >= UMBRAL_EVIDENCIA_FUERTE:
+            return None
+        if _respaldado(coincidencias, causas) is not None:
+            return None
+        esperada = causas[0]["causa"]
+        ya = {c.fragmento.id for c in coincidencias}
+        extra = self.indice.buscar(
+            consulta.texto, limite=1, umbral=0.0,
+            acepta=lambda f: f.id not in ya and aprendizaje.misma_causa(
+                str(f.metadatos.get("causa_raiz") or ""), esperada))
+        return extra[0] if extra else None
+
     def consultar(self, consulta: Consulta) -> Diagnostico:
         coincidencias, avisos = self.recuperar(consulta)
+        causas = self.causas_probables(consulta)
+        medicion = self.medicion() if causas else None
+
+        apoyo = self.apoyo_estadistico(consulta, coincidencias, causas)
+        if apoyo is not None:
+            coincidencias = coincidencias + [apoyo]
+            avisos.append(AVISO_APOYO)
 
         nombre_redactor = "extractivo"
         if self.redactor is not None:
             try:
-                partes = self.redactor(consulta, coincidencias)
+                partes = self.redactor(consulta, coincidencias, causas, medicion)
                 nombre_redactor = getattr(self.redactor, "nombre", "llm")
             except ErrorRedactor as exc:
                 avisos.append(f"{AVISO_LLM} ({exc})")
-                partes = redactar_extractivo(consulta, coincidencias)
+                partes = redactar_extractivo(consulta, coincidencias, causas, medicion)
         else:
-            partes = redactar_extractivo(consulta, coincidencias)
+            partes = redactar_extractivo(consulta, coincidencias, causas, medicion)
 
         mejor = coincidencias[0].puntaje
         confianza = "alta" if mejor >= 0.55 else "media" if mejor >= UMBRAL_CONFIANZA else "baja"
@@ -463,4 +628,7 @@ class Motor:
             confianza=confianza,
             redactor=nombre_redactor,
             avisos=avisos,
+            causas_probables=causas,
+            precision_medida=medicion,
+            consulta_interpretada=consulta.texto,
         )
