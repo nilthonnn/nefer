@@ -313,7 +313,26 @@ casilla.
 Si el aparato no concede la cámara —el caso del archivo descargado—, en lugar
 de fallar en silencio muestra el motivo y un botón para usar la galería.
 
-### 6.1 El sello de fecha y hora
+### 6.1 El ángulo: vertical u horizontal
+
+Arriba a la derecha, dentro de la cámara, hay dos botones: **Vertical** y
+**Horizontal**. Eligen la forma de la fotografía sin tener que girar el
+teléfono, que en el patio suele hacerse con una sola mano libre.
+
+| Ángulo | Para qué | Qué hace |
+|---|---|---|
+| **Vertical** | Grupo electrógeno, torre de iluminación, un equipo más alto que ancho | Guarda la foto tal como la da la cámara sostenida en vertical: no recorta nada |
+| **Horizontal** | Plataforma, compresor, un motor visto de lado | Saca la franja central apaisada, en proporción 4:3 |
+
+Sólo se recorta cuando hace falta cambiar el ángulo. Si el encuadre ya viene
+en la forma pedida, la foto se guarda entera y a resolución completa. Cuando
+va a recortar, un **marco a rayas** marca en la pantalla lo que entra, así que
+se ve antes de disparar.
+
+La elección se recuerda: la próxima vez que se abra la cámara sigue en el
+ángulo que se dejó.
+
+### 6.2 El sello de fecha y hora
 
 Cada disparo sale con la **fecha y la hora quemadas en la imagen**, abajo a la
 derecha y en ámbar, como las que estampa la cámara del teléfono:

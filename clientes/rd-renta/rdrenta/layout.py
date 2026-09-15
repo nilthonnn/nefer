@@ -72,12 +72,15 @@ FILAS_BASE_CONSUMIBLE = 16
 ALTO_BLOQUE_CONSUMIBLE = FILAS_BASE_CONSUMIBLE + 1   # la forma corriente: una franja
 
 # --- Estilo ------------------------------------------------------------------
+# Medido sobre el formato del cliente (informe C375-40, hecho a mano en Excel):
+# cabecera a 11 pt y cuerpo a 8 pt, todo en Cambria y centrado. El acta
+# generada tiene que abrirse en la PC sin que se note de cual salio.
 FUENTE = "Cambria"
-PT_ETIQUETA = 10
+PT_ETIQUETA = 11
 PT_VALOR = 11
 PT_ROTULO = 8
-PT_TITULO = 10
-GRIS_CABECERA = "FFD9D9D9"    # tema 0 con tinte -0.15 en los originales
+PT_TITULO = 11
+GRIS_CABECERA = "FFD8D8D8"    # el gris exacto de la plantilla del cliente
 AMARILLO_RECUPERACION = "FFFFFF00"
 BLANCO = "FFFFFFFF"
 

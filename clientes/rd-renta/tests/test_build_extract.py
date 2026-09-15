@@ -56,7 +56,6 @@ def manifiesto(tmp_path):
             {"consumible": "Combustible diésel", "unidad": "%",
              "despacho": 100, "recepcion": 45},
         ],
-        "resumen_ejecutivo": "Equipo operativo; retorna sin extintor, se genera recuperacion.",
     }
 
 

@@ -101,7 +101,9 @@ def _ruta_logo(enc: dict, raiz: Path) -> Path | None:
 
 def _cabecera(ws, enc: dict, raiz: Path, avisos: list[str]) -> None:
     logo = _ruta_logo(enc, raiz)
-    st.escribir(ws, "A1:F3", None)
+    # El hueco del logo va limpio: en la plantilla del cliente el logo flota
+    # sobre la celda, sin recuadro que lo encierre.
+    st.escribir(ws, "A1:F3", None, borde=None)
     if logo is not None:
         ancho_logo = sum(round(layout.ANCHOS_COLUMNA[c] * 7) + 5 for c in "ABCDEF")
         if not logo.exists():
@@ -129,7 +131,7 @@ def _cabecera(ws, enc: dict, raiz: Path, avisos: list[str]) -> None:
     ]
     for rango_et, texto, rango_val, valor in etiquetas:
         st.escribir(ws, rango_et, texto, fuente=st.FUENTE_ETIQUETA, fill=st.FILL_CABECERA)
-        st.escribir(ws, rango_val, valor, alineacion=st.IZQUIERDA_AJUSTADA)
+        st.escribir(ws, rango_val, valor, alineacion=st.CENTRO_AJUSTADO)
 
     # Fila 6: fecha + casillas de tipo de documento.
     st.escribir(ws, "A6:F6", "FECHA:", fuente=st.FUENTE_ETIQUETA, fill=st.FILL_CABECERA)
@@ -414,7 +416,9 @@ def _configurar_pagina(ws, ultima_fila: int) -> None:
     ws.page_margins.left = ws.page_margins.right = 0.24
     ws.page_margins.top = ws.page_margins.bottom = 0.4
     ws.print_area = f"A1:{layout.COL_ULTIMA}{ultima_fila}"
-    ws.sheet_view.showGridLines = False
+    # La plantilla del cliente la deja a la vista, y el acta se edita en la PC:
+    # sin cuadricula no se ve donde empieza cada celda.
+    ws.sheet_view.showGridLines = True
 
 
 def construir_hoja_reporte(wb: Workbook, manifiesto: dict, raiz: Path,

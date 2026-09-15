@@ -464,6 +464,67 @@ PIXELES_DEL_SELLO = """
 """
 
 
+MEDIDA_ULTIMA_FOTO = """
+(sel) => new Promise((ok) => {
+  const todas = document.querySelectorAll(sel);
+  const el = todas[todas.length - 1];
+  const i = new Image();
+  i.onload = () => ok({ ancho: i.naturalWidth, alto: i.naturalHeight });
+  i.onerror = () => ok(null);
+  i.src = el.src;
+})
+"""
+
+
+def test_la_camara_recorta_al_angulo_que_elige_el_operario(servidor):
+    """Vertical para la maquina alta, horizontal para la que es mas ancha.
+
+    El telefono se sostiene en vertical y el sensor da esa forma: por eso
+    «Vertical» no recorta nada y «Horizontal» saca la franja central apaisada,
+    sin obligar a girar el aparato con una mano ocupada.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        app = App(pg).despacho()
+
+        pg.click("#d-camara-app")
+        pg.wait_for_function(
+            "() => { const v = document.querySelector('#cam-video');"
+            "        return v && v.videoWidth > 0; }", timeout=15000)
+
+        # Arranca en vertical, que es lo que daba la camara antes de esto.
+        assert pg.evaluate("() => RDRENTA.camara.angulo()") == "vertical"
+        assert pg.get_attribute("#cam-vertical", "aria-pressed") == "true"
+        # Un sensor vertical pedido en vertical no se toca; en horizontal, si.
+        assert pg.evaluate("() => RDRENTA.camara.recorte(1200, 1600)") is None
+
+        pg.click("#cam-horizontal")
+        assert pg.evaluate("() => RDRENTA.camara.angulo()") == "horizontal"
+        assert pg.get_attribute("#cam-horizontal", "aria-pressed") == "true"
+        r = pg.evaluate("() => RDRENTA.camara.recorte(1200, 1600)")
+        assert r["w"] == 1200 and r["h"] == 900, r          # 4:3, centrado
+        assert r["y"] == 350 and r["x"] == 0, r
+
+        pg.click("#cam-disparar")
+        pg.wait_for_timeout(1200)
+        foto = pg.evaluate(MEDIDA_ULTIMA_FOTO, "#d-grid .slot.lleno img")
+        assert foto and foto["ancho"] > foto["alto"], foto
+
+        pg.click("#cam-vertical")
+        pg.click("#cam-disparar")
+        pg.wait_for_timeout(1200)
+        foto = pg.evaluate(MEDIDA_ULTIMA_FOTO, "#d-grid .slot.lleno img")
+        assert foto and foto["alto"] > foto["ancho"], foto
+
+        pg.click("#cam-cerrar")
+        pg.wait_for_timeout(300)
+        assert app.llenas == 2
+        assert app.errores == []
+        nav.close()
+
+
 def test_la_foto_de_la_camara_sale_con_la_fecha_y_la_hora_quemadas(servidor):
     """Como la camara del telefono: el sello va dentro de la imagen.
 
@@ -1213,7 +1274,7 @@ def _guardar_paquete(pg, destino: Path) -> Path:
     for campo, valor in (("#d-cliente", "MINERA EJEMPLO S.A.C."),
                          ("#d-equipo", "GE-0142"), ("#d-modelo", "C90D5 / 90 kVA"),
                          ("#d-horometro", "1548.7"),
-                         ("#d-resumen", "Equipo sale operativo; sin observaciones.")):
+                         ("#d-modelo", "C90D5 / 90 kVA")):
         pg.fill(campo, valor)
     pg.wait_for_timeout(300)
     with pg.expect_download() as espera:
@@ -1502,7 +1563,7 @@ def test_las_dos_celdas_de_observaciones_cargan_foto(servidor, tmp_path):
                              ("#r-cliente", "CLIENTE DE PRUEBA S.A.C."),
                              ("#r-codigo_equipo", "C000-00"),
                              ("#r-modelo_equipo", "COMPRESOR DE PRUEBA"),
-                             ("#r-resumen", "Barra de tierra dañada.")):
+                             ("#r-modelo_equipo", "GRUPO ELECTRÓGENO")):
             pg.fill(campo, valor)
         pg.wait_for_timeout(400)
         with pg.expect_download(timeout=90000) as espera:

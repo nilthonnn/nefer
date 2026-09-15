@@ -277,6 +277,22 @@
   .cam-cuenta { display:block; font-family:var(--mono); font-size:.7rem;
                 font-weight:400; letter-spacing:.1em; color:#B9C6CC;
                 text-transform:none; margin-top:.15rem; }
+  /* El angulo se elige antes de disparar y se ve donde va a cortar: sobre una
+     maquina alta el operario encuadra en vertical, sobre una plataforma o un
+     compresor en horizontal, y el acta recibe la foto ya en esa forma. */
+  .cam-giro { position:absolute; right:.9rem; z-index:2; display:flex; gap:2px;
+              top:calc(env(safe-area-inset-top) + .7rem);
+              border:1px solid rgba(255,255,255,.45); border-radius:6px;
+              overflow:hidden; background:rgba(12,14,16,.85); }
+  .cam-giro button { background:transparent; border:0; color:#B9C6CC;
+                     font-family:var(--cond); font-size:.78rem; font-weight:700;
+                     text-transform:uppercase; letter-spacing:.06em;
+                     min-height:40px; padding:.35rem .7rem; }
+  .cam-giro button[aria-pressed="true"] { background:#fff; color:#16191B; }
+  .cam-marco { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);
+               border:2px dashed rgba(255,255,255,.85); border-radius:4px;
+               pointer-events:none; z-index:1;
+               box-shadow:0 0 0 100vmax rgba(0,0,0,.34); }
   .cam-mandos { position:absolute; left:0; right:0; bottom:0;
                 display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
                 gap:.6rem; padding:1rem 1rem calc(1rem + env(safe-area-inset-bottom));
@@ -802,10 +818,6 @@
 
       <section class="seccion">
         <h2>Resultado</h2>
-        <label class="campo" style="margin-bottom:.6rem">
-          <span class="lb">Resumen ejecutivo · máximo 20 palabras</span>
-          <input type="text" id="d-resumen"
-                 placeholder="Grupo electrógeno sale operativo, con extintor y tacos; sin observaciones."></label>
         <div class="aviso" id="d-estado"><b>Cargue las fotos</b> para empezar.</div>
         <div class="bar">
           <button class="primary" id="d-pdf" type="button">Descargar PDF</button>
@@ -957,10 +969,6 @@
         <section class="seccion">
           <h2>Resultado</h2>
           <div class="aviso" id="r-estado-final"></div>
-          <label class="campo" style="margin-bottom:.6rem">
-            <span class="lb">Resumen ejecutivo · máximo 20 palabras</span>
-            <input type="text" id="r-resumen"
-                   placeholder="Grupo retorna operativo; junta de escape rota, se factura el cambio."></label>
           <div class="bar">
             <button class="primary" id="r-pdf" type="button">Descargar PDF</button>
             <button id="r-xlsx" type="button">Descargar Excel</button>
@@ -1091,6 +1099,11 @@ rdrenta construir acta.json -o ACTA.xlsx --pdf</textarea>
   <div class="camara" id="camara" hidden aria-modal="true" role="dialog"
        aria-label="Cámara">
     <video id="cam-video" playsinline autoplay muted></video>
+    <div class="cam-marco" id="cam-marco" hidden></div>
+    <div class="cam-giro" id="cam-giro" role="group" aria-label="Ángulo de la fotografía">
+      <button type="button" id="cam-vertical" aria-pressed="true">Vertical</button>
+      <button type="button" id="cam-horizontal" aria-pressed="false">Horizontal</button>
+    </div>
     <div class="cam-aviso" id="cam-aviso" hidden></div>
     <div class="cam-alto">
       <p class="cam-destino"><span id="cam-rotulo">Foto libre</span>
@@ -1144,7 +1157,7 @@ var RDRENTA = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-10 · instalable";
+  var VERSION = "2026-09-15 · ángulo de cámara y formato de la plantilla";
 
   "use strict";
 
@@ -1678,6 +1691,57 @@ var RDRENTA = (function () {
      ================================================================ */
   var camara = (function () {
     var flujo = null, pendientes = [], puntero = 0, alTomar = null, alFallar = null;
+
+    /* Angulo de la toma. El telefono se sostiene en vertical y esa es la forma
+       que da el sensor, asi que «Vertical» no recorta nada: es lo que ya salia.
+       «Horizontal» recorta la franja central apaisada, para la maquina que es
+       mas ancha que alta —plataformas, compresores, un motor de lado— sin
+       obligar a girar el telefono con una mano ocupada. Solo se recorta cuando
+       hace falta cambiar el angulo; si el encuadre ya viene en el pedido, la
+       foto se guarda entera y a resolucion completa. */
+    var VERTICAL = true;
+    try {
+      VERTICAL = localStorage.getItem("rdrenta.camara.angulo") !== "horizontal";
+    } catch (e) { /* sin permiso: se queda en vertical */ }
+
+    function recorte(w, h) {
+      if ((h >= w) === VERTICAL) return null;          // ya viene en ese angulo
+      var a = VERTICAL ? 3 / 4 : 4 / 3;                // ancho / alto del destino
+      var rw = Math.min(w, Math.round(h * a));
+      var rh = Math.min(h, Math.round(rw / a));
+      return { x: Math.round((w - rw) / 2), y: Math.round((h - rh) / 2), w: rw, h: rh };
+    }
+
+    /* El marco dibuja sobre el video lo que va a entrar. El video se pinta con
+       `object-fit: cover`, asi que primero hay que saber a que escala se ve. */
+    function pintarMarco() {
+      var v = $("#cam-video"), marco = $("#cam-marco");
+      if (!marco) return;
+      var vw = v.videoWidth, vh = v.videoHeight;
+      var ew = v.clientWidth, eh = v.clientHeight;
+      var r = (vw && vh) ? recorte(vw, vh) : null;
+      if (!r || !ew || !eh) { marco.hidden = true; return; }
+      var escala = Math.max(ew / vw, eh / vh);
+      var mw = Math.min(ew, Math.round(r.w * escala));
+      var mh = Math.min(eh, Math.round(r.h * escala));
+      // Si el recorte llena la pantalla no hay nada que encuadrar, y un marco
+      // que abarca todo solo estorba la vista.
+      if (mw >= ew && mh >= eh) { marco.hidden = true; return; }
+      marco.style.width = mw + "px";
+      marco.style.height = mh + "px";
+      marco.hidden = false;
+    }
+
+    function fijarAngulo(vertical) {
+      VERTICAL = !!vertical;
+      try {
+        localStorage.setItem("rdrenta.camara.angulo", VERTICAL ? "vertical" : "horizontal");
+      } catch (e) { /* da igual: vale para esta sesion */ }
+      var v = $("#cam-vertical"), h = $("#cam-horizontal");
+      if (v) v.setAttribute("aria-pressed", VERTICAL ? "true" : "false");
+      if (h) h.setAttribute("aria-pressed", VERTICAL ? "false" : "true");
+      pintarMarco();
+    }
     // null = no se ha probado. Una vez que falla, no se vuelve a interponer
     // entre el operador y el selector de archivos.
     var sirve = null;
@@ -1736,6 +1800,7 @@ var RDRENTA = (function () {
     function cerrar() {
       if (flujo) { flujo.getTracks().forEach(function (t) { t.stop(); }); flujo = null; }
       $("#cam-video").srcObject = null;
+      $("#cam-marco").hidden = true;
       $("#camara").hidden = true;
       alTomar = null;
       alFallar = null;
@@ -1751,6 +1816,7 @@ var RDRENTA = (function () {
       $("#cam-aviso").hidden = true;
       $("#camara").hidden = false;
       pintarDestino();
+      fijarAngulo(VERTICAL);
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         sirve = false;
@@ -1788,11 +1854,13 @@ var RDRENTA = (function () {
     function disparar() {
       var v = $("#cam-video");
       if (!flujo || !v.videoWidth) return;
-      var w = v.videoWidth, h = v.videoHeight, mayor = Math.max(w, h);
+      var r = recorte(v.videoWidth, v.videoHeight) ||
+              { x: 0, y: 0, w: v.videoWidth, h: v.videoHeight };
+      var mayor = Math.max(r.w, r.h);
       var f = mayor > MAX_LADO ? MAX_LADO / mayor : 1;
       var c = document.createElement("canvas");
-      c.width = Math.round(w * f); c.height = Math.round(h * f);
-      c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+      c.width = Math.round(r.w * f); c.height = Math.round(r.h * f);
+      c.getContext("2d").drawImage(v, r.x, r.y, r.w, r.h, 0, 0, c.width, c.height);
       // El disparo se sella con la hora de este momento, antes de codificar:
       // lo que se guarda ya lleva la fecha dentro de la imagen.
       sellarFecha(c, new Date());
@@ -1833,13 +1901,23 @@ var RDRENTA = (function () {
       if (sa) sa.addEventListener("click", function () {
         if (puntero < pendientes.length) { puntero++; pintarDestino(); }
       });
+      var cv = $("#cam-vertical"), ch = $("#cam-horizontal");
+      if (cv) cv.addEventListener("click", function () { fijarAngulo(true); });
+      if (ch) ch.addEventListener("click", function () { fijarAngulo(false); });
+      // El video tarda en dar sus medidas, y girar el telefono las cambia.
+      var vid = $("#cam-video");
+      if (vid) vid.addEventListener("loadedmetadata", pintarMarco);
+      window.addEventListener("resize", function () {
+        if (!$("#camara").hidden) pintarMarco();
+      });
       document.addEventListener("keydown", function (e) {
         if (e.key === "Escape" && !$("#camara").hidden) cerrar();
       });
     }
 
     return { hay: hay, utilizable: utilizable, abrir: abrir, cerrar: cerrar,
-             conectar: conectar };
+             conectar: conectar, recorte: recorte,
+             angulo: function () { return VERTICAL ? "vertical" : "horizontal"; } };
   })();
 
   /* ---------- nombres dentro del paquete ----------
@@ -2589,8 +2667,7 @@ var RDRENTA = (function () {
       inspeccion_componentes: [],
       registro_fotografico: registro,
       consumibles: consumibles,
-      control_consumibles: [],
-      resumen_ejecutivo: $("#d-resumen").value.trim()
+      control_consumibles: []
     };
   }
 
@@ -2612,9 +2689,6 @@ var RDRENTA = (function () {
     var marca = $("#d-t-datos");
     marca.textContent = cabecera ? "faltan " + cabecera : "completo";
     marca.classList.toggle("ok", cabecera === 0);
-    var palabras = a.resumen_ejecutivo ? a.resumen_ejecutivo.split(/\s+/).length : 0;
-    if (!palabras) falta.push("el resumen ejecutivo");
-    else if (palabras > 20) falta.push("recortar el resumen a 20 palabras (tiene " + palabras + ")");
 
     var huecos = casillas.filter(function (x) { return x === null; }).length;
     var sueltas = fotos.length - Object.keys(asignadas()).length;
@@ -2949,7 +3023,7 @@ var RDRENTA = (function () {
   });
 
   ["d-cliente","d-obra","d-equipo","d-modelo","d-empresa","d-acta","d-guia",
-   "d-fecha","d-horometro","d-resumen"].forEach(function (id) {
+   "d-fecha","d-horometro"].forEach(function (id) {
     $("#" + id).addEventListener("input", pintarSalida);
   });
 
@@ -3075,9 +3149,6 @@ var RDRENTA = (function () {
       if (!$("#d-acta").value) $("#d-acta").value = "004-001155";
       if (!$("#d-guia").value) $("#d-guia").value = "T001-00020144";
       if (!$("#d-horometro").value) $("#d-horometro").value = "1548.7";
-      if (!$("#d-resumen").value) {
-        $("#d-resumen").value = "Grupo sale operativo con extintor; sin observaciones.";
-      }
       autoAsignar(); pintar();
       $("#d-estado").scrollIntoView({ block: "nearest" });
       avisar("ejemplo cargado");
@@ -3086,7 +3157,7 @@ var RDRENTA = (function () {
 
   /* ---------- memoria ---------- */
   var CAMPOS = ["d-cliente","d-obra","d-equipo","d-modelo","d-empresa","d-acta",
-                "d-guia","d-fecha","d-horometro","d-resumen"];
+                "d-guia","d-fecha","d-horometro"];
   guardar = RDRENTA.recordar("despacho.v1", function () {
     var v = { cat: $("#d-cat").value, campos: {}, extras: extras.slice(),
               accesorios: accesorios.map(function (a) { return a.nombre; }) };
@@ -3847,8 +3918,7 @@ var RDRENTA = (function () {
 
     return { encabezado: enc, inspeccion_componentes: componentes,
              registro_fotografico: registro, consumibles: consumibles,
-             control_consumibles: (despacho || {}).control_consumibles || [],
-             resumen_ejecutivo: $("#r-resumen").value.trim() };
+             control_consumibles: (despacho || {}).control_consumibles || [] };
   }
 
   function pintarSalida() {
@@ -3871,9 +3941,6 @@ var RDRENTA = (function () {
       return (c.estado === "OBS" || c.estado === "D") && !c.observacion.trim();
     }).length;
     if (sinObs) falta.push(sinObs + " componente(s) dañado(s) sin observación escrita");
-    var palabras = a.resumen_ejecutivo ? a.resumen_ejecutivo.split(/\s+/).length : 0;
-    if (!palabras) falta.push("el resumen ejecutivo");
-    else if (palabras > 20) falta.push("recortar el resumen a 20 palabras (tiene " + palabras + ")");
 
     var caja = $("#r-estado-final");
     if (falta.length) {
@@ -3999,7 +4066,7 @@ var RDRENTA = (function () {
     if (tizq) { cons[+tizq.dataset.consTizq].texto_despacho = e.target.value; pintarSalida(); return; }
     var tder = e.target.closest("[data-cons-tder]");
     if (tder) { cons[+tder.dataset.consTder].texto_recepcion = e.target.value; pintarSalida(); return; }
-    if (["r-acta","r-guia","r-fecha","r-horometro","r-resumen","r-cliente","r-obra",
+    if (["r-acta","r-guia","r-fecha","r-horometro","r-cliente","r-obra",
          "r-codigo_equipo","r-modelo_equipo"].indexOf(e.target.id) !== -1) {
       pintarSalida();
     }
@@ -4092,7 +4159,7 @@ var RDRENTA = (function () {
   /* ---------- memoria ----------
      Sólo lo tecleado y los estados marcados. Las fotos viven en memoria y no
      sobreviven al cierre: hay que volver a cargarlas, y eso se avisa. */
-  var CAMPOS = ["r-acta","r-guia","r-fecha","r-horometro","r-resumen",
+  var CAMPOS = ["r-acta","r-guia","r-fecha","r-horometro",
                 "r-cliente","r-obra","r-codigo_equipo","r-modelo_equipo"];
   guardar = RDRENTA.recordar("recepcion.v1", function () {
     var v = { campos: {} };
@@ -5018,13 +5085,6 @@ var ENTREGABLE = (function () {
           pieza.dibujar(L, M, y, imagenes);
           y += pieza.alto + E.HUECO;
         });
-        if (p === paginas.length - 1 && acta.resumen_ejecutivo) {
-          var pie = A4.h - M - 6;
-          L.caja(M, pie - 14, E.ANCHO, 16, "0.85 0.85 0.85", 0.5);
-          L.texto("RESUMEN:", M + 4, pie - 3, 7.5, true);
-          L.texto(E.recortar(acta.resumen_ejecutivo, 8, false, E.ANCHO - 60),
-                  M + 48, pie - 3, 8, false);
-        }
         return L;
       });
 
@@ -5057,7 +5117,7 @@ var ENTREGABLE = (function () {
   var FILA_INICIO_FOTOS = 11, ALTO_BLOQUE_FOTO = 15, FILAS_IMAGEN = 14;
   var ALTO_FILA_ESTANDAR = 15.0, ALTO_FILA_ROTULO = 16.5, ALTO_FILA_SEPARADOR = 10.5;
   // A 16,5 pt en la fila de la descripción solo cabe una línea; las
-  // descripciones largas se cortaban. 28,5 pt son dos líneas de Calibri 10.
+  // descripciones largas se cortaban. 28,5 pt son dos líneas de Cambria 8.
   var ALTO_FILA_TEXTO = 28.5;
   var EMU = 9525;                       // EMU por píxel
 
@@ -5144,12 +5204,14 @@ var ENTREGABLE = (function () {
     }
 
     // --- cabecera ---
-    fundir("A1:F3", "", 1);
+    // El hueco del logo va sin borde ni relleno: en la plantilla el logo flota
+    // sobre la celda limpia, y un recuadro gris alrededor se nota al imprimir.
+    fundir("A1:F3", "", 0);
     fundir("G1:R3", E.TITULO.join("\n"), 4);
     // El formato lleva etiqueta y valor en una sola celda de control.
-    fundir("S1:Z1", "CÓDIGO: " + (enc.codigo_formato || E.NUMEROS.CODIGO_FORMATO), 1);
-    fundir("S2:Z2", "VERSIÓN: " + (enc.version_formato || E.NUMEROS.VERSION_FORMATO), 1);
-    fundir("S3:Z3", "FECHA: " + (enc.fecha_formato || E.NUMEROS.FECHA_FORMATO), 1);
+    fundir("S1:Z1", "CÓDIGO: " + (enc.codigo_formato || E.NUMEROS.CODIGO_FORMATO), 9);
+    fundir("S2:Z2", "VERSIÓN: " + (enc.version_formato || E.NUMEROS.VERSION_FORMATO), 9);
+    fundir("S3:Z3", "FECHA: " + (enc.fecha_formato || E.NUMEROS.FECHA_FORMATO), 9);
 
     [[4, "N° ACTA:", enc.n_acta || ""], [5, "N° GUÍA:", enc.n_guia || ""],
      [7, "CLIENTE:", enc.cliente || ""], [8, "EQUIPO:", enc.modelo_equipo || ""]
@@ -5162,10 +5224,10 @@ var ENTREGABLE = (function () {
     var esDespacho = m.tipo !== "RECEPCION";
     fundir("A6:F6", "FECHA:", 1);
     fundir("G6:M6", enc.fecha || "", 2);
-    fundir("N6:R6", "DESPACHO", 1);
-    fundir("S6:T6", esDespacho ? "X" : "", 3);
-    fundir("U6:Y6", "RECEPCIÓN", 1);
-    celda("Z6", esDespacho ? "" : "X", 3);
+    fundir("N6:R6", "DESPACHO", 8);
+    fundir("S6:T6", esDespacho ? "X" : "", 8);
+    fundir("U6:Y6", "RECEPCIÓN", 8);
+    celda("Z6", esDespacho ? "" : "X", 8);
 
     // Fila 9: código interno + horómetro.
     fundir("A9:F9", "CÓDIGO:", 1);
@@ -5290,12 +5352,6 @@ var ENTREGABLE = (function () {
       }
     })();
 
-    if (acta.resumen_ejecutivo) {
-      fundir("A" + (fila + 2) + ":Z" + (fila + 2), "RESUMEN EJECUTIVO", 1);
-      fundir("A" + (fila + 3) + ":Z" + (fila + 3), acta.resumen_ejecutivo, 2);
-      fila += 3;
-    }
-
     // La misma advertencia que el PDF. Va al pie porque la cabecera ocupa A1 y
     // desplazar el formato entero para caber una fila sería peor remedio.
     var falta = E.faltantes(acta);
@@ -5306,7 +5362,7 @@ var ENTREGABLE = (function () {
       fila += 2;
     }
 
-    var ultimaFila = fila + (acta.resumen_ejecutivo ? 3 : 0);
+    var ultimaFila = fila;
     Object.keys(alturas).forEach(function (f) { ultimaFila = Math.max(ultimaFila, +f); });
 
     return { filas: filas, fusiones: fusiones, alturas: alturas, anclas: anclas,
@@ -5364,7 +5420,7 @@ var ENTREGABLE = (function () {
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
       'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
       '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' +
-      '<sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews>' +
+      '<sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
       '<cols>' + cols + '</cols><sheetData>' + cuerpo + '</sheetData>' + fus +
       '<pageMargins left="0.24" right="0.24" top="0.4" bottom="0.4" ' +
       'header="0.2" footer="0.2"/>' +
@@ -5409,16 +5465,20 @@ var ENTREGABLE = (function () {
 
   var ESTILOS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-    '<fonts count="5">' +
-    '<font><sz val="11"/><name val="Calibri"/></font>' +
-    '<font><b/><sz val="10"/><name val="Calibri"/></font>' +
-    '<font><b/><sz val="12"/><name val="Calibri"/></font>' +
-    '<font><b/><sz val="10"/><color rgb="FF8B0000"/><name val="Calibri"/></font>' +
-    '<font><i/><sz val="9"/><color rgb="FF9AA3A8"/><name val="Calibri"/></font>' +
+    // Cambria y estos cuerpos salen del formato del cliente, medidos sobre su
+    // informe C375-40: cabecera a 11 pt, cuerpo a 8 pt. Con Calibri el acta
+    // abierta en la PC no se parecía a la plantilla que se llena a mano.
+    '<fonts count="6">' +
+    '<font><sz val="11"/><name val="Cambria"/></font>' +
+    '<font><b/><sz val="11"/><name val="Cambria"/></font>' +
+    '<font><b/><sz val="11"/><name val="Cambria"/></font>' +
+    '<font><b/><sz val="10"/><color rgb="FF8B0000"/><name val="Cambria"/></font>' +
+    '<font><i/><sz val="9"/><color rgb="FF9AA3A8"/><name val="Cambria"/></font>' +
+    '<font><b/><sz val="8"/><name val="Cambria"/></font>' +
     '</fonts>' +
     '<fills count="5"><fill><patternFill patternType="none"/></fill>' +
     '<fill><patternFill patternType="gray125"/></fill>' +
-    '<fill><patternFill patternType="solid"><fgColor rgb="FFD9D9D9"/>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFD8D8D8"/>' +
     '<bgColor indexed="64"/></patternFill></fill>' +
     '<fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/>' +
     '<bgColor indexed="64"/></patternFill></fill>' +
@@ -5428,20 +5488,21 @@ var ENTREGABLE = (function () {
     '<border><left style="thin"/><right style="thin"/><top style="thin"/>' +
     '<bottom style="thin"/><diagonal/></border></borders>' +
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-    '<cellXfs count="8">' +
+    '<cellXfs count="10">' +
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
     '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
     'applyFill="1" applyBorder="1" applyAlignment="1">' +
-    '<alignment vertical="center" wrapText="1"/></xf>' +
+    '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" ' +
-    'applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>' +
-    '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
+    'applyAlignment="1">' +
+    '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+    '<xf numFmtId="0" fontId="5" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
     'applyFill="1" applyBorder="1" applyAlignment="1">' +
     '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
-    '<xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" ' +
-    'applyBorder="1" applyAlignment="1">' +
+    '<xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
+    'applyFill="1" applyBorder="1" applyAlignment="1">' +
     '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
-    '<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" ' +
+    '<xf numFmtId="0" fontId="5" fillId="3" borderId="1" xfId="0" applyFont="1" ' +
     'applyFill="1" applyBorder="1" applyAlignment="1">' +
     '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
     // 6: aviso de borrador. 7: casilla sin fotografía.
@@ -5451,6 +5512,15 @@ var ENTREGABLE = (function () {
     '<xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" ' +
     'applyBorder="1" applyAlignment="1">' +
     '<alignment horizontal="center" vertical="center"/></xf>' +
+    // 8: casilla de tipo de documento. Va sin relleno, como la plantilla.
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" ' +
+    'applyBorder="1" applyAlignment="1">' +
+    '<alignment horizontal="center" vertical="center"/></xf>' +
+    // 9: control documental. Pegado a la izquierda y sin relleno, como en el
+    // formulario de papel: ahi el codigo se lee seguido de su etiqueta.
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" ' +
+    'applyBorder="1" applyAlignment="1">' +
+    '<alignment horizontal="left" vertical="center"/></xf>' +
     '</cellXfs>' +
     // Excel y openpyxl esperan un estilo normal declarado; sin el avisan.
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/>' +

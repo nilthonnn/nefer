@@ -66,6 +66,27 @@ def test_geometria_compartida_con_layout():
     assert float(_var_js("CAJA_IMPRESION_PT")) == layout.CAJA_IMPRESION_PT
 
 
+def test_los_estilos_de_la_app_son_los_del_formato():
+    """La app escribe su Excel a mano, con su propia tabla de estilos.
+
+    Si esa tabla se separa de `layout.py`, el acta del telefono y la de la
+    computadora salen con distinta tipografia, y en la PC se nota al lado de
+    la plantilla que el cliente llena a mano: fue exactamente lo que paso
+    cuando la app quedo en Calibri y el motor en Cambria.
+    """
+    fuentes = re.findall(r"<font>.*?</font>", FUENTE)
+    assert fuentes, "no se encontro la tabla de fuentes de la app"
+    for f in fuentes:
+        assert f'<name val="{layout.FUENTE}"/>' in f, f
+
+    # Cabecera y cuerpo, los dos cuerpos que distingue el formato.
+    assert f'<b/><sz val="{layout.PT_ETIQUETA}"/><name val="{layout.FUENTE}"/>' in FUENTE
+    assert f'<b/><sz val="{layout.PT_ROTULO}"/><name val="{layout.FUENTE}"/>' in FUENTE
+
+    assert f'fgColor rgb="{layout.GRIS_CABECERA}"' in FUENTE
+    assert f'fgColor rgb="{layout.AMARILLO_RECUPERACION}"' in FUENTE
+
+
 def test_anchos_de_columna_compartidos():
     bloque = re.search(r"var ANCHOS_COLUMNA = \{(.*?)\};", FUENTE, re.S)
     assert bloque, "no se encontro la tabla de anchos en la app"
@@ -321,7 +342,6 @@ def recepcion(tmp_path_factory):
 
         pg.fill("#r-acta", "004-001156")
         pg.fill("#r-horometro", "1731.2")
-        pg.fill("#r-resumen", "Retorna operativo; junta rota y extintor no retornado.")
         pg.wait_for_timeout(500)
 
         for boton, clave in (("#r-pdf", "pdf"), ("#r-xlsx", "xlsx"), ("#r-zip", "zip")):
@@ -618,7 +638,6 @@ def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
 
         pg.fill("#r-acta", "004-001157")
         pg.fill("#r-horometro", "1731.2")
-        pg.fill("#r-resumen", "Retorna operativo; faltan cuatro vistas.")
         pg.wait_for_timeout(400)
         acta = json.loads(pg.input_value("#r-salida"))
 
@@ -829,7 +848,7 @@ def test_la_recepcion_arranca_sin_acta_de_despacho(tmp_path):
                              ("#r-cliente", "CLIENTE DE PRUEBA S.A.C."),
                              ("#r-codigo_equipo", "C000-00"),
                              ("#r-modelo_equipo", "COMPRESOR TRANSPORTABLE DE 375 CFM"),
-                             ("#r-resumen", "Retorna operativo; faltan los conos.")):
+                             ("#r-modelo_equipo", "GRUPO ELECTRÓGENO")):
             pg.fill(campo, valor)
         pg.wait_for_timeout(400)
 
@@ -977,7 +996,7 @@ def parcial(tmp_path_factory):
                              ("#r-cliente", "CLIENTE DE PRUEBA S.A.C."),
                              ("#r-codigo_equipo", "C000-00"),
                              ("#r-modelo_equipo", "COMPRESOR TRANSPORTABLE DE 375 CFM"),
-                             ("#r-resumen", "Vuelve un gancho de los dos.")):
+                             ("#r-modelo_equipo", "GRUPO ELECTRÓGENO")):
             pg.fill(campo, valor)
         pg.wait_for_timeout(400)
 
