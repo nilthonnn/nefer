@@ -71,6 +71,9 @@ def actualizar(indice: Indice, rutas, podar: bool = True) -> Actualizacion:
     `podar` quita del indice los archivos que ya no existen: un manual
     retirado no debe seguir respondiendo.
     """
+    # Igual que arriba: con un generador, la poda de mas abajo no veria
+    # ninguna ruta y se saltaria en silencio.
+    rutas = list(rutas)
     parte = Actualizacion()
     vistos = set()
     for archivo in ingesta.recorrer(rutas):

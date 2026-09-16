@@ -205,3 +205,34 @@ def test_un_envio_que_no_es_un_envio_lo_dice(tmp_path):
 def test_tambien_acepta_una_lista_pelada(tmp_path):
     parte = cierre.recibir(ENVIO["pendientes"], tmp_path / "h.json", hoy=HOY)
     assert len(parte.nuevos) == 2
+
+
+def test_reenviar_sin_numero_de_orden_tampoco_duplica(tmp_path):
+    """El teléfono siempre pone OT, pero un envío a mano puede no traerla.
+
+    Sin código, cada reenvío le inventaba un correlativo nuevo y lo metía
+    otra vez: el mismo trabajo contado tres veces en el historial de la
+    flota, que es de donde salen los promedios.
+    """
+    sin_ot = {"pendientes": [
+        {"resumen_falla": "El mástil no sube", "causa_raiz": "Acople con fuga",
+         "solucion_aplicada": "Se cambió el acople", "codigo_equipo": "TI09-04"}]}
+    historial = tmp_path / "historial.json"
+    envio = _envio(tmp_path, sin_ot)
+
+    assert len(cierre.recibir(envio, historial, hoy=HOY).nuevos) == 1
+    segunda = cierre.recibir(envio, historial, hoy=HOY)
+    assert not segunda.nuevos and segunda.repetidos
+    assert len(json.loads(historial.read_text(encoding="utf-8"))["informes"]) == 1
+
+
+def test_dos_trabajos_parecidos_pero_distintos_si_entran_los_dos(tmp_path):
+    # La firma mira falla, causa, solución, equipo y fecha: dos equipos con
+    # la misma avería el mismo día son dos informes, no uno repetido.
+    base = {"resumen_falla": "El mástil no sube", "causa_raiz": "Acople con fuga",
+            "solucion_aplicada": "Se cambió el acople"}
+    historial = tmp_path / "historial.json"
+    parte = cierre.recibir([dict(base, codigo_equipo="TI09-04"),
+                            dict(base, codigo_equipo="TI09-02")],
+                           historial, hoy=HOY)
+    assert len(parte.nuevos) == 2

@@ -91,6 +91,13 @@ class Indice:
     def __init__(self, embebedor: embeddings.Embebedor | None = None):
         self.embebedor = embebedor or embeddings.EmbebedorLocal()
         self.fragmentos: list[Fragmento] = []
+        # Las cuentas del BM25 van juntas en un solo objeto y se cambian de
+        # una sola vez: mientras se reindexa puede haber una consulta en
+        # curso —la API atiende `POST /informes` y una busqueda a la vez— y
+        # con las listas cambiandose una a una la busqueda leia una nueva
+        # contra otra vieja y reventaba con IndexError.
+        self._lexico: dict = {"tokens": [], "frecuencias": [],
+                              "documentos": {}, "largo_medio": 0.0}
         # De que archivo salio cada cosa y como estaba ese archivo cuando se
         # leyo: es lo que permite reindexar solo lo que cambio.
         self.fuentes: dict[str, str] = {}
@@ -152,19 +159,24 @@ class Indice:
         return self.fuentes.get(str(origen)) == firma
 
     def _reindexar(self) -> None:
-        self._tokens = [_texto.tokenizar(f"{f.texto} {self._texto_metadatos(f)}")
-                        for f in self.fragmentos]
-        self._frecuencias = []
-        self._documentos_por_token = {}
-        for tokens in self._tokens:
+        tokens_por_fragmento = [
+            _texto.tokenizar(f"{f.texto} {self._texto_metadatos(f)}")
+            for f in self.fragmentos]
+        frecuencias: list[dict[str, int]] = []
+        documentos: dict[str, int] = {}
+        for tokens in tokens_por_fragmento:
             frecuencia: dict[str, int] = {}
             for token in tokens:
                 frecuencia[token] = frecuencia.get(token, 0) + 1
-            self._frecuencias.append(frecuencia)
+            frecuencias.append(frecuencia)
             for token in frecuencia:
-                self._documentos_por_token[token] = self._documentos_por_token.get(token, 0) + 1
-        self._largo_medio = (sum(len(t) for t in self._tokens) / len(self._tokens)
-                             if self._tokens else 0.0)
+                documentos[token] = documentos.get(token, 0) + 1
+        largo_medio = (sum(len(t) for t in tokens_por_fragmento)
+                       / len(tokens_por_fragmento)) if tokens_por_fragmento else 0.0
+        # Un solo cambio, al final: el que este buscando ve las cuentas
+        # viejas enteras o las nuevas enteras, nunca media mezcla.
+        self._lexico = {"tokens": tokens_por_fragmento, "frecuencias": frecuencias,
+                        "documentos": documentos, "largo_medio": largo_medio}
 
     @staticmethod
     def _texto_metadatos(fragmento: Fragmento) -> str:
@@ -203,7 +215,8 @@ class Indice:
             return []
 
         vector_consulta = self.embebedor.embeber([consulta])[0]
-        lexicos = self._bm25(consulta, candidatos)
+        lexico = self._lexico            # una sola lectura, coherente
+        lexicos = self._bm25(consulta, candidatos, lexico)
         # BM25 no tiene tope: se lleva al [0, 1] del coseno con el mayor del
         # propio lote, que es lo unico comparable dentro de una consulta.
         mayor = max(lexicos.values()) if lexicos else 0.0
@@ -224,23 +237,29 @@ class Indice:
         resultados.sort(key=lambda c: (-c.puntaje, c.fragmento.id))
         return resultados[:limite]
 
-    def _bm25(self, consulta: str, candidatos: list[int]) -> dict[int, float]:
+    def _bm25(self, consulta: str, candidatos: list[int],
+              lexico: dict | None = None) -> dict[int, float]:
+        lexico = lexico or self._lexico
+        frecuencias, largos = lexico["frecuencias"], lexico["tokens"]
+        largo_medio = lexico["largo_medio"]
         tokens = _texto.tokenizar(consulta)
-        if not tokens or not self._largo_medio:
+        if not tokens or not largo_medio:
             return {}
-        total = len(self.fragmentos)
+        total = len(frecuencias)
         puntajes: dict[int, float] = {}
         for token in set(tokens):
-            documentos = self._documentos_por_token.get(token, 0)
+            documentos = lexico["documentos"].get(token, 0)
             if not documentos:
                 continue
             idf = math.log(1 + (total - documentos + 0.5) / (documentos + 0.5))
             for i in candidatos:
-                frecuencia = self._frecuencias[i].get(token, 0)
+                if i >= total:
+                    continue        # fragmento recien anadido: entra al reindexar
+                frecuencia = frecuencias[i].get(token, 0)
                 if not frecuencia:
                     continue
-                largo = len(self._tokens[i])
-                denominador = frecuencia + K1 * (1 - B + B * largo / self._largo_medio)
+                largo = len(largos[i])
+                denominador = frecuencia + K1 * (1 - B + B * largo / largo_medio)
                 puntajes[i] = puntajes.get(i, 0.0) + idf * frecuencia * (K1 + 1) / denominador
         return puntajes
 

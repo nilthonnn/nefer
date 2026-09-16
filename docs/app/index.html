@@ -6502,10 +6502,14 @@ var FIXMATE = (function () {
     if (!datos || !datos.fragmentos || !datos.fragmentos.length) {
       throw new Error("ese archivo no trae fragmentos: ¿es el índice?");
     }
-    if (String(datos.embebedor || "").indexOf("local-fnv-") !== 0) {
-      // Mezclar embebedores no da error: da respuestas sin sentido.
+    // Mezclar embebedores no da error: da respuestas sin sentido. Y el
+    // nombre no basta: un índice de 512 posiciones contra un vector de 256
+    // puntúa contra la mitad del vector y contesta ruido sin avisar.
+    var esperado = "local-fnv-" + FIXMATE.DIMENSION;
+    if (String(datos.embebedor || "") !== esperado ||
+        (datos.dimension && datos.dimension !== FIXMATE.DIMENSION)) {
       throw new Error("el índice se armó con «" + datos.embebedor + "» y el " +
-        "teléfono sólo sabe calcular «local-fnv-…». Vuelva a indexarlo.");
+        "teléfono sólo sabe calcular «" + esperado + "». Vuelva a indexarlo.");
     }
     motor = new FIXMATE.Motor(new FIXMATE.Indice(datos));
     $("#dx-sin-indice").hidden = true;

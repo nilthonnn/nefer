@@ -289,19 +289,27 @@ EVIDENCIA
   </section>
 
   <section>
-    <h2><span class="n">06</span>La API que consume la app de campo</h2>
-    <div class="consola"><b>$ curl -X POST localhost:8000/search-report-rag \
-    -d '{"consulta_texto": "tramites de aduana del contenedor"}'</b>
-
-  <u>404</u>
-  {
-    "detail": "No hay antecedentes en el indice que respalden esa
-     consulta. Registre el caso al cerrarlo y el proximo tecnico
-     si los tendra."
-  }</div>
-    <p class="nota">El 404 no es una avería: es la respuesta. <strong>Sin
-    antecedente no hay diagnóstico</strong>, y decirlo vale más que inventar
-    uno. Un diagnóstico sin evidencia es una conjetura con formato de informe.</p>
+    <h2><span class="n">06</span>Y todo esto, en el teléfono</h2>
+    <p>Hasta aquí, la computadora de la oficina. Pero la máquina está en el
+    patio y el socavón no tiene señal, así que el mismo motor va dentro de la
+    app de campo: se le carga el índice una vez y responde sin red.</p>
+    <ul class="insumos">
+      <li><span class="f">1&nbsp;MB</span><b>Cabe de sobra</b><span class="q">Un taller de 2000 fragmentos pesa 7,9 MB, 1,0 MB comprimido. Se copia una vez y queda guardado en el teléfono.</span></li>
+      <li><span class="f">voz</span><b>Se dicta</b><span class="q">Donde el teléfono lo trae, el botón escribe lo que usted diga —y lo deja a la vista antes de buscar, por si entendió otra cosa.</span></li>
+      <li><span class="f">campo</span><b>Y se cierra ahí mismo</b><span class="q">Lo que resuelve se registra en el acto y ya lo encuentra el compañero de al lado. Cuando hay señal, un botón lo manda todo a la oficina.</span></li>
+    </ul>
+    <div class="destacado">
+      <h3>El mismo motor, escrito dos veces</h3>
+      <p>Python en la oficina, JavaScript en el teléfono. Dos versiones de la
+      misma búsqueda se separan solas, y nadie lo nota hasta que el teléfono
+      contesta otra cosa. Por eso una prueba corre las mismas consultas en los
+      dos y compara el orden de los antecedentes, sus puntajes, la causa y los
+      pasos: si se separan, no se publica.</p>
+    </div>
+    <p class="nota">Queda también una <strong>API</strong> para quien prefiera
+    servirlo desde la oficina. Ahí, un <code>404</code> no es una avería: es la
+    respuesta. <strong>Sin antecedente no hay diagnóstico</strong>, y decirlo
+    vale más que inventar uno.</p>
   </section>
 
   <section>

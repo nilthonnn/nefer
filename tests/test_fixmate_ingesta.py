@@ -50,8 +50,13 @@ def test_el_torque_del_procedimiento_queda_a_mano():
 
 
 def test_un_informe_sin_ot_igual_entra_con_un_identificador_propio():
-    fragmento = ingesta.de_informe({"resumen_falla": "algo"}, n=4)
-    assert fragmento.id == "ot:SIN-OT-5"
+    fragmento = ingesta.de_informe({"resumen_falla": "algo"}, "historial.json", n=4)
+    # Lleva la marca del archivo: el quinto informe sin OT de dos historiales
+    # distintos no puede ser el mismo fragmento.
+    assert fragmento.id.startswith("ot:SIN-OT-")
+    assert fragmento.id.endswith("-5")
+    assert ingesta.de_informe({"resumen_falla": "algo"}, "otro.json", n=4).id \
+        != fragmento.id
 
 
 def test_historial_acepta_lista_pelada_y_objeto_con_informes():
@@ -78,7 +83,7 @@ MANIFIESTO = {
 def test_un_acta_da_un_fragmento_del_acta_y_uno_por_hallazgo():
     fragmentos = ingesta.de_manifiesto(MANIFIESTO, fuente="acta.json")
     assert len(fragmentos) == 3      # el acta + los dos componentes OBS/D
-    assert fragmentos[0].id == "acta:001-000123"
+    assert fragmentos[0].id.startswith("acta:001-000123@")
     assert [f.metadatos.get("estado") for f in fragmentos[1:]] == ["D", "OBS"]
     # Un componente OK no es un antecedente de falla y no ocupa lugar.
     assert all("Breaker" not in f.texto for f in fragmentos[1:])
@@ -100,7 +105,7 @@ def test_un_consumible_que_no_retorno_es_un_antecedente():
          "recuperacion": "RECUPERACION N° 3: BARRA PUESTA A TIERRA"},
     ])
     fragmentos = ingesta.de_manifiesto(acta)
-    consumibles = [f for f in fragmentos if f.id.startswith("acta:001-000123:c")]
+    consumibles = [f for f in fragmentos if ":c" in f.id.rsplit("@", 1)[-1]]
 
     assert len(consumibles) == 1, "el que retorno OK no es un antecedente de nada"
     assert consumibles[0].metadatos["item"] == "BARRA PUESTA A TIERRA"
@@ -304,3 +309,66 @@ def test_un_manual_en_word_entra_como_manual(tmp_path):
     assert fragmentos[0].metadatos["seccion"] == "Sistema de inyeccion"
     assert fragmentos[0].metadatos["torques"] == ["30 N.m"]
     assert fragmentos[0].metadatos["codigos_dtc"] == ["P0300"]
+
+
+# --------------------------- lo que la revisión del código encontró y ya no
+
+def test_la_columna_falla_es_de_la_falla_y_no_del_codigo_de_falla(tmp_path):
+    """Un Excel con «Falla» y «Código de falla» a la vez.
+
+    «codigo de falla» contiene «falla», así que el campo que se probaba
+    primero se llevaba la columna del síntoma: el relato desaparecía del
+    informe convertido en un código de avería que nadie escribió.
+    """
+    ruta = _libro(tmp_path, [
+        ["N° OT", "Equipo", "Falla", "Código de falla", "Causa raíz", "Solución"],
+        ["OT-1", "GE074-01", "Humo negro en la subida", "P0300",
+         "Filtro colmatado", "Cambio de filtro"],
+    ], nombre="dos-columnas.xlsx")
+
+    meta = ingesta.de_archivo(ruta)[0].metadatos
+    assert meta["resumen_falla"] == "Humo negro en la subida"
+    assert meta["codigos_dtc"] == ["P0300"]
+
+
+def test_dos_manuales_que_se_llaman_igual_no_se_pisan(tmp_path):
+    # `2024/motor.md` y `2025/motor.md` daban el mismo id y uno desaparecía
+    # del índice en silencio, contado como indexado.
+    for anio in ("2024", "2025"):
+        (tmp_path / anio).mkdir()
+        (tmp_path / anio / "motor.md").write_text(
+            f"# Motor {anio}\n\nProcedimiento del año {anio}.\n", encoding="utf-8")
+
+    fragmentos = []
+    for archivo in ingesta.recorrer([tmp_path]):
+        fragmentos.extend(ingesta.de_archivo(archivo))
+
+    assert len({f.id for f in fragmentos}) == 2
+    assert {f.metadatos["seccion"] for f in fragmentos} == {"Motor 2024", "Motor 2025"}
+
+
+def test_dos_historiales_sin_numero_de_orden_tampoco(tmp_path):
+    for n in ("uno", "dos"):
+        (tmp_path / f"{n}.json").write_text(json.dumps({"informes": [
+            {"resumen_falla": f"falla de {n}", "causa_raiz": "una causa",
+             "solucion_aplicada": "se arregló"}]}), encoding="utf-8")
+
+    fragmentos = []
+    for archivo in ingesta.recorrer([tmp_path]):
+        fragmentos.extend(ingesta.de_archivo(archivo))
+    assert len({f.id for f in fragmentos}) == 2
+
+
+def test_una_orden_de_trabajo_de_verdad_conserva_su_id(tmp_path):
+    # Al revés que lo anterior: un código real ya es único, y el mismo
+    # informe exportado dos veces tiene que caer en el mismo sitio.
+    uno = ingesta.de_informe(INFORME, "historial-a.json", 0, "/a/historial-a.json")
+    otro = ingesta.de_informe(INFORME, "historial-b.json", 5, "/b/historial-b.json")
+    assert uno.id == otro.id == "ot:OT-2026-0455"
+
+
+def test_un_json_que_es_un_numero_suelto_no_revienta(tmp_path):
+    ruta = tmp_path / "raro.json"
+    ruta.write_text("42", encoding="utf-8")
+    with pytest.raises(ingesta.ErrorIngesta, match="encabezado"):
+        ingesta.de_archivo(ruta)

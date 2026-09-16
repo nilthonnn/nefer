@@ -359,7 +359,10 @@ def _cadena_literal(crudo: bytes) -> bytes:
         if siguiente in _ESCAPES:
             salida += _ESCAPES[siguiente].encode("latin-1")
             i += 2
-        elif siguiente.isdigit():
+        elif b"0" <= siguiente <= b"7":
+            # Solo del 0 al 7: `\8` y `\9` no son octal, y tratarlos como si
+            # lo fueran dejaba la cuenta vacia y tumbaba la indexacion entera
+            # con un ValueError por un PDF con una barra de mas.
             octal = crudo[i + 1:i + 4]
             digitos = bytes(d for d in octal if 48 <= d <= 55)
             salida.append(int(digitos, 8) & 0xFF)

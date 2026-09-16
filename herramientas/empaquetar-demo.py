@@ -110,7 +110,8 @@ def main() -> None:
     destino.write_text(html, encoding="utf-8")
     print(f"{destino}  ·  {destino.stat().st_size / 1024:.0f} KB"
           f"  ·  {cuantas} tipografías incrustadas"
-          f"  ·  índice de ejemplo de {len(indice) / 1024:.0f} KB")
+          f"  ·  índice de ejemplo de "
+          f"{len(indice.encode('utf-8')) / 1024:.0f} KB")
 
 
 if __name__ == "__main__":

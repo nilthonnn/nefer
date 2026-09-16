@@ -23,6 +23,7 @@ trae columnas que se llaman falla, causa y solucion; lo demas es un manual.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -42,13 +43,33 @@ class ErrorIngesta(ValueError):
     """El documento no se puede convertir en fragmentos."""
 
 
+def marca(clave: str) -> str:
+    """Cuatro letras que identifican al archivo del que sale un fragmento.
+
+    Los identificadores que se inventan —el de una seccion de manual, el de
+    un informe sin numero de orden— salen del nombre del archivo, y dos
+    carpetas distintas tienen manuales que se llaman igual: `2024/motor.md` y
+    `2025/motor.md` daban el mismo identificador y uno de los dos desaparecia
+    del indice en silencio, contado como indexado. Con esto no chocan.
+
+    No se le pone a un codigo de orden de verdad: ese ya es unico, y que el
+    mismo informe exportado dos veces caiga en el mismo sitio es lo correcto.
+    """
+    return hashlib.blake2b(str(clave).encode("utf-8"), digest_size=2).hexdigest()
+
+
 # ------------------------------------------------------------- historial
 
-def de_informe(informe: dict, fuente: str = "", n: int = 0) -> Fragmento:
+def de_informe(informe: dict, fuente: str = "", n: int = 0,
+               clave: str = "") -> Fragmento:
     """Una orden de trabajo cerrada -> un fragmento."""
     if not isinstance(informe, dict):
         raise ErrorIngesta(f"{fuente}: cada informe debe ser un objeto JSON.")
-    ot = str(informe.get("codigo_ot") or f"SIN-OT-{n + 1}").strip()
+    declarado = str(informe.get("codigo_ot") or "").strip()
+    # Sin numero de orden hay que inventarle uno, y el inventado lleva la
+    # marca del archivo: si no, el tercer informe sin OT de dos historiales
+    # distintos seria el mismo fragmento.
+    ot = declarado or f"SIN-OT-{marca(clave or fuente)}-{n + 1}"
 
     pasos = [str(p).strip() for p in informe.get("pasos") or [] if str(p).strip()]
     herramientas = [str(h).strip() for h in informe.get("herramientas") or [] if str(h).strip()]
@@ -100,12 +121,13 @@ def de_informe(informe: dict, fuente: str = "", n: int = 0) -> Fragmento:
                      tipo="informe", metadatos=metadatos)
 
 
-def de_historial(datos, fuente: str = "") -> list[Fragmento]:
+def de_historial(datos, fuente: str = "", clave: str = "") -> list[Fragmento]:
     """Lista de ordenes de trabajo -> fragmentos."""
     informes = datos.get("informes", []) if isinstance(datos, dict) else datos
     if not isinstance(informes, list):
         raise ErrorIngesta(f"{fuente}: se esperaba una lista de informes.")
-    return [de_informe(informe, fuente, n) for n, informe in enumerate(informes)]
+    return [de_informe(informe, fuente, n, clave)
+            for n, informe in enumerate(informes)]
 
 
 # Como se llama cada campo en el Excel del taller. Primero lo que se busca,
@@ -146,24 +168,35 @@ def clave_columna(nombre: str) -> str:
 
 
 def _mapa_de_columnas(encabezados) -> dict[str, str]:
-    """Que columna del Excel alimenta que campo del informe."""
+    """Que columna del Excel alimenta que campo del informe.
+
+    Primero se reparten las columnas que se llaman exactamente como uno de
+    los sinonimos, y solo despues las que se parecen. Al reves, un campo que
+    se prueba antes se lleva por delante una columna que era de otro: con los
+    sinonimos de `codigos_dtc` mirando primero, la columna «Falla» casaba con
+    «codigo de falla» y el sintoma desaparecia del informe convertido en un
+    codigo de averia que nadie escribio.
+    """
     mapa: dict[str, str] = {}
     usados: set[str] = set()
     normales = {col: clave_columna(col) for col in encabezados if col}
-    for campo, sinonimos in COLUMNAS_INFORME.items():
-        for exacto in (True, False):
+
+    for exacto in (True, False):
+        for campo, sinonimos in COLUMNAS_INFORME.items():
+            if campo in mapa:
+                continue
             for columna, normal in normales.items():
                 if columna in usados:
                     continue
+                # En la vuelta de parecidos solo cuenta que la columna
+                # CONTENGA el sinonimo: «falla reportada» es de la falla, y
+                # «falla» a secas no es «codigo de falla».
                 casa = (normal in sinonimos if exacto else
-                        any(s in normal or normal in s for s in sinonimos
-                            if len(s) > 2))
+                        any(s in normal for s in sinonimos if len(s) > 2))
                 if casa:
                     mapa[campo] = columna
                     usados.add(columna)
                     break
-            if campo in mapa:
-                break
     return mapa
 
 
@@ -209,17 +242,21 @@ def de_historial_xlsx(ruta: str | Path, hoja: str | None = None) -> list[Fragmen
             informes.append(informe)
     if not informes:
         raise ErrorIngesta(f"{ruta.name}: ninguna fila trae falla, causa ni solucion.")
-    return [de_informe(informe, ruta.name, n) for n, informe in enumerate(informes)]
+    return [de_informe(informe, ruta.name, n, str(ruta))
+            for n, informe in enumerate(informes)]
 
 
 # ----------------------------------------------------------------- actas
 
-def de_manifiesto(manifiesto: dict, fuente: str = "") -> list[Fragmento]:
+def de_manifiesto(manifiesto: dict, fuente: str = "",
+                  clave: str = "") -> list[Fragmento]:
     """Un acta de nefer -> un fragmento por acta y uno por hallazgo."""
     enc = manifiesto.get("encabezado") or {}
     equipo = str(enc.get("codigo_equipo") or "").strip()
     acta = str(enc.get("n_acta") or "").strip()
-    base = acta or equipo or Path(fuente).stem or "acta"
+    # Dos actas pueden llevar el mismo numero en dos archivos distintos: la
+    # marca del archivo evita que la segunda pise a la primera.
+    base = (acta or equipo or Path(fuente).stem or "acta") + "@" + marca(clave or fuente)
     tipo_doc = str(enc.get("tipo_documento") or "").strip()
 
     comun = {
@@ -305,7 +342,7 @@ def de_acta_xlsx(ruta: str | Path) -> list[Fragmento]:
         manifiesto = extract.extraer(ruta)
     except Exception as exc:
         raise ErrorIngesta(f"{ruta}: no se pudo leer como acta ({exc}).") from exc
-    return de_manifiesto(manifiesto, fuente=ruta.name)
+    return de_manifiesto(manifiesto, fuente=ruta.name, clave=str(ruta))
 
 
 # -------------------------------------------------------------- manuales
@@ -315,7 +352,7 @@ _RE_HERRAMIENTAS = re.compile(r"^\s*(?:herramientas?|herramental)\s*:\s*(.+)$", 
 
 
 def de_manual(contenido: str, fuente: str = "", equipo: str = "",
-              categoria: str = "") -> list[Fragmento]:
+              categoria: str = "", clave: str = "") -> list[Fragmento]:
     """Un manual en Markdown o texto plano -> un fragmento por seccion.
 
     Se corta por titulo, no por numero de caracteres: un torque recuperado sin
@@ -333,7 +370,8 @@ def de_manual(contenido: str, fuente: str = "", equipo: str = "",
                     herramientas.extend(
                         h.strip(" .-") for h in re.split(r"[,;]", m.group(1)) if h.strip(" .-"))
             fragmentos.append(Fragmento(
-                id=f"man:{Path(fuente).stem or 'manual'}:{len(fragmentos) + 1}",
+                id=(f"man:{Path(fuente).stem or 'manual'}"
+                    f"@{marca(clave or fuente)}:{len(fragmentos) + 1}"),
                 texto=cuerpo_trozo,
                 fuente=fuente,
                 tipo="manual",
@@ -404,7 +442,7 @@ def de_excel(ruta: str | Path) -> list[Fragmento]:
     try:
         return de_historial_xlsx(ruta)
     except ErrorIngesta:
-        return de_manual(documentos.leer(ruta), fuente=ruta.name)
+        return de_manual(documentos.leer(ruta), fuente=ruta.name, clave=str(ruta))
 
 
 def de_archivo(ruta: str | Path) -> list[Fragmento]:
@@ -417,9 +455,10 @@ def de_archivo(ruta: str | Path) -> list[Fragmento]:
         except json.JSONDecodeError as exc:
             raise ErrorIngesta(f"{ruta}: JSON ilegible ({exc}).") from exc
         if isinstance(datos, dict) and "encabezado" in datos:
-            fragmentos = de_manifiesto(datos, fuente=ruta.name)
-        elif isinstance(datos, list) or "informes" in datos:
-            fragmentos = de_historial(datos, fuente=ruta.name)
+            fragmentos = de_manifiesto(datos, fuente=ruta.name, clave=str(ruta))
+        elif isinstance(datos, list) or (isinstance(datos, dict)
+                                         and "informes" in datos):
+            fragmentos = de_historial(datos, fuente=ruta.name, clave=str(ruta))
         else:
             raise ErrorIngesta(
                 f"{ruta}: no parece ni un acta (falta 'encabezado') ni un "
@@ -428,7 +467,8 @@ def de_archivo(ruta: str | Path) -> list[Fragmento]:
         fragmentos = de_excel(ruta)
     elif sufijo in EXTENSIONES_MANUAL:
         try:
-            fragmentos = de_manual(documentos.leer(ruta), fuente=ruta.name)
+            fragmentos = de_manual(documentos.leer(ruta), fuente=ruta.name,
+                                   clave=str(ruta))
         except documentos.ErrorDocumento as exc:
             raise ErrorIngesta(str(exc)) from exc
         if not fragmentos:

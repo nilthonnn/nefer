@@ -152,6 +152,9 @@ class AlmacenPgvector:
 
     def guardar_fragmentos(self, fragmentos) -> int:
         """Inserta o actualiza fragmentos ya vectorizados."""
+        # Se materializa: un generador se agota en el primer recorrido y los
+        # dos siguientes no insertarian nada, devolviendo 0 sin error.
+        fragmentos = list(fragmentos)
         pendientes = [f for f in fragmentos if f.vector is None]
         if pendientes:
             for fragmento, vector in zip(
@@ -173,4 +176,4 @@ class AlmacenPgvector:
         except Exception as exc:
             conexion.rollback()
             raise ErrorAlmacen(f"no se pudieron guardar los fragmentos: {exc}") from exc
-        return len(list(fragmentos))
+        return len(fragmentos)

@@ -327,3 +327,38 @@ def test_un_indice_del_embebedor_viejo_pide_reindexar(tmp_path):
     }), encoding="utf-8")
     with pytest.raises(ErrorIndice, match="Vuelva a indexar|vuelva a reindexar|se indexo con"):
         Indice.cargar(ruta)
+
+
+def test_buscar_mientras_se_reindexa_no_revienta():
+    """La API atiende una búsqueda y un cierre a la vez.
+
+    Con las cuentas del BM25 cambiándose una lista a la vez, la búsqueda leía
+    una nueva contra otra vieja y saltaba con IndexError: un 500 en la cara
+    del técnico por haber preguntado en el momento equivocado.
+    """
+    import threading
+
+    indice = _indice()
+    fallos = []
+    parar = threading.Event()
+
+    def buscando():
+        while not parar.is_set():
+            try:
+                indice.buscar("aceite hidraulico en el cilindro", limite=3)
+            except Exception as exc:          # noqa: BLE001 - es lo que se mide
+                fallos.append(exc)
+                return
+
+    hilo = threading.Thread(target=buscando)
+    hilo.start()
+    try:
+        for n in range(60):
+            indice.agregar([Fragmento(
+                id=f"nuevo-{n}", texto=f"informe {n} de fuga de aceite",
+                tipo="informe", metadatos={"codigo_ot": f"OT-{n}"})])
+    finally:
+        parar.set()
+        hilo.join(timeout=10)
+
+    assert not fallos, f"la búsqueda se rompió al reindexar: {fallos[0]!r}"

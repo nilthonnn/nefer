@@ -229,3 +229,21 @@ def test_el_texto_plano_se_lee_tal_cual(tmp_path):
     ruta = tmp_path / "notas.txt"
     ruta.write_text("Par de apriete: 30 N·m\n", encoding="utf-8")
     assert documentos.leer(ruta).strip() == "Par de apriete: 30 N·m"
+
+
+def test_un_pdf_con_una_barra_de_mas_no_tumba_la_indexacion(tmp_path):
+    """`\\8` no es un escape octal, y tratarlo como si lo fuera reventaba.
+
+    Un solo PDF raro en la carpeta abortaba `nefer fixmate indexar` entero
+    con un ValueError sin dueño.
+    """
+    contenido = rb"BT /F1 12 Tf 72 720 Td (Par de apriete \8 del prisionero: 30 N.m) Tj ET"
+    ruta = tmp_path / "raro.pdf"
+    ruta.write_bytes(_pdf([
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>",
+        _flujo(contenido)]))
+
+    texto = pdf_texto.extraer(ruta, preferir="propio")
+    assert "Par de apriete" in texto and "30 N.m" in texto

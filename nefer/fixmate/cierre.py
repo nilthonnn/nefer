@@ -161,6 +161,27 @@ class Recepcion:
                 f"{len(self.rechazados)} rechazados")
 
 
+def firma(informe: dict, con_fecha: bool = True) -> str:
+    """Que informe es este, cuando no trae numero de orden.
+
+    El telefono siempre pone uno, pero un envio armado a mano puede no
+    traerlo, y entonces cada reenvio le inventaria un correlativo nuevo y lo
+    duplicaria. Se compara por lo que lo identifica de verdad: la falla, la
+    causa, lo que se hizo y el equipo.
+
+    La fecha cuenta —la misma averia arreglada igual dos meses despues son
+    dos casos, y de eso salen los intervalos de la prediccion—, salvo cuando
+    el que llega no la trae: ahi no hay forma de distinguir un reenvio de una
+    repeticion, y de los dos errores posibles se elige no duplicar.
+    """
+    from . import texto as _texto
+
+    campos = ["resumen_falla", "causa_raiz", "solucion_aplicada", "codigo_equipo"]
+    if con_fecha:
+        campos.append("fecha")
+    return "|".join(_texto.normalizar(str(informe.get(c) or "")) for c in campos)
+
+
 def _informes_de(datos) -> list[dict]:
     if isinstance(datos, list):
         return datos
@@ -194,8 +215,10 @@ def recibir(envio: str | Path | dict | list, historial: str | Path,
 
     entrantes = _informes_de(datos)
     destino = Path(historial)
-    ya_estan = {str(i.get("codigo_ot") or "")
-                for i in _historial(destino).get("informes", [])}
+    guardados = _historial(destino).get("informes", [])
+    ya_estan = {str(i.get("codigo_ot") or "") for i in guardados}
+    firmas = {firma(i) for i in guardados if isinstance(i, dict)}
+    sin_fecha = {firma(i, con_fecha=False) for i in guardados if isinstance(i, dict)}
 
     parte = Recepcion()
     for informe in entrantes:
@@ -206,11 +229,19 @@ def recibir(envio: str | Path | dict | list, historial: str | Path,
         if codigo and codigo in ya_estan:
             parte.repetidos.append(codigo)
             continue
+        tiene_fecha = bool(str(informe.get("fecha") or "").strip())
+        repetido = (firma(informe) in firmas if tiene_fecha
+                    else firma(informe, con_fecha=False) in sin_fecha)
+        if repetido:
+            parte.repetidos.append(codigo or "(sin OT)")
+            continue
         try:
             guardado = registrar(informe, destino, indice, hoy)
         except ErrorCierre as exc:
             parte.rechazados.append((codigo or "(sin OT)", str(exc)))
             continue
         ya_estan.add(str(guardado.get("codigo_ot") or ""))
+        firmas.add(firma(guardado))
+        sin_fecha.add(firma(guardado, con_fecha=False))
         parte.nuevos.append(guardado)
     return parte
