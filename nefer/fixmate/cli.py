@@ -11,9 +11,9 @@ import os
 import sys
 from pathlib import Path
 
-from . import cierre, embeddings, ingesta, prediccion, transcripcion
+from . import cierre, embeddings, ingesta, prediccion
 from .indice import ErrorIndice, Indice
-from .motor import Consulta, Motor, RedactorLLM, SinEvidencia
+from .motor import Consulta, Motor, SinEvidencia
 
 INDICE_POR_DEFECTO = os.getenv("FIXMATE_INDICE", "indice-fixmate.json")
 TABLA_PG = os.getenv("FIXMATE_PG_TABLA", "fixmate_fragmentos")
@@ -192,24 +192,11 @@ def cmd_consultar(args) -> int:
     indice = _indice(args)
     if indice is None:
         return 1
-    redactor = RedactorLLM(modelo=args.modelo) if args.llm else None
-    motor = Motor(indice, redactor=redactor)
+    motor = Motor(indice)
 
     texto = args.consulta or ""
-    if args.audio:
-        # La nota de voz que el tecnico grabo en el socavon. Lo transcrito se
-        # imprime antes del diagnostico: si la maquina oyo otra cosa, tiene
-        # que verse.
-        try:
-            texto = transcripcion.obtener("auto")(
-                args.audio, pistas=transcripcion.pistas_de_indice(indice))
-        except transcripcion.ErrorTranscripcion as exc:
-            print(str(exc), file=sys.stderr)
-            return 4
-        print(f"Transcrito: «{texto}»")
     if not texto.strip():
-        print("Escriba la consulta o pase --audio con la nota de voz.",
-              file=sys.stderr)
+        print("Escriba la consulta.", file=sys.stderr)
         return 1
 
     try:
@@ -377,7 +364,7 @@ def cmd_servir(args) -> int:
         return 1
     from .api import crear_app
 
-    app = crear_app(ruta_indice=args.indice, con_llm=args.llm or None,
+    app = crear_app(ruta_indice=args.indice,
                     almacen="pg" if getattr(args, "pg", False) else None)
     donde = "PostgreSQL" if getattr(args, "pg", False) else args.indice
     print(f"FixMate en http://{args.host}:{args.puerto}  (indice: {donde})")
@@ -414,8 +401,8 @@ def agregar_subcomando(sub) -> None:
     i.add_argument("rutas", nargs="+",
                    help="archivos o carpetas (.json, .xlsx, .pdf, .docx, .md, .txt)")
     i.add_argument("-o", "--salida", help="ruta del indice a escribir")
-    i.add_argument("--embebedor", default="local", choices=["local", "openai", "auto"],
-                   help="'local' no usa red; 'auto' usa OpenAI si hay clave")
+    i.add_argument("--embebedor", default="local", choices=["local"],
+                   help="el motor corre en esta maquina; no sale a ningun servicio")
     i.add_argument("--completo", action="store_true",
                    help="rehacer el indice entero en vez de solo lo que cambio")
     i.add_argument("--sin-podar", action="store_true",
@@ -437,17 +424,12 @@ def agregar_subcomando(sub) -> None:
     c = con_pg(ordenes.add_parser("consultar", help="preguntar por una falla"))
     c.add_argument("consulta", nargs="?",
                    help="la falla, como la describiria el tecnico")
-    c.add_argument("--audio",
-                   help="nota de voz a transcribir en vez de escribir la consulta")
     c.add_argument("--dtc", help="codigo de falla, si el tablero da uno")
     c.add_argument("-e", "--equipo", help="codigo del equipo de la flota")
     c.add_argument("--categoria", help="familia del equipo")
     c.add_argument("-n", "--limite", type=int, default=3,
                    help="cuantos antecedentes recuperar (1 a 10)")
     c.add_argument("--json", action="store_true", help="salida en JSON")
-    c.add_argument("--llm", action="store_true",
-                   help="redactar con modelo de lenguaje (necesita OPENAI_API_KEY)")
-    c.add_argument("--modelo", default="gpt-4o-mini", help="modelo para --llm")
     c.set_defaults(func=cmd_consultar)
 
     d = con_pg(ordenes.add_parser(
@@ -487,8 +469,6 @@ def agregar_subcomando(sub) -> None:
     s = con_pg(ordenes.add_parser("servir", help="levantar la API HTTP"))
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--puerto", type=int, default=8000)
-    s.add_argument("--llm", action="store_true",
-                   help="redactar con modelo de lenguaje si hay clave")
     s.set_defaults(func=cmd_servir)
 
     q = ordenes.add_parser("sql", help="imprimir el esquema de PostgreSQL con pgvector")

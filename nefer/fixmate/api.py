@@ -21,7 +21,6 @@ Tres cosas que aqui se hacen distinto de como salen en un ejemplo de FastAPI:
 
 from __future__ import annotations
 
-import importlib.util
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -29,7 +28,7 @@ from pathlib import Path
 from typing import Optional
 
 try:
-    from fastapi import Depends, FastAPI, File, HTTPException, Form, UploadFile, status
+    from fastapi import Depends, FastAPI, HTTPException, status
     from pydantic import BaseModel, Field
 except ImportError as exc:  # pragma: no cover - depende del entorno
     raise ImportError(
@@ -37,7 +36,6 @@ except ImportError as exc:  # pragma: no cover - depende del entorno
     ) from exc
 
 from . import cierre as _cierre, motor as _motor, prediccion as _prediccion
-from . import transcripcion as _transcripcion
 from .indice import Indice, firma_de
 
 registro = logging.getLogger("nefer.fixmate")
@@ -46,11 +44,6 @@ RUTA_INDICE = os.getenv("FIXMATE_INDICE", "indice-fixmate.json")
 RUTA_HISTORIAL = os.getenv("FIXMATE_HISTORIAL", "historial-fallas.json")
 # Con esto en 'pg', la API busca en PostgreSQL en vez de en el archivo.
 ALMACEN = os.getenv("FIXMATE_ALMACEN", "archivo")
-
-# Subir un archivo en FastAPI necesita python-multipart. Si no esta, el resto
-# de la API funciona igual y la ruta del audio lo dice en vez de tumbar el
-# arranque entero por una dependencia que no todos necesitan.
-HAY_MULTIPART = importlib.util.find_spec("multipart") is not None
 
 
 class ConsultaDiagnostico(BaseModel):
@@ -133,24 +126,17 @@ class Salud(BaseModel):
     archivos: int = 0
     clasificador: str = "sin entrenar"
     precision_medida: Optional[dict] = None
-    transcripcion: bool = False
 
 
 def crear_app(motor_diagnostico: _motor.Motor | None = None,
               ruta_indice: str | Path | None = None,
-              con_llm: bool | None = None,
               ruta_historial: str | Path | None = None,
-              transcriptor=None,
               almacen: str | None = None) -> FastAPI:
     """Arma la aplicacion. El motor se puede inyectar ya hecho (y asi se prueba)."""
     ruta = Path(ruta_indice or RUTA_INDICE)
     en_pg = (almacen or ALMACEN) == "pg"
     estado: dict = {"motor": motor_diagnostico, "error": None,
-                    "historial": Path(ruta_historial or RUTA_HISTORIAL),
-                    "transcriptor": transcriptor}
-
-    if con_llm is None:
-        con_llm = bool(os.getenv("OPENAI_API_KEY"))
+                    "historial": Path(ruta_historial or RUTA_HISTORIAL)}
 
     @asynccontextmanager
     async def ciclo(_app: FastAPI):
@@ -183,8 +169,7 @@ def crear_app(motor_diagnostico: _motor.Motor | None = None,
             estado["error"] = str(exc)
             registro.error("FixMate sin indice: %s", exc)
             return
-        redactor = _motor.RedactorLLM() if con_llm else None
-        estado["motor"] = _motor.Motor(indice, redactor=redactor)
+        estado["motor"] = _motor.Motor(indice)
         registro.info("FixMate listo: %d fragmentos de %s", len(indice), ruta)
 
     def motor_actual() -> _motor.Motor:
@@ -214,7 +199,6 @@ def crear_app(motor_diagnostico: _motor.Motor | None = None,
             archivos=len(getattr(activo.indice, "fuentes", {}) or {}),
             clasificador=getattr(clasificador, "motivo", "sin clasificador"),
             precision_medida=activo.medicion(),
-            transcripcion=bool(os.getenv("OPENAI_API_KEY")) and HAY_MULTIPART,
         )
 
     @app.post("/search-report-rag", response_model=RespuestaDiagnostico,
@@ -256,39 +240,6 @@ def crear_app(motor_diagnostico: _motor.Motor | None = None,
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error interno al resolver la consulta.") from exc
-
-    if HAY_MULTIPART:
-        @app.post("/search-report-rag-audio", response_model=RespuestaDiagnostico,
-                  summary="Diagnostico a partir de una nota de voz")
-        async def search_report_rag_audio(
-                audio: UploadFile = File(..., description="nota de voz del tecnico"),
-                codigo_dtc: Optional[str] = Form(None),
-                codigo_equipo: Optional[str] = Form(None),
-                categoria: Optional[str] = Form(None),
-                limite_resultados: int = Form(3),
-                activo: _motor.Motor = Depends(motor_actual)
-        ) -> RespuestaDiagnostico:
-            datos = await audio.read()
-            transcriptor = estado.get("transcriptor") or _transcripcion.obtener("auto")
-            try:
-                texto = transcriptor(
-                    (audio.filename or "nota.m4a", datos),
-                    pistas=_transcripcion.pistas_de_indice(activo.indice))
-            except _transcripcion.ErrorTranscripcion as exc:
-                # 422: el audio llego, pero no se pudo convertir en consulta.
-                # El numero va literal porque el nombre de la constante cambio
-                # entre versiones de Starlette y no vale la pena atarse a eso.
-                raise HTTPException(status_code=422, detail=str(exc)) from exc
-            return _diagnosticar(activo, _motor.Consulta(
-                texto=texto, codigo_dtc=codigo_dtc, codigo_equipo=codigo_equipo,
-                categoria=categoria, limite=limite_resultados))
-    else:  # pragma: no cover - depende del entorno
-        @app.post("/search-report-rag-audio", summary="No disponible sin multipart")
-        def search_report_rag_audio_no():
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="subir audio necesita python-multipart: "
-                       "pip install 'nefer[fixmate-api]'")
 
     @app.post("/informes", response_model=InformeGuardado,
               status_code=status.HTTP_201_CREATED,

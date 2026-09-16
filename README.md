@@ -85,11 +85,11 @@ paquete genera, y responde a una falla descrita como la describe un mecánico
 —no como la titula un capítulo— con la causa raíz que se confirmó, el
 procedimiento que funcionó y las herramientas y repuestos que hicieron falta.
 
-Funciona sin red: el índice es un archivo que se copia al teléfono y el
-buscador no llama a ningún servicio. Con `OPENAI_API_KEY` en el entorno, un
-modelo de lenguaje redacta mejor sobre la misma evidencia y se puede dictar
-la consulta por audio; si el servicio no contesta, la respuesta sale igual
-por el camino local.
+Funciona sin red, y no es una opción: **no hay ningún camino que salga a un
+servicio**. El índice es un archivo que se copia al teléfono, el embebedor y
+el buscador corren en la máquina, y el historial de fallas de la flota no
+sale de ahí. Para dictar la consulta está el teclado del propio teléfono, que
+transcribe sin cuenta de nadie.
 
 Además de buscar, **aprende del historial entero**: un clasificador
 bayesiano entrenado con las causas raíz confirmadas dice a qué termina

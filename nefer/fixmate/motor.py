@@ -393,154 +393,21 @@ def redactar_extractivo(consulta: Consulta, coincidencias: list[Coincidencia],
     }
 
 
-# ------------------------------------------------------ redactor con LLM
-
-PROMPT_SISTEMA = """\
-Eres FixMate AI, asistente de diagnostico de maquinaria pesada. Guias a un
-tecnico que esta parado junto a la maquina, con las manos sucias y sin tiempo.
-
-Reglas, en orden:
-1. Respondes EXCLUSIVAMENTE con lo que digan los antecedentes que se te pasan.
-   Si algo no esta ahi, no esta.
-2. No inventas ni estimas un par de apriete, una holgura, una presion ni un
-   numero de parte. Un valor aproximado revienta un perno o parte una junta.
-   Si el dato no consta, escribes que hay que verificarlo en el manual OEM.
-3. Citas la orden de trabajo o la seccion de la que sacas cada afirmacion.
-4. Los pasos van en el orden en que se ejecutan, empezando por la comprobacion
-   mas barata y por el bloqueo de energia si hay riesgo.
-
-Devuelves solo un objeto JSON valido, sin texto alrededor y sin cercas de
-codigo, con estas llaves:
-{
-  "diagnostico_probabilistico": "que esta pasando, segun los antecedentes",
-  "causa_raiz_mas_probable": "la causa que mas se repite en el historial",
-  "pasos_recomendados": ["paso 1", "paso 2"],
-  "herramientas_y_repuestos": ["herramienta o repuesto"],
-  "torques": ["valor y unidad, tal como aparece en la fuente"]
-}"""
-
-LLAVES = ("diagnostico_probabilistico", "causa_raiz_mas_probable",
-          "pasos_recomendados", "herramientas_y_repuestos", "torques")
-
-
-def json_del_modelo(contenido: str) -> dict:
-    """Lee el JSON de una respuesta de modelo, aunque venga envuelto.
-
-    Los modelos devuelven el objeto pelado casi siempre, y casi siempre no es
-    siempre: llega con ```json alrededor, o con una frase amable delante. Eso
-    no es motivo para responderle un error al tecnico.
-    """
-    if isinstance(contenido, dict):
-        crudo = contenido
-    else:
-        texto_plano = str(contenido).strip()
-        cercado = re.search(r"```(?:json)?\s*(.+?)```", texto_plano, re.S)
-        if cercado:
-            texto_plano = cercado.group(1).strip()
-        try:
-            crudo = json.loads(texto_plano)
-        except json.JSONDecodeError:
-            llaves = re.search(r"\{.*\}", texto_plano, re.S)
-            if not llaves:
-                raise ErrorRedactor("el modelo no devolvio JSON.")
-            try:
-                crudo = json.loads(llaves.group(0))
-            except json.JSONDecodeError as exc:
-                raise ErrorRedactor(f"el JSON del modelo no se puede leer: {exc}") from exc
-
-    if not isinstance(crudo, dict):
-        raise ErrorRedactor("el modelo devolvio JSON que no es un objeto.")
-    if not str(crudo.get("diagnostico_probabilistico") or "").strip():
-        raise ErrorRedactor("el modelo no devolvio diagnostico.")
-
-    limpio = {}
-    for llave in LLAVES:
-        valor = crudo.get(llave)
-        if llave in ("pasos_recomendados", "herramientas_y_repuestos", "torques"):
-            if isinstance(valor, str):
-                valor = [valor]
-            limpio[llave] = _unicos(valor or [])
-        else:
-            limpio[llave] = str(valor or "").strip()
-    return limpio
-
-
-class RedactorLLM:
-    """Redacta con un modelo compatible con la API de OpenAI.
-
-    Se le puede pasar cualquier `cliente` con
-    `chat.completions.create(model=..., messages=[...])`, que es como se prueba
-    aqui sin salir a la red.
-    """
-
-    def __init__(self, modelo: str = "gpt-4o-mini", clave: str | None = None,
-                 temperatura: float = 0.2, cliente=None):
-        self.modelo = modelo
-        self.temperatura = temperatura
-        self.nombre = f"llm:{modelo}"
-        self._cliente = cliente
-        self._clave = clave or os.getenv("OPENAI_API_KEY")
-
-    def _obtener_cliente(self):
-        if self._cliente is not None:
-            return self._cliente
-        if not self._clave:
-            raise ErrorRedactor("falta OPENAI_API_KEY para el redactor con modelo.")
-        try:
-            from openai import OpenAI
-        except ImportError as exc:  # pragma: no cover - depende del entorno
-            raise ErrorRedactor("el redactor con modelo necesita el paquete "
-                                "'openai': pip install nefer[fixmate-openai]") from exc
-        self._cliente = OpenAI(api_key=self._clave)
-        return self._cliente
-
-    def __call__(self, consulta: Consulta, coincidencias: list[Coincidencia],
-                 causas_probables=None, medicion=None) -> dict:
-        cliente = self._obtener_cliente()
-        estadistica = ""
-        if causas_probables:
-            renglones = "; ".join(
-                f"{c['causa']}: {c['probabilidad'] * 100:.0f}% ({c['casos']} casos)"
-                for c in causas_probables)
-            estadistica = (f"\n\nLo que dice el historial completo para una "
-                           f"descripcion asi: {renglones}.")
-            if medicion:
-                estadistica += (f" Ese clasificador acierta el "
-                                f"{medicion['precision'] * 100:.0f}% medido sobre "
-                                f"{medicion['casos']} casos.")
-        usuario = (
-            f"Consulta del tecnico en campo: {consulta.texto}\n"
-            f"Codigo de falla: {consulta.codigo_dtc or 'no especificado'}\n"
-            f"Equipo: {consulta.codigo_equipo or 'no especificado'}\n\n"
-            f"Antecedentes recuperados del historial y de los manuales:\n"
-            f"{contexto(coincidencias)}{estadistica}")
-        try:
-            respuesta = cliente.chat.completions.create(
-                model=self.modelo,
-                temperature=self.temperatura,
-                response_format={"type": "json_object"},
-                messages=[{"role": "system", "content": PROMPT_SISTEMA},
-                          {"role": "user", "content": usuario}],
-            )
-            contenido = respuesta.choices[0].message.content
-        except ErrorRedactor:
-            raise
-        except Exception as exc:
-            raise ErrorRedactor(f"el modelo no respondio: {exc}") from exc
-        return json_del_modelo(contenido)
-
-
 # ----------------------------------------------------------------- motor
 
 class Motor:
     """Une el indice, el redactor y el clasificador. Lo que llaman API y CLI.
 
-    Un redactor es cualquier invocable con la firma
+    El redactor es el extractivo y no llama a ningun servicio. La costura
+    queda abierta —cualquier invocable con la firma
 
         redactor(consulta, coincidencias, causas_probables=None, medicion=None)
 
-    que devuelva el diccionario con las llaves de `LLAVES`, o levante
-    `ErrorRedactor` para que la respuesta salga por el camino extractivo.
+    que devuelva las mismas cinco llaves que `redactar_extractivo`, o levante
+    `ErrorRedactor` para que la respuesta salga por el camino extractivo—
+    para el dia que se quiera enchufar un modelo que corra en la propia
+    maquina de la oficina. Uno que salga a internet no: en faena no hay red,
+    y el historial de fallas de una flota no se manda a un tercero.
     """
 
     def __init__(self, indice: Indice, redactor=None, umbral: float = UMBRAL_MINIMO,

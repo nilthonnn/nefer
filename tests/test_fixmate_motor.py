@@ -172,41 +172,14 @@ def _indice_de(fragmentos) -> Indice:
     return indice
 
 
-# --------------------------------------------------- el redactor con modelo
+# ------------------------------------------------- la costura del redactor
+#
+# Hubo un redactor que llamaba a OpenAI y se quito: en faena no hay red, y el
+# historial de fallas de una flota no se manda a un tercero. La costura queda,
+# para el dia que se enchufe un modelo que corra en la propia maquina, y se
+# prueba con uno falso -- que es lo unico que se podia probar de verdad.
 
-def test_el_json_del_modelo_se_lee_aunque_venga_con_cercas_de_codigo():
-    leido = m.json_del_modelo(
-        '```json\n{"diagnostico_probabilistico": "x", "causa_raiz_mas_probable": "y", '
-        '"pasos_recomendados": ["p"], "herramientas_y_repuestos": [], "torques": []}\n```')
-    assert leido["diagnostico_probabilistico"] == "x"
-    assert leido["pasos_recomendados"] == ["p"]
-
-
-def test_el_json_del_modelo_se_rescata_de_una_frase_amable():
-    leido = m.json_del_modelo(
-        'Claro, aqui tienes: {"diagnostico_probabilistico": "x", '
-        '"causa_raiz_mas_probable": "y"} Espero que sirva.')
-    assert leido["causa_raiz_mas_probable"] == "y"
-    assert leido["pasos_recomendados"] == []
-
-
-def test_una_lista_que_llega_como_cadena_se_vuelve_lista():
-    leido = m.json_del_modelo('{"diagnostico_probabilistico": "x", '
-                              '"pasos_recomendados": "un solo paso"}')
-    assert leido["pasos_recomendados"] == ["un solo paso"]
-
-
-def test_lo_que_no_es_json_no_se_cuela_como_diagnostico():
-    with pytest.raises(m.ErrorRedactor):
-        m.json_del_modelo("No tengo suficiente informacion para responder.")
-
-
-def test_un_json_sin_diagnostico_no_vale():
-    with pytest.raises(m.ErrorRedactor):
-        m.json_del_modelo('{"causa_raiz_mas_probable": "y"}')
-
-
-def test_el_modelo_redacta_sobre_la_evidencia_recuperada():
+def test_un_redactor_enchufado_ve_la_evidencia_recuperada():
     vistos = {}
 
     def redactor(consulta, coincidencias, causas_probables=None, medicion=None):
@@ -216,17 +189,17 @@ def test_el_modelo_redacta_sobre_la_evidencia_recuperada():
                 "pasos_recomendados": ["Paso del modelo"],
                 "herramientas_y_repuestos": [], "torques": []}
 
-    redactor.nombre = "llm:falso"
+    redactor.nombre = "enchufado"
     diagnostico = _motor(redactor=redactor).consultar(m.Consulta("humo negro"))
 
-    assert diagnostico.redactor == "llm:falso"
+    assert diagnostico.redactor == "enchufado"
     assert diagnostico.pasos_recomendados == ["Paso del modelo"]
-    assert "OT-" in vistos["contexto"], "el modelo tiene que ver los antecedentes"
-    # La evidencia la pone el indice, no el modelo: se cita igual.
+    assert "OT-" in vistos["contexto"], "el redactor tiene que ver los antecedentes"
+    # La evidencia la pone el indice, no el redactor: se cita igual.
     assert diagnostico.evidencia_historica
 
 
-def test_si_el_modelo_no_contesta_la_respuesta_sale_igual():
+def test_si_el_redactor_enchufado_falla_la_respuesta_sale_igual():
     def redactor(consulta, coincidencias, causas_probables=None, medicion=None):
         raise m.ErrorRedactor("el modelo no respondio: timeout")
 
@@ -235,12 +208,6 @@ def test_si_el_modelo_no_contesta_la_respuesta_sale_igual():
     assert diagnostico.redactor == "extractivo"
     assert diagnostico.causa_raiz_mas_probable
     assert any("no respondio" in aviso for aviso in diagnostico.avisos)
-
-
-def test_el_redactor_con_modelo_no_arranca_sin_clave(monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-    with pytest.raises(m.ErrorRedactor, match="OPENAI_API_KEY"):
-        m.RedactorLLM()(m.Consulta("humo"), [])
 
 
 def test_el_diagnostico_se_serializa_entero_a_json():

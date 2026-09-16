@@ -68,7 +68,6 @@ jobs:
             tests/test_fixmate_pg.py \
             tests/test_fixmate_prediccion.py \
             tests/test_fixmate_texto.py \
-            tests/test_fixmate_transcripcion.py \
             tests/test_layout.py \
             tests/test_publicacion_clon.py \
             tests/test_publicacion_fixmate.py \

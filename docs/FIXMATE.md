@@ -25,9 +25,8 @@ igual.
 # 1. Indexar lo que ya existe en la oficina, en el formato en que está
 nefer fixmate -i indice.json indexar historial.xlsx manuales/ actas/
 
-# 2. Preguntar como se pregunta en el patio (o dictarlo)
+# 2. Preguntar como se pregunta en el patio
 nefer fixmate -i indice.json consultar "humo negro y pierde fuerza en la subida" --dtc P0300
-nefer fixmate -i indice.json consultar --audio nota-de-voz.m4a
 
 # 3. Registrar lo que se resolvió, para que mañana lo encuentre otro
 nefer fixmate -i indice.json cerrar --falla "..." --causa "..." --solucion "..."
@@ -39,7 +38,7 @@ FIXMATE_INDICE=indice.json nefer fixmate servir --puerto 8000
 | Orden | Para qué |
 |---|---|
 | `indexar` | Historial, manuales y actas → índice. Incremental salvo `--completo` |
-| `consultar` | Preguntar por una falla, escrita o dictada (`--audio`) |
+| `consultar` | Preguntar por una falla |
 | `predecir` | Qué le va a pasar a un equipo, o qué falla más en la flota |
 | `cerrar` | Registrar la falla resuelta en el historial y en el índice |
 | `estado` | Qué hay indexado y qué tan bien acierta el clasificador |
@@ -180,8 +179,9 @@ acierta:
 
 El vector por defecto no llama a ningún servicio: es un hash de las palabras y
 de sus trozos de cuatro caracteres, que es lo que le da la tolerancia a
-plurales y variantes. Con `--embebedor openai` se usan embeddings del
-servicio, mejores y con dependencia de red. **Los dos no se mezclan**: el
+plurales y variantes. No hay otro embebedor: el que llamaba a un
+servicio producía un índice de 1536 dimensiones que la app de campo no sabe
+leer, y subía el historial entero a un tercero mientras indexaba, mejores y con dependencia de red. **Los dos no se mezclan**: el
 índice recuerda con cuál se construyó y se niega a buscar con otro, porque
 hacerlo no da error, da resultados sin sentido.
 
@@ -222,22 +222,17 @@ Indice escrito: indice.json (1841 fragmentos de 25 archivos, embebedor local-fnv
 En campo nadie escribe: el técnico tiene guantes, las manos sucias y la
 máquina al lado haciendo ruido. Hay dos caminos, y fallan en sitios distintos.
 
-**El dictado del propio teléfono** no necesita nada de aquí: el teclado de
-Android y de iPhone transcribe al campo de texto, y la app de campo usa el
-reconocimiento del navegador. Funciona sin cuenta de nadie y, en los teléfonos
-recientes, también sin señal.
+**El dictado del propio teléfono** es el único camino, y no necesita nada de
+aquí: el teclado de Android y de iPhone transcribe al campo de texto, y la app
+de campo usa el reconocimiento del navegador. Funciona sin cuenta de nadie y,
+en los teléfonos recientes, también sin señal.
 
-**La nota de voz que ya quedó grabada** —la que el técnico mandó por WhatsApp
-desde el socavón, donde no había señal para nada más— se transcribe con el
-servicio, cuando hay red:
+Hubo un segundo camino —subir la nota de voz a un servicio de transcripción— y
+se quitó. Servía para el audio que ya quedó grabado y se sube después, cuando
+hay red; a cambio pedía una clave, una dependencia y mandar la voz del técnico
+a un tercero, para un caso que el teclado del teléfono ya cubre en el momento
+en que se habla.
 
-```bash
-nefer fixmate -i indice.json consultar --audio nota-de-voz.m4a
-```
-
-```http
-POST /search-report-rag-audio     (multipart: audio=@nota.m4a)
-```
 
 Dos detalles que cambian el resultado. Al servicio se le pasan **los códigos
 de la propia flota** sacados del índice: sin eso, «ge cero setenta y cuatro
@@ -379,13 +374,13 @@ pasos salen de **un solo** antecedente —encadenar el procedimiento de dos
 causas distintas produce una lista que se lee como un solo trabajo y no lo
 es—; los demás quedan citados en la evidencia, con su propia causa.
 
-**Con modelo de lenguaje** (`--llm`, necesita `OPENAI_API_KEY`). Redacta
-mejor, junta varios informes en una explicación y ordena los pasos como los
-diría un instructor. Trabaja sobre la misma evidencia recuperada y bajo un
-prompt que le prohíbe estimar valores. Si el modelo no contesta, devuelve algo
-ilegible o se queda sin cuota, **la respuesta sale igual** por el camino
-extractivo, con un aviso; no se le devuelve un error al técnico que está
-parado al lado de la máquina.
+**Y no hay un segundo redactor.** Hubo uno que llamaba a un modelo de
+lenguaje y se quitó: en faena no hay red, así que era el camino que nunca
+estaba disponible cuando hacía falta, y el que mandaba el historial de fallas
+de la flota a un tercero. La costura queda abierta para el día que se quiera
+enchufar un modelo que corra en la propia máquina de la oficina — un invocable
+que reciba la evidencia recuperada y devuelva las mismas cinco llaves—; si
+falla, la respuesta sale igual por el camino extractivo.
 
 ## Las tres reglas que el motor hace cumplir
 
@@ -469,7 +464,6 @@ FIXMATE_INDICE=indice.json nefer fixmate servir --host 0.0.0.0 --puerto 8000
 | Ruta | Qué hace |
 |---|---|
 | `POST /search-report-rag` | El diagnóstico: consulta → evidencia → procedimiento |
-| `POST /search-report-rag-audio` | Lo mismo, desde una nota de voz (multipart) |
 | `POST /informes` | Registrar una falla resuelta; queda buscable en el acto |
 | `GET /prediccion/{equipo}` | Ritmo de uso, próximo servicio y lo que le vuelve a pasar |
 | `GET /prediccion` | Qué falla más en toda la flota |
@@ -594,7 +588,6 @@ porque una prueba que se salta sola no es una prueba.
 |---|---|
 | `FIXMATE_INDICE` | Ruta del índice que usan `nefer fixmate` y la API |
 | `FIXMATE_HISTORIAL` | Historial donde se anotan las fallas resueltas (`cerrar`, `POST /informes`) |
-| `OPENAI_API_KEY` | Habilita el redactor con modelo, el embebedor de OpenAI y la transcripción de audio. Sin ella, todo lo demás sigue funcionando en local |
 | `FIXMATE_PG_DSN` | Cadena de conexión de PostgreSQL |
 | `FIXMATE_PG_TABLA` | Tabla o vista de fragmentos (por defecto, `fixmate_fragmentos`). El esquema se crea con ese nombre, no con el fijo. Sólo letras, números y guión bajo: el nombre se pega al SQL porque PostgreSQL no lo admite como parámetro |
 | `FIXMATE_ALMACEN` | `pg` hace que la API busque en PostgreSQL en vez de en el archivo |
@@ -662,7 +655,6 @@ Dicho para que nadie lo descubra en campo:
 | `nefer/fixmate/ingesta.py` | Historiales, manuales y actas → fragmentos |
 | `nefer/fixmate/aprendizaje.py` | Clasificador de causas y su medición |
 | `nefer/fixmate/prediccion.py` | Ritmo de uso, próximo servicio y reincidencias |
-| `nefer/fixmate/transcripcion.py` | La nota de voz → consulta |
 | `nefer/fixmate/cierre.py` | La falla resuelta → antecedente |
 | `nefer/fixmate/motor.py` | Consulta → evidencia → diagnóstico |
 | `nefer/fixmate/almacen_pg.py` | El mismo índice sobre PostgreSQL con pgvector |

@@ -121,76 +121,27 @@ class EmbebedorLocal:
         return _l2(vector)
 
 
-class EmbebedorOpenAI:
-    """Vectores de la API de OpenAI, para quien tenga el indice en un servidor.
-
-    La clave se lee del entorno y no tiene valor por defecto: una clave de
-    ejemplo escrita en el codigo es una clave que termina en el repositorio.
-    """
-
-    def __init__(self, modelo: str = "text-embedding-3-small",
-                 clave: str | None = None, dimension: int = 1536,
-                 cliente=None):
-        self.modelo = modelo
-        self.dimension = dimension
-        self.nombre = f"openai-{modelo}"
-        self._cliente = cliente
-        self._clave = clave or os.getenv("OPENAI_API_KEY")
-
-    def _obtener_cliente(self):
-        if self._cliente is not None:
-            return self._cliente
-        if not self._clave:
-            raise ErrorEmbebedor(
-                "falta OPENAI_API_KEY. Use el embebedor local (--embebedor local) "
-                "si no quiere depender de un servicio.")
-        try:
-            from openai import OpenAI
-        except ImportError as exc:  # pragma: no cover - depende del entorno
-            raise ErrorEmbebedor(
-                "el embebedor de OpenAI necesita el paquete 'openai': "
-                "pip install nefer[fixmate-openai]") from exc
-        self._cliente = OpenAI(api_key=self._clave)
-        return self._cliente
-
-    def embeber(self, textos: Sequence[str]) -> list[list[float]]:
-        if not textos:
-            return []
-        cliente = self._obtener_cliente()
-        vectores: list[list[float]] = []
-        # En lotes: un manual entero en una sola llamada la rechaza el servicio.
-        for inicio in range(0, len(textos), 64):
-            lote = [t.replace("\n", " ") or " " for t in textos[inicio:inicio + 64]]
-            try:
-                respuesta = cliente.embeddings.create(model=self.modelo, input=lote)
-            except Exception as exc:  # pragma: no cover - depende de la red
-                raise ErrorEmbebedor(f"el servicio de embeddings fallo: {exc}") from exc
-            vectores.extend(list(dato.embedding) for dato in respuesta.data)
-        if vectores:
-            self.dimension = len(vectores[0])
-        return [_l2(v) for v in vectores]
-
-
 def obtener(nombre: str = "local", **kw) -> Embebedor:
-    """Embebedor por nombre: 'local', 'openai' o 'auto'.
+    """Embebedor por nombre. Hay uno, y corre en esta maquina.
 
-    'auto' usa OpenAI solo si hay clave en el entorno; si no, el local. Nunca
-    falla por no tener red: un motor de campo que no arranca sin servicio no
-    sirve en campo.
+    Hubo un embebedor que llamaba a un servicio, y un modo 'auto' que lo
+    elegia solo si habia clave en el entorno. Se quitaron los dos. Dos
+    razones, y cualquiera de ellas basta: el indice que producia tiene 1536
+    dimensiones y la app de campo solo sabe leer `local-fnv-256`, asi que el
+    telefono lo rechazaba despues de haber indexado todo; y la variable de
+    entorno decidia, sin que nadie lo pidiera, que el historial de fallas de
+    la flota entera saliera a un tercero mientras se indexaba.
     """
-    if nombre == "auto":
-        nombre = "openai" if os.getenv("OPENAI_API_KEY") else "local"
     if nombre in ("local", "local-hash"):
         return EmbebedorLocal(**{k: v for k, v in kw.items()
                                  if k in ("dimension", "semilla")})
-    if nombre == "openai":
-        return EmbebedorOpenAI(**{k: v for k, v in kw.items()
-                                  if k in ("modelo", "clave", "dimension", "cliente")})
     # 'local-hash-N' es como se llamaba antes de FNV-1a. Se resuelve igual,
     # para que el indice viejo falle con el mensaje que dice que hay que
     # reindexar y no con un 'embebedor desconocido' que no ayuda a nadie.
     if nombre.startswith(("local-fnv-", "local-hash-")):
         return EmbebedorLocal(dimension=int(nombre.rsplit("-", 1)[1]))
-    if nombre.startswith("openai-"):
-        return EmbebedorOpenAI(modelo=nombre.split("-", 1)[1])
-    raise ValueError(f"embebedor desconocido: {nombre!r}. Use 'local' u 'openai'.")
+    if nombre.startswith("openai"):
+        raise ValueError(
+            f"el embebedor {nombre!r} ya no existe: producia un indice que la "
+            "app de campo no puede leer. Reindexe con 'local'.")
+    raise ValueError(f"embebedor desconocido: {nombre!r}. Use 'local'.")

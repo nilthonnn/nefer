@@ -31,12 +31,12 @@ from . import embeddings, ingesta, motor, texto
 from .indice import Coincidencia, ErrorIndice, Fragmento, Indice, firma_de
 from .ingesta import ErrorIngesta
 from .motor import (Consulta, Diagnostico, ErrorRedactor, Evidencia, Motor,
-                    RedactorLLM, SinEvidencia, redactar_extractivo)
+                    SinEvidencia, redactar_extractivo)
 
 __all__ = [
     "Actualizacion", "Coincidencia", "Consulta", "Diagnostico", "ErrorIndice",
     "ErrorIngesta", "ErrorRedactor", "Evidencia", "Fragmento", "Indice", "Motor",
-    "RedactorLLM", "SinEvidencia", "actualizar", "embeddings", "indexar",
+    "SinEvidencia", "actualizar", "embeddings", "indexar",
     "ingesta", "motor", "redactar_extractivo", "texto",
 ]
 
