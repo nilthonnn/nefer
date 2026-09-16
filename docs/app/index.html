@@ -1072,7 +1072,7 @@
         </div>
         <label class="primary" for="dx-archivo">Agregar historiales y manuales
           <input type="file" id="dx-archivo" multiple
-                 accept=".xlsx,.xlsm,.csv,.tsv,.json,.md,.txt"
+                 accept=".pdf,.docx,.xlsx,.xlsm,.csv,.tsv,.json,.md,.txt"
                  hidden>
         </label>
       </div>
@@ -1084,15 +1084,15 @@
         </summary>
         <div class="dx-biblio-cuerpo">
           <p class="nota">
-            El historial en Excel y los manuales en texto se leen en este
-            teléfono. Un PDF o un Word hay que indexarlos en la oficina y
-            traer el índice: el teléfono todavía no los abre.
+            El historial en Excel y los manuales en PDF, Word o texto se leen
+            en este teléfono. Un PDF escaneado no trae texto sino una foto:
+            eso se dice, en vez de cargar un manual vacío.
           </p>
           <ul id="dx-fuentes" class="dx-fuentes"></ul>
           <div class="dx-biblio-botones">
             <label class="primary" for="dx-archivo-2">Agregar más
               <input type="file" id="dx-archivo-2" multiple
-                     accept=".xlsx,.xlsm,.csv,.tsv,.json,.md,.txt" hidden>
+                     accept=".pdf,.docx,.xlsx,.xlsm,.csv,.tsv,.json,.md,.txt" hidden>
             </label>
             <button type="button" id="dx-vaciar">Vaciar la biblioteca</button>
           </div>
@@ -5995,6 +5995,7 @@ var FIXMATE = (function () {
     });
 
     this.casosPorCausa = utiles;
+    this.ejemplos = [];
     this.cuenta = tabla();
     this.total = tabla();
     this.vocabulario = tabla();
@@ -6010,10 +6011,13 @@ var FIXMATE = (function () {
         self.vocabulario[t] = true;
       });
       self.total[causa] = (self.total[causa] || 0) + tokens.length;
+      // Se guardan para poder medirse dejando uno fuera. Sin esto, un
+      // indice armado en el propio telefono no tiene con que validarse y
+      // el porcentaje sale de la nada.
+      self.ejemplos.push([tokens, causa]);
     });
 
     this.casos = ejemplos;
-    this.medicion = indice.medicion || null;
     if (ejemplos < MINIMO_CASOS) {
       this.entrenado = false;
       this.motivo = "hacen falta " + MINIMO_CASOS + " casos con causa confirmada y hay " + ejemplos;
@@ -6024,21 +6028,27 @@ var FIXMATE = (function () {
       this.entrenado = true;
       this.motivo = "entrenado";
     }
+
+    // Al final, cuando ya se sabe si esta entrenado. Si la oficina lo midio,
+    // viene en el indice; si el indice se armo en este telefono no lo midio
+    // nadie, y entonces se mide solo. Publicar una causa probable sin decir
+    // cuanto acierta es lo que esta herramienta promete no hacer.
+    this.medicion = indice.medicion || this.evaluar();
   }
 
-  Clasificador.prototype.predecir = function (consulta, limite) {
-    if (!this.entrenado) return [];
-    var tokens = tokenizar(consulta), self = this;
-    var causas = Object.keys(this.casosPorCausa);
+  // La puntuacion, sobre las tablas que se le pasen: `predecir` usa las
+  // del clasificador entero y `evaluar` las mismas con un caso restado.
+  Clasificador.prototype._puntuar = function (tokens, cuenta, total, casos) {
+    var self = this, causas = Object.keys(casos);
     if (!tokens.length || !causas.length) return [];
     var universo = Object.keys(this.vocabulario).length || 1;
-    var n = causas.reduce(function (s, c) { return s + self.casosPorCausa[c]; }, 0);
+    var n = causas.reduce(function (s, c) { return s + casos[c]; }, 0);
 
     var puntajes = tabla();
     causas.forEach(function (causa) {
-      var log = Math.log(self.casosPorCausa[causa] / n);
-      var porCausa = self.cuenta[causa] || {};
-      var denominador = (self.total[causa] || 0) + ALFA * universo;
+      var log = Math.log(casos[causa] / n);
+      var porCausa = cuenta[causa] || {};
+      var denominador = (total[causa] || 0) + ALFA * universo;
       tokens.forEach(function (token) {
         if (!self.vocabulario[token]) return;
         log += Math.log(((porCausa[token] || 0) + ALFA) / denominador);
@@ -6055,13 +6065,69 @@ var FIXMATE = (function () {
     });
     var salida = causas.map(function (c) {
       return { causa: c, probabilidad: redondear(pesos[c] / (suma || 1), 4),
-               casos: self.casosPorCausa[c] };
+               casos: casos[c] };
     });
     salida.sort(function (a, b) {
       if (b.probabilidad !== a.probabilidad) return b.probabilidad - a.probabilidad;
       return a.causa < b.causa ? -1 : 1;
     });
-    return salida.slice(0, limite || 3);
+    return salida;
+  };
+
+  Clasificador.prototype.predecir = function (consulta, limite) {
+    if (!this.entrenado) return [];
+    return this._puntuar(tokenizar(consulta), this.cuenta, this.total,
+                         this.casosPorCausa).slice(0, limite || 3);
+  };
+
+  // Validacion dejando uno fuera. Es la unica forma honesta de dar un
+  // porcentaje cuando el historial es pequeno, y en el telefono hace falta:
+  // el indice que se arma aqui no trae medicion de nadie.
+  //
+  // Quitar un caso es restarlo de las cuentas y volver a sumarlo despues, no
+  // rehacerlas: rehacerlas es cuadratico y con miles de ordenes el telefono
+  // se queda pensando. El resultado es el mismo numero.
+  Clasificador.prototype.evaluar = function () {
+    if (!this.entrenado || this.ejemplos.length < MINIMO_CASOS) return null;
+
+    var cuenta = tabla(), total = tabla(), casos = tabla(), self = this;
+    Object.keys(this.cuenta).forEach(function (c) {
+      var copia = tabla();
+      Object.keys(self.cuenta[c]).forEach(function (t) { copia[t] = self.cuenta[c][t]; });
+      cuenta[c] = copia;
+    });
+    Object.keys(this.total).forEach(function (c) { total[c] = self.total[c]; });
+    Object.keys(this.casosPorCausa).forEach(function (c) {
+      casos[c] = self.casosPorCausa[c];
+    });
+
+    var aciertos = 0;
+    this.ejemplos.forEach(function (par) {
+      var tokens = par[0], causa = par[1], porCausa = cuenta[causa];
+      tokens.forEach(function (t) { porCausa[t] -= 1; });
+      total[causa] -= tokens.length;
+      casos[causa] -= 1;
+      var quitada = casos[causa] === 0;
+      if (quitada) delete casos[causa];
+
+      var prediccion = self._puntuar(tokens, cuenta, total, casos);
+      if (prediccion.length && prediccion[0].causa === causa) aciertos++;
+
+      if (quitada) casos[causa] = 0;
+      casos[causa] += 1;
+      total[causa] += tokens.length;
+      tokens.forEach(function (t) { porCausa[t] += 1; });
+    });
+
+    var totales = this.ejemplos.length, mayor = 0;
+    Object.keys(this.casosPorCausa).forEach(function (c) {
+      mayor = Math.max(mayor, self.casosPorCausa[c]);
+    });
+    // A tres decimales, como `Medicion.a_dict()`: el numero que se publica
+    // tiene que ser el mismo, no parecido.
+    return { casos: totales, causas: Object.keys(this.casosPorCausa).length,
+             aciertos: aciertos, precision: redondear(aciertos / totales, 3),
+             linea_base: redondear(mayor / totales, 3) };
   };
 
   /* ---------- el diagnóstico ---------- */
@@ -6322,6 +6388,7 @@ var FIXMATE = (function () {
   function Motor(indice) {
     this.indice = indice;
     this.clasificador = new Clasificador(indice);
+    this.medicion = this.clasificador.medicion;
   }
 
   Motor.prototype.consultar = function (consulta) {
@@ -6817,6 +6884,483 @@ var FIXMATE = (function () {
     return fragmentos;
   }
 
+
+  /* ---------- Word: un .docx es el mismo zip, con otro XML ---------- */
+
+  var W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+  function texinoDeNodo(nodo) {
+    // Recorre el subarbol juntando <w:t>, tabuladores y saltos, como en
+    // documentos.py: lo que se ve en Word es lo que se indexa.
+    var partes = [];
+    (function bajar(n) {
+      for (var h = n.firstChild; h; h = h.nextSibling) {
+        if (h.nodeType !== 1) continue;
+        var etiqueta = (h.localName || h.nodeName).replace(/^w:/, "");
+        if (etiqueta === "t") partes.push(h.textContent || "");
+        else if (etiqueta === "tab") partes.push("\t");
+        else if (etiqueta === "br" || etiqueta === "cr") partes.push("\n");
+        else bajar(h);
+      }
+    })(nodo);
+    return partes.join("").trim();
+  }
+
+  function hijosPorNombre(nodo, nombre) {
+    var salida = [];
+    for (var h = nodo.firstChild; h; h = h.nextSibling) {
+      if (h.nodeType === 1 && (h.localName || h.nodeName).replace(/^w:/, "") === nombre) {
+        salida.push(h);
+      }
+    }
+    return salida;
+  }
+
+  function estiloDeParrafo(p) {
+    var pPr = hijosPorNombre(p, "pPr")[0];
+    if (!pPr) return "";
+    var estilo = hijosPorNombre(pPr, "pStyle")[0];
+    if (!estilo) return "";
+    return estilo.getAttribute("w:val") ||
+           estilo.getAttributeNS(W, "val") || "";
+  }
+
+  function parrafoDocx(p) {
+    var texto = texinoDeNodo(p);
+    var nombre = estiloDeParrafo(p) || "";
+    // Un titulo de Word es una seccion, y asi lo trocea la ingesta: se
+    // convierte en titulo Markdown para que corte por ahi.
+    var m = /^(?:Heading|T[íi]tulo|Ttulo)\s*(\d)$/i.exec(nombre);
+    if (m && texto.trim()) {
+      return new Array(Math.min(parseInt(m[1], 10), 6) + 1).join("#") + " " + texto.trim();
+    }
+    if (/^(heading|titulo|título)/i.test(nombre) && texto.trim()) {
+      return "## " + texto.trim();
+    }
+    return texto;
+  }
+
+  function tablaDocx(tabla) {
+    var filas = [];
+    hijosPorNombre(tabla, "tr").forEach(function (tr) {
+      var celdas = hijosPorNombre(tr, "tc").map(function (tc) {
+        return texinoDeNodo(tc).replace(/\s+/g, " ").trim();
+      });
+      if (celdas.join("")) filas.push(celdas.join(" | "));
+    });
+    return filas;
+  }
+
+  function juntarLineas(lineas) {
+    var salida = [];
+    lineas.forEach(function (linea) {
+      var limpia = String(linea).replace(/\s+$/, "");
+      if (!limpia.trim()) {
+        if (salida.length && salida[salida.length - 1] !== "") salida.push("");
+      } else salida.push(limpia);
+    });
+    return salida.length ? salida.join("\n").trim() + "\n" : "";
+  }
+
+  function textoDeDocx(xml) {
+    var doc = new DOMParser().parseFromString(xml, "application/xml");
+    var cuerpos = doc.getElementsByTagName("w:body");
+    if (!cuerpos.length) cuerpos = doc.getElementsByTagName("body");
+    var cuerpo = cuerpos.length ? cuerpos[0] : doc.documentElement;
+    var lineas = [];
+    for (var h = cuerpo.firstChild; h; h = h.nextSibling) {
+      if (h.nodeType !== 1) continue;
+      var etiqueta = (h.localName || h.nodeName).replace(/^w:/, "");
+      if (etiqueta === "p") lineas.push(parrafoDocx(h));
+      else if (etiqueta === "tbl") lineas = lineas.concat(tablaDocx(h));
+    }
+    return juntarLineas(lineas);
+  }
+
+  /* ---------- PDF: el mismo lector que la oficina, en el navegador ---------- */
+  //
+  // Port de nefer/fixmate/pdf_texto.py. Los bytes viajan como cadena latin1
+  // —un byte, un caracter— para poder usar expresiones regulares igual que
+  // en Python; convertir a bytes de verdad solo hace falta al descomprimir.
+  //
+  // Un PDF escaneado no trae texto: trae una foto de una pagina. Eso se
+  // detecta y se dice, en vez de indexar un manual vacio.
+
+  function bytesACadena(bytes) {
+    var trozos = [], TAM = 0x8000;
+    for (var i = 0; i < bytes.length; i += TAM) {
+      trozos.push(String.fromCharCode.apply(null, bytes.subarray(i, i + TAM)));
+    }
+    return trozos.join("");
+  }
+
+  function cadenaABytes(s) {
+    var b = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 0xff;
+    return b;
+  }
+
+  function inflar(bytes, formato) {
+    if (typeof DecompressionStream === "undefined") return Promise.resolve(null);
+    try {
+      var flujo = new Blob([bytes]).stream()
+        .pipeThrough(new DecompressionStream(formato));
+      return new Response(flujo).arrayBuffer()
+        .then(function (b) { return bytesACadena(new Uint8Array(b)); })
+        .catch(function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+
+  function desde85(s) {
+    var limpio = s.replace(/^<~/, "").replace(/~>[\s\S]*$/, "").replace(/\s/g, "");
+    var salida = [], grupo = [];
+    for (var i = 0; i < limpio.length; i++) {
+      var c = limpio[i];
+      if (c === "z" && !grupo.length) { salida.push(0, 0, 0, 0); continue; }
+      grupo.push(limpio.charCodeAt(i) - 33);
+      if (grupo.length === 5) {
+        var n = 0;
+        for (var g = 0; g < 5; g++) n = n * 85 + grupo[g];
+        salida.push((n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255);
+        grupo = [];
+      }
+    }
+    if (grupo.length) {
+      var faltan = 5 - grupo.length;
+      for (var f = 0; f < faltan; f++) grupo.push(84);
+      var m = 0;
+      for (var k = 0; k < 5; k++) m = m * 85 + grupo[k];
+      var bytes = [(m >>> 24) & 255, (m >>> 16) & 255, (m >>> 8) & 255, m & 255];
+      salida = salida.concat(bytes.slice(0, 4 - faltan));
+    }
+    return String.fromCharCode.apply(null, salida);
+  }
+
+  function desdeHex(s) {
+    var limpio = s.split(">")[0].replace(/[^0-9A-Fa-f]/g, "");
+    if (limpio.length % 2) limpio += "0";
+    var salida = "";
+    for (var i = 0; i < limpio.length; i += 2) {
+      salida += String.fromCharCode(parseInt(limpio.substr(i, 2), 16));
+    }
+    return salida;
+  }
+
+  // Los objetos del archivo: su diccionario y su flujo sin decodificar.
+  function objetosPdf(crudo) {
+    var encontrados = {}, re = /(\d+)\s+\d+\s+obj\b([\s\S]*?)\bendobj/g, m;
+    while ((m = re.exec(crudo)) !== null) {
+      var numero = parseInt(m[1], 10), cuerpo = m[2];
+      var corte = cuerpo.indexOf("stream");
+      if (corte < 0) { encontrados[numero] = [cuerpo, null]; continue; }
+      var dic = cuerpo.slice(0, corte), resto = cuerpo.slice(corte + 6);
+      if (resto.slice(0, 2) === "\r\n") resto = resto.slice(2);
+      else if (resto[0] === "\n" || resto[0] === "\r") resto = resto.slice(1);
+      var fin = resto.lastIndexOf("endstream");
+      encontrados[numero] = [dic, fin >= 0 ? resto.slice(0, fin) : resto];
+    }
+    return encontrados;
+  }
+
+  function filtrosDe(dic) {
+    var m = /\/Filter\s*(\[[^\]]*\]|\/\w+)/.exec(dic);
+    if (!m) return [];
+    return (m[1].match(/\/(\w+)/g) || []).map(function (f) { return f.slice(1); });
+  }
+
+  // Descomprimir es asincrono en el navegador, asi que todos los flujos se
+  // decodifican de una vez y lo demas trabaja sobre el resultado, igual de
+  // sincrono que en Python.
+  function decodificarTodo(objetos) {
+    var pendientes = [];
+    Object.keys(objetos).forEach(function (n) {
+      var dic = objetos[n][0], flujo = objetos[n][1];
+      if (flujo === null) { objetos[n][2] = null; return; }
+      var filtros = filtrosDe(dic);
+      if (!filtros.length) { objetos[n][2] = flujo; return; }
+      var paso = Promise.resolve(flujo);
+      filtros.forEach(function (filtro) {
+        paso = paso.then(function (datos) {
+          if (datos === null) return null;
+          if (filtro === "FlateDecode") {
+            var bytes = cadenaABytes(datos.replace(/^[\r\n]+|[\r\n]+$/g, ""));
+            return inflar(bytes, "deflate").then(function (r) {
+              return r !== null ? r : inflar(bytes, "deflate-raw");
+            });
+          }
+          if (filtro === "ASCII85Decode") { try { return desde85(datos); } catch (e) { return null; } }
+          if (filtro === "ASCIIHexDecode") { try { return desdeHex(datos); } catch (e) { return null; } }
+          return null;      // LZW, JPX, DCT: no es texto o no se sabe leer
+        });
+      });
+      pendientes.push(paso.then(function (r) { objetos[n][2] = r; }));
+    });
+    return Promise.all(pendientes).then(function () { return objetos; });
+  }
+
+  function referenciaPdf(dic, clave) {
+    var m = new RegExp("/" + clave + "\\s+(\\d+)\\s+\\d+\\s+R").exec(dic);
+    return m ? parseInt(m[1], 10) : null;
+  }
+
+  function hijosPdf(numero, objetos, vistos) {
+    if (vistos[numero] || !objetos[numero]) return [];
+    vistos[numero] = true;
+    var dic = objetos[numero][0];
+    var m = /\/Kids\s*\[([\s\S]*?)\]/.exec(dic);
+    if (!m) return /\/Type\s*\/Page\b/.test(dic) ? [numero] : [];
+    var salida = [];
+    (m[1].match(/(\d+)\s+\d+\s+R/g) || []).forEach(function (r) {
+      salida = salida.concat(hijosPdf(parseInt(r, 10), objetos, vistos));
+    });
+    return salida;
+  }
+
+  function paginasPdf(objetos) {
+    var numeros = Object.keys(objetos).map(Number);
+    var paginas = numeros.filter(function (n) {
+      return /\/Type\s*\/Page\b/.test(objetos[n][0]);
+    });
+    var raiz = null;
+    numeros.forEach(function (n) {
+      if (raiz === null && /\/Type\s*\/Pages\b/.test(objetos[n][0])) raiz = n;
+    });
+    if (raiz === null) return paginas.sort(function (a, b) { return a - b; });
+    var orden = hijosPdf(raiz, objetos, {});
+    // Lo que el arbol no alcanza igual se lee: un PDF remendado a mano deja
+    // paginas colgando y perderlas seria perder el manual.
+    paginas.sort(function (a, b) { return a - b; }).forEach(function (n) {
+      if (orden.indexOf(n) < 0) orden.push(n);
+    });
+    return orden;
+  }
+
+  function hexATexto(crudo) {
+    var limpio = crudo.replace(/\s/g, "");
+    if (limpio.length % 2) limpio += "0";
+    var bytes = new Uint8Array(limpio.length / 2);
+    for (var i = 0; i < bytes.length; i++) {
+      bytes[i] = parseInt(limpio.substr(i * 2, 2), 16);
+    }
+    try {
+      return new TextDecoder("utf-16be", { fatal: true }).decode(bytes);
+    } catch (e) {
+      return new TextDecoder("latin1").decode(bytes);
+    }
+  }
+
+  function cmapPdf(datos) {
+    var mapa = {}, bloque;
+    var reChar = /beginbfchar([\s\S]*?)endbfchar/g;
+    while ((bloque = reChar.exec(datos)) !== null) {
+      var partes = (bloque[1].match(/<([0-9A-Fa-f\s]*)>/g) || []).map(function (h) {
+        return h.slice(1, -1);
+      });
+      for (var i = 0; i + 1 < partes.length; i += 2) {
+        mapa[parseInt(partes[i].replace(/\s/g, "") || "0", 16)] = hexATexto(partes[i + 1]);
+      }
+    }
+    var reRango = /beginbfrange([\s\S]*?)endbfrange/g;
+    while ((bloque = reRango.exec(datos)) !== null) {
+      var trozos = (bloque[1].match(/<([0-9A-Fa-f\s]*)>/g) || []).map(function (h) {
+        return h.slice(1, -1);
+      });
+      for (var j = 0; j + 2 < trozos.length; j += 3) {
+        var inicio = parseInt(trozos[j].replace(/\s/g, "") || "0", 16);
+        var fin = parseInt(trozos[j + 1].replace(/\s/g, "") || "0", 16);
+        var destino = hexATexto(trozos[j + 2]);
+        if (!destino) continue;
+        var cuantos = Math.min(fin - inicio, 1024);
+        for (var salto = 0; salto <= cuantos; salto++) {
+          mapa[inicio + salto] = String.fromCharCode(destino.charCodeAt(0) + salto);
+        }
+      }
+    }
+    return mapa;
+  }
+
+  function recursosPdf(dic, objetos) {
+    var ref = referenciaPdf(dic, "Resources");
+    if (ref !== null && objetos[ref]) return objetos[ref][0];
+    var m = /\/Resources\s*<<([\s\S]*)/.exec(dic);
+    return m ? m[1] : dic;
+  }
+
+  function fuentesDePagina(dic, objetos) {
+    var recursos = recursosPdf(dic, objetos);
+    var m = /\/Font\s*<<([\s\S]*?)>>/.exec(recursos);
+    if (!m) return {};
+    var fuentes = {}, re = /\/([^\s/<>\[\]]+)\s+(\d+)\s+\d+\s+R/g, par;
+    while ((par = re.exec(m[1])) !== null) {
+      var objeto = objetos[parseInt(par[2], 10)];
+      if (!objeto) continue;
+      var cmap = {}, unicodeRef = referenciaPdf(objeto[0], "ToUnicode");
+      if (unicodeRef !== null && objetos[unicodeRef] && objetos[unicodeRef][2]) {
+        cmap = cmapPdf(objetos[unicodeRef][2]);
+      }
+      fuentes[par[1]] = { cmap: cmap,
+                          dosBytes: /\/Subtype\s*\/Type0\b/.test(objeto[0]) };
+    }
+    return fuentes;
+  }
+
+  function contenidosPdf(dic, objetos) {
+    var numeros = [], ref = referenciaPdf(dic, "Contents");
+    if (ref !== null) numeros.push(ref);
+    else {
+      var m = /\/Contents\s*\[([\s\S]*?)\]/.exec(dic);
+      if (m) {
+        (m[1].match(/(\d+)\s+\d+\s+R/g) || []).forEach(function (r) {
+          numeros.push(parseInt(r, 10));
+        });
+      }
+    }
+    var flujos = [];
+    numeros.forEach(function (n) {
+      if (objetos[n] && objetos[n][2]) flujos.push(objetos[n][2]);
+    });
+    return flujos;
+  }
+
+  var ESCAPES_PDF = { n: "\n", r: "\r", t: "\t", b: "\b", f: "\f",
+                      "(": "(", ")": ")", "\\": "\\" };
+
+  function cadenaLiteralPdf(crudo) {
+    var salida = "", i = 0;
+    while (i < crudo.length) {
+      var c = crudo[i];
+      if (c !== "\\") { salida += c; i++; continue; }
+      var siguiente = crudo[i + 1];
+      if (siguiente === undefined) { i++; continue; }
+      if (ESCAPES_PDF[siguiente] !== undefined) { salida += ESCAPES_PDF[siguiente]; i += 2; }
+      else if (siguiente >= "0" && siguiente <= "7") {
+        // Se corta en el primero que no sea octal, no se filtran los que
+        // lo son: «\1a2» es el caracter 1 seguido de «a2».
+        var digitos = "";
+        for (var d = 1; d <= 3; d++) {
+          var ch = crudo[i + d];
+          if (ch === undefined || ch < "0" || ch > "7") break;
+          digitos += ch;
+        }
+        salida += String.fromCharCode(parseInt(digitos, 8) & 0xff);
+        i += 1 + digitos.length;
+      } else if (siguiente === "\n" || siguiente === "\r") { i += 2; }
+      else { salida += siguiente; i += 2; }
+    }
+    return salida;
+  }
+
+  function mostrarPdf(crudo, fuente) {
+    if (fuente && Object.keys(fuente.cmap).length) {
+      var paso = fuente.dosBytes ? 2 : 1, salida = [];
+      for (var i = 0; i < crudo.length; i += paso) {
+        var codigo = paso === 2
+          ? ((crudo.charCodeAt(i) & 0xff) << 8) | (crudo.charCodeAt(i + 1) & 0xff)
+          : crudo.charCodeAt(i) & 0xff;
+        var c = fuente.cmap[codigo];
+        salida.push(c !== undefined ? c : String.fromCharCode(codigo));
+      }
+      var texto = salida.join("");
+      if (texto.trim()) return texto;
+    }
+    // Sin ToUnicode, el codigo es el byte: WinAnsi, que cp1252 reproduce.
+    try {
+      return new TextDecoder("windows-1252").decode(cadenaABytes(crudo));
+    } catch (e) { return crudo; }
+  }
+
+  var RE_TOKEN_PDF = new RegExp(
+    "\\((?:\\\\[\\s\\S]|[^\\\\()]|\\((?:\\\\[\\s\\S]|[^\\\\()])*\\))*\\)" +
+    "|<[0-9A-Fa-f\\s]*>" +
+    "|[-+]?\\d*\\.?\\d+" +
+    "|/[^\\s/<>\\[\\]()]+" +
+    "|[A-Za-z'\"*]+" +
+    "|\\[|\\]", "g");
+
+  function textoDeContenido(contenido, fuentes) {
+    var salida = [], pila = [], fuente = null, yActual = null, m;
+    RE_TOKEN_PDF.lastIndex = 0;
+    while ((m = RE_TOKEN_PDF.exec(contenido)) !== null) {
+      var t = m[0];
+      if (t[0] === "(") { pila.push(["cadena", cadenaLiteralPdf(t.slice(1, -1))]); continue; }
+      if (t[0] === "<") {
+        var limpio = t.slice(1, -1).replace(/\s/g, "");
+        if (limpio.length % 2) limpio += "0";
+        var s = "";
+        for (var h = 0; h < limpio.length; h += 2) {
+          s += String.fromCharCode(parseInt(limpio.substr(h, 2), 16));
+        }
+        pila.push(["cadena", s]); continue;
+      }
+      if (/^[-+]?\d*\.?\d+$/.test(t)) { pila.push(["numero", parseFloat(t)]); continue; }
+      if (t[0] === "/") { pila.push(["nombre", t.slice(1)]); continue; }
+      if (t === "[" || t === "]") { pila.push([t === "[" ? "abre" : "cierra", null]); continue; }
+
+      var op = t;
+      if (op === "Tf") {
+        var nombres = pila.filter(function (p) { return p[0] === "nombre"; });
+        fuente = nombres.length ? fuentes[nombres[nombres.length - 1][1]] : null;
+      } else if (op === "Tj" || op === "'" || op === '"') {
+        var cadenas = pila.filter(function (p) { return p[0] === "cadena"; });
+        if (op !== "Tj") salida.push("\n");
+        if (cadenas.length) salida.push(mostrarPdf(cadenas[cadenas.length - 1][1], fuente));
+      } else if (op === "TJ") {
+        pila.forEach(function (p) {
+          if (p[0] === "cadena") salida.push(mostrarPdf(p[1], fuente));
+          // Un salto grande entre trozos es un espacio que la tipografia
+          // no escribio.
+          else if (p[0] === "numero" && p[1] < -100) salida.push(" ");
+        });
+      } else if (op === "Td" || op === "TD") {
+        var ns = pila.filter(function (p) { return p[0] === "numero"; });
+        if (ns.length >= 2 && ns[ns.length - 1][1] !== 0) salida.push("\n");
+      } else if (op === "T*") {
+        salida.push("\n");
+      } else if (op === "Tm") {
+        var nm = pila.filter(function (p) { return p[0] === "numero"; });
+        if (nm.length >= 6) {
+          var y = nm[nm.length - 1][1];
+          if (yActual !== null && Math.abs(y - yActual) > 0.5) salida.push("\n");
+          yActual = y;
+        }
+      } else if (op === "BT" || op === "ET") {
+        salida.push("\n");
+      }
+      pila = [];
+    }
+    var texto = salida.join("")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n");
+    return texto.split("\n").map(function (l) { return l.trim(); }).join("\n").trim();
+  }
+
+  // Un manual OEM de cuatro paginas con menos de esto es una foto, no texto.
+  var MINIMO_UTIL_PDF = 10;
+
+  function textoDePdf(datos) {
+    var crudo = bytesACadena(new Uint8Array(datos));
+    if (crudo.slice(0, 5) !== "%PDF-") {
+      return Promise.reject(new Error("no empieza por %PDF-: ¿es un PDF?"));
+    }
+    return decodificarTodo(objetosPdf(crudo)).then(function (objetos) {
+      var salida = [];
+      paginasPdf(objetos).forEach(function (n) {
+        if (!objetos[n]) return;
+        var dic = objetos[n][0], fuentes = fuentesDePagina(dic, objetos);
+        contenidosPdf(dic, objetos).forEach(function (contenido) {
+          var pagina = textoDeContenido(contenido, fuentes);
+          if (pagina.trim()) salida.push(pagina.trim());
+        });
+      });
+      var texto = salida.join("\n\n");
+      if (texto.replace(/\s/g, "").length < MINIMO_UTIL_PDF) {
+        throw new Error("no trae texto: parece escaneado. Hay que pasarlo por " +
+                        "OCR antes de indexarlo.");
+      }
+      return texto;
+    });
+  }
+
   /* ---------- la puerta: un archivo cualquiera -> fragmentos ---------- */
 
   var EXTENSIONES_MANUAL = ["md", "txt", "markdown", "text"];
@@ -6890,11 +7434,34 @@ var FIXMATE = (function () {
       return Promise.resolve(fs);
     }
 
-    if (ext === "pdf" || ext === "docx" || ext === "doc") {
+    if (ext === "pdf") {
+      return textoDePdf(datos).then(function (texto) {
+        var fs = fragmentosDeManual(texto, nombre);
+        if (!fs.length) throw new Error(nombre + ": no se sacó texto.");
+        return fs;
+      }).catch(function (e) {
+        throw new Error(nombre + ": " + (e && e.message ? e.message : e));
+      });
+    }
+
+    if (ext === "docx") {
+      var entradasW = entradasZip(datos);
+      if (!entradasW["word/document.xml"]) {
+        return Promise.reject(new Error(
+          nombre + ": no es un .docx legible. Si es un .doc de los antiguos, " +
+          "ábralo y guárdelo como .docx."));
+      }
+      return contenidoZip(datos, entradasW["word/document.xml"]).then(function (xml) {
+        var fs = fragmentosDeManual(textoDeDocx(xml), nombre);
+        if (!fs.length) throw new Error(nombre + ": no tiene texto.");
+        return fs;
+      });
+    }
+
+    if (ext === "doc" || ext === "odt" || ext === "rtf") {
       return Promise.reject(new Error(
-        nombre + ": el teléfono todavía no abre " + ext.toUpperCase() +
-        ". Indéxelo en la oficina con «nefer fixmate indexar» y traiga el " +
-        "índice, o péguelo como .txt."));
+        nombre + ": el formato " + ext.toUpperCase() + " es de los antiguos. " +
+        "Ábralo y guárdelo como .docx, o indéxelo en la oficina."));
     }
 
     return Promise.reject(new Error(nombre + ": no se sabe leer ese tipo."));
@@ -7217,13 +7784,15 @@ var FIXMATE = (function () {
 
     var cl = motor.clasificador, texto;
     if (cl.entrenado) {
-      var m = motor.medicion ? motor.medicion() : null;
+      // `medicion` es un valor, no un método: la oficina la trae en el
+      // índice y, si el índice se armó aquí, el teléfono se mide solo.
+      var m = motor.medicion;
       texto = "Aprendió de " + conCausa + " casos con causa confirmada.";
-      if (m && m.precision != null) {
-        texto += " Acierta el " + Math.round(m.precision * 100) +
-                 "% medido; contestar siempre la causa más común acertaría el " +
-                 Math.round(m.linea_base * 100) + "%.";
-      }
+      texto += m && m.precision != null
+        ? " Acierta el " + Math.round(m.precision * 100) +
+          "% medido dejando uno fuera; contestar siempre la causa más común " +
+          "acertaría el " + Math.round(m.linea_base * 100) + "%."
+        : " Todavía sin medir.";
     } else {
       texto = "Todavía no opina sobre causas: " + cl.motivo +
               ". Sigue buscando en lo cargado igual.";

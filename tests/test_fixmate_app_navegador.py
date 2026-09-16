@@ -406,10 +406,39 @@ def test_lo_que_se_agrega_se_suma_a_lo_que_ya_habia(historial_xlsx, tmp_path):
             t.cerrar()
 
 
-def test_un_pdf_no_se_finge_leido(tmp_path):
-    """Decir «no sé abrirlo» es la respuesta correcta; cargarlo vacío, no."""
-    falso = tmp_path / "manual.pdf"
-    falso.write_bytes(b"%PDF-1.4\nno importa\n")
+def test_el_pdf_del_manual_se_lee_en_el_telefono(tmp_path):
+    """Los manuales OEM vienen en PDF; era el agujero que quedaba."""
+    from test_fixmate_cruce import _pdf_de_manual
+
+    manual = tmp_path / "manual-hidraulico.pdf"
+    manual.write_bytes(_pdf_de_manual())
+
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            _con_papeles(t, manual)
+            t.consultar("qué apriete lleva la tapa del cilindro")
+            salida = t.pg.inner_text("#dx-salida")
+            # El torque sale citado de la fuente, no estimado.
+            assert "210 N.m" in salida
+        finally:
+            t.cerrar()
+
+
+def test_un_pdf_escaneado_lo_dice_en_vez_de_cargarse_vacio(tmp_path):
+    """Una foto de una página no es un manual.
+
+    Cargarlo vacío y después contestar «no hay antecedente» sería mentir con
+    más pasos: el técnico creería que el manual está y que no dice nada.
+    """
+    from test_fixmate_cruce import _flujo_pdf, _pdf_crudo
+
+    falso = tmp_path / "escaneado.pdf"
+    falso.write_bytes(_pdf_crudo([
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>",
+        _flujo_pdf(b"q 612 0 0 792 0 0 cm /Im0 Do Q")]))
 
     with sync_playwright() as pw:
         t = Telefono(pw)
@@ -417,10 +446,9 @@ def test_un_pdf_no_se_finge_leido(tmp_path):
             with t.pg.expect_file_chooser() as elegido:
                 t.pg.click("label[for='dx-archivo']")
             elegido.value.set_files(str(falso))
-            t.pg.wait_for_timeout(1500)
+            t.pg.wait_for_timeout(2000)
             estado = t.pg.inner_text("#dx-estado")
-            assert "PDF" in estado
-            assert "oficina" in estado.lower()
+            assert "OCR" in estado
         finally:
             t.cerrar()
 

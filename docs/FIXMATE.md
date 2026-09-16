@@ -304,7 +304,9 @@ La oficina ya no es obligatoria. En la pestaña **Diagnóstico** hay un menú
 | `.csv` / `.tsv` | **Sí** | |
 | `.md` / `.txt` | **Sí** | Un fragmento por sección, cortando por título y no por número de caracteres |
 | `.json` | **Sí** | Un historial, o un índice ya armado por la oficina |
-| `.pdf` / `.docx` | **No** | Lo dice en vez de cargarlo vacío: hay que indexarlo en la oficina y traer el índice |
+| `.pdf` | **Sí** | El mismo lector que la oficina, portado. Un PDF escaneado no trae texto sino una foto: eso lo dice y pide OCR, en vez de cargar un manual vacío |
+| `.docx` | **Sí** | Es el mismo zip, con otro XML. Los títulos de Word salen como títulos y por ahí corta la ingesta |
+| `.doc` / `.rtf` / `.odt` | **No** | Son de los antiguos: hay que abrirlos y guardarlos como `.docx` |
 
 **Lo que se agrega se suma.** El historial de otra faena no borra el anterior;
 un informe con el mismo número de orden reemplaza al viejo, y lo demás se
@@ -317,8 +319,15 @@ Reconoce las columnas solas —`N° OT`, `Falla reportada`, `Causa raíz`— con
 membrete no estorba: la tabla no tiene que empezar en A1.
 
 La biblioteca muestra qué hay cargado, de qué archivo salió cada cosa, cuántos
-equipos hay y qué aprendió el clasificador —con su acierto medido al lado de
-la línea base, o el motivo por el que todavía no opina—.
+equipos hay y qué aprendió el clasificador.
+
+**Y el teléfono se mide solo.** Cuando el índice lo arma la oficina, la
+medición viene dentro. Cuando lo arma el propio teléfono no la midió nadie,
+así que la validación dejando uno fuera también está portada: publica su
+acierto al lado de la línea base —«acierta el 62% medido; contestar siempre la
+causa más común acertaría el 58%»—. El número es el mismo que daría la
+oficina, a los tres decimales con que se publica, y hay una prueba que lo
+compara.
 
 ## Lo que el historial anticipa
 

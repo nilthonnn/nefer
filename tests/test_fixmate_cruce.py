@@ -374,3 +374,163 @@ def test_si_hay_pasos_hay_precauciones_en_los_dos_motores(cruce):
         else:
             assert py["precauciones"] == [] == js["precauciones"]
     assert con_pasos, "ninguna consulta dio pasos: la prueba no comprobó nada"
+
+
+# --------------------------- los mismos papeles, leídos por los dos motores
+
+def _pdf_crudo(objetos):
+    salida = bytearray(b"%PDF-1.4\n")
+    for n, objeto in enumerate(objetos, 1):
+        salida += b"%d 0 obj\n" % n + objeto + b"\nendobj\n"
+    salida += b"trailer << /Root 1 0 R >>\n%%EOF\n"
+    return bytes(salida)
+
+
+def _flujo_pdf(contenido, comprimido=True):
+    import zlib
+    extra = b""
+    if comprimido:
+        contenido = zlib.compress(contenido)
+        extra = b" /Filter /FlateDecode"
+    return (b"<< /Length %d%s >>\nstream\n" % (len(contenido), extra)
+            + contenido + b"\nendstream")
+
+
+def _pdf_de_manual(comprimido=True):
+    contenido = (b"BT /F1 12 Tf 72 720 Td (PELIGRO: el acumulador conserva presion.) Tj\n"
+                 b"0 -16 Td (Par de apriete de la tapa del cilindro: 210 N.m) Tj\n"
+                 b"0 -16 Td (El codigo P0300 aparece por combustion fallida.) Tj ET")
+    return _pdf_crudo([
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>",
+        _flujo_pdf(contenido, comprimido)])
+
+
+def _en_el_navegador(guion, b64):
+    """Corre un trozo del motor en Chromium. El PDF necesita DOMParser y
+    DecompressionStream, que node no trae y el teléfono sí."""
+    pytest.importorskip("playwright.sync_api")
+    from playwright.sync_api import sync_playwright
+
+    from navegador import HAY_CHROMIUM, opciones
+    if not HAY_CHROMIUM:
+        pytest.skip("no hay Chromium")
+
+    with sync_playwright() as pw:
+        nav = pw.chromium.launch(**opciones())
+        try:
+            pg = nav.new_page()
+            pg.goto("about:blank")
+            return pg.evaluate(
+                "async ([motor, b64]) => {\n"
+                "  const api = {};\n"
+                "  new Function('api', motor + '\\n" + guion + "')(api);\n"
+                "  const bin = Uint8Array.from(atob(b64), c => c.charCodeAt(0));\n"
+                "  try { return await api.correr(bin.buffer); }\n"
+                "  catch (e) { return 'ERROR: ' + e.message; }\n"
+                "}", [motor_js(), b64])
+        finally:
+            nav.close()
+
+
+@pytest.mark.parametrize("comprimido", [True, False],
+                         ids=["FlateDecode", "sin comprimir"])
+def test_el_pdf_da_el_mismo_texto_en_la_oficina_y_en_el_telefono(comprimido):
+    """El lector de PDF está escrito dos veces, y dos lectores se separan solos.
+
+    Es el formato en el que vienen los manuales OEM, así que si el teléfono
+    lee otra cosa que la oficina, responde otro manual.
+    """
+    import base64
+
+    from nefer.fixmate import pdf_texto
+
+    datos = _pdf_de_manual(comprimido)
+    del_telefono = _en_el_navegador(
+        "api.correr = textoDePdf;", base64.b64encode(datos).decode())
+    assert del_telefono == pdf_texto.texto_de(datos)
+    assert "210 N.m" in del_telefono
+
+
+def test_un_pdf_escaneado_no_se_carga_vacio_en_el_telefono():
+    """Una foto de una página no es un manual. Cargarla y después contestar
+    «no hay antecedente» sería mentir con más pasos."""
+    import base64
+
+    datos = _pdf_crudo([
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>",
+        _flujo_pdf(b"q 612 0 0 792 0 0 cm /Im0 Do Q")])
+    salida = _en_el_navegador("api.correr = textoDePdf;",
+                              base64.b64encode(datos).decode())
+    assert salida.startswith("ERROR:")
+    assert "OCR" in salida
+
+
+def test_el_word_da_el_mismo_texto_en_la_oficina_y_en_el_telefono(tmp_path):
+    import base64
+    import io
+    import zipfile
+
+    from nefer.fixmate import documentos
+
+    W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    doc = ('<?xml version="1.0"?>\n'
+           f'<w:document xmlns:w="{W}"><w:body>'
+           '<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr>'
+           '<w:r><w:t>Sistema hidraulico</w:t></w:r></w:p>'
+           '<w:p><w:r><w:t>PELIGRO: el acumulador conserva presion.</w:t></w:r></w:p>'
+           '<w:p><w:r><w:t>Par de apriete de la tapa: 210 N.m</w:t></w:r></w:p>'
+           '<w:tbl><w:tr>'
+           '<w:tc><w:p><w:r><w:t>P0300</w:t></w:r></w:p></w:tc>'
+           '<w:tc><w:p><w:r><w:t>Combustion fallida</w:t></w:r></w:p></w:tc>'
+           '</w:tr></w:tbl>'
+           '</w:body></w:document>')
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("word/document.xml", doc)
+    crudo = buf.getvalue()
+    (tmp_path / "manual.docx").write_bytes(crudo)
+
+    del_telefono = _en_el_navegador(
+        "api.correr = async (b) => textoDeDocx("
+        "await contenidoZip(b, entradasZip(b)[\\'word/document.xml\\']));",
+        base64.b64encode(crudo).decode())
+    assert del_telefono == documentos.leer_docx(tmp_path / "manual.docx")
+    # El título de Word sale como título Markdown: así lo trocea la ingesta.
+    assert del_telefono.startswith("# Sistema hidraulico")
+
+
+def test_el_telefono_mide_su_clasificador_igual_que_la_oficina(indice, tmp_path):
+    """El porcentaje que publica tiene que ser el mismo, o no vale nada.
+
+    Cuando el índice lo arma el propio teléfono —cargando el Excel ahí
+    mismo— nadie lo midió antes. Si el teléfono no supiera medirse,
+    publicaría una causa probable sin decir cuánto acierta, que es
+    justamente lo que esta herramienta promete no hacer.
+    """
+    import subprocess
+
+    from nefer.fixmate import Indice, Motor
+
+    de_la_oficina = Motor(Indice.cargar(indice)).medicion()
+    assert de_la_oficina, "el ejemplo tiene que dar para medir"
+
+    guion = tmp_path / "medir.js"
+    guion.write_text(motor_js() + """
+var fs = require("fs");
+var datos = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+delete datos.medicion;            // como si lo hubiera armado el teléfono
+var m = new Clasificador(new Indice(datos)).evaluar();
+process.stdout.write(JSON.stringify(m));
+""", encoding="utf-8")
+    del_telefono = json.loads(subprocess.run(
+        [NODE, str(guion), str(indice)],
+        check=True, capture_output=True, text=True).stdout)
+
+    for campo in ("casos", "causas", "aciertos"):
+        assert del_telefono[campo] == de_la_oficina[campo], campo
+    assert round(del_telefono["precision"], 9) == round(de_la_oficina["precision"], 9)
+    assert round(del_telefono["linea_base"], 9) == round(de_la_oficina["linea_base"], 9)
