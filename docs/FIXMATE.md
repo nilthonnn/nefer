@@ -73,6 +73,11 @@ python3 herramientas/demo-fixmate.py --dir /tmp/taller   # deja el taller en pie
 python3 herramientas/demo-fixmate.py servir              # levanta la API con ese corpus
 ```
 
+La misma corrida, publicada para enseñarla desde el teléfono:
+**<https://nilthonnn.github.io/nefer/fixmate/>**. La página vive en
+`docs/fixmate/`, lleva su código QR y `tests/test_publicacion_fixmate.py`
+comprueba que cada cifra que afirma la siga produciendo la demo.
+
 Con `--dir` la carpeta queda para seguir probando con sus propias consultas.
 No hace falta red ni clave de ningún servicio: es el camino local completo,
 el mismo que corre en el patio. `tests/test_demo_fixmate.py` corre la demo
@@ -207,7 +212,7 @@ indexar la carpeta de manuales nunca borra el historial.
   actualizado: historial.xlsx
   sin cambios: 23 archivos
 
-Indice escrito: indice.json (1841 fragmentos de 25 archivos, embebedor local-hash-256)
+Indice escrito: indice.json (1841 fragmentos de 25 archivos, embebedor local-fnv-256)
 ```
 
 ## La consulta dictada

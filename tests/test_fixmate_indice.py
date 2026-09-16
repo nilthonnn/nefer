@@ -272,3 +272,58 @@ def test_se_puede_filtrar_con_una_regla_escrita_en_python():
     solo_manual = indice.buscar("aceite", limite=5,
                                 acepta=lambda f: f.tipo == "manual")
     assert [c.fragmento.id for c in solo_manual] == ["c"]
+
+
+# ----------------------- el mismo vector, en Python y en el telefono
+
+def test_el_hash_es_el_mismo_numero_en_cualquier_lenguaje():
+    """Valores fijos de FNV-1a: el puerto a JavaScript tiene que dar esto.
+
+    No es una prueba de regresion cualquiera. El indice se calcula aquí y la
+    consulta se escribe en el telefono: si el navegador saca otro numero, el
+    vector de la consulta no casa con ninguno y la busqueda devuelve ruido
+    sin avisar. Estos valores son el contrato entre las dos mitades.
+
+    En JavaScript:
+        let h = 0xcbf29ce484222325n;
+        for (const b of new TextEncoder().encode(s))
+            h = BigInt.asUintN(64, (h ^ BigInt(b)) * 0x100000001b3n);
+    """
+    from nefer.fixmate.embeddings import fnv1a
+
+    assert fnv1a(b"") == 0xCBF29CE484222325
+    assert fnv1a(b"a") == 0xAF63DC4C8601EC8C          # vector de prueba de FNV
+    assert fnv1a(b"foobar") == 0x85944171F73967E8     # idem
+    assert fnv1a(b"fixmate:motor") == 0xC7063C56A41F90C2
+    # Con tildes: los bytes son UTF-8, no latin-1. El navegador codifica
+    # igual con TextEncoder, y de eso depende que 'hidráulico' case.
+    assert fnv1a("fixmate:hidráulico".encode("utf-8")) == 0x25825C47648B5F22
+
+
+def test_donde_cae_cada_rasgo_del_vector_esta_fijado():
+    embebedor = embeddings.EmbebedorLocal()
+    assert embebedor._posicion("motor") == (194, 1.0)
+    assert embebedor._posicion("^inye") == (124, -1.0)
+
+
+def test_el_vector_de_una_frase_conocida_no_se_mueve():
+    # Si esto cambia, todos los indices del mundo quedan invalidados: la
+    # prueba esta para que el cambio sea una decision y no un descuido.
+    vector = embeddings.EmbebedorLocal().embeber(["humo negro al tomar carga"])[0]
+    assert len(vector) == 256
+    assert round(sum(vector), 6) == 0.725322
+    assert round(max(vector), 6) == 0.455432
+    assert round(min(vector), 6) == -0.455432
+
+
+def test_un_indice_del_embebedor_viejo_pide_reindexar(tmp_path):
+    # Antes de FNV-1a el embebedor se llamaba 'local-hash-256'. Un indice de
+    # entonces trae vectores de otra cuenta: buscarlos con los de ahora no
+    # falla, devuelve ruido. Por eso se rechaza.
+    ruta = tmp_path / "viejo.json"
+    ruta.write_text(json.dumps({
+        "version": 1, "embebedor": "local-hash-256", "dimension": 256,
+        "fragmentos": [{"id": "a", "texto": "humo negro", "vector": [0.1] * 256}],
+    }), encoding="utf-8")
+    with pytest.raises(ErrorIndice, match="Vuelva a indexar|vuelva a reindexar|se indexo con"):
+        Indice.cargar(ruta)

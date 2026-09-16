@@ -124,7 +124,10 @@ python3 herramientas/demo-fixmate.py
 
 Arma un taller de mentira —historial en Excel, manuales en Word y PDF, un
 acta— y corre encima los comandos de verdad, uno por uno, explicando qué
-enseña cada paso.
+enseña cada paso. Esa misma corrida, para enseñarla desde el teléfono, está
+publicada en **<https://nilthonnn.github.io/nefer/fixmate/>** (la página vive
+en `docs/fixmate/` y `tests/test_publicacion_fixmate.py` falla si se queda
+atrás de la demo).
 
 Todo el detalle —los formatos que lee, la API HTTP, la consulta dictada,
 PostgreSQL con pgvector y lo que falta— está en

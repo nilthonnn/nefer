@@ -4,6 +4,13 @@ El local es el que se usa por defecto, y no por comodidad: el tecnico consulta
 desde el patio o desde un socavon, donde no hay señal. Un motor que solo
 responde con internet no responde cuando hace falta.
 
+Y el mismo vector se tiene que poder calcular en el telefono. El indice es un
+archivo que se copia a la app de campo, pero ahi la consulta se escribe en el
+propio telefono: si el navegador calculara su vector con otra cuenta que la
+de aqui, no casaria con nada. Por eso el hash es FNV-1a, que son dos
+operaciones enteras y sale identico en Python y en JavaScript, en vez de una
+funcion criptografica que el navegador no trae.
+
 Los dos cumplen la misma interfaz, asi que el indice no sabe cual tiene
 delante; lo unico que no se puede es mezclarlos, y por eso el indice guarda el
 nombre del que lo construyo y se niega a buscar con otro.
@@ -11,7 +18,6 @@ nombre del que lo construyo y se niega a buscar con otro.
 
 from __future__ import annotations
 
-import hashlib
 import math
 import os
 from typing import Protocol, Sequence
@@ -22,6 +28,26 @@ DIMENSION_LOCAL = 256
 
 # Cuanto pesa un trozo de palabra frente a la palabra entera.
 PESO_NGRAMA = 0.35
+
+# FNV-1a de 64 bits. Las dos constantes son las del algoritmo, y la mascara
+# es lo unico que hay que recordar al portarlo: Python no desborda solo.
+FNV_INICIO = 0xCBF29CE484222325
+FNV_PRIMO = 0x100000001B3
+MASCARA_64 = 0xFFFFFFFFFFFFFFFF
+
+
+def fnv1a(datos: bytes) -> int:
+    """FNV-1a de 64 bits. En JavaScript, lo mismo con BigInt:
+
+        let h = 0xcbf29ce484222325n;
+        for (const b of bytes) {
+          h = BigInt.asUintN(64, (h ^ BigInt(b)) * 0x100000001b3n);
+        }
+    """
+    huella = FNV_INICIO
+    for byte in datos:
+        huella = ((huella ^ byte) * FNV_PRIMO) & MASCARA_64
+    return huella
 
 
 class Embebedor(Protocol):
@@ -60,13 +86,17 @@ class EmbebedorLocal:
             raise ValueError("la dimension del vector local no baja de 16.")
         self.dimension = dimension
         self.semilla = semilla
-        self.nombre = f"local-hash-{dimension}"
+        self.nombre = f"local-fnv-{dimension}"
 
     def _posicion(self, rasgo: str) -> tuple[int, float]:
-        digest = hashlib.blake2b(
-            f"{self.semilla}:{rasgo}".encode("utf-8"), digest_size=8).digest()
-        entero = int.from_bytes(digest, "big")
-        return entero % self.dimension, 1.0 if (entero >> 63) & 1 else -1.0
+        """En que posicion del vector cae un rasgo, y con que signo.
+
+        El signo sale del bit mas alto del mismo hash. Sirve para que dos
+        rasgos distintos que caen en la misma posicion —pasa, con 256
+        posiciones— tiendan a cancelarse en vez de sumarse siempre.
+        """
+        huella = fnv1a(f"{self.semilla}:{rasgo}".encode("utf-8"))
+        return huella % self.dimension, 1.0 if (huella >> 63) & 1 else -1.0
 
     def embeber(self, textos: Sequence[str]) -> list[list[float]]:
         return [self._uno(t) for t in textos]
@@ -156,7 +186,10 @@ def obtener(nombre: str = "local", **kw) -> Embebedor:
     if nombre == "openai":
         return EmbebedorOpenAI(**{k: v for k, v in kw.items()
                                   if k in ("modelo", "clave", "dimension", "cliente")})
-    if nombre.startswith("local-hash-"):
+    # 'local-hash-N' es como se llamaba antes de FNV-1a. Se resuelve igual,
+    # para que el indice viejo falle con el mensaje que dice que hay que
+    # reindexar y no con un 'embebedor desconocido' que no ayuda a nadie.
+    if nombre.startswith(("local-fnv-", "local-hash-")):
         return EmbebedorLocal(dimension=int(nombre.rsplit("-", 1)[1]))
     if nombre.startswith("openai-"):
         return EmbebedorOpenAI(modelo=nombre.split("-", 1)[1])

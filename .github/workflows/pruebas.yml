@@ -46,6 +46,7 @@ jobs:
             tests/test_fixmate_transcripcion.py \
             tests/test_layout.py \
             tests/test_publicacion_clon.py \
+            tests/test_publicacion_fixmate.py \
             tests/test_schema.py \
             tests/test_textos.py
 
