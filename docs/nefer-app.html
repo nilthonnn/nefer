@@ -638,6 +638,26 @@
 
   /* Las precauciones. Se leen con guantes y a contraluz: alto contraste,
      borde a la izquierda y el sello de procedencia debajo, en chico. */
+  /* La biblioteca: qué hay cargado. Se pliega, porque el técnico que ya
+     la cargó viene a preguntar, no a mirar la lista. */
+  .dx-biblio { margin:.9rem 0 0; border:1px solid var(--rule); border-radius:6px;
+               background:var(--card); }
+  .dx-biblio > summary { cursor:pointer; padding:.6rem .8rem; font-family:var(--mono);
+                         font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
+                         color:var(--ink-2); }
+  .dx-biblio-cuerpo { padding:0 .8rem .8rem; display:flex; flex-direction:column;
+                      gap:.7rem; }
+  .dx-fuentes { list-style:none; margin:0; padding:0; display:flex;
+                flex-direction:column; gap:.3rem; }
+  .dx-fuentes li { display:flex; justify-content:space-between; gap:.7rem;
+                   font-size:.86rem; color:var(--ink-2); padding:.3rem .1rem;
+                   border-bottom:1px solid var(--rule-2); }
+  .dx-fuentes .dx-cuenta { font-family:var(--mono); font-size:.78rem;
+                           color:var(--ink-3); flex:0 0 auto; }
+  .dx-biblio-botones { display:flex; gap:.5rem; flex-wrap:wrap; }
+  .dx-biblio-botones label, .dx-biblio-botones button { flex:1 1 auto;
+                          text-align:center; }
+
   .dx-cuidados { list-style:none; margin:.5rem 0 0; padding:0; display:flex;
                  flex-direction:column; gap:.5rem; }
   .dx-cuidados li { border-left:3px solid var(--obs); padding:.5rem .7rem;
@@ -1050,16 +1070,40 @@
 
       <div class="dx-cargar" id="dx-sin-indice">
         <div>
-          <b>Falta el índice</b>
-          <p>Es el archivo que la oficina genera con
-             <code>nefer fixmate indexar</code>: lleva el historial de fallas y
-             los manuales ya preparados para buscar. Se copia una vez y queda
-             guardado en el teléfono.</p>
+          <b>Todavía no hay nada cargado</b>
+          <p>Agregue el historial de fallas y los manuales. Se leen aquí
+             mismo, en el teléfono, y quedan guardados: la próxima vez ya
+             están. Cada archivo que agregue se suma a lo que ya había.</p>
         </div>
-        <label class="primary" for="dx-archivo">Cargar el índice
-          <input type="file" id="dx-archivo" accept=".json,application/json" hidden>
+        <label class="primary" for="dx-archivo">Agregar historiales y manuales
+          <input type="file" id="dx-archivo" multiple
+                 accept=".xlsx,.xlsm,.csv,.tsv,.json,.md,.txt"
+                 hidden>
         </label>
       </div>
+
+      <!-- La biblioteca: qué hay cargado, qué aprendió, y de dónde salió. -->
+      <details class="dx-biblio" id="dx-biblio" hidden>
+        <summary>
+          <span id="dx-biblio-resumen">Biblioteca</span>
+        </summary>
+        <div class="dx-biblio-cuerpo">
+          <p class="nota">
+            El historial en Excel y los manuales en texto se leen en este
+            teléfono. Un PDF o un Word hay que indexarlos en la oficina y
+            traer el índice: el teléfono todavía no los abre.
+          </p>
+          <ul id="dx-fuentes" class="dx-fuentes"></ul>
+          <div class="dx-biblio-botones">
+            <label class="primary" for="dx-archivo-2">Agregar más
+              <input type="file" id="dx-archivo-2" multiple
+                     accept=".xlsx,.xlsm,.csv,.tsv,.json,.md,.txt" hidden>
+            </label>
+            <button type="button" id="dx-vaciar">Vaciar la biblioteca</button>
+          </div>
+          <p class="lb" id="dx-aprendido"></p>
+        </div>
+      </details>
 
       <div id="dx-listo" hidden>
         <div class="dx-buscar">
@@ -6475,6 +6519,393 @@ var FIXMATE = (function () {
     return true;
   };
 
+  /* fixmate:ingesta:inicio — se prueba en node, igual que el motor */
+
+  // Leer los papeles del taller aqui mismo, en el telefono. Antes esto solo
+  // pasaba en la oficina y el telefono recibia el indice ya cocinado; con el
+  // indice cocinado afuera, cargar el historial de un equipo nuevo obligaba a
+  // volver a la computadora. Ahora el Excel entra por el menu.
+  //
+  // Sin librerias: un .xlsx es un zip con XML adentro, y el navegador sabe
+  // descomprimir (DecompressionStream) y leer XML (DOMParser) de fabrica.
+
+  // El mismo cuadro de sinonimos que nefer/fixmate/ingesta.py. Generado
+  // desde el, para que no se puedan separar en silencio.
+  var COLUMNAS_INFORME = {
+    "codigo_ot": ["ot", "n ot", "nro ot", "num ot", "numero ot", "orden", "orden de trabajo", "codigo ot", "ot n", "n orden", "os"],
+    "fecha": ["fecha", "fecha de atencion", "fecha atencion", "fecha cierre", "fecha de cierre", "dia"],
+    "codigo_equipo": ["equipo", "codigo equipo", "cod equipo", "codigo de equipo", "unidad", "maquina", "flota", "placa", "interno"],
+    "modelo_equipo": ["modelo", "descripcion del equipo", "marca modelo"],
+    "categoria": ["categoria", "familia", "tipo de equipo", "linea"],
+    "codigos_dtc": ["dtc", "codigo de falla", "codigo falla", "cod falla", "codigo dtc", "spn", "fmi", "codigo de error"],
+    "resumen_falla": ["falla", "sintoma", "sintomas", "descripcion de la falla", "problema", "reporte", "falla reportada", "descripcion", "detalle de la falla"],
+    "causa_raiz": ["causa", "causa raiz", "causa basica", "diagnostico", "causa de la falla", "origen"],
+    "solucion_aplicada": ["solucion", "solucion aplicada", "trabajo realizado", "accion", "accion correctiva", "reparacion", "actividad realizada", "correctivo"],
+    "pasos": ["pasos", "procedimiento", "secuencia"],
+    "herramientas": ["herramientas", "herramienta", "herramental"],
+    "repuestos": ["repuestos", "repuesto", "materiales", "partes", "insumos"],
+    "horas_hombre": ["horas hombre", "hh", "horas", "tiempo"],
+    "horometro": ["horometro", "horas de equipo", "km", "kilometraje"],
+  };
+
+  function claveColumna(nombre) {
+    var limpio = normalizar(String(nombre || "")).replace(/[^a-z0-9]+/g, " ").trim();
+    if (!limpio) return "";
+    // Primero exacto para todos los campos, y recien despues parecido: si
+    // "Falla" se resolviera por parecido podria caer en "codigo de falla".
+    for (var campo in COLUMNAS_INFORME) {
+      if (COLUMNAS_INFORME[campo].indexOf(limpio) >= 0) return campo;
+    }
+    for (var campo2 in COLUMNAS_INFORME) {
+      var nombres = COLUMNAS_INFORME[campo2];
+      for (var i = 0; i < nombres.length; i++) {
+        if (limpio.indexOf(nombres[i]) >= 0 && nombres[i].length > 3) return campo2;
+      }
+    }
+    return "";
+  }
+
+  /* ---------- el zip que hay dentro de un .xlsx ---------- */
+
+  function leerU16(v, i) { return v[i] | (v[i + 1] << 8); }
+  function leerU32(v, i) {
+    return (v[i] | (v[i + 1] << 8) | (v[i + 2] << 16)) + v[i + 3] * 16777216;
+  }
+
+  // Las entradas del zip, por nombre. Se recorre el directorio central, que
+  // es lo unico que dice donde empieza cada archivo sin adivinar.
+  function entradasZip(datos) {
+    var v = new Uint8Array(datos), fin = -1;
+    for (var i = v.length - 22; i >= 0 && i > v.length - 65558; i--) {
+      if (leerU32(v, i) === 0x06054b50) { fin = i; break; }
+    }
+    if (fin < 0) throw new Error("no parece un archivo .xlsx (zip sin cierre)");
+    var cuantos = leerU16(v, fin + 10), p = leerU32(v, fin + 16), entradas = {};
+    for (var n = 0; n < cuantos; n++) {
+      if (leerU32(v, p) !== 0x02014b50) break;
+      var metodo = leerU16(v, p + 10);
+      var comprimido = leerU32(v, p + 20), largoNombre = leerU16(v, p + 28);
+      var extra = leerU16(v, p + 30), comentario = leerU16(v, p + 32);
+      var desplazamiento = leerU32(v, p + 42);
+      var nombre = new TextDecoder().decode(v.subarray(p + 46, p + 46 + largoNombre));
+      entradas[nombre] = { metodo: metodo, comprimido: comprimido,
+                           desplazamiento: desplazamiento };
+      p += 46 + largoNombre + extra + comentario;
+    }
+    return entradas;
+  }
+
+  function contenidoZip(datos, entrada) {
+    var v = new Uint8Array(datos), p = entrada.desplazamiento;
+    if (leerU32(v, p) !== 0x04034b50) throw new Error("zip: cabecera local rota");
+    var inicio = p + 30 + leerU16(v, p + 26) + leerU16(v, p + 28);
+    var crudo = v.subarray(inicio, inicio + entrada.comprimido);
+    if (entrada.metodo === 0) return Promise.resolve(new TextDecoder().decode(crudo));
+    if (entrada.metodo !== 8) {
+      return Promise.reject(new Error("zip: compresion no soportada"));
+    }
+    if (typeof DecompressionStream === "undefined") {
+      return Promise.reject(new Error(
+        "este navegador no sabe descomprimir; abra el Excel en la oficina " +
+        "o guardelo como CSV"));
+    }
+    var flujo = new Blob([crudo]).stream()
+      .pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Response(flujo).text();
+  }
+
+  /* ---------- el .xlsx como filas ---------- */
+
+  function textoDe(nodo) {
+    // <si> puede venir partido en varios <t> por el formato enriquecido.
+    var ts = nodo.getElementsByTagName("t"), salida = "";
+    for (var i = 0; i < ts.length; i++) salida += ts[i].textContent;
+    return salida;
+  }
+
+  function columnaDe(ref) {
+    var letras = String(ref || "").replace(/[0-9]/g, ""), n = 0;
+    for (var i = 0; i < letras.length; i++) {
+      n = n * 26 + (letras.charCodeAt(i) - 64);
+    }
+    return n - 1;
+  }
+
+  function filasDeHoja(xml, compartidas) {
+    var doc = new DOMParser().parseFromString(xml, "application/xml");
+    var filas = [], nodos = doc.getElementsByTagName("row");
+    for (var i = 0; i < nodos.length; i++) {
+      var celdas = nodos[i].getElementsByTagName("c"), fila = [];
+      for (var j = 0; j < celdas.length; j++) {
+        var c = celdas[j], donde = columnaDe(c.getAttribute("r"));
+        var tipo = c.getAttribute("t"), valor = "";
+        if (tipo === "s") {
+          var vs = c.getElementsByTagName("v");
+          if (vs.length) valor = compartidas[parseInt(vs[0].textContent, 10)] || "";
+        } else if (tipo === "inlineStr") {
+          valor = textoDe(c);
+        } else {
+          var vn = c.getElementsByTagName("v");
+          if (vn.length) valor = vn[0].textContent;
+        }
+        while (fila.length < donde) fila.push("");
+        fila[donde >= 0 ? donde : fila.length] = valor;
+      }
+      filas.push(fila);
+    }
+    return filas;
+  }
+
+  function esNumero(v) {
+    if (v === "" || v === null || v === undefined) return false;
+    return !isNaN(parseFloat(String(v).replace(",", "."))) &&
+           isFinite(String(v).replace(",", "."));
+  }
+
+  // El encabezado no esta en la primera fila: arriba hay logo, titulo y dos
+  // filas en blanco. La fila con mas celdas de texto distintas, entre las
+  // diez primeras, es el encabezado. Misma regla que documentos.tabla().
+  function registrosDeFilas(filas) {
+    var mejor = 0, puntaje = 0;
+    for (var i = 0; i < Math.min(10, filas.length); i++) {
+      var textos = {}, cuenta = 0;
+      filas[i].forEach(function (v) {
+        var s = String(v == null ? "" : v).trim();
+        if (!s || esNumero(v)) return;
+        cuenta++; textos[s.toLowerCase()] = true;
+      });
+      if (cuenta > puntaje && Object.keys(textos).length === cuenta) {
+        mejor = i; puntaje = cuenta;
+      }
+    }
+    var encabezados = (filas[mejor] || []).map(function (v) {
+      return String(v == null ? "" : v).trim();
+    });
+    var registros = [];
+    for (var f = mejor + 1; f < filas.length; f++) {
+      var registro = {}, algo = false;
+      encabezados.forEach(function (clave, k) {
+        if (!clave) return;
+        var valor = String(filas[f][k] == null ? "" : filas[f][k]).trim();
+        registro[clave] = valor;
+        if (valor) algo = true;
+      });
+      if (algo) registros.push(registro);
+    }
+    return registros;
+  }
+
+  function informesDeRegistros(registros) {
+    var mapa = {}, primero = registros[0] || {};
+    Object.keys(primero).forEach(function (columna) {
+      var campo = claveColumna(columna);
+      if (campo && !mapa[campo]) mapa[campo] = columna;
+    });
+    if (!mapa.resumen_falla && !mapa.causa_raiz) return null;
+
+    return registros.map(function (r) {
+      var informe = {};
+      Object.keys(mapa).forEach(function (campo) {
+        var valor = String(r[mapa[campo]] || "").trim();
+        if (!valor) return;
+        if (campo === "pasos" || campo === "herramientas" || campo === "repuestos") {
+          informe[campo] = valor.split(/\s*[;\n]\s*/).filter(Boolean);
+        } else if (campo === "codigos_dtc") {
+          informe[campo] = valor.split(/\s*[,;/]\s*/).filter(Boolean);
+        } else {
+          informe[campo] = valor;
+        }
+      });
+      // La solucion, cuando no hay columna de pasos, es el procedimiento.
+      if (!informe.pasos && informe.solucion_aplicada) {
+        informe.pasos = [informe.solucion_aplicada];
+      }
+      return informe;
+    }).filter(function (i) {
+      return i.resumen_falla || i.causa_raiz || i.solucion_aplicada;
+    });
+  }
+
+  function csvAFilas(texto) {
+    var filas = [], fila = [], campo = "", comillas = false;
+    for (var i = 0; i < texto.length; i++) {
+      var c = texto[i];
+      if (comillas) {
+        if (c === '"' && texto[i + 1] === '"') { campo += '"'; i++; }
+        else if (c === '"') comillas = false;
+        else campo += c;
+      } else if (c === '"') comillas = true;
+      else if (c === "," || c === ";" || c === "\t") { fila.push(campo); campo = ""; }
+      else if (c === "\n") { fila.push(campo); filas.push(fila); fila = []; campo = ""; }
+      else if (c !== "\r") campo += c;
+    }
+    if (campo || fila.length) { fila.push(campo); filas.push(fila); }
+    return filas;
+  }
+
+
+  /* ---------- un manual en texto: un fragmento por seccion ---------- */
+
+  var RE_TITULO_MD = /^\s{0,3}(#{1,6})\s+(.*)$/;
+  var RE_HERRAMIENTAS = /^\s*(?:herramientas?|herramental)\s*:\s*(.+)$/i;
+
+  // Se corta por titulo, no por numero de caracteres: un torque recuperado
+  // sin el paso que lo pide no le sirve a nadie en campo.
+  function seccionesDe(contenido) {
+    var secciones = [], titulo = "", lineas = [];
+    String(contenido).split("\n").forEach(function (linea) {
+      var m = RE_TITULO_MD.exec(linea);
+      if (m) {
+        if (lineas.join("\n").trim()) secciones.push([titulo, lineas.join("\n").trim()]);
+        titulo = m[2].trim(); lineas = [];
+      } else lineas.push(linea);
+    });
+    if (lineas.join("\n").trim()) secciones.push([titulo, lineas.join("\n").trim()]);
+    return secciones;
+  }
+
+  function trocear(texto, maximo) {
+    maximo = maximo || 900;
+    var trozos = [], acumulado = "";
+    String(texto).trim().split(/\n\s*\n/).forEach(function (parrafo) {
+      parrafo = parrafo.trim();
+      if (!parrafo) return;
+      if (parrafo.length > maximo) {
+        if (acumulado) { trozos.push(acumulado); acumulado = ""; }
+        for (var i = 0; i < parrafo.length; i += maximo) {
+          trozos.push(parrafo.slice(i, i + maximo));
+        }
+        return;
+      }
+      if (acumulado && acumulado.length + parrafo.length + 2 > maximo) {
+        trozos.push(acumulado); acumulado = parrafo;
+      } else acumulado = acumulado ? acumulado + "\n\n" + parrafo : parrafo;
+    });
+    if (acumulado) trozos.push(acumulado);
+    return trozos;
+  }
+
+  // La marca del archivo: dos manuales que se llamen igual en carpetas
+  // distintas no pueden ser el mismo fragmento. Del nombre, que es lo que
+  // el telefono tiene: aqui no hay rutas.
+  function marcaDe(clave) {
+    var h = fnv1a(String(clave));
+    return (h & 0xffffn).toString(16).padStart(4, "0");
+  }
+
+  function fragmentosDeManual(contenido, fuente) {
+    var base = String(fuente || "manual").replace(/\.[^.]+$/, "") || "manual";
+    var sello = marcaDe(fuente || "manual"), fragmentos = [];
+    seccionesDe(contenido).forEach(function (par) {
+      var seccion = par[0];
+      trocear(par[1]).forEach(function (trozo, n) {
+        var cuerpo = (seccion ? seccion + "\n" : "") + trozo;
+        var herramientas = [];
+        trozo.split("\n").forEach(function (linea) {
+          var m = RE_HERRAMIENTAS.exec(linea);
+          if (!m) return;
+          m[1].split(/[,;]/).forEach(function (h) {
+            var limpio = h.replace(/^[\s.\-]+|[\s.\-]+$/g, "");
+            if (limpio) herramientas.push(limpio);
+          });
+        });
+        fragmentos.push({
+          id: "man:" + base + "@" + sello + ":" + (fragmentos.length + 1),
+          texto: cuerpo, fuente: fuente, tipo: "manual",
+          metadatos: { seccion: seccion, codigo_equipo: "", categoria: "",
+                       codigos_dtc: codigosDtc(cuerpo), torques: torques(cuerpo),
+                       herramientas: herramientas, parte: n + 1 },
+          vector: vector(cuerpo)
+        });
+      });
+    });
+    return fragmentos;
+  }
+
+  /* ---------- la puerta: un archivo cualquiera -> fragmentos ---------- */
+
+  var EXTENSIONES_MANUAL = ["md", "txt", "markdown", "text"];
+
+  function fragmentosDeArchivo(nombre, datos) {
+    var ext = (String(nombre).split(".").pop() || "").toLowerCase();
+
+    if (ext === "xlsx" || ext === "xlsm") {
+      var entradas = entradasZip(datos);
+      var hoja = null;
+      Object.keys(entradas).forEach(function (n) {
+        if (!hoja && /^xl\/worksheets\/sheet1\.xml$/.test(n)) hoja = n;
+      });
+      if (!hoja) {
+        Object.keys(entradas).forEach(function (n) {
+          if (!hoja && /^xl\/worksheets\/.+\.xml$/.test(n)) hoja = n;
+        });
+      }
+      if (!hoja) return Promise.reject(new Error(nombre + ": el Excel no trae hojas"));
+      var compartidas = [];
+      var previo = entradas["xl/sharedStrings.xml"]
+        ? contenidoZip(datos, entradas["xl/sharedStrings.xml"]).then(function (xml) {
+            var doc = new DOMParser().parseFromString(xml, "application/xml");
+            var sis = doc.getElementsByTagName("si");
+            for (var i = 0; i < sis.length; i++) compartidas.push(textoDe(sis[i]));
+          })
+        : Promise.resolve();
+      return previo.then(function () {
+        return contenidoZip(datos, entradas[hoja]);
+      }).then(function (xml) {
+        var registros = registrosDeFilas(filasDeHoja(xml, compartidas));
+        var informes = informesDeRegistros(registros);
+        if (!informes || !informes.length) {
+          throw new Error(nombre + ": no se reconoce ninguna columna de falla " +
+                          "ni de causa. Renombre la columna, o use la plantilla.");
+        }
+        return informes.map(function (inf, i) {
+          return fragmentoDeInforme(inf, nombre, i);
+        });
+      });
+    }
+
+    if (ext === "csv" || ext === "tsv") {
+      var registros2 = registrosDeFilas(csvAFilas(new TextDecoder().decode(datos)));
+      var informes2 = informesDeRegistros(registros2);
+      if (!informes2 || !informes2.length) {
+        return Promise.reject(new Error(nombre + ": no se reconoce ninguna " +
+                                        "columna de falla ni de causa."));
+      }
+      return Promise.resolve(informes2.map(function (inf, i) {
+        return fragmentoDeInforme(inf, nombre, i);
+      }));
+    }
+
+    if (ext === "json") {
+      var crudo = JSON.parse(new TextDecoder().decode(datos));
+      var lista = Array.isArray(crudo) ? crudo
+                : (crudo && Array.isArray(crudo.informes) ? crudo.informes : null);
+      if (!lista) {
+        return Promise.reject(new Error(nombre + ": el JSON no trae 'informes'."));
+      }
+      return Promise.resolve(lista.map(function (inf, i) {
+        return fragmentoDeInforme(inf, nombre, i);
+      }));
+    }
+
+    if (EXTENSIONES_MANUAL.indexOf(ext) >= 0) {
+      var texto = new TextDecoder().decode(datos);
+      var fs = fragmentosDeManual(texto, nombre);
+      if (!fs.length) return Promise.reject(new Error(nombre + ": no tiene texto."));
+      return Promise.resolve(fs);
+    }
+
+    if (ext === "pdf" || ext === "docx" || ext === "doc") {
+      return Promise.reject(new Error(
+        nombre + ": el teléfono todavía no abre " + ext.toUpperCase() +
+        ". Indéxelo en la oficina con «nefer fixmate indexar» y traiga el " +
+        "índice, o péguelo como .txt."));
+    }
+
+    return Promise.reject(new Error(nombre + ": no se sabe leer ese tipo."));
+  }
+  /* fixmate:ingesta:fin */
+
   /* fixmate:motor:fin */
 
   return { Indice: Indice, Motor: Motor, Clasificador: Clasificador,
@@ -6482,7 +6913,13 @@ var FIXMATE = (function () {
            normalizar: normalizar, torques: torques, mismaCausa: mismaCausa,
            agruparCausas: agruparCausas, DIMENSION: DIMENSION,
            fragmentoDeInforme: fragmentoDeInforme, codigosDtc: codigosDtc,
-           normalizarDtc: normalizarDtc };
+           normalizarDtc: normalizarDtc,
+           // La ingesta: lo que deja cargar los papeles aqui mismo.
+           fragmentosDeArchivo: fragmentosDeArchivo,
+           fragmentosDeManual: fragmentosDeManual,
+           claveColumna: claveColumna, csvAFilas: csvAFilas,
+           registrosDeFilas: registrosDeFilas,
+           informesDeRegistros: informesDeRegistros };
 })();
 </script>
 
@@ -6644,33 +7081,169 @@ var FIXMATE = (function () {
         "teléfono sólo sabe calcular «" + esperado + "». Vuelva a indexarlo.");
     }
     motor = new FIXMATE.Motor(new FIXMATE.Indice(datos));
+    mostrarListo(origen);
+  }
+
+  /* ---------- la biblioteca: agregar papeles y acumular ---------- */
+
+  // Lo cargado se acumula: agregar el historial de otra faena no borra el
+  // anterior. Un id que ya estaba se reemplaza —el mismo informe corregido
+  // pisa al viejo— y lo demas se suma, que es como se junta experiencia.
+  function agregarFragmentos(fragmentos, fuente) {
+    if (!motor) {
+      motor = new FIXMATE.Motor(new FIXMATE.Indice(
+        { embebedor: "local-fnv-" + FIXMATE.DIMENSION,
+          dimension: FIXMATE.DIMENSION, fragmentos: [], fuentes: {} }));
+    }
+    var nuevos = 0;
+    fragmentos.forEach(function (f) {
+      if (motor.indice.agregar(f)) nuevos++;
+    });
+    motor.indice.fuentes = motor.indice.fuentes || {};
+    motor.indice.fuentes[fuente] = String(fragmentos.length);
+    // El clasificador se vuelve a entrenar con todo lo que hay: lo que se
+    // acaba de cargar ya cuenta para el proximo diagnostico.
+    motor = new FIXMATE.Motor(motor.indice);
+    return nuevos;
+  }
+
+  function leerArchivo(archivo) {
+    return new Promise(function (listo, falla) {
+      var lector = new FileReader();
+      lector.onload = function () { listo(lector.result); };
+      lector.onerror = function () { falla(new Error("no se pudo leer")); };
+      lector.readAsArrayBuffer(archivo);
+    });
+  }
+
+  function esIndiceYa(datos) {
+    // Un indice ya armado por la oficina entra por su propio camino: trae
+    // los vectores calculados y no hay que volver a leer nada.
+    try {
+      var crudo = JSON.parse(new TextDecoder().decode(datos));
+      return crudo && crudo.embebedor && Array.isArray(crudo.fragmentos)
+             ? crudo : null;
+    } catch (e) { return null; }
+  }
+
+  function cargarArchivos(lista) {
+    var archivos = Array.prototype.slice.call(lista || []);
+    if (!archivos.length) return;
+    $("#dx-estado").textContent = "Leyendo " + archivos.length + " archivo(s)…";
+
+    var agregados = 0, problemas = [];
+    var cadena = archivos.reduce(function (antes, archivo) {
+      return antes.then(function () {
+        return leerArchivo(archivo).then(function (datos) {
+          var yaIndice = /\.json$/i.test(archivo.name) ? esIndiceYa(datos) : null;
+          if (yaIndice) {
+            usarIndice(new TextDecoder().decode(datos),
+                       "índice de " + archivo.name);
+            agregados += yaIndice.fragmentos.length;
+            return null;
+          }
+          return FIXMATE.fragmentosDeArchivo(archivo.name, datos)
+            .then(function (fragmentos) {
+              agregados += agregarFragmentos(fragmentos, archivo.name);
+            });
+        }).catch(function (e) {
+          // Un archivo que no se puede leer se nombra y se sigue: que un
+          // Excel raro deje sin cargar a los otros cinco no ayuda a nadie.
+          problemas.push(archivo.name + ": " + (e && e.message ? e.message : e));
+        });
+      });
+    }, Promise.resolve());
+
+    cadena.then(function () {
+      if (motor) mostrarListo(agregados + " fragmento(s) nuevos");
+      pintarBiblioteca();
+      if (problemas.length) {
+        $("#dx-estado").textContent += " · " + problemas.join(" · ");
+      }
+      return guardarBiblioteca();
+    }).catch(function (e) {
+      $("#dx-estado").textContent = String(e && e.message ? e.message : e);
+    });
+  }
+
+  function guardarBiblioteca() {
+    if (!motor) return Promise.resolve();
+    var copia = { version: 1, embebedor: "local-fnv-" + FIXMATE.DIMENSION,
+                  dimension: FIXMATE.DIMENSION,
+                  fuentes: motor.indice.fuentes || {},
+                  fragmentos: motor.indice.fragmentos };
+    return guardado(JSON.stringify(copia)).catch(function () {
+      $("#dx-estado").textContent +=
+        " · no se pudo guardar en el teléfono (¿memoria llena?)";
+    });
+  }
+
+  function mostrarListo(extra) {
     $("#dx-sin-indice").hidden = true;
     $("#dx-listo").hidden = false;
+    $("#dx-biblio").hidden = false;
     var cl = motor.clasificador;
     $("#dx-estado").textContent = motor.indice.fragmentos.length +
       " fragmentos de " + Object.keys(motor.indice.fuentes || {}).length +
       " archivos · " + (cl.entrenado
         ? cl.casos + " casos con causa confirmada"
         : "sin clasificador: " + cl.motivo) +
-      (origen ? " · " + origen : "");
+      (extra ? " · " + extra : "");
   }
 
-  function cargarArchivo(archivo) {
-    var lector = new FileReader();
-    lector.onload = function () {
-      try {
-        usarIndice(String(lector.result), "cargado de " + archivo.name);
-        guardado(String(lector.result)).catch(function () {
-          $("#dx-estado").textContent += " · no se pudo guardar en el teléfono";
-        });
-      } catch (e) {
-        $("#dx-estado").textContent = e.message;
+  function pintarBiblioteca() {
+    if (!motor) { $("#dx-biblio").hidden = true; return; }
+    $("#dx-biblio").hidden = false;
+    var fuentes = motor.indice.fuentes || {};
+    var nombres = Object.keys(fuentes);
+    var porFuente = {}, equipos = {}, conCausa = 0;
+    motor.indice.fragmentos.forEach(function (f) {
+      var d = f.fuente || "(sin nombre)";
+      porFuente[d] = (porFuente[d] || 0) + 1;
+      var eq = (f.metadatos && f.metadatos.codigo_equipo) || "";
+      if (eq) equipos[eq] = true;
+      if (f.metadatos && String(f.metadatos.causa_raiz || "").trim()) conCausa++;
+    });
+    $("#dx-biblio-resumen").textContent =
+      "Biblioteca · " + motor.indice.fragmentos.length + " fragmentos · " +
+      Object.keys(equipos).length + " equipos";
+
+    var ul = $("#dx-fuentes");
+    ul.innerHTML = "";
+    Object.keys(porFuente).sort().forEach(function (nombre) {
+      var li = document.createElement("li");
+      li.innerHTML = "<span>" + esc(nombre) + "</span><span class=\"dx-cuenta\">" +
+                     porFuente[nombre] + "</span>";
+      ul.appendChild(li);
+    });
+    if (!Object.keys(porFuente).length) {
+      ul.innerHTML = "<li><span>Nada cargado todavía</span></li>";
+    }
+
+    var cl = motor.clasificador, texto;
+    if (cl.entrenado) {
+      var m = motor.medicion ? motor.medicion() : null;
+      texto = "Aprendió de " + conCausa + " casos con causa confirmada.";
+      if (m && m.precision != null) {
+        texto += " Acierta el " + Math.round(m.precision * 100) +
+                 "% medido; contestar siempre la causa más común acertaría el " +
+                 Math.round(m.linea_base * 100) + "%.";
       }
-    };
-    lector.onerror = function () {
-      $("#dx-estado").textContent = "No se pudo leer el archivo.";
-    };
-    lector.readAsText(archivo);
+    } else {
+      texto = "Todavía no opina sobre causas: " + cl.motivo +
+              ". Sigue buscando en lo cargado igual.";
+    }
+    $("#dx-aprendido").textContent = texto;
+  }
+
+  function vaciarBiblioteca() {
+    motor = null;
+    $("#dx-listo").hidden = true;
+    $("#dx-biblio").hidden = true;
+    $("#dx-sin-indice").hidden = false;
+    $("#dx-salida").innerHTML = "";
+    $("#dx-estado").textContent = "";
+    return guardado("").catch(function () {});
   }
 
   /* ---------- cerrar el círculo, aquí mismo ---------- */
@@ -6812,10 +7385,23 @@ var FIXMATE = (function () {
   }
 
   function arrancar() {
-    var entrada = $("#dx-archivo");
-    if (entrada) {
+    // Los dos botones —el de la pantalla vacia y el de la biblioteca—
+    // hacen lo mismo: sumar lo que se elija a lo que ya hay.
+    ["#dx-archivo", "#dx-archivo-2"].forEach(function (sel) {
+      var entrada = $(sel);
+      if (!entrada) return;
       entrada.addEventListener("change", function () {
-        if (entrada.files && entrada.files[0]) cargarArchivo(entrada.files[0]);
+        cargarArchivos(entrada.files);
+        entrada.value = "";       // el mismo archivo se puede volver a elegir
+      });
+    });
+    var vaciar = $("#dx-vaciar");
+    if (vaciar) {
+      vaciar.addEventListener("click", function () {
+        if (window.confirm("Se borra todo lo cargado en este teléfono. " +
+                           "Los informes por enviar no se tocan. ¿Vaciar?")) {
+          vaciarBiblioteca();
+        }
       });
     }
     $("#dx-buscar").addEventListener("click", buscar);
@@ -6839,9 +7425,14 @@ var FIXMATE = (function () {
     }).catch(function () { /* sin almacén: los informes duran la sesión */ });
 
     guardado().then(function (texto) {
-      if (texto) { usarIndice(texto, "guardado en este teléfono"); return null; }
+      if (texto) {
+        usarIndice(texto, "guardado en este teléfono");
+        pintarBiblioteca();
+        return null;
+      }
       if (demo && demo.textContent.trim()) {
         usarIndice(demo.textContent, "índice de ejemplo incrustado");
+        pintarBiblioteca();
         return null;
       }
       return fetch("indice.json").then(function (r) {
@@ -6849,6 +7440,7 @@ var FIXMATE = (function () {
       }).then(function (servido) {
         if (!servido) return null;
         usarIndice(servido, "servido junto a la app");
+        pintarBiblioteca();
         return guardado(servido);
       });
     }).catch(function () { /* sin índice: la vista ya lo pide */ });

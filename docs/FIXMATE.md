@@ -293,6 +293,33 @@ confirmada, o con una sola causa en todo el historial, se declara sin entrenar
 y no devuelve ningún porcentaje. Un porcentaje sobre cuatro informes es peor
 que ninguno, porque parece medido.
 
+## Cargar los papeles desde el propio teléfono
+
+La oficina ya no es obligatoria. En la pestaña **Diagnóstico** hay un menú
+—**Biblioteca**— donde se agregan los papeles y se leen ahí mismo:
+
+| Formato | En el teléfono | Por qué |
+|---|---|---|
+| `.xlsx` / `.xlsm` | **Sí** | Un Excel es un zip con XML dentro, y el navegador sabe descomprimir (`DecompressionStream`) y leer XML (`DOMParser`) de fábrica. Sin librerías |
+| `.csv` / `.tsv` | **Sí** | |
+| `.md` / `.txt` | **Sí** | Un fragmento por sección, cortando por título y no por número de caracteres |
+| `.json` | **Sí** | Un historial, o un índice ya armado por la oficina |
+| `.pdf` / `.docx` | **No** | Lo dice en vez de cargarlo vacío: hay que indexarlo en la oficina y traer el índice |
+
+**Lo que se agrega se suma.** El historial de otra faena no borra el anterior;
+un informe con el mismo número de orden reemplaza al viejo, y lo demás se
+acumula. El clasificador se reentrena con todo lo que hay: lo que se acaba de
+cargar ya cuenta para el siguiente diagnóstico.
+
+Reconoce las columnas solas —`N° OT`, `Falla reportada`, `Causa raíz`— con el
+**mismo cuadro de sinónimos que la oficina**, generado desde
+`nefer/fixmate/ingesta.py` para que no se puedan separar en silencio. Y el
+membrete no estorba: la tabla no tiene que empezar en A1.
+
+La biblioteca muestra qué hay cargado, de qué archivo salió cada cosa, cuántos
+equipos hay y qué aprendió el clasificador —con su acierto medido al lado de
+la línea base, o el motivo por el que todavía no opina—.
+
 ## Lo que el historial anticipa
 
 > **No es mantenimiento predictivo, y la diferencia importa al comprar.** En

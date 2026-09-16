@@ -70,14 +70,17 @@ class Telefono:
         self.navegador.close()
 
 
-def test_la_pestana_esta_y_pide_el_indice_antes_de_nada():
+def test_la_pestana_esta_y_pide_los_papeles_antes_de_nada():
     with sync_playwright() as pw:
         t = Telefono(pw)
         try:
             assert t.pg.is_visible("#v-diagnostico")
             assert t.pg.is_visible("#dx-sin-indice"), "sin índice tiene que pedirlo"
             assert not t.pg.is_visible("#dx-listo")
-            assert "Falta el índice" in t.pg.text_content("#dx-sin-indice")
+            texto = t.pg.text_content("#dx-sin-indice")
+            assert "Todavía no hay nada cargado" in texto
+            # Y dice qué hay que traer, no sólo que falta algo.
+            assert "historial" in texto.lower() and "manuales" in texto.lower()
         finally:
             t.cerrar()
 
@@ -296,5 +299,147 @@ def test_los_informes_se_envian_como_un_archivo_para_la_oficina(indice, tmp_path
             assert len(parte.nuevos) == 1 and not parte.rechazados
             # Reenviarlo —que es lo que va a pasar— no duplica nada.
             assert not cierre.recibir(archivo, historial).nuevos
+        finally:
+            t.cerrar()
+
+
+# ------------------------------------ cargar los papeles en el propio teléfono
+
+@pytest.fixture(scope="module")
+def historial_xlsx(tmp_path_factory) -> Path:
+    """Un historial como lo manda un taller: con membrete y sin empezar en A1."""
+    openpyxl = pytest.importorskip("openpyxl")
+
+    destino = tmp_path_factory.mktemp("taller") / "historial-fallas.xlsx"
+    libro = openpyxl.Workbook()
+    hoja = libro.active
+    hoja["A1"] = "TRANSPORTES Y MAQUINARIA S.A.C."
+    hoja["A2"] = "Historial de fallas — Flota de excavadoras"
+    hoja.append([])
+    hoja.append([])
+    hoja.append(["N° OT", "Fecha", "Equipo", "Horómetro", "Código de falla",
+                 "Falla reportada", "Causa raíz", "Trabajo realizado", "Repuestos"])
+    for fila in [
+        ["OT-2026-0311", "2026-03-04", "EX-220-01", 4820, "P0300",
+         "Humo negro y pierde fuerza en la subida cargado",
+         "Filtro de aire colmatado", "Cambio de filtro primario y secundario",
+         "Filtro P181054"],
+        ["OT-2026-0349", "2026-04-18", "EX-220-02", 5210, "",
+         "Gotea aceite por el cilindro del brazo toda la noche",
+         "Sello del vástago vencido", "Cambio de sellos del cilindro del brazo",
+         "Kit de sellos 707-99"],
+        ["OT-2026-0402", "2026-05-22", "EX-220-01", 5390, "",
+         "No arranca en la mañana, el arranque gira lento",
+         "Bornes de batería sulfatados", "Limpieza de bornes y ajuste a 8 N·m", ""],
+    ]:
+        hoja.append(fila)
+    libro.save(destino)
+    return destino
+
+
+def _con_papeles(t, *rutas):
+    with t.pg.expect_file_chooser() as elegido:
+        t.pg.click("label[for='dx-archivo']")
+    elegido.value.set_files([str(r) for r in rutas])
+    t.pg.wait_for_selector("#dx-listo:not([hidden])", timeout=20000)
+
+
+def test_el_excel_del_taller_se_carga_en_el_telefono(historial_xlsx):
+    """Antes esto sólo pasaba en la oficina.
+
+    El técnico recibía un índice ya cocinado, y cargar el historial de un
+    equipo nuevo obligaba a volver a la computadora. Un .xlsx es un zip con
+    XML dentro, y el navegador sabe descomprimir y leer XML de fábrica.
+    """
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            assert "Todavía no hay nada cargado" in t.pg.inner_text("#dx-sin-indice")
+            _con_papeles(t, historial_xlsx)
+
+            estado = t.pg.inner_text("#dx-estado")
+            assert "3 fragmentos" in estado.lower()
+
+            # Y contesta con lo que se acaba de cargar, con las palabras del
+            # patio y no con las del encabezado del Excel.
+            t.consultar("la máquina bota humo negro y no tiene fuerza")
+            salida = t.pg.inner_text("#dx-salida")
+            assert "Filtro de aire colmatado" in salida
+            assert "OT-2026-0311" in salida
+        finally:
+            t.cerrar()
+
+
+def test_lo_que_se_agrega_se_suma_a_lo_que_ya_habia(historial_xlsx, tmp_path):
+    """Acumular experiencia es el punto: el segundo archivo no borra el primero."""
+    manual = tmp_path / "manual-hidraulico.md"
+    manual.write_text(
+        "# Sistema hidráulico\n\n"
+        "PELIGRO: el acumulador conserva presión veinte minutos después de "
+        "parar el motor.\n\n"
+        "Par de apriete de la tapa del cilindro: 210 N·m.\n",
+        encoding="utf-8")
+
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            _con_papeles(t, historial_xlsx)
+            antes = t.pg.inner_text("#dx-biblio-resumen")
+            t.pg.click("#dx-biblio summary")      # la biblioteca se pliega
+
+            with t.pg.expect_file_chooser() as elegido:
+                t.pg.click("label[for='dx-archivo-2']")
+            elegido.value.set_files(str(manual))
+            t.pg.wait_for_timeout(1500)
+
+            despues = t.pg.inner_text("#dx-biblio-resumen")
+            assert despues != antes
+            fuentes = t.pg.inner_text("#dx-fuentes")
+            assert "historial-fallas.xlsx" in fuentes, "borró lo que ya había"
+            assert "manual-hidraulico.md" in fuentes
+
+            # El torque del manual sale citado, y la advertencia también.
+            t.consultar("qué apriete lleva la tapa del cilindro")
+            salida = t.pg.inner_text("#dx-salida")
+            assert "210 N·m" in salida
+        finally:
+            t.cerrar()
+
+
+def test_un_pdf_no_se_finge_leido(tmp_path):
+    """Decir «no sé abrirlo» es la respuesta correcta; cargarlo vacío, no."""
+    falso = tmp_path / "manual.pdf"
+    falso.write_bytes(b"%PDF-1.4\nno importa\n")
+
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            with t.pg.expect_file_chooser() as elegido:
+                t.pg.click("label[for='dx-archivo']")
+            elegido.value.set_files(str(falso))
+            t.pg.wait_for_timeout(1500)
+            estado = t.pg.inner_text("#dx-estado")
+            assert "PDF" in estado
+            assert "oficina" in estado.lower()
+        finally:
+            t.cerrar()
+
+
+def test_lo_cargado_sigue_ahi_al_reabrir(historial_xlsx):
+    """Sin esto no sirve en faena: se carga una vez y queda."""
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            _con_papeles(t, historial_xlsx)
+            t.pg.wait_for_timeout(1200)      # que termine de guardar
+
+            otra = t.contexto.new_page()
+            otra.goto(APP.as_uri())
+            otra.click("#tab-diagnostico")
+            otra.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+            otra.fill("#dx-consulta", "gotea aceite del brazo")
+            otra.click("#dx-buscar")
+            otra.wait_for_timeout(900)
+            assert "Sello del vástago" in otra.inner_text("#dx-salida")
         finally:
             t.cerrar()
