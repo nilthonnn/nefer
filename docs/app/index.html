@@ -604,6 +604,48 @@
               flex:none; padding-top:.15rem; min-width:1.4rem; }
   .pasos b { color:var(--ink); }
 
+  /* ---------- DIAGNÓSTICO: consulta y respuesta ---------- */
+  .dx-cargar { display:flex; gap:1rem; align-items:center; flex-wrap:wrap;
+               background:var(--card); border:1px solid var(--rule);
+               border-left:4px solid var(--accent); border-radius:0 8px 8px 0;
+               padding:1rem 1.1rem; }
+  .dx-cargar > div { flex:1 1 16rem; min-width:0; }
+  .dx-cargar b { display:block; }
+  .dx-cargar p { margin:.25rem 0 0; font-size:.88rem; color:var(--ink-2); }
+  .dx-cargar label.primary { cursor:pointer; }
+
+  .dx-buscar { display:flex; gap:.5rem; flex-wrap:wrap; margin:1rem 0 .6rem; }
+  .dx-buscar input { flex:1 1 14rem; min-width:0; }
+  .dx-filtros { display:flex; gap:.7rem; flex-wrap:wrap; }
+  .dx-filtros label { display:flex; flex-direction:column; gap:.2rem;
+                      font-size:.72rem; text-transform:uppercase;
+                      letter-spacing:.07em; color:var(--ink-3); flex:1 1 8rem; }
+  .dx-filtros input { text-transform:uppercase; }
+
+  .dx-causa { background:var(--card); border:1px solid var(--rule);
+              border-top:3px solid var(--accent); border-radius:3px;
+              padding:.9rem 1rem; margin:1rem 0 0; }
+  .dx-causa .et { font-family:var(--mono); font-size:.66rem; letter-spacing:.1em;
+                  text-transform:uppercase; color:var(--accent); }
+  .dx-causa p { margin:.3rem 0 0; font-size:1.02rem; color:var(--ink); }
+  .dx-conf { font-family:var(--mono); font-size:.66rem; letter-spacing:.06em;
+             text-transform:uppercase; color:var(--ink-3); }
+
+  .dx-barras { list-style:none; margin:.5rem 0 0; padding:0; display:flex;
+               flex-direction:column; gap:.35rem; }
+  .dx-barras li { display:grid; grid-template-columns:3.2rem 1fr; gap:.6rem;
+                  align-items:center; font-size:.85rem; color:var(--ink-2); }
+  .dx-barras .pc { font-family:var(--mono); font-size:.8rem; color:var(--ink);
+                   text-align:right; }
+  .dx-barras .bar-i { display:block; height:.5rem; border-radius:2px;
+                      background:var(--accent); opacity:.85; min-width:2px; }
+  .dx-barras .txt { font-size:.85rem; }
+
+  .dx-ev { border-top:1px solid var(--rule); padding:.55rem 0; font-size:.85rem;
+           color:var(--ink-2); }
+  .dx-ev b { color:var(--ink); }
+  .dx-ev .met { font-family:var(--mono); font-size:.7rem; color:var(--ink-3); }
+
   .nota { font-size:.82rem; color:var(--ink-3); margin:.6rem 0 0; }
   h2.rot { font-family:var(--cond); font-size:1.3rem; font-weight:700;
            text-transform:uppercase; letter-spacing:.02em; margin:1.5rem 0 .5rem;
@@ -970,6 +1012,53 @@
       </div>
     </section>
 
+    <!-- ================= DIAGNÓSTICO ================= -->
+    <section class="vista" id="v-diagnostico" role="tabpanel" aria-labelledby="tab-diagnostico">
+      <div class="encab">
+        <p class="kicker">asistente en campo</p>
+        <h1>Diagnóstico</h1>
+        <p class="sub">
+          Describa la falla como se la contaría a un compañero. Busca en el
+          historial de la flota y en los manuales que la oficina indexó, y
+          responde <b>sin señal</b>: el índice está en este teléfono.
+        </p>
+      </div>
+
+      <div class="dx-cargar" id="dx-sin-indice">
+        <div>
+          <b>Falta el índice</b>
+          <p>Es el archivo que la oficina genera con
+             <code>nefer fixmate indexar</code>: lleva el historial de fallas y
+             los manuales ya preparados para buscar. Se copia una vez y queda
+             guardado en el teléfono.</p>
+        </div>
+        <label class="primary" for="dx-archivo">Cargar el índice
+          <input type="file" id="dx-archivo" accept=".json,application/json" hidden>
+        </label>
+      </div>
+
+      <div id="dx-listo" hidden>
+        <div class="dx-buscar">
+          <input type="search" id="dx-consulta" enterkeyhint="search"
+                 placeholder="humo negro y pierde fuerza en la subida"
+                 aria-label="Describa la falla">
+          <button type="button" id="dx-dictar" hidden
+                  aria-label="Dictar la consulta">Dictar</button>
+          <button type="button" class="primary" id="dx-buscar">Buscar</button>
+        </div>
+        <div class="dx-filtros">
+          <label>Código de falla
+            <input type="text" id="dx-dtc" placeholder="P0300" autocapitalize="characters">
+          </label>
+          <label>Equipo
+            <input type="text" id="dx-equipo" placeholder="GE074-01" autocapitalize="characters">
+          </label>
+        </div>
+        <p class="lb" id="dx-estado"></p>
+        <div id="dx-salida" aria-live="polite"></div>
+      </div>
+    </section>
+
     <!-- ================= GUÍA ================= -->
     <section class="vista" id="v-guia" role="tabpanel" aria-labelledby="tab-guia">
       <div class="encab">
@@ -1121,6 +1210,11 @@ nefer construir acta.json -o ACTA.xlsx --pdf</textarea>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-.7 4.2"/><path d="M20 5v6h-6"/></svg>
       Recepción
     </button>
+    <button type="button" id="tab-diagnostico" role="tab" aria-selected="false"
+            aria-controls="v-diagnostico" data-ir="diagnostico">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l4.5 4.5"/><path d="M10.5 7.5v6"/><path d="M7.5 10.5h6"/></svg>
+      Diagnóstico
+    </button>
     <button type="button" id="tab-guia" role="tab" aria-selected="false"
             aria-controls="v-guia" data-ir="guia">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h9a3 3 0 0 1 3 3V20a2.5 2.5 0 0 0-2.5-2.5H5z"/><path d="M17 7.5h2v12h-3.5"/></svg>
@@ -1139,7 +1233,7 @@ var NEFER = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-10 · instalable";
+  var VERSION = "2026-09-16 · diagnóstico";
 
   "use strict";
 
@@ -1284,6 +1378,7 @@ var NEFER = (function () {
     inicio:    ["Actas de campo",  "actas de campo"],
     despacho:  ["Despacho",        "salida de equipo"],
     recepcion: ["Recepción",       "retorno de equipo"],
+    diagnostico: ["Diagnóstico",   "asistente en campo"],
     guia:      ["Guía rápida",     "cómo se usa"]
   };
   var actual = "inicio";
@@ -5468,3 +5563,899 @@ var ENTREGABLE = (function () {
 })();
 </script>
 
+<script>
+/* ---------- FixMate: el mismo motor de diagnóstico, en el teléfono ----------
+
+   El índice se arma en la oficina, donde están el Excel y los PDF, y se copia
+   aquí. Buscar es aritmética sobre ese archivo —BM25 y un producto punto— y
+   eso sí cabe en el teléfono, que es donde está el mecánico y donde no hay
+   señal.
+
+   Todo lo de aquí es espejo de `nefer/fixmate/*.py`, número por número. El
+   hash es FNV-1a justamente para que las dos mitades calculen el mismo
+   vector; `tests/test_fixmate_cruce.py` corre las mismas consultas en los dos
+   motores y falla si un ranking se separa.
+   ------------------------------------------------------------------------ */
+var FIXMATE = (function () {
+  "use strict";
+
+  /* fixmate:motor:inicio — lo que hay entre estas marcas se prueba en node */
+
+  var DIMENSION = 256, SEMILLA = "fixmate", PESO_NGRAMA = 0.35;
+  var PESO_VECTOR = 0.6, PESO_LEXICO = 0.4, BONO_PREFERENCIA = 0.08;
+  var K1 = 1.5, B = 0.75;
+  var UMBRAL_MINIMO = 0.20, UMBRAL_CONFIANZA = 0.30;
+  var UMBRAL_EVIDENCIA_FUERTE = 0.50, APOYO_MINIMO = 0.35;
+  var PARECIDO_CAUSAS = 0.6, SOLAPE_CAUSAS = 0.8, PALABRAS_NUCLEO = 2;
+  var MINIMO_CASOS = 12, MINIMO_CAUSAS = 2, MINIMO_POR_CAUSA = 2, ALFA = 0.3;
+
+  var VACIAS = ("a al ante con como cuando de del desde donde el ella ellos en " +
+    "entre era es esa ese eso esta estan este esto fue ha hace han hasta hay la " +
+    "las le les lo los mas me mi muy no para pero por porque que se segun ser si " +
+    "sin sobre solo son su sus tiene tras un una uno unos unas y ya").split(" ");
+  var ES_VACIA = {};
+  VACIAS.forEach(function (p) { ES_VACIA[p] = true; });
+
+  var RE_PALABRA = /[0-9a-z]+(?:[.\-/][0-9a-z]+)*/g;
+  var RE_TORQUE = new RegExp(
+    "(\\d+(?:[.,]\\d+)?)\\s*(?:(?:a|-|–|\\.\\.\\.)\\s*(\\d+(?:[.,]\\d+)?)\\s*)?" +
+    "(N[·.\\s-]?m|Nm|newton\\s*metros?|lbf?[\\s·.-]*(?:pie|ft|pulg|in)|kgf?[\\s·.-]*m)\\b",
+    "gi");
+  var RE_NO_TORQUE = /(torquimetro|llave de torque|torque wrench|capacidad|rango|escala)[^.;]{0,12}$/i;
+
+  function sinTildes(t) {
+    return String(t).normalize("NFKD").replace(/[̀-ͯ]/g, "");
+  }
+  function normalizar(t) {
+    return sinTildes(t).toLowerCase().replace(/\s+/g, " ").trim();
+  }
+  function tokenizar(t) {
+    var crudos = normalizar(t).match(RE_PALABRA) || [];
+    return crudos.filter(function (p) { return !ES_VACIA[p] && p.length > 1; });
+  }
+  function ngramas(token, n) {
+    n = n || 4;
+    var marcado = "^" + token + "$";
+    if (marcado.length <= n) return [marcado];
+    var trozos = [];
+    for (var i = 0; i <= marcado.length - n; i++) trozos.push(marcado.slice(i, i + n));
+    return trozos;
+  }
+
+  /* FNV-1a de 64 bits: las mismas dos constantes que en Python, y por eso el
+     mismo número. Sin esto, el vector de la consulta escrita aquí no casaría
+     con los vectores del índice y la búsqueda devolvería ruido sin avisar. */
+  var FNV_INICIO = 0xcbf29ce484222325n, FNV_PRIMO = 0x100000001b3n;
+  var codificador = new TextEncoder();
+
+  function fnv1a(cadena) {
+    var h = FNV_INICIO, bytes = codificador.encode(cadena);
+    for (var i = 0; i < bytes.length; i++) {
+      h = BigInt.asUintN(64, (h ^ BigInt(bytes[i])) * FNV_PRIMO);
+    }
+    return h;
+  }
+
+  var cachePosicion = {};
+  function posicion(rasgo) {
+    var guardada = cachePosicion[rasgo];
+    if (guardada) return guardada;
+    var h = fnv1a(SEMILLA + ":" + rasgo);
+    guardada = [Number(h % BigInt(DIMENSION)), (h >> 63n) & 1n ? 1 : -1];
+    cachePosicion[rasgo] = guardada;
+    return guardada;
+  }
+
+  function vector(texto) {
+    var v = new Float64Array(DIMENSION), cuenta = {}, peso = {};
+    tokenizar(texto).forEach(function (token) {
+      cuenta[token] = (cuenta[token] || 0) + 1;
+      peso[token] = 1;
+      ngramas(token).forEach(function (trozo) {
+        cuenta[trozo] = (cuenta[trozo] || 0) + 1;
+        peso[trozo] = PESO_NGRAMA;
+      });
+    });
+    Object.keys(cuenta).forEach(function (rasgo) {
+      var p = posicion(rasgo);
+      v[p[0]] += p[1] * peso[rasgo] * (1 + Math.log(cuenta[rasgo]));
+    });
+    var norma = 0;
+    for (var i = 0; i < DIMENSION; i++) norma += v[i] * v[i];
+    norma = Math.sqrt(norma);
+    if (norma > 0) for (var j = 0; j < DIMENSION; j++) v[j] /= norma;
+    return v;
+  }
+
+  function redondear(x, n) {
+    var f = Math.pow(10, n);
+    // Python redondea al par en los empates; con esta corrección coinciden
+    // los cuatro decimales que compara la prueba cruzada.
+    var escalado = x * f, entero = Math.round(escalado);
+    if (Math.abs(escalado % 1) === 0.5 && entero % 2 !== 0) entero -= 1;
+    return entero / f;
+  }
+
+  function numero(valor) {
+    if (typeof valor !== "number") return String(valor);
+    return String(valor);
+  }
+
+  function textoDeMetadatos(meta) {
+    var partes = [];
+    Object.keys(meta || {}).forEach(function (clave) {
+      if (clave.charAt(0) === "_") return;
+      var valor = meta[clave];
+      if (Array.isArray(valor)) {
+        valor.forEach(function (v) { partes.push(numero(v)); });
+      } else if (typeof valor === "string" || typeof valor === "number") {
+        partes.push(numero(valor));
+      }
+    });
+    return partes.join(" ");
+  }
+
+  /* ---------- el índice ---------- */
+
+  function Indice(datos) {
+    this.embebedor = datos.embebedor || "";
+    this.medicion = datos.medicion || null;
+    this.fuentes = datos.fuentes || {};
+    this.fragmentos = (datos.fragmentos || []).map(function (f) {
+      return {
+        id: String(f.id), texto: f.texto || "", fuente: f.fuente || "",
+        tipo: f.tipo || "documento", metadatos: f.metadatos || {},
+        vector: Float64Array.from(f.vector || [])
+      };
+    });
+    this._indexar();
+  }
+
+  Indice.prototype._indexar = function () {
+    var total = this.fragmentos.length;
+    this.frecuencias = [];
+    this.largos = [];
+    this.documentosPorToken = {};
+    var suma = 0, self = this;
+    this.fragmentos.forEach(function (f) {
+      var tokens = tokenizar(f.texto + " " + textoDeMetadatos(f.metadatos));
+      var frecuencia = {};
+      tokens.forEach(function (t) { frecuencia[t] = (frecuencia[t] || 0) + 1; });
+      Object.keys(frecuencia).forEach(function (t) {
+        self.documentosPorToken[t] = (self.documentosPorToken[t] || 0) + 1;
+      });
+      self.frecuencias.push(frecuencia);
+      self.largos.push(tokens.length);
+      suma += tokens.length;
+    });
+    this.largoMedio = total ? suma / total : 0;
+  };
+
+  Indice.prototype.bm25 = function (consulta, candidatos) {
+    var tokens = tokenizar(consulta), puntajes = {}, self = this;
+    if (!tokens.length || !this.largoMedio) return puntajes;
+    var total = this.fragmentos.length, vistos = {};
+    tokens.forEach(function (token) {
+      if (vistos[token]) return;
+      vistos[token] = true;
+      var documentos = self.documentosPorToken[token] || 0;
+      if (!documentos) return;
+      var idf = Math.log(1 + (total - documentos + 0.5) / (documentos + 0.5));
+      candidatos.forEach(function (i) {
+        var frecuencia = self.frecuencias[i][token] || 0;
+        if (!frecuencia) return;
+        var denominador = frecuencia + K1 * (1 - B + B * self.largos[i] / self.largoMedio);
+        puntajes[i] = (puntajes[i] || 0) + idf * frecuencia * (K1 + 1) / denominador;
+      });
+    });
+    return puntajes;
+  };
+
+  function casaFiltro(fragmento, clave, esperado) {
+    var real = fragmento.metadatos[clave];
+    if (real === undefined && clave.slice(-1) === "s") real = fragmento.metadatos[clave.slice(0, -1)];
+    if (real === undefined && clave.slice(-1) !== "s") real = fragmento.metadatos[clave + "s"];
+    if (real === undefined || real === null) return false;
+    var reales = (Array.isArray(real) ? real : [real]).map(function (v) {
+      return normalizar(numero(v));
+    });
+    var esperados = (Array.isArray(esperado) ? esperado : [esperado]);
+    return esperados.some(function (e) {
+      return reales.indexOf(normalizar(numero(e))) >= 0;
+    });
+  }
+
+  function pasaFiltros(fragmento, filtros) {
+    if (!filtros) return true;
+    return Object.keys(filtros).every(function (clave) {
+      var esperado = filtros[clave];
+      if (esperado === null || esperado === undefined || esperado === "" ||
+          (Array.isArray(esperado) && !esperado.length)) return true;
+      return casaFiltro(fragmento, clave, esperado);
+    });
+  }
+
+  function preferenciasQueCasan(fragmento, preferencias) {
+    if (!preferencias) return 0;
+    return Object.keys(preferencias).filter(function (clave) {
+      var valor = preferencias[clave];
+      if (valor === null || valor === undefined || valor === "") return false;
+      return casaFiltro(fragmento, clave, valor);
+    }).length;
+  }
+
+  Indice.prototype.buscar = function (consulta, opciones) {
+    opciones = opciones || {};
+    var limite = opciones.limite || 3, umbral = opciones.umbral || 0;
+    var self = this, candidatos = [];
+    this.fragmentos.forEach(function (f, i) {
+      if (!pasaFiltros(f, opciones.filtros)) return;
+      if (opciones.acepta && !opciones.acepta(f)) return;
+      candidatos.push(i);
+    });
+    if (!candidatos.length) return [];
+
+    var v = vector(consulta);
+    var lexicos = this.bm25(consulta, candidatos);
+    var mayor = 0;
+    candidatos.forEach(function (i) { mayor = Math.max(mayor, lexicos[i] || 0); });
+
+    var resultados = [];
+    candidatos.forEach(function (i) {
+      var f = self.fragmentos[i], similitud = 0;
+      for (var k = 0; k < DIMENSION; k++) similitud += v[k] * (f.vector[k] || 0);
+      var lexico = mayor > 0 ? (lexicos[i] || 0) / mayor : 0;
+      var puntaje = PESO_VECTOR * Math.max(similitud, 0) + PESO_LEXICO * lexico;
+      puntaje = Math.min(1, puntaje + BONO_PREFERENCIA *
+                         preferenciasQueCasan(f, opciones.preferencias));
+      if (puntaje >= umbral) {
+        resultados.push({ fragmento: f, similitud: redondear(similitud, 4),
+                          lexico: redondear(lexico, 4), puntaje: redondear(puntaje, 4) });
+      }
+    });
+    resultados.sort(function (a, b) {
+      if (b.puntaje !== a.puntaje) return b.puntaje - a.puntaje;
+      return a.fragmento.id < b.fragmento.id ? -1 : 1;
+    });
+    return resultados.slice(0, limite);
+  };
+
+  /* ---------- lo que dice el historial entero ---------- */
+
+  function nucleo(tokens) { return tokens.slice(0, PALABRAS_NUCLEO).join(" "); }
+
+  function mismaCausa(a, b) {
+    var ta = tokenizar(a), tb = tokenizar(b);
+    if (!ta.length || !tb.length) return false;
+    if (nucleo(ta) === nucleo(tb)) return true;
+    var sa = {}, comunes = 0, union = 0;
+    ta.forEach(function (t) { sa[t] = true; });
+    var sb = {};
+    tb.forEach(function (t) { sb[t] = true; });
+    Object.keys(sa).forEach(function (t) { if (sb[t]) comunes++; });
+    union = Object.keys(sa).length + Object.keys(sb).length - comunes;
+    if (!comunes) return false;
+    if (comunes / union >= PARECIDO_CAUSAS) return true;
+    var menor = Math.min(Object.keys(sa).length, Object.keys(sb).length);
+    return menor >= 3 && comunes / menor >= SOLAPE_CAUSAS;
+  }
+
+  function agruparCausas(causas) {
+    var frecuencia = {};
+    causas.forEach(function (c) {
+      var limpia = String(c || "").trim();
+      if (limpia) frecuencia[limpia] = (frecuencia[limpia] || 0) + 1;
+    });
+    var ordenadas = Object.keys(frecuencia).sort(function (a, b) {
+      if (frecuencia[b] !== frecuencia[a]) return frecuencia[b] - frecuencia[a];
+      if (a.length !== b.length) return a.length - b.length;
+      return a < b ? -1 : 1;
+    });
+    var representantes = [], mapa = {};
+    ordenadas.forEach(function (causa) {
+      for (var i = 0; i < representantes.length; i++) {
+        if (mismaCausa(causa, representantes[i])) { mapa[causa] = representantes[i]; return; }
+      }
+      representantes.push(causa);
+      mapa[causa] = causa;
+    });
+    return mapa;
+  }
+
+  function Clasificador(indice) {
+    var pares = [];
+    indice.fragmentos.forEach(function (f) {
+      var causa = String(f.metadatos.causa_raiz || "").trim();
+      if (!causa) return;
+      var falla = [f.metadatos.resumen_falla || "", f.metadatos.solucion_aplicada || ""]
+        .join(" ").trim();
+      pares.push([falla || f.texto, causa]);
+    });
+    var mapa = agruparCausas(pares.map(function (p) { return p[1]; }));
+
+    var cuentaCausas = {};
+    pares.forEach(function (p) {
+      var c = mapa[p[1]];
+      cuentaCausas[c] = (cuentaCausas[c] || 0) + 1;
+    });
+    var utiles = {};
+    Object.keys(cuentaCausas).forEach(function (c) {
+      if (cuentaCausas[c] >= MINIMO_POR_CAUSA) utiles[c] = cuentaCausas[c];
+    });
+
+    this.casosPorCausa = utiles;
+    this.cuenta = {};
+    this.total = {};
+    this.vocabulario = {};
+    var self = this, ejemplos = 0;
+    pares.forEach(function (p) {
+      var causa = mapa[p[1]];
+      if (!utiles[causa]) return;
+      ejemplos++;
+      var porCausa = self.cuenta[causa] || (self.cuenta[causa] = {});
+      var tokens = tokenizar(p[0]);
+      tokens.forEach(function (t) {
+        porCausa[t] = (porCausa[t] || 0) + 1;
+        self.vocabulario[t] = true;
+      });
+      self.total[causa] = (self.total[causa] || 0) + tokens.length;
+    });
+
+    this.casos = ejemplos;
+    this.medicion = indice.medicion || null;
+    if (ejemplos < MINIMO_CASOS) {
+      this.entrenado = false;
+      this.motivo = "hacen falta " + MINIMO_CASOS + " casos con causa confirmada y hay " + ejemplos;
+    } else if (Object.keys(utiles).length < MINIMO_CAUSAS) {
+      this.entrenado = false;
+      this.motivo = "hacen falta " + MINIMO_CAUSAS + " causas distintas";
+    } else {
+      this.entrenado = true;
+      this.motivo = "entrenado";
+    }
+  }
+
+  Clasificador.prototype.predecir = function (consulta, limite) {
+    if (!this.entrenado) return [];
+    var tokens = tokenizar(consulta), self = this;
+    var causas = Object.keys(this.casosPorCausa);
+    if (!tokens.length || !causas.length) return [];
+    var universo = Object.keys(this.vocabulario).length || 1;
+    var n = causas.reduce(function (s, c) { return s + self.casosPorCausa[c]; }, 0);
+
+    var puntajes = {};
+    causas.forEach(function (causa) {
+      var log = Math.log(self.casosPorCausa[causa] / n);
+      var porCausa = self.cuenta[causa] || {};
+      var denominador = (self.total[causa] || 0) + ALFA * universo;
+      tokens.forEach(function (token) {
+        if (!self.vocabulario[token]) return;
+        log += Math.log(((porCausa[token] || 0) + ALFA) / denominador);
+      });
+      puntajes[causa] = log;
+    });
+
+    var mayor = -Infinity;
+    causas.forEach(function (c) { mayor = Math.max(mayor, puntajes[c]); });
+    var suma = 0, pesos = {};
+    causas.forEach(function (c) {
+      pesos[c] = Math.exp(puntajes[c] - mayor);
+      suma += pesos[c];
+    });
+    var salida = causas.map(function (c) {
+      return { causa: c, probabilidad: redondear(pesos[c] / (suma || 1), 4),
+               casos: self.casosPorCausa[c] };
+    });
+    salida.sort(function (a, b) {
+      if (b.probabilidad !== a.probabilidad) return b.probabilidad - a.probabilidad;
+      return a.causa < b.causa ? -1 : 1;
+    });
+    return salida.slice(0, limite || 3);
+  };
+
+  /* ---------- el diagnóstico ---------- */
+
+  var AVISO_SIN_FILTRO = "Ningun antecedente cita ese codigo de falla; lo que sigue " +
+    "se encontro por la descripcion de la falla.";
+  var AVISO_POCA_EVIDENCIA = "Evidencia debil: ningun antecedente se parece lo " +
+    "suficiente. Trate esto como una pista, no como un diagnostico.";
+  var AVISO_SIN_PROCEDIMIENTO = "Ningun antecedente trae un procedimiento escrito. " +
+    "Lea el extracto de la evidencia: ahi esta lo que hay.";
+  var AVISO_TORQUE = "Contraste cada par de apriete con el manual OEM del equipo " +
+    "antes de aplicarlo.";
+  var AVISO_APOYO = "La busqueda por palabras y el historial completo apuntaban a " +
+    "causas distintas. Se anadio a la evidencia el antecedente de la causa que " +
+    "respalda el historial; compare los dos antes de desarmar nada.";
+
+  function unicos(valores) {
+    var vistos = {}, salida = [];
+    (valores || []).forEach(function (valor) {
+      var limpio = String(valor).replace(/^[\s.;-]+|[\s.;-]+$/g, "");
+      var clave = normalizar(limpio);
+      if (limpio && !vistos[clave]) { vistos[clave] = true; salida.push(limpio); }
+    });
+    return salida;
+  }
+
+  function frases(texto) {
+    return String(texto).split(/(?<=[.;])\s+|\n+/)
+      .map(function (f) { return f.replace(/^[\s.;\t]+|[\s.;\t]+$/g, ""); })
+      .filter(function (f) { return f.length; });
+  }
+
+  function torques(texto) {
+    var crudo = String(texto), valores = [], m;
+    RE_TORQUE.lastIndex = 0;
+    while ((m = RE_TORQUE.exec(crudo)) !== null) {
+      var previo = sinTildes(crudo.slice(Math.max(0, m.index - 60), m.index));
+      if (RE_NO_TORQUE.test(previo)) continue;
+      var unidad = m[3].replace(/\s+/g, " ").trim();
+      var rango = m[2] ? m[1] + "-" + m[2] : m[1];
+      var valor = rango + " " + unidad;
+      if (valores.indexOf(valor) < 0) valores.push(valor);
+    }
+    return valores;
+  }
+
+  function pasosDe(coincidencia) {
+    var meta = coincidencia.fragmento.metadatos;
+    if (meta.pasos && meta.pasos.length) return meta.pasos.slice();
+    if (meta.solucion_aplicada) return frases(meta.solucion_aplicada);
+    return [];
+  }
+
+  function conCausa(coincidencias) {
+    return coincidencias.filter(function (c) {
+      return String(c.fragmento.metadatos.causa_raiz || "").trim();
+    });
+  }
+
+  function respaldado(coincidencias, causas) {
+    var lista = conCausa(coincidencias);
+    if (!causas || !causas.length || !lista.length) return null;
+    if (lista[0].puntaje >= UMBRAL_EVIDENCIA_FUERTE) return null;
+    var esperada = causas[0].causa, encontrado = null;
+    lista.forEach(function (c) {
+      if (!encontrado && mismaCausa(c.fragmento.metadatos.causa_raiz, esperada)) {
+        encontrado = c;
+      }
+    });
+    return encontrado;
+  }
+
+  function referenciaDe(c) {
+    var m = c.fragmento.metadatos;
+    return String(m.codigo_ot || m.n_acta || m.seccion || c.fragmento.fuente || c.fragmento.id);
+  }
+
+  function recortar(texto, largo) {
+    var limpio = String(texto).replace(/\s+/g, " ").trim();
+    return limpio.length <= largo ? limpio : limpio.slice(0, largo - 1).replace(/\s+$/, "") + "…";
+  }
+
+  function detalleDe(c) {
+    var m = c.fragmento.metadatos;
+    var item = String(m.item || "").trim(), estado = String(m.estado || "").trim();
+    return String(m.resumen_falla || m.observacion ||
+                  (item && estado ? item + " (" + estado + ")" : item) ||
+                  recortar(c.fragmento.texto, 220));
+  }
+
+  function causaNoConfirmada(c) {
+    var m = c.fragmento.metadatos;
+    var donde = String(m.seccion || m.item || "").trim();
+    if (c.fragmento.tipo === "manual") {
+      return donde
+        ? "No consta una causa raiz confirmada en el historial; lo recuperado es " +
+          "documentacion del manual («" + donde + "»)."
+        : "No consta una causa raiz confirmada en el historial; lo recuperado es " +
+          "documentacion del manual.";
+    }
+    return donde
+      ? "No consta una causa raiz confirmada; el antecedente solo registra el hecho («" +
+        donde + "»)."
+      : "No consta una causa raiz confirmada en el historial.";
+  }
+
+  function frasePorcentaje(x) { return (x * 100).toFixed(0); }
+
+  function redactar(consulta, coincidencias, causas, medicion) {
+    var mejor = coincidencias[0];
+    var apoyo = respaldado(coincidencias, causas);
+    var lista = conCausa(coincidencias);
+    var origen = apoyo || (lista.length ? lista[0] : mejor);
+    var causa = String(origen.fragmento.metadatos.causa_raiz || "").trim();
+    if (!causa) causa = causaNoConfirmada(mejor);
+
+    var diagnostico = coincidencias.length + " antecedente(s) —historial y manuales— " +
+      "coinciden con «" + consulta.texto + "». El mas parecido (" + referenciaDe(mejor) +
+      ", " + frasePorcentaje(mejor.puntaje) + "%) registra: " + detalleDe(mejor);
+
+    var iguales = coincidencias.filter(function (c) {
+      return c !== origen && String(c.fragmento.metadatos.causa_raiz || "").trim() &&
+             mismaCausa(c.fragmento.metadatos.causa_raiz, causa);
+    });
+    if (iguales.length) {
+      diagnostico += " Otros " + iguales.length + " antecedente(s) terminaron en la " +
+        "misma causa, lo que la refuerza.";
+    }
+    var otras = lista.filter(function (c) {
+      return c !== origen && c !== mejor && iguales.indexOf(c) < 0;
+    });
+    if (otras.length) {
+      diagnostico += " Otros antecedentes (" + otras.map(referenciaDe).join(", ") +
+        ") terminaron en otra causa; estan en la evidencia, con su propio procedimiento.";
+    }
+    if (consulta.codigo_dtc) diagnostico += " Filtrado por el codigo " + consulta.codigo_dtc + ".";
+    if (causas && causas.length) {
+      var top = causas[0];
+      diagnostico += " En todo el historial, las descripciones parecidas a esta " +
+        "terminaron en «" + top.causa + "» el " + frasePorcentaje(top.probabilidad) +
+        "% de las veces (" + top.casos + " casos registrados)";
+      if (medicion) {
+        diagnostico += "; el clasificador acierta el " + frasePorcentaje(medicion.precision) +
+          "% midiendolo contra sus propios " + medicion.casos + " casos, y contestar " +
+          "siempre la causa mas comun acertaria el " + frasePorcentaje(medicion.linea_base) + "%";
+      }
+      diagnostico += ".";
+    }
+    if (apoyo && apoyo !== mejor) {
+      diagnostico += " La causa y el procedimiento salen de " + referenciaDe(apoyo) +
+        ", que es el antecedente recuperado que coincide con esa estadistica.";
+    }
+
+    if (!pasosDe(origen).length) {
+      for (var i = 0; i < coincidencias.length; i++) {
+        if (pasosDe(coincidencias[i]).length) { origen = coincidencias[i]; break; }
+      }
+    }
+    var pasos = pasosDe(origen);
+
+    var herramientas = (origen.fragmento.metadatos.herramientas || []).slice()
+      .concat(origen.fragmento.metadatos.repuestos || []);
+    var valores = (origen.fragmento.metadatos.torques || []).concat(torques(origen.fragmento.texto));
+    coincidencias.forEach(function (c) {
+      if (c.fragmento.tipo !== "manual") return;
+      herramientas = herramientas.concat(c.fragmento.metadatos.herramientas || []);
+      valores = valores.concat(c.fragmento.metadatos.torques || []);
+    });
+
+    return {
+      diagnostico_probabilistico: diagnostico,
+      causa_raiz_mas_probable: causa || "No consta en el historial recuperado.",
+      pasos_recomendados: unicos(pasos).slice(0, 10),
+      herramientas_y_repuestos: unicos(herramientas),
+      torques: unicos(valores),
+      _apoyo: apoyo
+    };
+  }
+
+  function Motor(indice) {
+    this.indice = indice;
+    this.clasificador = new Clasificador(indice);
+  }
+
+  Motor.prototype.consultar = function (consulta) {
+    if (!consulta || !String(consulta.texto || "").trim()) {
+      throw new Error("la consulta no puede estar vacia.");
+    }
+    var limite = Math.max(1, Math.min(consulta.limite || 3, 10));
+    var dtc = consulta.codigo_dtc
+      ? String(consulta.codigo_dtc).replace(/[\s:_-]+/g, "").toUpperCase()
+          .replace(/^(SPN|FMI|CID)0+(?=\d)/, "$1")
+      : null;
+    var filtros = { codigos_dtc: dtc };
+    var preferencias = { codigo_equipo: consulta.codigo_equipo || null,
+                         categoria: consulta.categoria || null };
+    var avisos = [];
+
+    var coincidencias = this.indice.buscar(consulta.texto, {
+      limite: limite, filtros: filtros, umbral: UMBRAL_MINIMO,
+      preferencias: preferencias });
+    if (!coincidencias.length && dtc) {
+      coincidencias = this.indice.buscar(consulta.texto, {
+        limite: limite, umbral: UMBRAL_MINIMO, preferencias: preferencias });
+      if (coincidencias.length) avisos.push(AVISO_SIN_FILTRO);
+    }
+    if (!coincidencias.length) {
+      var vacio = new Error("No hay antecedentes en el indice que respalden esa " +
+        "consulta. Registre el caso al cerrarlo y el proximo tecnico si los tendra.");
+      vacio.sinEvidencia = true;
+      throw vacio;
+    }
+
+    var causas = this.clasificador.predecir(consulta.texto, 3);
+    var medicion = causas.length ? this.clasificador.medicion : null;
+
+    // El antecedente que la búsqueda no trajo y el historial sí respalda.
+    if (causas.length && causas[0].probabilidad >= APOYO_MINIMO) {
+      var fuertes = conCausa(coincidencias);
+      var yaEsta = respaldado(coincidencias, causas) !== null;
+      if (!yaEsta && !(fuertes.length && fuertes[0].puntaje >= UMBRAL_EVIDENCIA_FUERTE)) {
+        var vistos = {};
+        coincidencias.forEach(function (c) { vistos[c.fragmento.id] = true; });
+        var esperada = causas[0].causa;
+        var extra = this.indice.buscar(consulta.texto, {
+          limite: 1, umbral: 0,
+          acepta: function (f) {
+            return !vistos[f.id] && mismaCausa(String(f.metadatos.causa_raiz || ""), esperada);
+          } });
+        if (extra.length) { coincidencias = coincidencias.concat(extra); avisos.push(AVISO_APOYO); }
+      }
+    }
+
+    var partes = redactar({ texto: consulta.texto, codigo_dtc: dtc }, coincidencias,
+                          causas, medicion);
+    var mejor = coincidencias[0].puntaje;
+    var confianza = mejor >= 0.55 ? "alta" : (mejor >= UMBRAL_CONFIANZA ? "media" : "baja");
+    if (confianza === "baja") avisos.push(AVISO_POCA_EVIDENCIA);
+    if (!partes.pasos_recomendados.length) avisos.push(AVISO_SIN_PROCEDIMIENTO);
+    if (partes.torques.length) avisos.push(AVISO_TORQUE);
+
+    return {
+      diagnostico_probabilistico: partes.diagnostico_probabilistico,
+      causa_raiz_mas_probable: partes.causa_raiz_mas_probable,
+      pasos_recomendados: partes.pasos_recomendados,
+      herramientas_y_repuestos: partes.herramientas_y_repuestos,
+      torques: partes.torques,
+      evidencia_historica: coincidencias.map(function (c) {
+        var m = c.fragmento.metadatos;
+        return {
+          id: c.fragmento.id, tipo: c.fragmento.tipo, fuente: c.fragmento.fuente,
+          similitud: c.puntaje,
+          codigo_ot: String(m.codigo_ot || m.n_acta || ""),
+          resumen_falla: String(m.resumen_falla || m.item || ""),
+          causa_raiz: String(m.causa_raiz || ""),
+          solucion_aplicada: String(m.solucion_aplicada || ""),
+          extracto: recortar(c.fragmento.texto, 400)
+        };
+      }),
+      confianza: confianza,
+      redactor: "extractivo",
+      avisos: avisos,
+      causas_probables: causas,
+      precision_medida: medicion,
+      consulta_interpretada: consulta.texto
+    };
+  };
+
+  /* fixmate:motor:fin */
+
+  return { Indice: Indice, Motor: Motor, Clasificador: Clasificador,
+           fnv1a: fnv1a, vector: vector, tokenizar: tokenizar,
+           normalizar: normalizar, torques: torques, mismaCausa: mismaCausa,
+           agruparCausas: agruparCausas, DIMENSION: DIMENSION };
+})();
+</script>
+
+<script>
+/* ---------- DIAGNÓSTICO: el índice en el teléfono y la consulta encima ----
+
+   El índice se copia una vez y queda guardado aquí, en IndexedDB, para que la
+   consulta siguiente funcione sin señal ni servidor. Si la app está servida
+   junto a un `indice.json`, se toma ese la primera vez y el operario no tiene
+   que hacer nada.
+   ------------------------------------------------------------------------ */
+(function () {
+  "use strict";
+  var $ = NEFER.$, esc = NEFER.esc;
+  var BD = "nefer-fixmate", ALMACEN = "indice", CLAVE = "actual";
+  var motor = null;
+
+  /* ---------- guardado en el teléfono ---------- */
+  function abrirBD() {
+    return new Promise(function (listo, falla) {
+      if (!window.indexedDB) return falla(new Error("sin IndexedDB"));
+      var pedido = indexedDB.open(BD, 1);
+      pedido.onupgradeneeded = function () {
+        pedido.result.createObjectStore(ALMACEN);
+      };
+      pedido.onsuccess = function () { listo(pedido.result); };
+      pedido.onerror = function () { falla(pedido.error || new Error("no abre")); };
+    });
+  }
+
+  function guardado(texto) {
+    return abrirBD().then(function (bd) {
+      return new Promise(function (listo, falla) {
+        var t = bd.transaction(ALMACEN, texto ? "readwrite" : "readonly");
+        var almacen = t.objectStore(ALMACEN);
+        var pedido = texto === undefined ? almacen.get(CLAVE) : almacen.put(texto, CLAVE);
+        pedido.onsuccess = function () { listo(pedido.result); };
+        pedido.onerror = function () { falla(pedido.error); };
+      });
+    });
+  }
+
+  /* ---------- pintar la respuesta ---------- */
+  function lista(clase, titulo, cosas) {
+    if (!cosas || !cosas.length) return "";
+    return '<h2 class="rot">' + titulo + '</h2><ol class="pasos">' +
+      cosas.map(function (c, i) {
+        return '<li><span class="n">' + ("0" + (i + 1)).slice(-2) + '</span>' +
+               "<span>" + esc(c) + "</span></li>";
+      }).join("") + "</ol>";
+  }
+
+  function pintar(d) {
+    var html = '<div class="dx-causa">' +
+      '<span class="et">causa raíz más probable</span>' +
+      "<p>" + esc(d.causa_raiz_mas_probable) + "</p>" +
+      '<p class="dx-conf">confianza ' + esc(d.confianza) + " · " +
+      d.evidencia_historica.length + " antecedente(s)</p></div>";
+
+    html += lista("pasos", "Pasos", d.pasos_recomendados);
+    html += lista("cosas", "Herramientas y repuestos", d.herramientas_y_repuestos);
+    if (d.torques.length) html += lista("torques", "Torques citados en la fuente", d.torques);
+
+    if (d.causas_probables.length) {
+      html += '<h2 class="rot">Lo que dice el historial completo</h2><ul class="dx-barras">';
+      d.causas_probables.forEach(function (c) {
+        var pc = Math.round(c.probabilidad * 100);
+        html += '<li><span class="pc">' + pc + "%</span><span>" +
+          '<span class="bar-i" style="width:' + Math.max(pc, 1) + '%"></span>' +
+          '<span class="txt">' + esc(c.causa) + " <i>(" + c.casos + " casos)</i></span>" +
+          "</span></li>";
+      });
+      html += "</ul>";
+      if (d.precision_medida) {
+        html += '<p class="nota">El clasificador acierta el ' +
+          Math.round(d.precision_medida.precision * 100) + "% medido sobre " +
+          d.precision_medida.casos + " casos; contestar siempre la causa más común " +
+          "acertaría el " + Math.round(d.precision_medida.linea_base * 100) + "%.</p>";
+      }
+    }
+
+    html += '<h2 class="rot">Evidencia</h2>';
+    d.evidencia_historica.forEach(function (e) {
+      html += '<div class="dx-ev"><b>' + esc(e.codigo_ot || e.id) + "</b> " +
+        '<span class="met">' + esc(e.tipo) + " · " + Math.round(e.similitud * 100) +
+        "% · " + esc(e.fuente) + "</span>";
+      if (e.causa_raiz) html += "<div>causa: " + esc(e.causa_raiz) + "</div>";
+      else if (e.resumen_falla) html += "<div>registra: " + esc(e.resumen_falla) + "</div>";
+      html += "<div>" + esc(e.extracto) + "</div></div>";
+    });
+
+    d.avisos.forEach(function (a) {
+      html += '<div class="aviso" style="margin-top:.8rem">' + esc(a) + "</div>";
+    });
+    $("#dx-salida").innerHTML = html;
+  }
+
+  /* ---------- la consulta ---------- */
+  function buscar() {
+    var texto = ($("#dx-consulta").value || "").trim();
+    var estado = $("#dx-estado");
+    if (!motor) { estado.textContent = "Cargue primero el índice."; return; }
+    if (!texto) { estado.textContent = "Escriba o dicte la falla."; return; }
+    estado.textContent = "";
+    try {
+      var d = motor.consultar({
+        texto: texto,
+        codigo_dtc: ($("#dx-dtc").value || "").trim() || null,
+        codigo_equipo: ($("#dx-equipo").value || "").trim() || null
+      });
+      pintar(d);
+    } catch (e) {
+      $("#dx-salida").innerHTML = "";
+      // Que no haya antecedentes es una respuesta, no una avería: se dice con
+      // las mismas palabras que da la herramienta de escritorio.
+      estado.textContent = e && e.sinEvidencia
+        ? e.message
+        : "No se pudo resolver la consulta: " + (e && e.message ? e.message : e);
+    }
+  }
+
+  function usarIndice(texto, origen) {
+    var datos = JSON.parse(texto);
+    if (!datos || !datos.fragmentos || !datos.fragmentos.length) {
+      throw new Error("ese archivo no trae fragmentos: ¿es el índice?");
+    }
+    if (String(datos.embebedor || "").indexOf("local-fnv-") !== 0) {
+      // Mezclar embebedores no da error: da respuestas sin sentido.
+      throw new Error("el índice se armó con «" + datos.embebedor + "» y el " +
+        "teléfono sólo sabe calcular «local-fnv-…». Vuelva a indexarlo.");
+    }
+    motor = new FIXMATE.Motor(new FIXMATE.Indice(datos));
+    $("#dx-sin-indice").hidden = true;
+    $("#dx-listo").hidden = false;
+    var cl = motor.clasificador;
+    $("#dx-estado").textContent = motor.indice.fragmentos.length +
+      " fragmentos de " + Object.keys(motor.indice.fuentes || {}).length +
+      " archivos · " + (cl.entrenado
+        ? cl.casos + " casos con causa confirmada"
+        : "sin clasificador: " + cl.motivo) +
+      (origen ? " · " + origen : "");
+  }
+
+  function cargarArchivo(archivo) {
+    var lector = new FileReader();
+    lector.onload = function () {
+      try {
+        usarIndice(String(lector.result), "cargado de " + archivo.name);
+        guardado(String(lector.result)).catch(function () {
+          $("#dx-estado").textContent += " · no se pudo guardar en el teléfono";
+        });
+      } catch (e) {
+        $("#dx-estado").textContent = e.message;
+      }
+    };
+    lector.onerror = function () {
+      $("#dx-estado").textContent = "No se pudo leer el archivo.";
+    };
+    lector.readAsText(archivo);
+  }
+
+  function dictado() {
+    var Voz = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Voz) return;                 // el botón se queda oculto
+    var boton = $("#dx-dictar");
+    boton.hidden = false;
+    var oyendo = null;
+    boton.addEventListener("click", function () {
+      if (oyendo) { oyendo.stop(); return; }
+      var voz = new Voz();
+      voz.lang = "es-PE";
+      voz.interimResults = false;
+      voz.onresult = function (e) {
+        // Lo dictado se escribe en el campo, a la vista: si entendió otra
+        // cosa, el técnico lo corrige antes de que nadie desarme nada.
+        $("#dx-consulta").value = e.results[0][0].transcript;
+        buscar();
+      };
+      voz.onerror = function () { $("#dx-estado").textContent = "No se oyó nada."; };
+      voz.onend = function () { oyendo = null; boton.textContent = "Dictar"; };
+      oyendo = voz;
+      boton.textContent = "Oyendo…";
+      voz.start();
+    });
+  }
+
+  function arrancar() {
+    var entrada = $("#dx-archivo");
+    if (entrada) {
+      entrada.addEventListener("change", function () {
+        if (entrada.files && entrada.files[0]) cargarArchivo(entrada.files[0]);
+      });
+    }
+    $("#dx-buscar").addEventListener("click", buscar);
+    $("#dx-consulta").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); buscar(); }
+    });
+    dictado();
+
+    // Primero lo guardado en el teléfono; si no hay, un `indice.json` servido
+    // junto a la app. Las dos cosas fallan sin ruido: se queda pidiendo el
+    // archivo, que es lo que hay que hacer.
+    // En el archivo suelto que se manda por WhatsApp viene uno de ejemplo
+    // incrustado: así la pestaña demuestra algo nada más abrirla.
+    var demo = document.getElementById("fixmate-indice-demo");
+
+    guardado().then(function (texto) {
+      if (texto) { usarIndice(texto, "guardado en este teléfono"); return null; }
+      if (demo && demo.textContent.trim()) {
+        usarIndice(demo.textContent, "índice de ejemplo incrustado");
+        return null;
+      }
+      return fetch("indice.json").then(function (r) {
+        return r.ok ? r.text() : null;
+      }).then(function (servido) {
+        if (!servido) return null;
+        usarIndice(servido, "servido junto a la app");
+        return guardado(servido);
+      });
+    }).catch(function () { /* sin índice: la vista ya lo pide */ });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", arrancar);
+  } else {
+    arrancar();
+  }
+})();
+</script>
+
+<!-- El demo de un solo archivo trae aquí su índice de ejemplo, puesto por
+     herramientas/empaquetar-demo.py. Servida, la app usa el que se le cargue
+     o el que esté publicado a su lado, y esta etiqueta queda vacía. -->
+<script type="application/json" id="fixmate-indice-demo"></script>

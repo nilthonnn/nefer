@@ -404,6 +404,36 @@ herramienta se lee como un dato.
   evidencia floja se declara floja: la confianza baja se rotula como pista, no
   como diagnóstico.
 
+## En el teléfono, sin señal
+
+La oficina indexa; el teléfono busca. Es el reparto natural: leer Excel, Word
+y PDF pide una computadora, y buscar es aritmética sobre un archivo.
+
+La app de campo trae una pestaña **Diagnóstico** con el mismo motor escrito en
+JavaScript: se le carga el `indice.json` una vez —el que genera
+`nefer fixmate indexar`— y queda guardado en el teléfono, así que a partir de
+ahí responde sin red, en el patio y en el socavón.
+
+| | |
+|---|---|
+| **Tamaño** | 4 KB por fragmento, 0,5 KB comprimido. Un taller de 2000 fragmentos son 7,9 MB, 1,0 MB comprimidos |
+| **Cómo llega** | Se elige el archivo desde la app, o se sirve un `indice.json` junto a ella y lo toma solo |
+| **Dónde queda** | En IndexedDB del propio teléfono. No sale de ahí |
+| **Dictado** | Donde el navegador lo trae, el botón dicta y escribe la consulta en el campo, a la vista, antes de buscar |
+
+**Los dos motores tienen que dar lo mismo.** Dos implementaciones de la misma
+búsqueda se separan solas, y nadie lo nota hasta que el teléfono contesta otra
+cosa que la computadora. Por eso el hash es FNV-1a —dos operaciones enteras,
+idéntico en los dos lenguajes— y por eso `tests/test_fixmate_cruce.py` corre
+ocho consultas en los dos motores y compara el ranking con sus puntajes a
+cuatro decimales, la causa, los pasos, los torques y las probabilidades del
+clasificador. El JavaScript que prueba lo saca de la app publicada, no de una
+copia.
+
+Lo que el teléfono no hace: medir el acierto del clasificador —dejar uno fuera
+es cuadrático— así que esa medición viaja dentro del índice, calculada en la
+oficina, y se enseña al lado de cada porcentaje.
+
 ## La API
 
 ```bash

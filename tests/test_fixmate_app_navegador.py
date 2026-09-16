@@ -1,0 +1,190 @@
+"""La pestaña de diagnóstico, conducida en un navegador de verdad.
+
+El motor ya se compara contra el de Python en `test_fixmate_cruce.py`. Lo que
+se prueba aquí es lo otro: que en el teléfono se pueda cargar el índice, que
+quede guardado para la próxima vez —que es lo que hace que sirva sin señal— y
+que la respuesta aparezca en pantalla con su evidencia.
+
+Se salta entera sin Playwright o sin Chromium.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+pytest.importorskip("playwright.sync_api", reason="Playwright no esta instalado")
+from playwright.sync_api import sync_playwright  # noqa: E402
+
+from navegador import HAY_CHROMIUM, opciones  # noqa: E402
+
+RAIZ = Path(__file__).resolve().parents[1]
+APP = RAIZ / "docs" / "app" / "index.html"
+EJEMPLOS = RAIZ / "ejemplos" / "fixmate"
+
+pytestmark = pytest.mark.skipif(not HAY_CHROMIUM, reason="no hay Chromium disponible")
+
+UA_ANDROID = ("Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/120 Mobile Safari/537.36")
+
+
+@pytest.fixture(scope="module")
+def indice(tmp_path_factory) -> Path:
+    from nefer.fixmate import Indice, Motor, actualizar
+
+    indice = Indice()
+    actualizar(indice, [EJEMPLOS])
+    indice.medicion = Motor(indice).medicion()
+    return indice.guardar(tmp_path_factory.mktemp("indice") / "indice.json")
+
+
+class Telefono:
+    """La app abierta como la abre un operario, en un teléfono."""
+
+    def __init__(self, pw, contexto_extra=None):
+        self.navegador = pw.chromium.launch(**opciones())
+        self.contexto = self.navegador.new_context(
+            user_agent=UA_ANDROID, viewport={"width": 412, "height": 915},
+            **(contexto_extra or {}))
+        self.pg = self.contexto.new_page()
+        self.pg.goto(APP.as_uri())
+        self.pg.click("#tab-diagnostico")
+
+    def cargar(self, ruta: Path):
+        with self.pg.expect_file_chooser() as elegido:
+            self.pg.click("label[for='dx-archivo']")
+        elegido.value.set_files(str(ruta))
+        self.pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+
+    def consultar(self, texto: str, dtc: str = ""):
+        self.pg.fill("#dx-consulta", texto)
+        if dtc:
+            self.pg.fill("#dx-dtc", dtc)
+        self.pg.click("#dx-buscar")
+        self.pg.wait_for_timeout(300)
+
+    def cerrar(self):
+        self.contexto.close()
+        self.navegador.close()
+
+
+def test_la_pestana_esta_y_pide_el_indice_antes_de_nada():
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            assert t.pg.is_visible("#v-diagnostico")
+            assert t.pg.is_visible("#dx-sin-indice"), "sin índice tiene que pedirlo"
+            assert not t.pg.is_visible("#dx-listo")
+            assert "Falta el índice" in t.pg.text_content("#dx-sin-indice")
+        finally:
+            t.cerrar()
+
+
+def test_con_el_indice_cargado_contesta_con_su_evidencia(indice):
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            estado = t.pg.text_content("#dx-estado")
+            assert "fragmentos" in estado
+
+            t.consultar("gotea aceite por el cilindro del brazo toda la noche")
+            salida = t.pg.text_content("#dx-salida")
+            assert "Sello del vástago cortado" in salida
+            assert "EVIDENCIA" in salida.upper()
+            assert "OT-2026-0501" in salida
+            # Y lo que dice el historial entero, con su medición al lado.
+            assert "LO QUE DICE EL HISTORIAL COMPLETO" in salida.upper()
+            assert "acierta el" in salida
+        finally:
+            t.cerrar()
+
+
+def test_el_torque_que_ensena_sale_de_la_fuente(indice):
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            t.consultar("que apriete lleva el perno de la tapa del cilindro")
+            salida = t.pg.text_content("#dx-salida")
+            assert "210 N·m" in salida
+            assert "manual OEM" in salida, "tiene que avisar de contrastarlo"
+        finally:
+            t.cerrar()
+
+
+def test_sin_antecedentes_lo_dice_y_no_inventa(indice):
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            t.consultar("tramites de aduana del contenedor en el puerto")
+            assert "No hay antecedentes" in t.pg.text_content("#dx-estado")
+            assert t.pg.text_content("#dx-salida").strip() == ""
+        finally:
+            t.cerrar()
+
+
+def test_el_indice_queda_guardado_para_la_proxima_vez(indice):
+    """Lo que hace que sirva en el socavón: se carga una vez y ya está."""
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            # Se vuelve a abrir la app en el mismo teléfono, sin tocar nada.
+            otra = t.contexto.new_page()
+            otra.goto(APP.as_uri())
+            otra.click("#tab-diagnostico")
+            otra.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+            assert "guardado en este teléfono" in otra.text_content("#dx-estado")
+
+            otra.fill("#dx-consulta", "no arranca en la mañana")
+            otra.click("#dx-buscar")
+            otra.wait_for_timeout(300)
+            assert "Baterías" in otra.text_content("#dx-salida")
+        finally:
+            t.cerrar()
+
+
+def test_un_indice_de_otro_embebedor_se_rechaza_con_su_motivo(indice, tmp_path):
+    # Mezclar embebedores no da error: da respuestas sin sentido. El teléfono
+    # tiene que negarse igual que la herramienta de escritorio.
+    datos = json.loads(indice.read_text(encoding="utf-8"))
+    datos["embebedor"] = "openai-text-embedding-3-small"
+    ajeno = tmp_path / "ajeno.json"
+    ajeno.write_text(json.dumps(datos), encoding="utf-8")
+
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            with t.pg.expect_file_chooser() as elegido:
+                t.pg.click("label[for='dx-archivo']")
+            elegido.value.set_files(str(ajeno))
+            t.pg.wait_for_timeout(500)
+            estado = t.pg.text_content("#dx-estado")
+            assert "Vuelva a indexarlo" in estado or "vuelva a indexarlo" in estado
+            assert t.pg.is_visible("#dx-sin-indice"), "sigue sin índice utilizable"
+        finally:
+            t.cerrar()
+
+
+def test_el_archivo_suelto_trae_su_indice_de_ejemplo():
+    """El que se manda por WhatsApp demuestra el diagnóstico sin preparar nada."""
+    descargable = RAIZ / "docs" / "nefer-app.html"
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(descargable.as_uri())
+            pg.click("#tab-diagnostico")
+            pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+            assert "ejemplo incrustado" in pg.text_content("#dx-estado")
+
+            pg.fill("#dx-consulta", "humo negro y pierde fuerza")
+            pg.click("#dx-buscar")
+            pg.wait_for_timeout(300)
+            assert "Filtro de aire" in pg.text_content("#dx-salida")
+        finally:
+            navegador.close()

@@ -65,6 +65,10 @@ def cmd_indexar(args) -> int:
     if parte.iguales:
         print(f"  sin cambios: {len(parte.iguales)} archivos")
 
+    # Se mide aqui, donde hay computadora y tiempo: el telefono lee el
+    # resultado, que es lo que acompana a cada porcentaje que ensena.
+    motor = Motor(indice)
+    indice.medicion = motor.medicion()
     guardado = indice.guardar(destino)
     print(f"\nIndice escrito: {guardado} ({len(indice)} fragmentos de "
           f"{len(indice.fuentes)} archivos, embebedor {indice.embebedor.nombre})")

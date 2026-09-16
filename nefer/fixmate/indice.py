@@ -94,6 +94,10 @@ class Indice:
         # De que archivo salio cada cosa y como estaba ese archivo cuando se
         # leyo: es lo que permite reindexar solo lo que cambio.
         self.fuentes: dict[str, str] = {}
+        # Lo que se midio del clasificador cuando se construyo el indice. Se
+        # guarda porque el telefono no puede recalcularlo —dejar uno fuera es
+        # cuadratico— y un porcentaje sin su medicion al lado no vale nada.
+        self.medicion: dict | None = None
         self._tokens: list[list[str]] = []
         self._frecuencias: list[dict[str, int]] = []
         self._documentos_por_token: dict[str, int] = {}
@@ -170,9 +174,9 @@ class Indice:
             if clave.startswith("_"):
                 continue
             if isinstance(valor, (list, tuple)):
-                partes.extend(str(v) for v in valor)
+                partes.extend(_numero(v) for v in valor)
             elif isinstance(valor, (str, int, float)):
-                partes.append(str(valor))
+                partes.append(_numero(valor))
         return " ".join(partes)
 
     # ------------------------------------------------------------ busqueda
@@ -250,6 +254,7 @@ class Indice:
             "embebedor": self.embebedor.nombre,
             "dimension": self.embebedor.dimension,
             "fuentes": self.fuentes,
+            "medicion": self.medicion,
             "fragmentos": [f.a_dict() for f in self.fragmentos],
         }
         destino.write_text(json.dumps(datos, ensure_ascii=False, indent=1) + "\n",
@@ -283,6 +288,7 @@ class Indice:
 
         indice = cls(embebedor)
         indice.fuentes = {str(k): str(v) for k, v in (datos.get("fuentes") or {}).items()}
+        indice.medicion = datos.get("medicion") or None
         indice.fragmentos = [Fragmento.de_dict(d) for d in datos.get("fragmentos", [])]
         sin_vector = [f.id for f in indice.fragmentos if not f.vector]
         if sin_vector:
@@ -303,6 +309,20 @@ def _preferencias_que_casan(fragmento: Fragmento, preferencias: dict | None) -> 
     return sum(1 for clave, valor in preferencias.items()
                if valor not in (None, "", [])
                and _pasa_filtros(fragmento, {clave: valor}))
+
+
+def _numero(valor) -> str:
+    """Un valor de metadato como texto, igual aqui que en el telefono.
+
+    Python escribe `str(2050.0)` como «2050.0» y JavaScript como «2050»: el
+    mismo horometro daria dos palabras distintas y el BM25 de cada lado
+    contaria cosas distintas. Se escribe siempre la forma corta, que es la que
+    los dos saben producir.
+    """
+    if isinstance(valor, bool) or not isinstance(valor, (int, float)):
+        return str(valor)
+    numero = float(valor)
+    return str(int(numero)) if numero.is_integer() else repr(numero)
 
 
 def firma_de(ruta) -> str:

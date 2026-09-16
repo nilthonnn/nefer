@@ -37,6 +37,7 @@ jobs:
             tests/test_fixmate_api.py \
             tests/test_fixmate_aprendizaje.py \
             tests/test_fixmate_cierre.py \
+            tests/test_fixmate_cruce.py \
             tests/test_fixmate_documentos.py \
             tests/test_fixmate_indice.py \
             tests/test_fixmate_ingesta.py \
@@ -176,7 +177,8 @@ jobs:
           set -o pipefail
           python -m pytest -q -rs \
             tests/test_app_navegador.py \
-            tests/test_entregables_app.py | tee salida.txt
+            tests/test_entregables_app.py \
+            tests/test_fixmate_app_navegador.py | tee salida.txt
 
       # Una prueba saltada aqui no es una prueba: deja pasar un fallo real sin
       # que nadie lo note. Con las herramientas ya comprobadas, un salto solo

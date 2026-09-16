@@ -81,7 +81,7 @@ detecta esa situación lo avisa en pantalla y ofrece la cámara del sistema.
 
 ---
 
-## 3. Las cuatro pestañas
+## 3. Las cinco pestañas
 
 Abajo, siempre visibles:
 
@@ -90,6 +90,7 @@ Abajo, siempre visibles:
 | **Inicio** | Punto de partida y acta de ejemplo |
 | **Despacho** | El acta de salida del equipo |
 | **Recepción** | El acta de retorno |
+| **Diagnóstico** | Buscar una falla en el historial de la flota y en los manuales |
 | **Guía** | Procedimiento y comprobación del aparato |
 
 Arriba a la derecha, el botón **Oscuro / Claro** cambia el tema. Con sol de
@@ -409,6 +410,67 @@ código, horómetro y «Pág. n de N». Una hoja suelta se puede identificar.
 
 ---
 
+## 10 bis. Diagnóstico
+
+La pestaña **Diagnóstico** contesta otra pregunta que el resto de la app: no
+«cómo lleno el acta», sino **«qué le pasa a esta máquina»**. Busca en el
+historial de fallas de la flota y en los manuales del fabricante, y funciona
+**sin señal**, como todo lo demás.
+
+### Lo que necesita: el índice
+
+Es un archivo que prepara la oficina con la herramienta de escritorio:
+
+```
+nefer fixmate indexar historial.xlsx manuales/ actas/ -o indice.json
+```
+
+Ese `indice.json` lleva el historial y los manuales ya preparados para
+buscar. Se pasa al teléfono una sola vez —por WhatsApp, por cable o
+descargándolo— y se carga con **Cargar el índice**. Queda guardado en el
+propio teléfono: la próxima vez la pestaña abre lista, sin señal y sin volver
+a cargar nada.
+
+Si el taller publica el índice junto a la app, la pestaña lo toma sola la
+primera vez y el operario no hace nada.
+
+### Preguntar
+
+Escriba la falla **como se la contaría a un compañero**: «gotea aceite por el
+cilindro del brazo toda la noche». No hace falta acertar con las palabras del
+manual. Donde el teléfono lo permite, el botón **Dictar** escribe lo que usted
+diga; lo dictado queda a la vista en el campo antes de buscar, para que pueda
+corregirlo si entendió otra cosa.
+
+Los dos campos de abajo afinan, y ninguno es obligatorio:
+
+| Campo | Qué hace |
+|---|---|
+| **Código de falla** | Filtra: si nada cita ese código, avisa y busca por la descripción |
+| **Equipo** | No filtra, prefiere: sube lo de esa máquina sin esconder lo demás |
+
+### Lo que contesta
+
+- La **causa raíz más probable**, tomada de un antecedente real.
+- Los **pasos** de ese antecedente, y las **herramientas y repuestos**.
+- Los **torques citados en la fuente**, copiados literales, con el aviso de
+  contrastarlos con el manual del fabricante.
+- **Lo que dice el historial completo**: a qué causa terminan pareciéndose las
+  descripciones así, con el acierto medido al lado.
+- La **evidencia**: qué orden de trabajo o qué sección de manual lo respalda,
+  con su porcentaje de parecido.
+
+### Lo que no hace
+
+- **No inventa.** Si nada en el índice respalda la consulta, lo dice: «no hay
+  antecedentes». Eso no es un fallo; es la respuesta, y significa que ese caso
+  hay que registrarlo al cerrarlo.
+- **No estima un par de apriete.** Copia el que está escrito, o no da ninguno.
+- **No sabe lo que la oficina no indexó.** Si el historial está viejo, las
+  respuestas también.
+
+---
+
 ## 11. Guía y comprobación del dispositivo
 
 La pestaña **Guía** lleva el procedimiento —antes de salir al patio, cómo entran
@@ -461,6 +523,9 @@ De ahí la regla: **lo que se guarda de verdad es lo que usted descarga**.
 | Los botones de descarga no responden | No hay ninguna foto asignada | Asigne al menos una |
 | La app no abre sin señal | Aún no la había abierto con señal | Ábrala una vez con conexión; después funciona sola |
 | Al reabrir están los datos pero no las fotos | Es lo esperado: sólo se recuerda lo tecleado | Vuelva a cargar las fotografías |
+| «Falta el índice» en Diagnóstico | El teléfono no tiene todavía el archivo de la oficina | Cárguelo con **Cargar el índice**; queda guardado |
+| «El índice se armó con otro embebedor» | Es de una versión anterior de la herramienta | Vuelva a generarlo con `nefer fixmate indexar` |
+| «No hay antecedentes» al consultar | Nadie registró todavía una falla parecida | Resuélvala y regístrela: el próximo sí la encontrará |
 
 ---
 
@@ -473,5 +538,8 @@ De ahí la regla: **lo que se guarda de verdad es lo que usted descarga**.
   restricción del navegador, no de la aplicación.
 - **No sincroniza entre teléfonos.** Cada acta vive donde se levantó hasta que
   usted la descarga y la pasa.
-- **El demo de un solo archivo** no lleva los archivos de tipografía y el texto
-  sale con la del sistema. Se lee igual; sólo cambia el aspecto.
+- **El diagnóstico sólo sabe lo que la oficina indexó.** El índice no se
+  actualiza solo: hay que volver a generarlo y volver a cargarlo cuando el
+  historial crece.
+- **La foto todavía no diagnostica.** La consulta es texto o voz; reconocer la
+  avería en una fotografía necesita red, que es justo lo que falta en faena.
