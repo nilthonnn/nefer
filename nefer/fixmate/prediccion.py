@@ -1,7 +1,13 @@
-"""Diagnostico predictivo con lo que la flota ya registro.
+"""Lo que el historial de la flota anticipa. No es mantenimiento predictivo.
 
-No hay sensores en estas maquinas. Hay dos cosas: la fecha de cada falla y el
-horometro que el tecnico anota en cada acta. Con eso se contestan las tres
+La distincion no es de palabras. Mantenimiento predictivo, en este rubro,
+significa monitoreo de condicion: sensores, analisis de aceite, vibraciones,
+y de ahi una vida util remanente. Aqui no hay nada de eso, y prometerlo con
+esa palabra haria que un jefe de mantenimiento comprara otra cosa distinta
+de la que se le entrega.
+
+Lo que hay es analitica de confiabilidad sobre lo ya registrado: la fecha de
+cada falla y el horometro que el tecnico anota en cada acta. Con eso se contestan las tres
 preguntas que un jefe de taller hace de verdad, y no se contesta ninguna mas:
 
 - **¿A que ritmo se usa este equipo?** Horas por dia, de la pendiente entre

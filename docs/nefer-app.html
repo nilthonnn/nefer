@@ -636,6 +636,18 @@
   .dx-conf { font-family:var(--mono); font-size:.66rem; letter-spacing:.06em;
              text-transform:uppercase; color:var(--ink-3); }
 
+  /* Las precauciones. Se leen con guantes y a contraluz: alto contraste,
+     borde a la izquierda y el sello de procedencia debajo, en chico. */
+  .dx-cuidados { list-style:none; margin:.5rem 0 0; padding:0; display:flex;
+                 flex-direction:column; gap:.5rem; }
+  .dx-cuidados li { border-left:3px solid var(--obs); padding:.5rem .7rem;
+                    border-radius:0 4px 4px 0; background:var(--obs-soft);
+                    display:flex; flex-direction:column; gap:.25rem;
+                    font-size:.9rem; color:var(--ink); line-height:1.45; }
+  .dx-cuidados .dx-sello { font-family:var(--mono); font-size:.62rem;
+                           letter-spacing:.06em; text-transform:uppercase;
+                           color:var(--ink-3); }
+
   .dx-barras { list-style:none; margin:.5rem 0 0; padding:0; display:flex;
                flex-direction:column; gap:.35rem; }
   .dx-barras li { display:grid; grid-template-columns:3.2rem 1fr; gap:.6rem;
@@ -5847,6 +5859,13 @@ var FIXMATE = (function () {
     if (!candidatos.length) return [];
 
     var v = vector(consulta);
+    // Las posiciones del vector de consulta que no son cero, una vez por
+    // consulta y no una por fragmento. «gotea aceite» llena 11 de 256; las
+    // otras 245 multiplicaban por cero y se sumaban sin cambiar el total, y
+    // eso era el grueso del tiempo de cada busqueda. En el mismo orden de
+    // indice, para que la suma acumule igual que en Python.
+    var utiles = [];
+    for (var u = 0; u < DIMENSION; u++) if (v[u]) utiles.push([u, v[u]]);
     var lexicos = this.bm25(consulta, candidatos);
     var mayor = 0;
     candidatos.forEach(function (i) { mayor = Math.max(mayor, lexicos[i] || 0); });
@@ -5854,7 +5873,9 @@ var FIXMATE = (function () {
     var resultados = [];
     candidatos.forEach(function (i) {
       var f = self.fragmentos[i], similitud = 0;
-      for (var k = 0; k < DIMENSION; k++) similitud += v[k] * (f.vector[k] || 0);
+      for (var k = 0; k < utiles.length; k++) {
+        similitud += utiles[k][1] * (f.vector[utiles[k][0]] || 0);
+      }
       var lexico = mayor > 0 ? (lexicos[i] || 0) / mayor : 0;
       var puntaje = PESO_VECTOR * Math.max(similitud, 0) + PESO_LEXICO * lexico;
       puntaje = Math.min(1, puntaje + BONO_PREFERENCIA *
@@ -6063,6 +6084,62 @@ var FIXMATE = (function () {
     return null;
   }
 
+  // Espejo de nefer/fixmate/seguridad.py. Si los dos cuadros se separan,
+  // la prueba cruzada lo dice: el telefono no puede dar un procedimiento
+  // con menos precauciones que la oficina.
+  var SEG_SISTEMAS = [
+    ["hidraulico", ["cilindro", "hidraulic", "manguera", "vastago", "sello", "bomba", "valvula", "acumulador", "presion", "pluma", "brazo", "cucharon", "aguilon", "estabilizador", "mastil"],
+     "Descargue la presion hidraulica y apoye en el suelo lo que este levantado. El circuito queda con presion y la carga baja sola con la maquina apagada."],
+    ["electrico", ["bateria", "borne", "arranque", "alternador", "fusible", "arnes", "electric", "motor de arranque", "alternador", "cable", "sensor", "ecm", "tablero"],
+     "Desconecte el borne negativo de la bateria y espere. Un arranque que gira con alguien dentro del compartimiento no avisa."],
+    ["combustible", ["inyector", "riel", "common rail", "combustible", "bomba de inyeccion", "caneria de alta", "petroleo", "diesel"],
+     "El riel de inyeccion queda a presion despues de parar. Purgue segun el manual y no afloje una caneria de alta con el motor caliente: el chorro atraviesa un guante."],
+    ["termico", ["refrigerante", "radiador", "termostato", "sobrecalent", "temperatura", "recalent", "tapa del radiador", "ventilador"],
+     "Deje enfriar antes de abrir. Un radiador caliente esta presurizado y el ventilador puede arrancar solo."],
+    ["neumatico", ["neumatic", "aire comprimido", "compresor", "calderin", "llanta", "aro", "neumatico"],
+     "Purgue el aire comprimido antes de desarmar. Un aro con presion es una granada."],
+  ];
+  var SEG_BASE = "Bloquee y senalice la maquina antes de intervenir: motor detenido, llave fuera, tarjeta puesta. Si el procedimiento no le consta, pare y consulte el manual OEM.";
+  var SEG_HERRAMIENTA = "regla de la herramienta";
+  var SEG_MANUAL = "manual";
+  var SEG_AVISOS = ["peligro", "advertencia", "precaucion", "atencion", "cuidado", "aviso", "riesgo", "nunca ", "no opere", "antes de intervenir", "antes de desmontar", "bloquee", "despresurice", "desconecte la bateria"];
+
+  function precaucionesDe(pasos, coincidencias, causa) {
+    if (!pasos || !pasos.length) return [];
+    var junto = normalizar(pasos.join(" ") + " " + (causa || ""));
+    var salida = [{ texto: SEG_BASE, origen: SEG_HERRAMIENTA }];
+    SEG_SISTEMAS.forEach(function (s) {
+      var nombre = s[0], palabras = s[1], aviso = s[2];
+      for (var i = 0; i < palabras.length; i++) {
+        if (junto.indexOf(palabras[i]) !== -1) {
+          salida.push({ texto: aviso, origen: SEG_HERRAMIENTA, sistema: nombre });
+          return;
+        }
+      }
+    });
+    var vistas = {};
+    salida.forEach(function (p) { vistas[p.texto] = true; });
+    (coincidencias || []).forEach(function (c) {
+      var f = c.fragmento || c;
+      if (f.tipo !== "manual") return;
+      var referencia = (f.metadatos && f.metadatos.seccion) || f.fuente || f.id;
+      String(f.texto || "").split("\n").forEach(function (linea) {
+        var limpia = linea.replace(/^[\s\-*\t]+|[\s\-*\t]+$/g, "");
+        if (limpia.length < 12) return;
+        var n = normalizar(limpia);
+        for (var i = 0; i < SEG_AVISOS.length; i++) {
+          if (n.indexOf(SEG_AVISOS[i]) === 0 && !vistas[limpia]) {
+            salida.push({ texto: limpia, origen: SEG_MANUAL,
+                          referencia: String(referencia) });
+            vistas[limpia] = true;
+            return;
+          }
+        }
+      });
+    });
+    return salida;
+  }
+
   function pasosDe(coincidencia) {
     var meta = coincidencia.fragmento.metadatos;
     if (meta.pasos && meta.pasos.length) return meta.pasos.slice();
@@ -6265,10 +6342,14 @@ var FIXMATE = (function () {
     if (!partes.pasos_recomendados.length) avisos.push(AVISO_SIN_PROCEDIMIENTO);
     if (partes.torques.length) avisos.push(AVISO_TORQUE);
 
+    // Igual que en la oficina: la puerta va aqui y no en el redactor. Si la
+    // respuesta lleva pasos, lleva precauciones, redacte quien redacte.
     return {
       diagnostico_probabilistico: partes.diagnostico_probabilistico,
       causa_raiz_mas_probable: partes.causa_raiz_mas_probable,
       pasos_recomendados: partes.pasos_recomendados,
+      precauciones: precaucionesDe(partes.pasos_recomendados, coincidencias,
+                                   partes.causa_raiz_mas_probable),
       herramientas_y_repuestos: partes.herramientas_y_repuestos,
       torques: partes.torques,
       evidencia_historica: coincidencias.map(function (c) {
@@ -6464,6 +6545,21 @@ var FIXMATE = (function () {
       "<p>" + esc(d.causa_raiz_mas_probable) + "</p>" +
       '<p class="dx-conf">confianza ' + esc(d.confianza) + " · " +
       d.evidencia_historica.length + " antecedente(s)</p></div>";
+
+    // Antes de los pasos, y no se puede plegar: quien lee esto va a meter
+    // las manos en la maquina. Cada una dice de donde sale.
+    if (d.precauciones && d.precauciones.length) {
+      html += '<h2 class="rot">Antes de tocar la máquina</h2>' +
+              '<ul class="dx-cuidados">';
+      d.precauciones.forEach(function (c) {
+        var sello = c.origen === "manual"
+          ? ("manual" + (c.referencia ? ": " + c.referencia : ""))
+          : "regla de la herramienta";
+        html += '<li><span>' + esc(c.texto) + "</span>" +
+                '<span class="dx-sello">' + esc(sello) + "</span></li>";
+      });
+      html += "</ul>";
+    }
 
     html += lista("pasos", "Pasos", d.pasos_recomendados);
     html += lista("cosas", "Herramientas y repuestos", d.herramientas_y_repuestos);

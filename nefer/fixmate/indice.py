@@ -87,6 +87,30 @@ def _coseno(a: Sequence[float], b: Sequence[float]) -> float:
     return sum(x * y for x, y in zip(a, b))
 
 
+def _posiciones_utiles(vector: Sequence[float]) -> list[tuple[int, float]]:
+    """Las posiciones del vector de consulta que no son cero.
+
+    Una consulta de taller —«gotea aceite»— llena 11 de 256 posiciones; una
+    larga, 30. Las otras 225 multiplican por cero y se suman al total sin
+    cambiarlo, y eso era el 80% del tiempo de cada busqueda: recorrer las 256
+    de cada fragmento. Recorriendo solo estas sale el mismo numero, porque
+    los terminos que se saltan valian exactamente cero.
+    """
+    return [(i, x) for i, x in enumerate(vector) if x]
+
+
+def _coseno_disperso(utiles: list[tuple[int, float]],
+                     b: Sequence[float]) -> float:
+    """El mismo producto punto, recorriendo solo lo que aporta.
+
+    En el mismo orden de indice que `_coseno`, para que la suma en coma
+    flotante acumule igual y las dos formas den el mismo numero bit a bit.
+    """
+    if not b:
+        return 0.0
+    return sum(x * b[i] for i, x in utiles)
+
+
 class Indice:
     def __init__(self, embebedor: embeddings.Embebedor | None = None):
         self.embebedor = embebedor or embeddings.EmbebedorLocal()
@@ -215,6 +239,8 @@ class Indice:
             return []
 
         vector_consulta = self.embebedor.embeber([consulta])[0]
+        # Se calcula una vez por consulta, no una por fragmento.
+        utiles = _posiciones_utiles(vector_consulta)
         lexico = self._lexico            # una sola lectura, coherente
         lexicos = self._bm25(consulta, candidatos, lexico)
         # BM25 no tiene tope: se lleva al [0, 1] del coseno con el mayor del
@@ -224,7 +250,7 @@ class Indice:
         resultados = []
         for i in candidatos:
             fragmento = self.fragmentos[i]
-            similitud = _coseno(vector_consulta, fragmento.vector or [])
+            similitud = _coseno_disperso(utiles, fragmento.vector or [])
             lexico = (lexicos.get(i, 0.0) / mayor) if mayor > 0 else 0.0
             puntaje = PESO_VECTOR * max(similitud, 0.0) + PESO_LEXICO * lexico
             puntaje = min(1.0, puntaje + BONO_PREFERENCIA * _preferencias_que_casan(

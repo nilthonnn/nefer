@@ -83,6 +83,7 @@ def _respuesta_python(ruta_indice: Path) -> list[dict]:
             "causas_probables": [[c["causa"], c["probabilidad"], c["casos"]]
                                  for c in d.causas_probables],
             "avisos": len(d.avisos),
+            "precauciones": [[c["texto"], c["origen"]] for c in d.precauciones],
         })
     return salida
 
@@ -124,7 +125,10 @@ var salida = casos.map(function (caso) {
     causas_probables: d.causas_probables.map(function (c) {
       return [c.causa, c.probabilidad, c.casos];
     }),
-    avisos: d.avisos.length
+    avisos: d.avisos.length,
+    precauciones: (d.precauciones || []).map(function (c) {
+      return [c.texto, c.origen];
+    })
   };
 });
 process.stdout.write(JSON.stringify(salida));
@@ -178,7 +182,7 @@ def test_los_dos_motores_redactan_lo_mismo(cruce, n):
     if py["sin_evidencia"]:
         return
     for campo in ("causa", "pasos", "herramientas", "torques", "confianza",
-                  "causas_probables", "avisos"):
+                  "causas_probables", "avisos", "precauciones"):
         assert js[campo] == py[campo], (
             f"«{campo}» se separó en «{py['consulta']}»:\n"
             f"  python: {py[campo]!r}\n  js:     {js[campo]!r}")
@@ -346,3 +350,27 @@ console.log(JSON.stringify(palabras.map(function (p) {
         vector_py = embebedor.embeber([palabra])[0]
         assert [round(v, 9) for v in vector_js] == [round(v, 9) for v in vector_py], (
             f"«{palabra}» da otro vector en el teléfono")
+
+
+def test_si_hay_pasos_hay_precauciones_en_los_dos_motores(cruce):
+    """La puerta de seguridad no es opcional, y no depende del idioma.
+
+    Un diagnóstico que termina en «desmontar el inyector 3» le está diciendo
+    a alguien que meta las manos en una máquina. Que el teléfono entregue el
+    procedimiento con una precaución menos que la oficina sería la peor forma
+    de que los dos motores se separen, porque no se vería hasta que pasara
+    algo.
+    """
+    con_pasos = 0
+    for py, js in cruce:
+        if py["sin_evidencia"]:
+            continue
+        if py["pasos"]:
+            assert py["precauciones"], f"«{py['consulta']}» da pasos sin precauciones"
+            assert js["precauciones"] == py["precauciones"]
+            # La de bloqueo va siempre, y va primera.
+            assert "Bloquee" in py["precauciones"][0][0]
+            con_pasos += 1
+        else:
+            assert py["precauciones"] == [] == js["precauciones"]
+    assert con_pasos, "ninguna consulta dio pasos: la prueba no comprobó nada"

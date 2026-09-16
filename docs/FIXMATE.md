@@ -293,7 +293,14 @@ confirmada, o con una sola causa en todo el historial, se declara sin entrenar
 y no devuelve ningún porcentaje. Un porcentaje sobre cuatro informes es peor
 que ninguno, porque parece medido.
 
-## Diagnóstico predictivo
+## Lo que el historial anticipa
+
+> **No es mantenimiento predictivo, y la diferencia importa al comprar.** En
+> este rubro «predictivo» significa monitoreo de condición —sensores,
+> análisis de aceite, vibraciones— y de ahí una vida útil remanente. Aquí no
+> hay sensores. Lo que hay es analítica de confiabilidad sobre lo que el
+> taller ya escribió: fechas de órdenes y el horómetro anotado a mano. Es
+> útil y es honesto; no es lo mismo.
 
 No hay sensores en estas máquinas. Hay dos cosas: la fecha de cada falla y el
 horómetro que el técnico anota en cada acta. Con eso se contestan tres

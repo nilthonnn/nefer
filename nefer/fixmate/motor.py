@@ -26,7 +26,7 @@ import os
 import re
 from dataclasses import asdict, dataclass, field
 
-from . import aprendizaje, texto as _texto
+from . import aprendizaje, seguridad, texto as _texto
 from .indice import Coincidencia, Indice
 
 # Por debajo de esto, lo recuperado se parece mas al ruido del corpus que a la
@@ -125,6 +125,10 @@ class Diagnostico:
     diagnostico_probabilistico: str
     causa_raiz_mas_probable: str
     pasos_recomendados: list[str] = field(default_factory=list)
+    # Lo que va antes de los pasos. Cada una dice de donde sale: del manual
+    # indexado, o de la regla fija de la herramienta. Si hay pasos, esto no
+    # viene vacio nunca.
+    precauciones: list[dict] = field(default_factory=list)
     herramientas_y_repuestos: list[str] = field(default_factory=list)
     torques: list[str] = field(default_factory=list)
     evidencia_historica: list[Evidencia] = field(default_factory=list)
@@ -518,10 +522,18 @@ class Motor:
         if partes.get("torques"):
             avisos.append(AVISO_TORQUE)
 
+        # La puerta de seguridad se pone aqui y no en el redactor: da igual
+        # quien redacte —el extractivo o uno enchufado—, si la respuesta lleva
+        # pasos, lleva precauciones. Un redactor no puede omitirlas.
+        pasos = list(partes.get("pasos_recomendados") or [])
+        cuidados = seguridad.precauciones(
+            pasos, coincidencias, partes.get("causa_raiz_mas_probable", ""))
+
         return Diagnostico(
             diagnostico_probabilistico=partes["diagnostico_probabilistico"],
             causa_raiz_mas_probable=partes["causa_raiz_mas_probable"],
-            pasos_recomendados=list(partes.get("pasos_recomendados") or []),
+            pasos_recomendados=pasos,
+            precauciones=[c.a_dict() for c in cuidados],
             herramientas_y_repuestos=list(partes.get("herramientas_y_repuestos") or []),
             torques=list(partes.get("torques") or []),
             evidencia_historica=[_evidencia(c) for c in coincidencias],

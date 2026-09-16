@@ -154,6 +154,17 @@ def _imprimir(diagnostico) -> None:
           f"redactor {diagnostico.redactor})")
     print(f"  {diagnostico.diagnostico_probabilistico}")
     print(f"\nCAUSA RAIZ MAS PROBABLE\n  {diagnostico.causa_raiz_mas_probable}")
+    # Antes de los pasos, siempre: quien lee esto va a tocar la maquina.
+    if diagnostico.precauciones:
+        print("\nANTES DE TOCAR LA MAQUINA")
+        for cuidado in diagnostico.precauciones:
+            sello = ("manual" if cuidado["origen"] == "manual"
+                     else "regla de la herramienta")
+            if cuidado.get("referencia"):
+                sello += f": {cuidado['referencia']}"
+            print(f"  · {cuidado['texto']}")
+            print(f"    ({sello})")
+
     if diagnostico.pasos_recomendados:
         print("\nPASOS")
         for n, paso in enumerate(diagnostico.pasos_recomendados, 1):

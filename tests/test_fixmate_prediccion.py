@@ -1,4 +1,4 @@
-"""Diagnostico predictivo: lo que se puede decir, y lo que no.
+"""Analitica de confiabilidad: lo que se puede decir, y lo que no.
 
 Cada numero de aqui lo va a leer alguien que va a comprar un repuesto o a
 sacar una maquina de faena. Por eso lo que mas se prueba no es que calcule,
