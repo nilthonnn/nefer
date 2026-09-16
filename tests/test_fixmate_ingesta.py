@@ -347,6 +347,46 @@ def test_dos_manuales_que_se_llaman_igual_no_se_pisan(tmp_path):
     assert {f.metadatos["seccion"] for f in fragmentos} == {"Motor 2024", "Motor 2025"}
 
 
+def test_el_mismo_corpus_en_otra_carpeta_da_los_mismos_identificadores(tmp_path):
+    """El identificador dice qué documento es, no en qué máquina está.
+
+    El mismo manual vive en `/home/ana/manuales` en la laptop de la oficina y
+    en `/srv/nefer/manuales` en el servidor. Con la ruta completa dentro del
+    identificador eran dos documentos distintos: subir los dos a PostgreSQL
+    duplicaba el historial en vez de actualizarlo, y mover la carpeta obligaba
+    a reindexar todo. Además el demo empaquetado salía distinto en cada
+    máquina, que es como se descubrió.
+    """
+    from nefer.fixmate import Indice, actualizar
+
+    def indices_de(carpeta):
+        carpeta.mkdir(parents=True)
+        (carpeta / "manuales").mkdir()
+        (carpeta / "manuales" / "motor.md").write_text(
+            "# Motor\n\nEl filtro de aire se revisa sin carga.\n", encoding="utf-8")
+        indice = Indice()
+        actualizar(indice, [carpeta])
+        return sorted(f.id for f in indice.fragmentos)
+
+    una = indices_de(tmp_path / "home" / "ana")
+    otra = indices_de(tmp_path / "srv" / "nefer" / "taller")
+    assert una == otra
+    # Y el lugar dentro del corpus sí cuenta, que es lo que evita los choques.
+    assert all("manuales/motor.md" not in i for i in una)
+    assert una
+
+
+def test_la_clave_no_lleva_la_ruta_de_la_maquina():
+    from nefer.fixmate.ingesta import clave_de
+
+    assert clave_de("/home/ana/corpus/2024/motor.md",
+                    "/home/ana/corpus") == "2024/motor.md"
+    assert clave_de("/srv/nefer/corpus/2024/motor.md",
+                    "/srv/nefer/corpus") == "2024/motor.md"
+    # Sin carpeta de referencia queda lo mínimo que sigue distinguiendo.
+    assert clave_de("/cualquier/sitio/2024/motor.md") == "2024/motor.md"
+
+
 def test_dos_historiales_sin_numero_de_orden_tampoco(tmp_path):
     for n in ("uno", "dos"):
         (tmp_path / f"{n}.json").write_text(json.dumps({"informes": [

@@ -76,7 +76,7 @@ def actualizar(indice: Indice, rutas, podar: bool = True) -> Actualizacion:
     rutas = list(rutas)
     parte = Actualizacion()
     vistos = set()
-    for archivo in ingesta.recorrer(rutas):
+    for raiz, archivo in ingesta.recorrer_con_raiz(rutas):
         origen = str(archivo)
         vistos.add(origen)
         firma = firma_de(archivo)
@@ -85,7 +85,7 @@ def actualizar(indice: Indice, rutas, podar: bool = True) -> Actualizacion:
             continue
         era_conocido = origen in indice.fuentes
         indice.olvidar(origen)
-        fragmentos = ingesta.de_archivo(archivo)
+        fragmentos = ingesta.de_archivo(archivo, raiz)
         indice.agregar(fragmentos)
         indice.anotar_fuente(origen, firma)
         parte.fragmentos += len(fragmentos)

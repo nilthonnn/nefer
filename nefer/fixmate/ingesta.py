@@ -58,6 +58,34 @@ def marca(clave: str) -> str:
     return hashlib.blake2b(str(clave).encode("utf-8"), digest_size=2).hexdigest()
 
 
+def clave_de(ruta, raiz=None) -> str:
+    """Con que nombre se identifica un documento, venga de la maquina que venga.
+
+    La ruta completa no sirve: el mismo manual esta en `/home/ana/manuales`
+    en la laptop de la oficina y en `/srv/nefer/manuales` en el servidor, y
+    con la ruta dentro del identificador los dos son documentos distintos.
+    Subir los dos a PostgreSQL duplicaba el historial entero en vez de
+    actualizarlo, y reindexar despues de mover la carpeta rehacia todo.
+
+    Lo que identifica al documento es su lugar **dentro del corpus**: la ruta
+    relativa a la carpeta que se indexo. Eso sigue distinguiendo `2024/motor.md`
+    de `2025/motor.md` —que es para lo que se invento la marca— y no cambia
+    porque el corpus este colgado en otro sitio.
+
+    Sin carpeta de referencia queda la carpeta que lo contiene mas el nombre
+    —`2024/motor.md`—, que es lo minimo que sigue distinguiendo a los dos
+    manuales del ejemplo sin volver a depender de donde este montado todo.
+    """
+    ruta = Path(ruta)
+    if raiz is not None:
+        try:
+            return ruta.resolve().relative_to(Path(raiz).resolve()).as_posix()
+        except ValueError:
+            pass                      # no cuelga de ahi; queda el nombre corto
+    padre = ruta.parent.name
+    return f"{padre}/{ruta.name}" if padre else ruta.name
+
+
 # ------------------------------------------------------------- historial
 
 def de_informe(informe: dict, fuente: str = "", n: int = 0,
@@ -206,7 +234,8 @@ def _lista_de_celda(valor) -> list[str]:
     return [p.strip(" .-") for p in partes if p.strip(" .-")]
 
 
-def de_historial_xlsx(ruta: str | Path, hoja: str | None = None) -> list[Fragmento]:
+def de_historial_xlsx(ruta: str | Path, hoja: str | None = None,
+                      clave: str | None = None) -> list[Fragmento]:
     """El historial de fallas tal como esta en el taller: una fila por orden."""
     ruta = Path(ruta)
     try:
@@ -242,7 +271,8 @@ def de_historial_xlsx(ruta: str | Path, hoja: str | None = None) -> list[Fragmen
             informes.append(informe)
     if not informes:
         raise ErrorIngesta(f"{ruta.name}: ninguna fila trae falla, causa ni solucion.")
-    return [de_informe(informe, ruta.name, n, str(ruta))
+    clave = clave or clave_de(ruta)
+    return [de_informe(informe, ruta.name, n, clave)
             for n, informe in enumerate(informes)]
 
 
@@ -333,7 +363,7 @@ def de_manifiesto(manifiesto: dict, fuente: str = "",
     return fragmentos
 
 
-def de_acta_xlsx(ruta: str | Path) -> list[Fragmento]:
+def de_acta_xlsx(ruta: str | Path, clave: str | None = None) -> list[Fragmento]:
     """Un Excel de acta ya llenado -> fragmentos, pasando por el extractor."""
     from .. import extract
 
@@ -342,7 +372,8 @@ def de_acta_xlsx(ruta: str | Path) -> list[Fragmento]:
         manifiesto = extract.extraer(ruta)
     except Exception as exc:
         raise ErrorIngesta(f"{ruta}: no se pudo leer como acta ({exc}).") from exc
-    return de_manifiesto(manifiesto, fuente=ruta.name, clave=str(ruta))
+    return de_manifiesto(manifiesto, fuente=ruta.name,
+                         clave=clave or clave_de(ruta))
 
 
 # -------------------------------------------------------------- manuales
@@ -429,7 +460,7 @@ def es_acta_de_nefer(ruta: Path) -> bool:
         libro.close()
 
 
-def de_excel(ruta: str | Path) -> list[Fragmento]:
+def de_excel(ruta: str | Path, clave: str | None = None) -> list[Fragmento]:
     """Un Excel puede ser tres cosas distintas; aqui se decide cual es.
 
     Se prueba de lo mas especifico a lo mas general: acta de nefer, historial
@@ -437,17 +468,23 @@ def de_excel(ruta: str | Path) -> list[Fragmento]:
     una seccion por hoja.
     """
     ruta = Path(ruta)
+    clave = clave or clave_de(ruta)
     if es_acta_de_nefer(ruta):
-        return de_acta_xlsx(ruta)
+        return de_acta_xlsx(ruta, clave)
     try:
-        return de_historial_xlsx(ruta)
+        return de_historial_xlsx(ruta, clave=clave)
     except ErrorIngesta:
-        return de_manual(documentos.leer(ruta), fuente=ruta.name, clave=str(ruta))
+        return de_manual(documentos.leer(ruta), fuente=ruta.name, clave=clave)
 
 
-def de_archivo(ruta: str | Path) -> list[Fragmento]:
-    """Fragmentos de un archivo, deduciendo que es por su forma."""
+def de_archivo(ruta: str | Path, raiz=None) -> list[Fragmento]:
+    """Fragmentos de un archivo, deduciendo que es por su forma.
+
+    `raiz` es la carpeta que se esta indexando: de ella sale el identificador
+    de lo que no trae uno propio (ver `clave_de`).
+    """
     ruta = Path(ruta)
+    clave = clave_de(ruta, raiz)
     sufijo = ruta.suffix.lower()
     if sufijo == ".json":
         try:
@@ -455,20 +492,20 @@ def de_archivo(ruta: str | Path) -> list[Fragmento]:
         except json.JSONDecodeError as exc:
             raise ErrorIngesta(f"{ruta}: JSON ilegible ({exc}).") from exc
         if isinstance(datos, dict) and "encabezado" in datos:
-            fragmentos = de_manifiesto(datos, fuente=ruta.name, clave=str(ruta))
+            fragmentos = de_manifiesto(datos, fuente=ruta.name, clave=clave)
         elif isinstance(datos, list) or (isinstance(datos, dict)
                                          and "informes" in datos):
-            fragmentos = de_historial(datos, fuente=ruta.name, clave=str(ruta))
+            fragmentos = de_historial(datos, fuente=ruta.name, clave=clave)
         else:
             raise ErrorIngesta(
                 f"{ruta}: no parece ni un acta (falta 'encabezado') ni un "
                 "historial (falta 'informes').")
     elif sufijo in (".xlsx", ".xlsm"):
-        fragmentos = de_excel(ruta)
+        fragmentos = de_excel(ruta, clave)
     elif sufijo in EXTENSIONES_MANUAL:
         try:
             fragmentos = de_manual(documentos.leer(ruta), fuente=ruta.name,
-                                   clave=str(ruta))
+                                   clave=clave)
         except documentos.ErrorDocumento as exc:
             raise ErrorIngesta(str(exc)) from exc
         if not fragmentos:
@@ -505,20 +542,30 @@ def es_indice(ruta: Path) -> bool:
 
 def recorrer(rutas) -> list[Path]:
     """Archivos indexables de una lista de rutas, entrando en las carpetas."""
-    encontrados: list[Path] = []
+    return [archivo for _, archivo in recorrer_con_raiz(rutas)]
+
+
+def recorrer_con_raiz(rutas) -> list[tuple[Path, Path]]:
+    """Lo mismo, diciendo ademas de que carpeta salio cada archivo.
+
+    De esa carpeta sale el identificador de los fragmentos (ver `clave_de`),
+    asi que hay que llevarla hasta la ingesta y no perderla por el camino.
+    Para un archivo suelto la referencia es la carpeta que lo contiene.
+    """
+    encontrados: list[tuple[Path, Path]] = []
     for ruta in rutas:
         ruta = Path(ruta)
         if ruta.is_dir():
-            encontrados.extend(sorted(
-                a for a in ruta.rglob("*")
+            encontrados.extend(
+                (ruta, a) for a in sorted(ruta.rglob("*"))
                 if a.is_file() and a.suffix.lower() in EXTENSIONES
-                and not a.name.startswith(".") and not es_indice(a)))
+                and not a.name.startswith(".") and not es_indice(a))
         elif ruta.is_file():
             if es_indice(ruta):
                 raise ErrorIngesta(
                     f"{ruta}: es un indice de FixMate, no un documento. Indexe "
                     "la carpeta con los manuales y el historial.")
-            encontrados.append(ruta)
+            encontrados.append((ruta.parent, ruta))
         else:
             raise ErrorIngesta(f"no existe: {ruta}")
     return encontrados
