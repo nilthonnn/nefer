@@ -109,9 +109,11 @@ python -m nefer fixmate -i indice.json cerrar --falla "..." --causa "..." --solu
 
 Y **el mismo motor va en la app de campo**, en la pestaña *Diagnóstico*: se le
 carga el índice una vez y responde en el teléfono sin señal, que es donde está
-la máquina. Está escrito dos veces —Python en la oficina, JavaScript en el
-teléfono— y `tests/test_fixmate_cruce.py` corre las mismas consultas en los
-dos motores y falla si un ranking se separa.
+la máquina. Ahí mismo se registra lo que resultó —queda buscable en el acto— y
+cuando hay señal se manda todo junto a la oficina, que lo recibe con
+`nefer fixmate recibir`. Está escrito dos veces —Python en la oficina,
+JavaScript en el teléfono— y `tests/test_fixmate_cruce.py` corre las mismas
+consultas en los dos motores y falla si un ranking se separa.
 
 Tres reglas, las mismas de un acta y por el mismo motivo —lo que imprime una
 herramienta se lee como un dato—:

@@ -207,3 +207,103 @@ process.stdout.write(JSON.stringify(palabras.map(function (p) {
     assert proceso.returncode == 0, proceso.stderr[-1000:]
     assert [int(x) for x in json.loads(proceso.stdout)] == [
         fnv1a(p.encode("utf-8")) for p in palabras]
+
+
+# ------------------- lo que el teléfono cierra, la oficina lo indexa igual
+
+INFORMES_DE_CAMPO = [
+    {"codigo_ot": "OT-CAMPO-20260916-1",
+     "fecha": "2026-09-16",
+     "resumen_falla": "El ventilador no gira y el motor se calienta en dos horas",
+     "causa_raiz": "Correa del ventilador partida por polea desalineada",
+     "solucion_aplicada": "Se cambió la correa y se apretó el tensor a 30 N·m",
+     "codigo_equipo": "GE074-03",
+     "codigos_dtc": ["p0300"],
+     "repuestos": ["Correa 8PK1230", "Tensor"]},
+    # Sin nada opcional: el mínimo que la app deja registrar.
+    {"codigo_ot": "OT-CAMPO-20260916-2",
+     "fecha": "2026-09-16",
+     "resumen_falla": "Fuga por el acople rápido del mástil",
+     "causa_raiz": "Acople rajado",
+     "solucion_aplicada": "Se reemplazó el acople",
+     "codigo_equipo": "",
+     "repuestos": []},
+]
+
+
+def test_el_informe_cerrado_en_faena_queda_igual_que_si_lo_hiciera_la_oficina(tmp_path):
+    """El teléfono arma el fragmento; la oficina lo rehace al recibirlo.
+
+    Si los dos no producen exactamente lo mismo —mismo texto, mismos
+    metadatos, mismo vector— el índice cambiaría al sincronizar y las dos
+    mitades dejarían de coincidir justo después de un cierre en campo, que es
+    cuando nadie está mirando.
+    """
+    from nefer.fixmate import ingesta
+
+    guion = tmp_path / "fragmentos.js"
+    guion.write_text(motor_js() + """
+var informes = JSON.parse(process.argv[2]);
+process.stdout.write(JSON.stringify(informes.map(function (informe, n) {
+  var f = fragmentoDeInforme(informe, "campo", n);
+  return { id: f.id, texto: f.texto, tipo: f.tipo, fuente: f.fuente,
+           metadatos: f.metadatos,
+           vector: Array.prototype.map.call(f.vector, function (v) {
+             return Math.round(v * 1e6) / 1e6;
+           }) };
+})));
+""", encoding="utf-8")
+
+    proceso = subprocess.run([NODE, str(guion), json.dumps(INFORMES_DE_CAMPO)],
+                             capture_output=True, text=True, timeout=60)
+    assert proceso.returncode == 0, proceso.stderr[-1500:]
+    de_js = json.loads(proceso.stdout)
+
+    for informe, js in zip(INFORMES_DE_CAMPO, de_js):
+        py = ingesta.de_informe(informe, "campo", 0)
+        assert js["id"] == py.id
+        assert js["texto"] == py.texto, f"el texto difiere en {py.id}"
+        assert js["tipo"] == py.tipo and js["fuente"] == py.fuente
+        assert js["metadatos"] == {k: v for k, v in py.metadatos.items()
+                                   if not k.startswith("_")}, \
+            f"los metadatos difieren en {py.id}"
+        esperado = [round(v, 6) for v in
+                    __import__("nefer.fixmate.embeddings", fromlist=["x"])
+                    .EmbebedorLocal().embeber([py.texto])[0]]
+        assert js["vector"] == esperado, f"el vector difiere en {py.id}"
+
+
+def test_el_telefono_y_la_oficina_encuentran_igual_lo_recien_cerrado(indice, tmp_path):
+    """Registrado en el teléfono y recibido en la oficina: la misma respuesta."""
+    from nefer.fixmate import Indice, Motor, cierre
+    from nefer.fixmate.motor import Consulta
+
+    informe = INFORMES_DE_CAMPO[0]
+    consulta = "el ventilador no gira y sube la temperatura"
+
+    # La oficina: lo recibe y consulta.
+    oficina = Indice.cargar(indice)
+    cierre.recibir({"pendientes": [informe]}, tmp_path / "historial.json", oficina)
+    d = Motor(oficina).consultar(Consulta(consulta))
+
+    # El teléfono: lo registra contra el mismo índice y consulta.
+    guion = tmp_path / "telefono.js"
+    guion.write_text(motor_js() + """
+var fs = require("fs");
+var indice = new Indice(JSON.parse(fs.readFileSync(process.argv[2], "utf8")));
+indice.agregar(fragmentoDeInforme(JSON.parse(process.argv[3]), "historial.json", 0));
+var d = new Motor(indice).consultar({ texto: process.argv[4] });
+process.stdout.write(JSON.stringify({
+  causa: d.causa_raiz_mas_probable,
+  evidencia: d.evidencia_historica.map(function (e) { return [e.id, e.similitud]; })
+}));
+""", encoding="utf-8")
+    proceso = subprocess.run(
+        [NODE, str(guion), str(indice), json.dumps(informe), consulta],
+        capture_output=True, text=True, timeout=60)
+    assert proceso.returncode == 0, proceso.stderr[-1500:]
+    js = json.loads(proceso.stdout)
+
+    assert js["causa"] == d.causa_raiz_mas_probable
+    assert js["evidencia"] == [[e.id, e.similitud] for e in d.evidencia_historica]
+    assert "Correa" in js["causa"], "lo recién cerrado tiene que ser la respuesta"

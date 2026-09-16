@@ -434,6 +434,29 @@ Lo que el teléfono no hace: medir el acierto del clasificador —dejar uno fuer
 es cuadrático— así que esa medición viaja dentro del índice, calculada en la
 oficina, y se enseña al lado de cada porcentaje.
 
+### Y el círculo se cierra desde el patio
+
+El técnico registra en la app lo que resultó —incluso, y sobre todo, cuando la
+consulta no encontró nada—. Ese informe queda buscable **en el acto y sin
+señal** en ese teléfono, y se suma a una cuenta de pendientes. Cuando hay
+señal, un botón los manda todos en un archivo y la oficina los mete al
+historial:
+
+```bash
+nefer fixmate recibir informes-de-campo-2026-09-16.json
+```
+
+Reenviar el mismo archivo no duplica nada: lo que ya está se cuenta como
+repetido. Es lo que va a pasar —el técnico manda, no sabe si llegó, vuelve a
+mandar— y tratarlo como error obligaría a alguien a decidir cuál envío valía.
+Un archivo por WhatsApp es toda la sincronización que un taller necesita, y no
+obliga a montar un servidor que alguien tendría que mantener.
+
+El informe que arma el teléfono es **idéntico** al que armaría la oficina con
+los mismos datos —mismo texto, mismos metadatos, mismo vector—, y eso también
+lo comprueba la prueba cruzada: si no lo fuera, el índice cambiaría al
+sincronizar justo cuando nadie está mirando.
+
 ## La API
 
 ```bash

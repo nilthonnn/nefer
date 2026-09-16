@@ -188,3 +188,113 @@ def test_el_archivo_suelto_trae_su_indice_de_ejemplo():
             assert "Filtro de aire" in pg.text_content("#dx-salida")
         finally:
             navegador.close()
+
+
+# ------------------------------- cerrar el círculo desde el propio teléfono
+
+def test_lo_que_se_cierra_en_faena_responde_en_el_acto(indice):
+    """Sin señal y sin reindexar: lo que el técnico registra, ya se encuentra."""
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            # Una falla que el índice no tiene: nadie la registró todavía.
+            t.consultar("el ventilador no gira y el motor se calienta")
+            assert not t.pg.is_hidden("#dx-cierre"), (
+                "aunque no haya antecedentes —sobre todo entonces— tiene que "
+                "poder registrarse lo que resulte")
+
+            t.pg.fill("#dx-c-causa", "Correa del ventilador partida por polea desalineada")
+            t.pg.fill("#dx-c-solucion", "Se cambió la correa y se alineó la polea")
+            t.pg.fill("#dx-c-equipo", "GE074-03")
+            t.pg.fill("#dx-c-repuestos", "Correa 8PK1230")
+            t.pg.click("#dx-registrar")
+            t.pg.wait_for_timeout(400)
+            assert "registrado OT-CAMPO" in t.pg.text_content("#dx-c-aviso")
+
+            # Y la siguiente consulta ya lo encuentra, en el mismo teléfono.
+            t.consultar("el ventilador no gira y sube la temperatura")
+            salida = t.pg.text_content("#dx-salida")
+            assert "Correa del ventilador partida" in salida
+            assert "Correa 8PK1230" in salida
+        finally:
+            t.cerrar()
+
+
+def test_un_informe_sin_causa_ni_solucion_no_se_registra(indice):
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            t.consultar("ruido raro en la caja de transmisión")
+            t.pg.fill("#dx-c-causa", "")
+            t.pg.fill("#dx-c-solucion", "")
+            t.pg.click("#dx-registrar")
+            t.pg.wait_for_timeout(200)
+            assert "falta la causa" in t.pg.text_content("#dx-c-aviso")
+            assert t.pg.is_hidden("#dx-envio"), "no hay nada pendiente que enviar"
+        finally:
+            t.cerrar()
+
+
+def test_lo_registrado_sobrevive_a_cerrar_la_app(indice):
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            t.consultar("el ventilador no gira")
+            t.pg.fill("#dx-c-causa", "Correa partida")
+            t.pg.fill("#dx-c-solucion", "Se cambió la correa")
+            t.pg.click("#dx-registrar")
+            t.pg.wait_for_timeout(400)
+
+            otra = t.contexto.new_page()
+            otra.goto(APP.as_uri())
+            otra.click("#tab-diagnostico")
+            otra.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+            otra.wait_for_timeout(300)
+            assert "por enviar" in otra.text_content("#dx-pend")
+
+            otra.fill("#dx-consulta", "el ventilador no gira")
+            otra.click("#dx-buscar")
+            otra.wait_for_timeout(300)
+            assert "Correa partida" in otra.text_content("#dx-salida")
+        finally:
+            t.cerrar()
+
+
+def test_los_informes_se_envian_como_un_archivo_para_la_oficina(indice, tmp_path):
+    """Un archivo por WhatsApp es toda la sincronización que un taller necesita."""
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            t.consultar("el ventilador no gira")
+            t.pg.fill("#dx-c-causa", "Correa partida")
+            t.pg.fill("#dx-c-solucion", "Se cambió la correa")
+            t.pg.fill("#dx-c-equipo", "GE074-03")
+            t.pg.click("#dx-registrar")
+            t.pg.wait_for_timeout(400)
+
+            with t.pg.expect_download() as bajada:
+                t.pg.click("#dx-enviar")
+            archivo = tmp_path / "envio.json"
+            bajada.value.save_as(str(archivo))
+
+            envio = json.loads(archivo.read_text(encoding="utf-8"))
+            assert len(envio["pendientes"]) == 1
+            informe = envio["pendientes"][0]
+            assert informe["causa_raiz"] == "Correa partida"
+            assert informe["codigo_equipo"] == "GE074-03"
+            assert informe["codigo_ot"].startswith("OT-CAMPO-")
+
+            # Y la oficina lo mete en su historial con lo que ya tiene.
+            from nefer.fixmate import cierre
+
+            historial = tmp_path / "historial.json"
+            parte = cierre.recibir(archivo, historial)
+            assert len(parte.nuevos) == 1 and not parte.rechazados
+            # Reenviarlo —que es lo que va a pasar— no duplica nada.
+            assert not cierre.recibir(archivo, historial).nuevos
+        finally:
+            t.cerrar()

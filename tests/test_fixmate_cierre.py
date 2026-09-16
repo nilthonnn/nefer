@@ -122,3 +122,86 @@ def test_la_causa_se_puede_corregir_al_cerrar():
     informe = cierre.desde_diagnostico(consulta, Falso(), solucion="Se cambio el turbo",
                                        causa="Turbo con juego axial")
     assert informe["causa_raiz"] == "Turbo con juego axial"
+
+
+# ------------------------------- lo que llega del campo, en un solo archivo
+
+ENVIO = {
+    "generado": "2026-09-16T11:20:00Z",
+    "pendientes": [
+        {"codigo_ot": "OT-CAMPO-20260916-1",
+         "resumen_falla": "El ventilador no gira y el motor se calienta",
+         "causa_raiz": "Correa del ventilador partida",
+         "solucion_aplicada": "Se cambió la correa",
+         "codigo_equipo": "GE074-03"},
+        {"codigo_ot": "OT-CAMPO-20260916-2",
+         "resumen_falla": "Fuga por el acople del mástil",
+         "causa_raiz": "Acople rajado",
+         "solucion_aplicada": "Se reemplazó el acople",
+         "codigo_equipo": "TI09-04"},
+    ],
+}
+
+
+def _envio(tmp_path, datos=None):
+    ruta = tmp_path / "informes-de-campo.json"
+    ruta.write_text(json.dumps(datos or ENVIO, ensure_ascii=False), encoding="utf-8")
+    return ruta
+
+
+def test_lo_cerrado_en_faena_entra_al_historial(tmp_path):
+    historial = tmp_path / "historial.json"
+    parte = cierre.recibir(_envio(tmp_path), historial, hoy=HOY)
+
+    assert len(parte.nuevos) == 2 and not parte.rechazados
+    guardados = json.loads(historial.read_text(encoding="utf-8"))["informes"]
+    assert [i["codigo_ot"] for i in guardados] == ["OT-CAMPO-20260916-1",
+                                                   "OT-CAMPO-20260916-2"]
+
+
+def test_reenviar_el_mismo_archivo_no_duplica_nada(tmp_path):
+    # Va a pasar: el técnico manda el archivo, no sabe si llegó, lo manda otra
+    # vez. Tratarlo como error obligaría a alguien a elegir cuál valía.
+    historial = tmp_path / "historial.json"
+    envio = _envio(tmp_path)
+    cierre.recibir(envio, historial, hoy=HOY)
+    segunda = cierre.recibir(envio, historial, hoy=HOY)
+
+    assert not segunda.nuevos
+    assert segunda.repetidos == ["OT-CAMPO-20260916-1", "OT-CAMPO-20260916-2"]
+    assert len(json.loads(historial.read_text(encoding="utf-8"))["informes"]) == 2
+
+
+def test_un_informe_incompleto_se_rechaza_y_los_demas_entran(tmp_path):
+    # Un envío con una fila mala no puede perder las buenas: el técnico no
+    # tiene cómo rehacerlo desde el patio.
+    datos = {"pendientes": [ENVIO["pendientes"][0],
+                            {"resumen_falla": "algo raro"},
+                            ENVIO["pendientes"][1]]}
+    parte = cierre.recibir(_envio(tmp_path, datos), tmp_path / "h.json", hoy=HOY)
+
+    assert len(parte.nuevos) == 2
+    assert len(parte.rechazados) == 1
+    assert "causa" in parte.rechazados[0][1]
+    assert "2 nuevos" in parte.resumen()
+
+
+def test_lo_recibido_queda_buscable_si_se_pasa_el_indice(tmp_path):
+    indice = Indice()
+    cierre.recibir(_envio(tmp_path), tmp_path / "h.json", indice, hoy=HOY)
+
+    diagnostico = Motor(indice).consultar(
+        Consulta("el ventilador no gira y el motor se calienta"))
+    assert "Correa" in diagnostico.causa_raiz_mas_probable
+
+
+def test_un_envio_que_no_es_un_envio_lo_dice(tmp_path):
+    with pytest.raises(cierre.ErrorCierre, match="lista de informes"):
+        cierre.recibir({"cualquier": "cosa"}, tmp_path / "h.json")
+    with pytest.raises(cierre.ErrorCierre, match="no existe"):
+        cierre.recibir(tmp_path / "fantasma.json", tmp_path / "h.json")
+
+
+def test_tambien_acepta_una_lista_pelada(tmp_path):
+    parte = cierre.recibir(ENVIO["pendientes"], tmp_path / "h.json", hoy=HOY)
+    assert len(parte.nuevos) == 2

@@ -295,6 +295,36 @@ def cmd_cerrar(args) -> int:
     return 0
 
 
+def cmd_recibir(args) -> int:
+    """Mete en el historial lo que el telefono cerro en faena."""
+    historial = Path(args.historial)
+    indice = None
+    if Path(args.indice).is_file():
+        indice = _indice(args)
+        if indice is None:
+            return 1
+    try:
+        parte = cierre.recibir(args.envio, historial, indice)
+    except cierre.ErrorCierre as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    for informe in parte.nuevos:
+        print(f"  nuevo: {informe['codigo_ot']} · {informe.get('resumen_falla', '')[:60]}")
+    for codigo in parte.repetidos:
+        print(f"  ya estaba: {codigo}")
+    for codigo, motivo in parte.rechazados:
+        print(f"  rechazado: {codigo} · {motivo}", file=sys.stderr)
+
+    print(f"\n{parte.resumen()} · historial: {historial}")
+    if indice is not None and parte.hubo_cambios:
+        indice.guardar(args.indice)
+        print(f"Indexado en {args.indice}: la siguiente consulta ya los encuentra.")
+    elif parte.hubo_cambios:
+        print(f"Reindexe para que se puedan consultar: nefer fixmate indexar {historial}")
+    return 0 if not parte.rechazados else 2
+
+
 def cmd_servir(args) -> int:
     try:
         import uvicorn
@@ -386,6 +416,14 @@ def agregar_subcomando(sub) -> None:
                                                     "historial-fallas.json"),
                    help="archivo de historial donde anotarlo")
     r.set_defaults(func=cmd_cerrar)
+
+    b = ordenes.add_parser(
+        "recibir", help="meter en el historial lo que el telefono cerro en faena")
+    b.add_argument("envio", help="archivo que exporto la app de campo")
+    b.add_argument("--historial", default=os.getenv("FIXMATE_HISTORIAL",
+                                                    "historial-fallas.json"),
+                   help="historial donde anotarlos")
+    b.set_defaults(func=cmd_recibir)
 
     s = ordenes.add_parser("servir", help="levantar la API HTTP")
     s.add_argument("--host", default="127.0.0.1")

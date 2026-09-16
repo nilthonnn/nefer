@@ -90,7 +90,7 @@ Abajo, siempre visibles:
 | **Inicio** | Punto de partida y acta de ejemplo |
 | **Despacho** | El acta de salida del equipo |
 | **Recepción** | El acta de retorno |
-| **Diagnóstico** | Buscar una falla en el historial de la flota y en los manuales |
+| **Diagnóstico** | Buscar una falla en el historial de la flota, y registrar la que resuelva |
 | **Guía** | Procedimiento y comprobación del aparato |
 
 Arriba a la derecha, el botón **Oscuro / Claro** cambia el tema. Con sol de
@@ -460,11 +460,37 @@ Los dos campos de abajo afinan, y ninguno es obligatorio:
 - La **evidencia**: qué orden de trabajo o qué sección de manual lo respalda,
   con su porcentaje de parecido.
 
+### Registrar lo que resultó
+
+Debajo de la respuesta —y también cuando **no hubo** respuesta, que es cuando
+más importa— aparece **Cuando lo resuelva**. Son tres campos: la falla como se
+vio, la causa que usted confirmó al desarmar y qué hizo. La falla viene
+escrita y la causa viene propuesta, pero **corrija la causa si era otra cosa**:
+lo que se registra es lo que encontró, no lo que la máquina supuso.
+
+Al tocar **Registrar**, ese informe:
+
+1. Queda guardado en el teléfono, con un código propio `OT-CAMPO-…`.
+2. **Se puede consultar en el acto**, en ese mismo teléfono y sin señal: el
+   compañero que pregunte algo parecido ya lo encuentra.
+3. Se suma a la cuenta de **informes por enviar**.
+
+Cuando haya señal, **Enviar a la oficina** manda todos juntos en un archivo
+—por WhatsApp, correo o descarga—. En la oficina se meten al historial con:
+
+```
+nefer fixmate recibir informes-de-campo-2026-09-16.json
+```
+
+Mandar el mismo archivo dos veces no duplica nada: lo que ya está se cuenta
+como repetido y se deja pasar. Por eso los informes no se borran del teléfono
+al enviarlos.
+
 ### Lo que no hace
 
 - **No inventa.** Si nada en el índice respalda la consulta, lo dice: «no hay
   antecedentes». Eso no es un fallo; es la respuesta, y significa que ese caso
-  hay que registrarlo al cerrarlo.
+  hay que registrarlo ahí mismo al resolverlo.
 - **No estima un par de apriete.** Copia el que está escrito, o no da ninguno.
 - **No sabe lo que la oficina no indexó.** Si el historial está viejo, las
   respuestas también.
@@ -525,7 +551,9 @@ De ahí la regla: **lo que se guarda de verdad es lo que usted descarga**.
 | Al reabrir están los datos pero no las fotos | Es lo esperado: sólo se recuerda lo tecleado | Vuelva a cargar las fotografías |
 | «Falta el índice» en Diagnóstico | El teléfono no tiene todavía el archivo de la oficina | Cárguelo con **Cargar el índice**; queda guardado |
 | «El índice se armó con otro embebedor» | Es de una versión anterior de la herramienta | Vuelva a generarlo con `nefer fixmate indexar` |
-| «No hay antecedentes» al consultar | Nadie registró todavía una falla parecida | Resuélvala y regístrela: el próximo sí la encontrará |
+| «No hay antecedentes» al consultar | Nadie registró todavía una falla parecida | Resuélvala y regístrela ahí mismo: el próximo sí la encontrará |
+| «falta la causa» al registrar | Un informe sin causa ni solución no le sirve a nadie | Escriba qué encontró y qué hizo, aunque sea corto |
+| Los informes siguen contando después de enviarlos | Es a propósito: por si el envío se perdió | Vuelva a enviarlos; en la oficina no se duplican |
 
 ---
 

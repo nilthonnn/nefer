@@ -646,6 +646,13 @@
                       background:var(--accent); opacity:.85; min-width:2px; }
   .dx-barras .txt { font-size:.85rem; }
 
+  .dx-form { display:flex; flex-direction:column; gap:.6rem; }
+  .dx-form label { display:flex; flex-direction:column; gap:.2rem;
+                   font-size:.72rem; text-transform:uppercase;
+                   letter-spacing:.07em; color:var(--ink-3); }
+  .dx-form .op { text-transform:none; letter-spacing:0; color:var(--ink-3);
+                 opacity:.8; }
+
   .dx-ev { border-top:1px solid var(--rule); padding:.55rem 0; font-size:.85rem;
            color:var(--ink-2); }
   .dx-ev b { color:var(--ink); }
@@ -1061,6 +1068,36 @@
         </div>
         <p class="lb" id="dx-estado"></p>
         <div id="dx-salida" aria-live="polite"></div>
+
+        <div id="dx-cierre" hidden>
+          <h2 class="rot">Cuando lo resuelva</h2>
+          <p class="nota" style="margin-bottom:.7rem">
+            Registre aquí lo que resultó. Queda en este teléfono y lo encuentra
+            el próximo que pregunte, aunque nadie tenga señal. Cuando la haya,
+            se envía a la oficina de una vez.
+          </p>
+          <div class="dx-form">
+            <label>Falla, como se vio
+              <input type="text" id="dx-c-falla"></label>
+            <label>Causa raíz confirmada
+              <input type="text" id="dx-c-causa"></label>
+            <label>Qué se hizo
+              <input type="text" id="dx-c-solucion"></label>
+            <label>Equipo
+              <input type="text" id="dx-c-equipo" autocapitalize="characters"></label>
+            <label>Repuestos <span class="op">separados por punto y coma</span>
+              <input type="text" id="dx-c-repuestos"></label>
+          </div>
+          <div class="bar">
+            <button type="button" class="primary" id="dx-registrar">Registrar</button>
+            <span class="lb" id="dx-c-aviso"></span>
+          </div>
+        </div>
+
+        <div class="bar" id="dx-envio" hidden>
+          <button type="button" id="dx-enviar">Enviar a la oficina</button>
+          <span class="lb" id="dx-pend"></span>
+        </div>
       </div>
     </section>
 
@@ -6224,12 +6261,116 @@ var FIXMATE = (function () {
     };
   };
 
+
+  /* ---------- lo que se cierra en faena ----------
+
+     El informe que el técnico registra en el patio tiene que quedar igual que
+     si lo hubiera escrito la oficina: mismo texto, mismos metadatos, mismo
+     vector. Si no, al recibirlo allá el índice cambiaría y las dos mitades
+     dejarían de coincidir. Esto es espejo de `ingesta.de_informe`. */
+
+  var RE_DTC = [
+    /\b[PBCU][0-9]{4}\b/gi,
+    /\bSPN[\s:-]*([0-9]{1,6})\b/gi,
+    /\bFMI[\s:-]*([0-9]{1,2})\b/gi,
+    /\bCID[\s:-]*([0-9]{2,4})\b/gi,
+    /\bE[0-9]{3}(?:[.-][0-9])?\b/g
+  ];
+
+  function normalizarDtc(codigo) {
+    var limpio = sinTildes(String(codigo)).replace(/[\s:_-]+/g, "").toUpperCase();
+    return limpio.replace(/^(SPN|FMI|CID)0+(?=\d)/, "$1");
+  }
+
+  function codigosDtc(texto) {
+    var encontrados = [];
+    RE_DTC.forEach(function (patron) {
+      patron.lastIndex = 0;
+      var m;
+      while ((m = patron.exec(String(texto))) !== null) {
+        var codigo = normalizarDtc(m[0]);
+        if (codigo && encontrados.indexOf(codigo) < 0) encontrados.push(codigo);
+      }
+    });
+    return encontrados;
+  }
+
+  function limpiarLista(cosas) {
+    return (cosas || []).map(function (c) { return String(c).trim(); })
+      .filter(function (c) { return c.length; });
+  }
+
+  function fragmentoDeInforme(informe, fuente, n) {
+    var ot = String(informe.codigo_ot || "").trim() || ("SIN-OT-" + ((n || 0) + 1));
+    var pasos = limpiarLista(informe.pasos);
+    var herramientas = limpiarLista(informe.herramientas);
+    var repuestos = limpiarLista(informe.repuestos);
+
+    var lineas = ["ORDEN DE TRABAJO " + ot];
+    [["Equipo", "codigo_equipo"], ["Modelo", "modelo_equipo"], ["Fecha", "fecha"],
+     ["Falla reportada", "resumen_falla"], ["Causa raiz confirmada", "causa_raiz"],
+     ["Solucion aplicada", "solucion_aplicada"]].forEach(function (par) {
+      var valor = String(informe[par[1]] || "").trim();
+      if (valor) lineas.push(par[0] + ": " + valor);
+    });
+    if (pasos.length) {
+      lineas.push("Procedimiento: " + pasos.map(function (p, i) {
+        return (i + 1) + ". " + p;
+      }).join(" "));
+    }
+    if (herramientas.length) lineas.push("Herramientas: " + herramientas.join(", "));
+    if (repuestos.length) lineas.push("Repuestos: " + repuestos.join(", "));
+    var cuerpo = lineas.join("\n");
+
+    var declarados = informe.codigos_dtc || informe.codigo_dtc || [];
+    if (typeof declarados === "string") declarados = [declarados];
+    var codigos = [];
+    declarados.forEach(function (c) {
+      if (String(c).trim()) codigos.push(normalizarDtc(c));
+    });
+    codigosDtc(cuerpo).forEach(function (c) {
+      if (codigos.indexOf(c) < 0) codigos.push(c);
+    });
+
+    var metadatos = {};
+    ["codigo_ot", "fecha", "codigo_equipo", "modelo_equipo", "categoria",
+     "resumen_falla", "causa_raiz", "solucion_aplicada", "horas_hombre",
+     "horometro"].forEach(function (clave) {
+      if (informe[clave]) metadatos[clave] = informe[clave];
+    });
+    metadatos.codigo_ot = ot;
+    metadatos.codigos_dtc = codigos;
+    metadatos.pasos = pasos;
+    metadatos.herramientas = herramientas;
+    metadatos.repuestos = repuestos;
+    metadatos.torques = torques(cuerpo);
+
+    return { id: "ot:" + ot, texto: cuerpo, fuente: fuente || ot,
+             tipo: "informe", metadatos: metadatos, vector: vector(cuerpo) };
+  }
+
+  Indice.prototype.agregar = function (fragmento) {
+    // Un id que ya estaba se reemplaza, como en la herramienta de escritorio.
+    for (var i = 0; i < this.fragmentos.length; i++) {
+      if (this.fragmentos[i].id === fragmento.id) {
+        this.fragmentos[i] = fragmento;
+        this._indexar();
+        return false;
+      }
+    }
+    this.fragmentos.push(fragmento);
+    this._indexar();
+    return true;
+  };
+
   /* fixmate:motor:fin */
 
   return { Indice: Indice, Motor: Motor, Clasificador: Clasificador,
            fnv1a: fnv1a, vector: vector, tokenizar: tokenizar,
            normalizar: normalizar, torques: torques, mismaCausa: mismaCausa,
-           agruparCausas: agruparCausas, DIMENSION: DIMENSION };
+           agruparCausas: agruparCausas, DIMENSION: DIMENSION,
+           fragmentoDeInforme: fragmentoDeInforme, codigosDtc: codigosDtc,
+           normalizarDtc: normalizarDtc };
 })();
 </script>
 
@@ -6245,7 +6386,8 @@ var FIXMATE = (function () {
   "use strict";
   var $ = NEFER.$, esc = NEFER.esc;
   var BD = "nefer-fixmate", ALMACEN = "indice", CLAVE = "actual";
-  var motor = null;
+  var PENDIENTES = "pendientes";
+  var motor = null, pendientes = [], ultima = null;
 
   /* ---------- guardado en el teléfono ---------- */
   function abrirBD() {
@@ -6260,17 +6402,20 @@ var FIXMATE = (function () {
     });
   }
 
-  function guardado(texto) {
+  function enElTelefono(clave, valor) {
     return abrirBD().then(function (bd) {
       return new Promise(function (listo, falla) {
-        var t = bd.transaction(ALMACEN, texto ? "readwrite" : "readonly");
+        var escribe = valor !== undefined;
+        var t = bd.transaction(ALMACEN, escribe ? "readwrite" : "readonly");
         var almacen = t.objectStore(ALMACEN);
-        var pedido = texto === undefined ? almacen.get(CLAVE) : almacen.put(texto, CLAVE);
+        var pedido = escribe ? almacen.put(valor, clave) : almacen.get(clave);
         pedido.onsuccess = function () { listo(pedido.result); };
         pedido.onerror = function () { falla(pedido.error); };
       });
     });
   }
+
+  function guardado(texto) { return enElTelefono(CLAVE, texto); }
 
   /* ---------- pintar la respuesta ---------- */
   function lista(clase, titulo, cosas) {
@@ -6341,8 +6486,14 @@ var FIXMATE = (function () {
         codigo_equipo: ($("#dx-equipo").value || "").trim() || null
       });
       pintar(d);
+      ultima = d;
+      prepararCierre(texto, d);
     } catch (e) {
       $("#dx-salida").innerHTML = "";
+      ultima = null;
+      // Sin antecedentes es justo cuando más importa registrar lo que resulte:
+      // es la falla que nadie anotó todavía.
+      prepararCierre(texto, null);
       // Que no haya antecedentes es una respuesta, no una avería: se dice con
       // las mismas palabras que da la herramienta de escritorio.
       estado.textContent = e && e.sinEvidencia
@@ -6391,6 +6542,119 @@ var FIXMATE = (function () {
     lector.readAsText(archivo);
   }
 
+  /* ---------- cerrar el círculo, aquí mismo ---------- */
+
+  function codigoDeCampo() {
+    var f = new Date();
+    var dia = f.getFullYear() +
+      ("0" + (f.getMonth() + 1)).slice(-2) + ("0" + f.getDate()).slice(-2);
+    // Lleva CAMPO en el nombre a propósito: en la oficina se distingue de un
+    // correlativo suyo, y dos teléfonos distintos no chocan si se cuentan
+    // los que ya hay de ese día en este.
+    var delDia = pendientes.filter(function (p) {
+      return String(p.codigo_ot || "").indexOf("OT-CAMPO-" + dia) === 0;
+    }).length;
+    return "OT-CAMPO-" + dia + "-" + (delDia + 1);
+  }
+
+  function contarPendientes() {
+    var porEnviar = pendientes.filter(function (p) { return !p.enviado; }).length;
+    $("#dx-envio").hidden = !pendientes.length;
+    $("#dx-pend").textContent = porEnviar
+      ? porEnviar + " informe(s) por enviar"
+      : pendientes.length + " informe(s), todos enviados";
+  }
+
+  function prepararCierre(consulta, diagnostico) {
+    $("#dx-cierre").hidden = false;
+    $("#dx-c-falla").value = consulta;
+    // La causa que propone el motor viene puesta, pero editable: muchas veces
+    // el técnico desarma y era otra cosa, y lo que se registra es lo que
+    // encontró, no lo que la máquina supuso.
+    $("#dx-c-causa").value = diagnostico ? diagnostico.causa_raiz_mas_probable : "";
+    $("#dx-c-solucion").value = "";
+    $("#dx-c-equipo").value = ($("#dx-equipo").value || "").trim();
+    $("#dx-c-repuestos").value = "";
+  }
+
+  function registrar() {
+    var avisar = NEFER.avisador("#dx-c-aviso");
+    var informe = {
+      codigo_ot: codigoDeCampo(),
+      fecha: NEFER.hoy(),
+      resumen_falla: ($("#dx-c-falla").value || "").trim(),
+      causa_raiz: ($("#dx-c-causa").value || "").trim(),
+      solucion_aplicada: ($("#dx-c-solucion").value || "").trim(),
+      codigo_equipo: ($("#dx-c-equipo").value || "").trim(),
+      repuestos: ($("#dx-c-repuestos").value || "").split(";")
+        .map(function (r) { return r.trim(); })
+        .filter(function (r) { return r.length; })
+    };
+    var dtc = ($("#dx-dtc").value || "").trim();
+    if (dtc) informe.codigos_dtc = [dtc];
+
+    // Las mismas tres reglas que en la herramienta de escritorio: sin falla,
+    // causa y solución no es un antecedente, es una queja.
+    if (!informe.resumen_falla) { avisar("falta la falla"); return; }
+    if (!informe.causa_raiz) { avisar("falta la causa"); return; }
+    if (!informe.solucion_aplicada) { avisar("falta qué se hizo"); return; }
+    if (!motor) { avisar("no hay índice cargado"); return; }
+
+    motor.indice.agregar(FIXMATE.fragmentoDeInforme(informe, "campo", 0));
+    // El clasificador aprende del historial, así que se rehace con el nuevo.
+    motor = new FIXMATE.Motor(motor.indice);
+    pendientes.push(informe);
+
+    guardarTodo().then(function () {
+      avisar("registrado " + informe.codigo_ot);
+    }, function () {
+      avisar("registrado, pero no se pudo guardar en el teléfono");
+    });
+    contarPendientes();
+    $("#dx-cierre").hidden = true;
+  }
+
+  function guardarTodo() {
+    var copia = {
+      version: 1, embebedor: motor.indice.embebedor,
+      dimension: FIXMATE.DIMENSION, medicion: motor.indice.medicion,
+      fuentes: motor.indice.fuentes,
+      fragmentos: motor.indice.fragmentos.map(function (f) {
+        return { id: f.id, texto: f.texto, fuente: f.fuente, tipo: f.tipo,
+                 metadatos: f.metadatos,
+                 vector: Array.prototype.map.call(f.vector, function (v) {
+                   return Math.round(v * 1e6) / 1e6;
+                 }) };
+      })
+    };
+    return Promise.all([
+      enElTelefono(CLAVE, JSON.stringify(copia)),
+      enElTelefono(PENDIENTES, JSON.stringify(pendientes))
+    ]);
+  }
+
+  function enviar() {
+    var avisar = NEFER.avisador("#dx-pend");
+    if (!pendientes.length) { avisar("no hay nada que enviar"); return; }
+    var envio = {
+      generado: new Date().toISOString(),
+      version_app: NEFER.VERSION,
+      pendientes: pendientes.map(function (p) {
+        var copia = {};
+        Object.keys(p).forEach(function (k) { if (k !== "enviado") copia[k] = p[k]; });
+        return copia;
+      })
+    };
+    var nombre = "informes-de-campo-" + NEFER.hoy() + ".json";
+    var blob = new Blob([JSON.stringify(envio, null, 2)], { type: "application/json" });
+    NEFER.entregar(blob, nombre, avisar);
+    // Se marcan enviados pero no se borran: si el envío se pierde, se vuelve
+    // a mandar. En la oficina, recibir el mismo archivo dos veces no duplica.
+    pendientes.forEach(function (p) { p.enviado = true; });
+    enElTelefono(PENDIENTES, JSON.stringify(pendientes)).catch(function () {});
+    setTimeout(contarPendientes, 4200);
+  }
+
   function dictado() {
     var Voz = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Voz) return;                 // el botón se queda oculto
@@ -6424,6 +6688,8 @@ var FIXMATE = (function () {
       });
     }
     $("#dx-buscar").addEventListener("click", buscar);
+    $("#dx-registrar").addEventListener("click", registrar);
+    $("#dx-enviar").addEventListener("click", enviar);
     $("#dx-consulta").addEventListener("keydown", function (e) {
       if (e.key === "Enter") { e.preventDefault(); buscar(); }
     });
@@ -6435,6 +6701,11 @@ var FIXMATE = (function () {
     // En el archivo suelto que se manda por WhatsApp viene uno de ejemplo
     // incrustado: así la pestaña demuestra algo nada más abrirla.
     var demo = document.getElementById("fixmate-indice-demo");
+
+    enElTelefono(PENDIENTES).then(function (crudo) {
+      try { pendientes = crudo ? JSON.parse(crudo) : []; } catch (e) { pendientes = []; }
+      contarPendientes();
+    }).catch(function () { /* sin almacén: los informes duran la sesión */ });
 
     guardado().then(function (texto) {
       if (texto) { usarIndice(texto, "guardado en este teléfono"); return null; }

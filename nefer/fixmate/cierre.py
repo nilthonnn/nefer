@@ -15,6 +15,12 @@ Lo que no se acepta:
 - un informe sin causa ni solucion, que no es un antecedente sino una queja;
 - una orden de trabajo repetida, que duplicaria la evidencia y haria contar
   dos veces lo que paso una.
+
+Y lo que se cierra en el telefono llega despues: en faena no hay senal, asi
+que la app guarda lo resuelto y lo manda cuando la hay, en un archivo que
+`recibir()` mete en el historial. Un archivo por WhatsApp es sincronizacion
+suficiente para un taller, y no obliga a montar un servidor que alguien
+tendria que mantener.
 """
 
 from __future__ import annotations
@@ -134,3 +140,77 @@ def fragmento_de(informe: dict, origen: str = "") -> Fragmento:
     if origen:
         fragmento.metadatos["_origen"] = origen
     return fragmento
+
+
+# ------------------------------------------------- lo que llega del campo
+
+class Recepcion:
+    """Que entro, que ya estaba y que se rechazo de un envio del telefono."""
+
+    def __init__(self):
+        self.nuevos: list[dict] = []
+        self.repetidos: list[str] = []
+        self.rechazados: list[tuple[str, str]] = []
+
+    @property
+    def hubo_cambios(self) -> bool:
+        return bool(self.nuevos)
+
+    def resumen(self) -> str:
+        return (f"{len(self.nuevos)} nuevos, {len(self.repetidos)} ya estaban, "
+                f"{len(self.rechazados)} rechazados")
+
+
+def _informes_de(datos) -> list[dict]:
+    if isinstance(datos, list):
+        return datos
+    if isinstance(datos, dict):
+        for clave in ("informes", "pendientes"):
+            if isinstance(datos.get(clave), list):
+                return datos[clave]
+    raise ErrorCierre("el envio no trae una lista de informes.")
+
+
+def recibir(envio: str | Path | dict | list, historial: str | Path,
+            indice: Indice | None = None,
+            hoy: _dt.date | None = None) -> Recepcion:
+    """Mete en el historial los informes que el telefono cerro en faena.
+
+    Reenviar el mismo archivo no duplica nada: una orden que ya esta se cuenta
+    como repetida y se deja pasar. Es lo que va a ocurrir —el tecnico manda el
+    archivo, no sabe si llego, lo manda otra vez— y tratarlo como error
+    obligaria a alguien a decidir cual de los dos envios era el bueno.
+    """
+    if isinstance(envio, (str, Path)):
+        ruta = Path(envio)
+        if not ruta.is_file():
+            raise ErrorCierre(f"no existe el envio {ruta}")
+        try:
+            datos = json.loads(ruta.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise ErrorCierre(f"{ruta}: no es JSON legible ({exc}).") from exc
+    else:
+        datos = envio
+
+    entrantes = _informes_de(datos)
+    destino = Path(historial)
+    ya_estan = {str(i.get("codigo_ot") or "")
+                for i in _historial(destino).get("informes", [])}
+
+    parte = Recepcion()
+    for informe in entrantes:
+        if not isinstance(informe, dict):
+            parte.rechazados.append(("(no es un objeto)", "el informe no es un objeto"))
+            continue
+        codigo = str(informe.get("codigo_ot") or "").strip()
+        if codigo and codigo in ya_estan:
+            parte.repetidos.append(codigo)
+            continue
+        try:
+            guardado = registrar(informe, destino, indice, hoy)
+        except ErrorCierre as exc:
+            parte.rechazados.append((codigo or "(sin OT)", str(exc)))
+            continue
+        ya_estan.add(str(guardado.get("codigo_ot") or ""))
+        parte.nuevos.append(guardado)
+    return parte
