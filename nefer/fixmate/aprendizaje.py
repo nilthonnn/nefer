@@ -250,26 +250,42 @@ class ClasificadorCausas:
     def evaluar(self) -> Medicion | None:
         """Validacion dejando uno fuera. None si no hay con que medir.
 
-        Se reentrena sin cada ejemplo y se le pregunta por el: es la unica
+        Se le pregunta por cada caso habiendolo quitado antes: es la unica
         forma honesta de dar un porcentaje cuando el historial es pequeño.
+
+        Quitar un caso es restarlo de las cuentas y volver a sumarlo despues,
+        no rehacerlas: rehacerlas era cuadratico y con el historial de una
+        corporacion —miles de ordenes— tardaba minutos en cada indexacion.
+        El resultado es el mismo numero; solo cambia lo que cuesta.
         """
         if not self.entrenado or len(self._ejemplos) < MINIMO_CASOS:
             return None
+
+        cuenta = {c: dict(t) for c, t in self._cuenta.items()}
+        total = dict(self._total)
+        casos = dict(self.casos_por_causa)
+
         aciertos = 0
-        for i, (tokens, causa) in enumerate(self._ejemplos):
-            resto = self._ejemplos[:i] + self._ejemplos[i + 1:]
-            cuenta: dict[str, dict[str, int]] = {}
-            total: dict[str, int] = {}
-            casos: dict[str, int] = {}
-            for otros, otra in resto:
-                porcausa = cuenta.setdefault(otra, {})
-                for token in otros:
-                    porcausa[token] = porcausa.get(token, 0) + 1
-                total[otra] = total.get(otra, 0) + len(otros)
-                casos[otra] = casos.get(otra, 0) + 1
+        for tokens, causa in self._ejemplos:
+            porcausa = cuenta[causa]
+            for token in tokens:
+                porcausa[token] -= 1
+            total[causa] -= len(tokens)
+            casos[causa] -= 1
+            quitada = casos[causa] == 0
+            if quitada:
+                del casos[causa]
+
             prediccion = self._puntuar(tokens, cuenta, total, casos)
             if prediccion and prediccion[0].causa == causa:
                 aciertos += 1
+
+            if quitada:
+                casos[causa] = 0
+            casos[causa] += 1
+            total[causa] += len(tokens)
+            for token in tokens:
+                porcausa[token] += 1
 
         casos_totales = len(self._ejemplos)
         mayor = max(self.casos_por_causa.values())

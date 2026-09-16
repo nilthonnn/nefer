@@ -38,12 +38,14 @@ except ImportError as exc:  # pragma: no cover - depende del entorno
 
 from . import cierre as _cierre, motor as _motor, prediccion as _prediccion
 from . import transcripcion as _transcripcion
-from .indice import ErrorIndice, Indice, firma_de
+from .indice import Indice, firma_de
 
 registro = logging.getLogger("nefer.fixmate")
 
 RUTA_INDICE = os.getenv("FIXMATE_INDICE", "indice-fixmate.json")
 RUTA_HISTORIAL = os.getenv("FIXMATE_HISTORIAL", "historial-fallas.json")
+# Con esto en 'pg', la API busca en PostgreSQL en vez de en el archivo.
+ALMACEN = os.getenv("FIXMATE_ALMACEN", "archivo")
 
 # Subir un archivo en FastAPI necesita python-multipart. Si no esta, el resto
 # de la API funciona igual y la ruta del audio lo dice en vez de tumbar el
@@ -138,9 +140,11 @@ def crear_app(motor_diagnostico: _motor.Motor | None = None,
               ruta_indice: str | Path | None = None,
               con_llm: bool | None = None,
               ruta_historial: str | Path | None = None,
-              transcriptor=None) -> FastAPI:
+              transcriptor=None,
+              almacen: str | None = None) -> FastAPI:
     """Arma la aplicacion. El motor se puede inyectar ya hecho (y asi se prueba)."""
     ruta = Path(ruta_indice or RUTA_INDICE)
+    en_pg = (almacen or ALMACEN) == "pg"
     estado: dict = {"motor": motor_diagnostico, "error": None,
                     "historial": Path(ruta_historial or RUTA_HISTORIAL),
                     "transcriptor": transcriptor}
@@ -167,8 +171,14 @@ def crear_app(motor_diagnostico: _motor.Motor | None = None,
         if estado["motor"] is not None:
             return
         try:
-            indice = Indice.cargar(ruta)
-        except ErrorIndice as exc:
+            if en_pg:
+                from .almacen_pg import AlmacenPgvector
+
+                indice = AlmacenPgvector()
+                len(indice)          # falla pronto si la base no contesta
+            else:
+                indice = Indice.cargar(ruta)
+        except Exception as exc:
             # No se tumba el proceso: /salud tiene que poder decir que pasa.
             estado["error"] = str(exc)
             registro.error("FixMate sin indice: %s", exc)
@@ -200,7 +210,7 @@ def crear_app(motor_diagnostico: _motor.Motor | None = None,
             fragmentos=len(activo.indice),
             embebedor=getattr(activo.indice.embebedor, "nombre", "?"),
             redactor=getattr(activo.redactor, "nombre", "extractivo"),
-            indice=str(ruta),
+            indice=str(getattr(activo.indice, "tabla", None) or ruta),
             archivos=len(getattr(activo.indice, "fuentes", {}) or {}),
             clasificador=getattr(clasificador, "motivo", "sin clasificador"),
             precision_medida=activo.medicion(),

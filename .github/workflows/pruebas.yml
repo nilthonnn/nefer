@@ -16,7 +16,30 @@ jobs:
   nucleo:
     name: núcleo (generador, esquema, textos y FixMate)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+
+    # El camino de PostgreSQL se prueba contra una base de verdad. Sin ella
+    # las pruebas se saltarían solas, y una suite que se salta sola pasa
+    # igual: por eso abajo va FIXMATE_PG_EXIGIR, que convierte el salto en
+    # fallo.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: fixmate
+          POSTGRES_DB: fixmate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      FIXMATE_PG_DSN: "host=localhost port=5432 user=postgres password=fixmate dbname=fixmate"
+      FIXMATE_PG_EXIGIR: "1"
+
     steps:
       - uses: actions/checkout@v4
 
@@ -42,6 +65,7 @@ jobs:
             tests/test_fixmate_indice.py \
             tests/test_fixmate_ingesta.py \
             tests/test_fixmate_motor.py \
+            tests/test_fixmate_pg.py \
             tests/test_fixmate_prediccion.py \
             tests/test_fixmate_texto.py \
             tests/test_fixmate_transcripcion.py \

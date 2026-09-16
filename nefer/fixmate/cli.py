@@ -16,9 +16,26 @@ from .indice import ErrorIndice, Indice
 from .motor import Consulta, Motor, RedactorLLM, SinEvidencia
 
 INDICE_POR_DEFECTO = os.getenv("FIXMATE_INDICE", "indice-fixmate.json")
+TABLA_PG = os.getenv("FIXMATE_PG_TABLA", "fixmate_fragmentos")
 
 
-def _indice(args) -> Indice | None:
+def _indice(args):
+    """El indice con el que trabajar: el archivo, o PostgreSQL con --pg.
+
+    Los dos cumplen la misma interfaz, asi que todo lo de abajo —consultar,
+    predecir, el estado— no distingue cual tiene delante.
+    """
+    if getattr(args, "pg", False):
+        from .almacen_pg import AlmacenPgvector, ErrorAlmacen
+
+        almacen = AlmacenPgvector(dsn=getattr(args, "dsn", None) or None,
+                                  tabla=getattr(args, "tabla", None) or TABLA_PG)
+        try:
+            len(almacen)       # falla pronto y con su motivo si no conecta
+        except ErrorAlmacen as exc:
+            print(str(exc), file=sys.stderr)
+            return None
+        return almacen
     try:
         return Indice.cargar(args.indice)
     except ErrorIndice as exc:
@@ -75,14 +92,40 @@ def cmd_indexar(args) -> int:
     return 0
 
 
+def cmd_subir(args) -> int:
+    """Sube a PostgreSQL lo que ya esta indexado en el archivo."""
+    from .almacen_pg import AlmacenPgvector, ErrorAlmacen, desde_indice
+
+    try:
+        indice = Indice.cargar(args.indice)
+    except ErrorIndice as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    almacen = AlmacenPgvector(embebedor=indice.embebedor, dsn=args.dsn or None,
+                              tabla=args.tabla or TABLA_PG)
+    try:
+        subidos = desde_indice(indice, almacen)
+        total = len(almacen)
+    except ErrorAlmacen as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    print(f"{subidos} fragmentos subidos a {almacen.tabla} · {total} en la base")
+    print("La oficina sigue indexando en el archivo: la base guarda lo ya leido,")
+    print("no lee documentos. Vuelva a subir despues de cada `indexar`.")
+    return 0
+
+
 def cmd_estado(args) -> int:
     """Que hay en el indice y que tan bien aprende de ello."""
     indice = _indice(args)
     if indice is None:
         return 1
     motor = Motor(indice)
-    print(f"Indice:     {args.indice}")
-    print(f"Fragmentos: {len(indice)} de {len(indice.fuentes)} archivos")
+    print(f"Indice:     {getattr(indice, 'tabla', None) or args.indice}")
+    print(f"Fragmentos: {len(indice)}" +
+          (f" de {len(indice.fuentes)} archivos" if indice.fuentes else ""))
     print(f"Embebedor:  {indice.embebedor.nombre}")
 
     tipos: dict[str, int] = {}
@@ -334,8 +377,10 @@ def cmd_servir(args) -> int:
         return 1
     from .api import crear_app
 
-    app = crear_app(ruta_indice=args.indice, con_llm=args.llm or None)
-    print(f"FixMate en http://{args.host}:{args.puerto}  (indice: {args.indice})")
+    app = crear_app(ruta_indice=args.indice, con_llm=args.llm or None,
+                    almacen="pg" if getattr(args, "pg", False) else None)
+    donde = "PostgreSQL" if getattr(args, "pg", False) else args.indice
+    print(f"FixMate en http://{args.host}:{args.puerto}  (indice: {donde})")
     uvicorn.run(app, host=args.host, port=args.puerto)
     return 0
 
@@ -356,6 +401,14 @@ def agregar_subcomando(sub) -> None:
                    help=f"archivo de indice (por defecto, {INDICE_POR_DEFECTO})")
     ordenes = f.add_subparsers(dest="orden", required=True)
 
+    def con_pg(sub):
+        """Las ordenes que pueden trabajar contra la base en vez del archivo."""
+        sub.add_argument("--pg", action="store_true",
+                         help="usar PostgreSQL con pgvector en vez del archivo")
+        sub.add_argument("--dsn", help="cadena de conexion; por defecto, FIXMATE_PG_DSN")
+        sub.add_argument("--tabla", help=f"tabla o vista (por defecto, {TABLA_PG})")
+        return sub
+
     i = ordenes.add_parser("indexar",
                            help="historial, manuales y actas -> indice")
     i.add_argument("rutas", nargs="+",
@@ -369,13 +422,19 @@ def agregar_subcomando(sub) -> None:
                    help="conservar en el indice los archivos que ya no existen")
     i.set_defaults(func=cmd_indexar)
 
-    t = ordenes.add_parser("estado",
-                           help="que hay en el indice y que tan bien aprende")
+    u = ordenes.add_parser(
+        "subir", help="subir el indice a PostgreSQL con pgvector")
+    u.add_argument("--dsn", help="cadena de conexion; por defecto, FIXMATE_PG_DSN")
+    u.add_argument("--tabla", help=f"tabla de destino (por defecto, {TABLA_PG})")
+    u.set_defaults(func=cmd_subir)
+
+    t = con_pg(ordenes.add_parser(
+        "estado", help="que hay en el indice y que tan bien aprende"))
     t.add_argument("--archivos", action="store_true",
                    help="listar tambien los archivos indexados")
     t.set_defaults(func=cmd_estado)
 
-    c = ordenes.add_parser("consultar", help="preguntar por una falla")
+    c = con_pg(ordenes.add_parser("consultar", help="preguntar por una falla"))
     c.add_argument("consulta", nargs="?",
                    help="la falla, como la describiria el tecnico")
     c.add_argument("--audio",
@@ -391,8 +450,8 @@ def agregar_subcomando(sub) -> None:
     c.add_argument("--modelo", default="gpt-4o-mini", help="modelo para --llm")
     c.set_defaults(func=cmd_consultar)
 
-    d = ordenes.add_parser(
-        "predecir", help="que le va a pasar a un equipo, segun lo que ya le paso")
+    d = con_pg(ordenes.add_parser(
+        "predecir", help="que le va a pasar a un equipo, segun lo que ya le paso"))
     d.add_argument("equipo", nargs="?", help="codigo del equipo; sin el, la flota")
     d.add_argument("--flota", action="store_true", help="resumen de toda la flota")
     d.add_argument("--hoy", help="fecha de referencia (YYYY-MM-DD), para reproducir")
@@ -425,7 +484,7 @@ def agregar_subcomando(sub) -> None:
                    help="historial donde anotarlos")
     b.set_defaults(func=cmd_recibir)
 
-    s = ordenes.add_parser("servir", help="levantar la API HTTP")
+    s = con_pg(ordenes.add_parser("servir", help="levantar la API HTTP"))
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--puerto", type=int, default=8000)
     s.add_argument("--llm", action="store_true",

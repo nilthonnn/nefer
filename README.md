@@ -137,6 +137,10 @@ publicada en **<https://nilthonnn.github.io/nefer/fixmate/>** (la página vive
 en `docs/fixmate/` y `tests/test_publicacion_fixmate.py` falla si se queda
 atrás de la demo).
 
+Cuando el archivo deje de alcanzar —varias sedes escribiendo a la vez— el
+mismo motor busca contra **PostgreSQL con pgvector** (`nefer fixmate subir`,
+luego `--pg`), con la misma interfaz y la misma búsqueda híbrida.
+
 Todo el detalle —los formatos que lee, la API HTTP, la consulta dictada,
 PostgreSQL con pgvector y lo que falta— está en
 **[docs/FIXMATE.md](docs/FIXMATE.md)**.

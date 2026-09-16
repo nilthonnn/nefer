@@ -137,12 +137,30 @@ def test_los_filtros_viajan_como_parametros_y_no_pegados_al_sql():
     sql, parametros = sql_busqueda({"codigos_dtc": "P0300'; DROP TABLE x;--"})
     assert "DROP TABLE" not in sql
     assert "P0300'; DROP TABLE x;--" in parametros
-    assert sql.count("%s") == len(parametros) + 3   # vector, vector y limite
+    assert sql.count("%s") == len(parametros) + 3   # vector, consulta y limite
 
 
 def test_sin_filtros_no_hay_clausula_where():
     sql, parametros = sql_busqueda(None)
     assert "WHERE" not in sql and parametros == []
+
+
+def test_el_esquema_no_crea_un_indice_vectorial_aproximado():
+    """Un `ivfflat` creado antes de la primera carga devuelve cero filas.
+
+    Reparte las filas en listas en el momento de crearse, y `crear_esquema()`
+    corre sobre la tabla vacia: las listas quedan vacias y la busqueda por
+    vector no encuentra nada. No es que encuentre menos —no encuentra nada—, y
+    sin error. El recorrido exacto acierta siempre y a esta escala cuesta
+    milisegundos.
+    """
+    from nefer.fixmate.almacen_pg import DDL
+
+    assert "ivfflat" not in DDL
+    assert "hnsw" not in DDL
+    # Las dos mitades que si se indexan: los filtros y el texto.
+    assert "gin (metadatos)" in DDL
+    assert "to_tsvector('spanish', texto)" in DDL
 
 
 # ------------------------------------------- reindexar solo lo que cambio

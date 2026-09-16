@@ -44,6 +44,8 @@ FIXMATE_INDICE=indice.json nefer fixmate servir --puerto 8000
 | `cerrar` | Registrar la falla resuelta en el historial y en el índice |
 | `estado` | Qué hay indexado y qué tan bien acierta el clasificador |
 | `servir` | Levantar la API HTTP |
+| `recibir` | Meter en el historial lo que el teléfono cerró en faena |
+| `subir` | Subir el índice a PostgreSQL con pgvector |
 | `sql` | Imprimir el esquema de PostgreSQL con pgvector |
 
 ## Verlo funcionando en un minuto
@@ -500,14 +502,79 @@ en consulta.
 
 ## PostgreSQL con pgvector
 
-Cuando el historial deja de caber en un archivo —una flota entera, varios
-talleres escribiendo a la vez— el índice se muda a una base y la búsqueda se
-hace en SQL. La interfaz es la misma; el motor no distingue cuál tiene
-delante.
+Cuando el historial deja de caber en un archivo —varios talleres escribiendo
+a la vez, una flota entera— el índice se muda a una base y la búsqueda se hace
+en SQL. **La interfaz es la misma**: el motor, el clasificador, la predicción y
+la API no distinguen cuál tienen delante.
 
 ```bash
 pip install -e ".[fixmate-pg]"
-nefer fixmate sql | psql "$FIXMATE_PG_DSN"
+export FIXMATE_PG_DSN="host=servidor user=nefer dbname=taller"
+
+nefer fixmate indexar historial.xlsx manuales/      # la oficina lee documentos
+nefer fixmate subir                                  # y sube lo ya leído
+nefer fixmate consultar "humo negro y pierde fuerza" --pg
+nefer fixmate servir --pg
+```
+
+La base **no lee documentos**: guarda lo que ya se leyó. Indexar sigue siendo
+cosa de la máquina que tiene los Excel y los PDF delante, y `subir` es lo que
+se corre después de cada indexación.
+
+### La búsqueda sigue siendo híbrida
+
+El vector lo pone pgvector y las palabras exactas las pone la búsqueda de texto
+del propio PostgreSQL, con diccionario español, en un solo recorrido:
+
+```sql
+ts_rank_cd(to_tsvector('spanish', texto),
+           replace(plainto_tsquery('spanish', $1)::text, ' & ', ' | ')::tsquery)
+```
+
+Ese `replace` no es un adorno. `plainto_tsquery` une las palabras con **y**, y
+el técnico describe la falla con las suyas: «gotea aceite por el cilindro»
+contra «fuga de aceite en el cilindro» exige «gotea», que no está, y el ranking
+entero da cero. Con **o**, cada palabra que sí coincide suma.
+
+No es el mismo BM25 que el motor local —son dos implementaciones de la misma
+idea— así que los puntajes no se comparan entre los dos caminos. Lo que sí
+coincide, y está probado consulta por consulta, es **a quién señalan**.
+
+### Por qué el esquema no trae índice vectorial
+
+Se indexan los metadatos y el texto, no el vector, y es a propósito.
+
+La consulta híbrida ordena por una **mezcla** de dos puntajes, y por esa
+expresión no hay índice que sirva: PostgreSQL recorre la tabla de todos modos.
+El único camino que usaría un índice aproximado es la búsqueda sin la mitad
+léxica, y ahí `ivfflat` hace daño: reparte las filas en listas **en el momento
+de crearse**, y el esquema se crea antes de la primera carga. Listas vacías,
+cero filas devueltas. Cero, no menos: el técnico pregunta y no sale nada, sin
+un error que lo delate.
+
+Con el historial de un taller —miles de filas, no millones— el recorrido
+completo cuesta milisegundos y acierta siempre. Si algún día la tabla crece
+hasta que no alcance, el índice se agrega **sobre la tabla ya cargada**:
+
+```sql
+CREATE INDEX ON fixmate_fragmentos USING hnsw (embedding vector_cosine_ops);
+```
+
+`hnsw` se construye fila por fila y no depende de que la tabla esté llena, pero
+sigue siendo aproximado: antes de dejarlo puesto hay que comparar lo que
+devuelve contra el recorrido exacto, porque **lo que se pierde no se ve**.
+
+### Lo que hay que saber antes de mudarse
+
+| | |
+|---|---|
+| **Cuándo** | Cuando el archivo deje de alcanzar. Con miles de fragmentos, el archivo va sobrado; esto es para decenas de miles o para varias sedes escribiendo |
+| **Recorre la tabla entera** | Y está bien: con el historial de un taller cuesta milisegundos. Afinar eso con búsqueda aproximada en dos pasos haría que el resultado dependa de que la fila buena caiga en el primer lote |
+| **El teléfono no cambia** | Sigue llevando su archivo. La base es para la oficina y para quien tenga señal |
+| **Sus propias tablas** | No hace falta copiar nada: basta una vista llamada `fixmate_fragmentos` con esas columnas y el `JOIN` que corresponda |
+
+```bash
+nefer fixmate sql | psql "$FIXMATE_PG_DSN"     # crea tabla e índices
 ```
 
 La conexión se lee de `FIXMATE_PG_DSN`, o de las `PGHOST`/`PGUSER`/`PGPASSWORD`
@@ -515,9 +582,11 @@ de cualquier cliente de PostgreSQL. **Nunca del código**: una contraseña
 escrita en un `.py` es una contraseña publicada el día que el repositorio se
 comparte.
 
-Quien ya tenga sus informes en sus propias tablas no necesita copiarlos: basta
-una vista llamada `fixmate_fragmentos` con las columnas del esquema y el
-`JOIN` que le corresponda.
+Y se prueba contra una base de verdad, no contra un simulacro:
+`tests/test_fixmate_pg.py` levanta el esquema, sube el corpus de ejemplo y
+comprueba que la base y el archivo señalen el mismo antecedente. En CI hay un
+PostgreSQL con pgvector y `FIXMATE_PG_EXIGIR` convierte el salto en fallo,
+porque una prueba que se salta sola no es una prueba.
 
 ## Variables de entorno
 
@@ -528,6 +597,7 @@ una vista llamada `fixmate_fragmentos` con las columnas del esquema y el
 | `OPENAI_API_KEY` | Habilita el redactor con modelo, el embebedor de OpenAI y la transcripción de audio. Sin ella, todo lo demás sigue funcionando en local |
 | `FIXMATE_PG_DSN` | Cadena de conexión de PostgreSQL |
 | `FIXMATE_PG_TABLA` | Tabla o vista de fragmentos (por defecto, `fixmate_fragmentos`) |
+| `FIXMATE_ALMACEN` | `pg` hace que la API busque en PostgreSQL en vez de en el archivo |
 
 ## Desde Python
 
