@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DEMO - Registro Camal</title>
+    <style>
+        :root {
+            --verde: #00A86B;
+            --naranja: #FF9F00;
+            --rojo: #D9534F;
+            --azul: #0056B3;
+            --turquesa: #20B2AA;
+            --gris-bg: #1E222A;
+            --card-bg: #2A2E39;
+            --texto: #FFFFFF;
+            --input-bg: #3A3F4D;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--gris-bg); margin: 0; padding: 12px; color: var(--texto); }
+        h2, h3 { margin: 6px 0; text-align: center; }
+        .demo-badge { background: var(--naranja); color: black; font-weight: bold; padding: 4px 8px; border-radius: 6px; font-size: 12px; display: inline-block; }
+        .card { background: var(--card-bg); border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn-count { border: none; color: white; padding: 18px 10px; font-size: 16px; font-weight: bold; border-radius: 10px; cursor: pointer; text-align: center; touch-action: manipulation; }
+        .btn-alpaca { background-color: var(--verde); }
+        .btn-llama { background-color: var(--azul); }
+        .btn-obs { background-color: var(--naranja); }
+        .btn-vieja { background-color: var(--rojo); }
+        .btn-cordero { background-color: var(--turquesa); }
+        label { display: block; margin-top: 10px; font-size: 14px; color: #CCC; }
+        input, select { width: 100%; padding: 12px; font-size: 16px; border: 1px solid #555; background: var(--input-bg); color: white; border-radius: 8px; box-sizing: border-box; margin-top: 4px; }
+        .total-box { background: #14171D; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 16px; text-align: center; border: 1px solid var(--verde); color: #00FF95; margin-top: 8px; }
+        .btn-action { background: var(--verde); color: white; border: none; padding: 16px; width: 100%; font-size: 16px; font-weight: bold; border-radius: 8px; margin-top: 10px; cursor: pointer; }
+        .btn-export { background: #4A5568; }
+        .btn-demo { background: #6B46C1; }
+        .tabla-registros { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; text-align: left; }
+        .tabla-registros th { background: #14171D; color: #00FF95; padding: 8px; }
+        .tabla-registros td { padding: 8px; border-bottom: 1px solid #444; }
+    </style>
+</head>
+<body>
+
+    <div style="text-align: center;">
+        <span class="demo-badge">MODO DEMOSTRACIÓN</span>
+        <h2>Control de Faenamiento - Camal</h2>
+    </div>
+
+    <!-- Seccion 1: Conteo Rapido -->
+    <div class="card">
+        <h3>1. Conteo Rápido</h3>
+        <div class="grid">
+            <button class="btn-count btn-alpaca" onclick="registrarPasoRapido('Alpaca')">+ Alpaca</button>
+            <button class="btn-count btn-llama" onclick="registrarPasoRapido('Llama')">+ Llama</button>
+            <button class="btn-count btn-obs" onclick="registrarPasoRapido('Alpaca Observada')">+ Alpaca Obs.</button>
+            <button class="btn-count btn-vieja" onclick="registrarPasoRapido('Alpaca Vieja')">+ Alpaca Vieja</button>
+            <button class="btn-count btn-cordero" style="grid-column: span 2;" onclick="registrarPasoRapido('Cordero')">+ Cordero</button>
+        </div>
+    </div>
+
+    <!-- Seccion 2: Registro Detallado y Partes -->
+    <div class="card">
+        <h3>2. Registro Detallado / Partes</h3>
+        <label>Categoría / Parte:</label>
+        <select id="tipoParte">
+            <option value="Degollado Entero">Degollado Entero (Carcasa)</option>
+            <option value="Cuero Alpaca">Cuero Alpaca</option>
+            <option value="Cuero Cordero">Cuero Cordero</option>
+            <option value="Menudencias / Panzas">Menudencias / Panzas</option>
+            <option value="Cabeza y Patas">Cabeza y Patas</option>
+            <option value="Bife / Cortes">Bife / Cortes</option>
+        </select>
+
+        <label>Peso Neto (kg):</label>
+        <input type="number" id="pesoKg" step="0.1" placeholder="Ej. 45.5">
+
+        <label>Precio por Kg (S/):</label>
+        <input type="number" id="precioSoles" step="0.5" value="14.00">
+
+        <button class="btn-action" onclick="guardarEntrada()">Guardar Registro</button>
+    </div>
+
+    <!-- Seccion 3: Consolidados y Tabla de Prueba -->
+    <div class="card">
+        <h3>3. Consolidados y Reporte</h3>
+        <div class="total-box" id="resumenTotales">
+            Registros: 0 | Peso: 0.0 kg<br>Total: S/ 0.00
+        </div>
+        <button class="btn-action btn-export" onclick="exportarCSV()">Exportar a Excel (.CSV)</button>
+        <button class="btn-action btn-demo" onclick="cargarDatosDemo()">Cargar Más Datos Demo</button>
+    </div>
+
+    <!-- Seccion 4: Vista Previa de Tabla de Registros -->
+    <div class="card">
+        <h3>Vista Previa en Tiempo Real</h3>
+        <table class="tabla-registros">
+            <thead>
+                <tr>
+                    <th>Hora</th>
+                    <th>Categoría</th>
+                    <th>Kg</th>
+                    <th>S/ Total</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoTabla">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Datos de prueba precargados para la demo
+        let registros = [
+            { fecha: "07:30:15", categoria: "Alpaca", peso: 42.5, precio: 14.00, subtotal: 595.00 },
+            { fecha: "07:35:40", categoria: "Cuero Alpaca", peso: 4.8, precio: 18.00, subtotal: 86.40 },
+            { fecha: "07:42:10", categoria: "Alpaca Observada", peso: 39.0, precio: 12.00, subtotal: 468.00 }
+        ];
+
+        actualizarVista();
+
+        function registrarPasoRapido(categoria) {
+            let peso = prompt(`[DEMO] Ingrese el peso en kg para ${categoria}:`, "40.0");
+            if (peso !== null && peso !== "") {
+                let p = parseFloat(peso) || 0;
+                let precio = parseFloat(document.getElementById("precioSoles").value) || 0;
+                registros.push({
+                    fecha: new Date().toLocaleTimeString(),
+                    categoria: categoria,
+                    peso: p,
+                    precio: precio,
+                    subtotal: p * precio
+                });
+                actualizarVista();
+            }
+        }
+
+        function guardarEntrada() {
+            let categoria = document.getElementById("tipoParte").value;
+            let pesoInput = document.getElementById("pesoKg");
+            let peso = parseFloat(pesoInput.value) || 0;
+            let precio = parseFloat(document.getElementById("precioSoles").value) || 0;
+
+            if (peso > 0) {
+                registros.push({
+                    fecha: new Date().toLocaleTimeString(),
+                    categoria: categoria,
+                    peso: peso,
+                    precio: precio,
+                    subtotal: peso * precio
+                });
+                pesoInput.value = "";
+                actualizarVista();
+            } else {
+                alert("Ingrese un peso válido en kilos.");
+            }
+        }
+
+        function cargarDatosDemo() {
+            registros.push(
+                { fecha: new Date().toLocaleTimeString(), categoria: "Llama", peso: 55.0, precio: 13.00, subtotal: 715.00 },
+                { fecha: new Date().toLocaleTimeString(), categoria: "Cordero", peso: 18.5, precio: 16.00, subtotal: 296.00 }
+            );
+            actualizarVista();
+        }
+
+        function actualizarVista() {
+            let totalKg = registros.reduce((acc, r) => acc + r.peso, 0);
+            let totalSoles = registros.reduce((acc, r) => acc + r.subtotal, 0);
+
+            // Actualizar cuadro de resumen
+            document.getElementById("resumenTotales").innerHTML =
+                `Registros: ${registros.length} | Peso Total: ${totalKg.toFixed(1)} kg<br>Monto Total: S/ ${totalSoles.toFixed(2)}`;
+
+            // Actualizar tabla en pantalla
+            let htmlTabla = "";
+            registros.slice().reverse().forEach(r => {
+                htmlTabla += `<tr>
+                    <td>${r.fecha}</td>
+                    <td>${r.categoria}</td>
+                    <td>${r.peso.toFixed(1)}</td>
+                    <td>S/ ${r.subtotal.toFixed(2)}</td>
+                </tr>`;
+            });
+            document.getElementById("cuerpoTabla").innerHTML = htmlTabla;
+        }
+
+        function exportarCSV() {
+            if (registros.length === 0) { alert("No hay datos para exportar."); return; }
+            let csv = "Hora,Categoria/Parte,Peso (kg),Precio x Kg (S/),Total (S/)\n";
+            registros.forEach(r => {
+                csv += `"${r.fecha}","${r.categoria}",${r.peso},${r.precio},${r.subtotal.toFixed(2)}\n`;
+            });
+            let blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `Reporte_Demo_Camal.csv`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
