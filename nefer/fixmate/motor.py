@@ -232,6 +232,31 @@ def _pasos_de(coincidencia: Coincidencia) -> list[str]:
     return []
 
 
+def _procedimiento_para(coincidencias: list[Coincidencia], causa: str):
+    """Un antecedente con pasos que sirvan para la causa que se esta dando.
+
+    El primero que traiga pasos no sirve: el orden es por parecido de
+    palabras, y «humo negro» recupera igual el informe del filtro de aire y
+    el del inyector. Tomando los pasos del que tuviera, se respondia «filtro
+    de aire colmatado, segun OT-1» y debajo el procedimiento de cambiar un
+    inyector, con su par de apriete, atribuido a OT-1. El tecnico aprieta a
+    ese valor un perno que no es ese.
+
+    Sirven: el antecedente de la misma causa, y el manual —una seccion de
+    manual es un procedimiento, no una causa que compita—. Si no hay
+    ninguno, no hay procedimiento, y eso se dice.
+    """
+    for c in coincidencias:
+        if not _pasos_de(c):
+            continue
+        suya = str(c.fragmento.metadatos.get("causa_raiz") or "").strip()
+        if c.fragmento.tipo == "manual" or not suya:
+            return c
+        if causa and aprendizaje.misma_causa(suya, causa):
+            return c
+    return None
+
+
 def _con_causa(coincidencias: list[Coincidencia]) -> list[Coincidencia]:
     return [c for c in coincidencias if str(c.fragmento.metadatos.get("causa_raiz") or "").strip()]
 
@@ -327,26 +352,34 @@ def redactar_extractivo(consulta: Consulta, coincidencias: list[Coincidencia],
         diagnostico += f" Filtrado por el codigo {consulta.codigo_dtc}."
     diagnostico += _frase_estadistica(causas_probables, medicion)
     if respaldado is not None and respaldado is not mejor:
-        diagnostico += (f" La causa y el procedimiento salen de "
-                        f"{_referencia_de(respaldado)}, que es el antecedente "
-                        f"recuperado que coincide con esa estadistica.")
+        diagnostico += (f" La causa sale de {_referencia_de(respaldado)}, que "
+                        f"es el antecedente recuperado que coincide con esa "
+                        f"estadistica.")
 
     # Los pasos salen de UN antecedente: el que da la causa, si trae
     # procedimiento. Encadenar el de dos causas distintas produce una lista
     # que se lee como un solo trabajo y no lo es.
-    if not _pasos_de(origen):
-        origen = next((c for c in coincidencias if _pasos_de(c)), origen)
-    pasos = _pasos_de(origen)
+    fuente = origen if _pasos_de(origen) else _procedimiento_para(coincidencias, causa)
+    pasos = _pasos_de(fuente) if fuente is not None else []
+    # Y se dice de donde salieron: un procedimiento prestado de otro
+    # antecedente se cita como tal, o no se puede saber a que se refiere el
+    # par de apriete que viene debajo.
+    if fuente is not None and fuente is not origen:
+        diagnostico += (f" El procedimiento y sus valores salen de "
+                        f"{_referencia_de(fuente)}.")
 
-    herramientas = list(origen.fragmento.metadatos.get("herramientas") or [])
-    herramientas += list(origen.fragmento.metadatos.get("repuestos") or [])
+    # Las herramientas y los torques acompañan al procedimiento: son de la
+    # misma intervencion, no de la que dio el nombre de la causa.
+    base = fuente if fuente is not None else origen
+    herramientas = list(base.fragmento.metadatos.get("herramientas") or [])
+    herramientas += list(base.fragmento.metadatos.get("repuestos") or [])
     # Las herramientas que nombra el manual valen para cualquier antecedente.
     for c in coincidencias:
         if c.fragmento.tipo == "manual":
             herramientas.extend(c.fragmento.metadatos.get("herramientas") or [])
 
-    torques = list(origen.fragmento.metadatos.get("torques") or [])
-    torques += _texto.torques(origen.fragmento.texto)
+    torques = list(base.fragmento.metadatos.get("torques") or [])
+    torques += _texto.torques(base.fragmento.texto)
     for c in coincidencias:
         if c.fragmento.tipo == "manual":
             torques.extend(c.fragmento.metadatos.get("torques") or [])

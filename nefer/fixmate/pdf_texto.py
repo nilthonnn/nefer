@@ -363,8 +363,15 @@ def _cadena_literal(crudo: bytes) -> bytes:
             # Solo del 0 al 7: `\8` y `\9` no son octal, y tratarlos como si
             # lo fueran dejaba la cuenta vacia y tumbaba la indexacion entera
             # con un ValueError por un PDF con una barra de mas.
-            octal = crudo[i + 1:i + 4]
-            digitos = bytes(d for d in octal if 48 <= d <= 55)
+            #
+            # Y se corta en el primero que no sea octal, no se filtran los
+            # que lo son: colando los digitos sueltos de la ventana de tres,
+            # `\1a2` leia `\12` —otro caracter— y se comia la «a» de en medio.
+            digitos = b""
+            for d in crudo[i + 1:i + 4]:
+                if not (48 <= d <= 55):
+                    break
+                digitos += bytes([d])
             salida.append(int(digitos, 8) & 0xFF)
             i += 1 + len(digitos)
         elif siguiente in (b"\n", b"\r"):

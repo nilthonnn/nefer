@@ -247,3 +247,19 @@ def test_un_pdf_con_una_barra_de_mas_no_tumba_la_indexacion(tmp_path):
 
     texto = pdf_texto.extraer(ruta, preferir="propio")
     assert "Par de apriete" in texto and "30 N.m" in texto
+
+
+def test_un_escape_octal_corta_en_el_primer_digito_que_no_lo_es():
+    """`\\1a2` es el carácter 1 seguido de «a2», no el carácter 12.
+
+    El filtro colaba los dígitos octales sueltos de la ventana de tres en vez
+    de cortar en el primero que no lo era: leía otro carácter y se comía la
+    letra de en medio. En un manual eso es una palabra rota por página.
+    """
+    from nefer.fixmate.pdf_texto import _cadena_literal
+
+    assert _cadena_literal(rb"\1a2") == b"\x01a2"
+    assert _cadena_literal(rb"\101") == b"A"          # tres dígitos, completo
+    assert _cadena_literal(rb"\0053") == b"\x053"     # tres y sobra un dígito
+    assert _cadena_literal(rb"\12") == b"\n"
+    assert _cadena_literal(rb"\8x") == b"8x"          # no es octal: literal

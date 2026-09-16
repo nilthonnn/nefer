@@ -59,28 +59,56 @@ from __future__ import annotations
 
 import json
 import os
+import re
 
 from . import embeddings
 from .indice import Coincidencia, Fragmento
 
 TABLA = os.getenv("FIXMATE_PG_TABLA", "fixmate_fragmentos")
 
-DDL = """CREATE EXTENSION IF NOT EXISTS vector;
-CREATE TABLE IF NOT EXISTS fixmate_fragmentos (
+def nombre_de_tabla(tabla: str) -> str:
+    """Comprueba que el nombre se pueda pegar al SQL sin abrir un agujero.
+
+    El nombre de la tabla no puede viajar como parametro —PostgreSQL no lo
+    admite ahi— asi que se interpola, y lo que se interpola se valida. Viene
+    de `--tabla` o de `FIXMATE_PG_TABLA`, o sea de quien administra, pero un
+    nombre con una comilla dentro convierte un despiste en una inyeccion.
+    """
+    limpio = str(tabla)
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", limpio):
+        raise ErrorAlmacen(
+            f"nombre de tabla no valido: {tabla!r}. Solo letras, numeros y "
+            "guion bajo, empezando por letra o guion bajo.")
+    return limpio
+
+
+def ddl(tabla: str = TABLA) -> str:
+    """El esquema para la tabla que se vaya a usar, no para una fija.
+
+    Con el nombre incrustado a mano, `--tabla taller_norte` creaba
+    `fixmate_fragmentos` y despues fallaba al insertar en `taller_norte`.
+    """
+    tabla = nombre_de_tabla(tabla)
+    return f"""CREATE EXTENSION IF NOT EXISTS vector;
+CREATE TABLE IF NOT EXISTS {tabla} (
     id         text PRIMARY KEY,
     texto      text NOT NULL,
     fuente     text DEFAULT '',
     tipo       text DEFAULT 'documento',
-    metadatos  jsonb NOT NULL DEFAULT '{}'::jsonb,
+    metadatos  jsonb NOT NULL DEFAULT '{{}}'::jsonb,
     embedding  vector(256) NOT NULL
 );
-CREATE INDEX IF NOT EXISTS fixmate_fragmentos_metadatos
-    ON fixmate_fragmentos USING gin (metadatos);
--- La mitad léxica de la búsqueda: sin este índice funciona igual, pero
+CREATE INDEX IF NOT EXISTS {tabla}_metadatos
+    ON {tabla} USING gin (metadatos);
+-- La mitad lexica de la busqueda: sin este indice funciona igual, pero
 -- recorriendo la tabla entera en cada consulta.
-CREATE INDEX IF NOT EXISTS fixmate_fragmentos_texto
-    ON fixmate_fragmentos USING gin (to_tsvector('spanish', texto));
+CREATE INDEX IF NOT EXISTS {tabla}_texto
+    ON {tabla} USING gin (to_tsvector('spanish', texto));
 """
+
+
+# El esquema de la tabla por defecto, que es lo que imprime `nefer fixmate sql`.
+DDL = ddl()
 
 COLUMNAS = "id, texto, fuente, tipo, metadatos"
 
@@ -181,7 +209,7 @@ class AlmacenPgvector:
                  dsn: str | None = None, tabla: str = TABLA, conexion=None,
                  lexico: bool = True):
         self.embebedor = embebedor or embeddings.EmbebedorLocal()
-        self.tabla = tabla
+        self.tabla = nombre_de_tabla(tabla)
         self.dsn = dsn or os.getenv("FIXMATE_PG_DSN") or ""
         self.lexico = lexico
         self._conexion = conexion
@@ -310,7 +338,7 @@ class AlmacenPgvector:
         try:
             with conexion:                       # una transaccion, explicita
                 with conexion.cursor() as cur:
-                    cur.execute(DDL)
+                    cur.execute(ddl(self.tabla))
         except Exception as exc:
             raise ErrorAlmacen(
                 f"no se pudo crear el esquema: {exc}\n"
@@ -352,6 +380,35 @@ class AlmacenPgvector:
         self._fragmentos = None
         return len(fragmentos)
 
+
+    # ------------------------------------------- cerrar el circulo en la base
+    #
+    # Registrar un informe desde el patio escribe el historial en disco y mete
+    # el fragmento nuevo en el indice, sea cual sea. Con el almacen en
+    # PostgreSQL esas dos llamadas se quedaban sin metodo y reventaban con un
+    # AttributeError *despues* de haber escrito el historial: el tecnico veia
+    # un error 500, reintentaba, y el reintento se rechazaba por duplicado.
+    # El informe quedaba escrito y sin indexar, que es la peor de las tres
+    # posibilidades.
+
+    def anotar_fuente(self, origen: str, firma: str) -> None:
+        """Deja anotada la firma del archivo del que salio un fragmento.
+
+        En el indice de archivo esto evita releer un historial entero en la
+        proxima pasada. Aqui vive mientras viva el proceso: quien indexa es
+        la oficina, con su indice en archivo, y esta base recibe lo ya leido.
+        """
+        self.fuentes[str(origen)] = str(firma)
+
+    def guardar(self, ruta=None) -> None:
+        """No hace nada, y esa es la respuesta correcta.
+
+        `Indice.guardar` vuelca el indice a un archivo para que el proximo
+        arranque no lo pierda. Lo que entra en esta base ya esta escrito y
+        confirmado cuando `agregar` retorna, asi que no hay nada que volcar.
+        Existe para que quien cierra el circulo no tenga que preguntar cual
+        de los dos almacenes tiene delante.
+        """
 
     def cerrar(self) -> None:
         """Suelta la conexion. La siguiente operacion abre otra."""

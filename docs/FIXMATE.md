@@ -596,7 +596,7 @@ porque una prueba que se salta sola no es una prueba.
 | `FIXMATE_HISTORIAL` | Historial donde se anotan las fallas resueltas (`cerrar`, `POST /informes`) |
 | `OPENAI_API_KEY` | Habilita el redactor con modelo, el embebedor de OpenAI y la transcripción de audio. Sin ella, todo lo demás sigue funcionando en local |
 | `FIXMATE_PG_DSN` | Cadena de conexión de PostgreSQL |
-| `FIXMATE_PG_TABLA` | Tabla o vista de fragmentos (por defecto, `fixmate_fragmentos`) |
+| `FIXMATE_PG_TABLA` | Tabla o vista de fragmentos (por defecto, `fixmate_fragmentos`). El esquema se crea con ese nombre, no con el fijo. Sólo letras, números y guión bajo: el nombre se pega al SQL porque PostgreSQL no lo admite como parámetro |
 | `FIXMATE_ALMACEN` | `pg` hace que la API busque en PostgreSQL en vez de en el archivo |
 
 ## Desde Python

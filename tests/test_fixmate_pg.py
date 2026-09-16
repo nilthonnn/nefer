@@ -228,3 +228,58 @@ def test_sin_la_mitad_lexica_sigue_contestando(cargado):
         assert all(c.lexico == 0.0 for c in resultados)
     finally:
         solo_vector.cerrar()
+
+
+def test_el_esquema_se_crea_en_la_tabla_que_se_pidio(almacen):
+    """`--tabla taller_norte` creaba `fixmate_fragmentos` y fallaba al insertar."""
+    from nefer.fixmate.almacen_pg import AlmacenPgvector, ErrorAlmacen
+
+    tabla = f"fixmate_otra_{os.getpid()}"
+    otra = AlmacenPgvector(dsn=DSN, tabla=tabla)
+    try:
+        otra.crear_esquema()          # sin CREATE TABLE a mano de por medio
+        assert len(otra) == 0
+        conexion = otra.conectar()
+        with conexion.cursor() as cur:
+            cur.execute("SELECT to_regclass(%s)", (tabla,))
+            assert cur.fetchone()[0] is not None, "no creó la tabla pedida"
+    finally:
+        with otra.conectar().cursor() as cur:
+            cur.execute("SET lock_timeout = '10s'")
+            cur.execute(f"DROP TABLE IF EXISTS {tabla}")
+        otra.cerrar()
+
+
+def test_un_nombre_de_tabla_con_cualquier_cosa_dentro_no_llega_al_sql():
+    """El nombre se interpola —PostgreSQL no lo admite como parámetro—, así
+    que se valida antes de pegarlo."""
+    from nefer.fixmate.almacen_pg import AlmacenPgvector, ErrorAlmacen
+
+    for veneno in ("x; DROP TABLE fixmate_fragmentos; --", "a b", '"x"', ""):
+        with pytest.raises(ErrorAlmacen, match="nombre de tabla"):
+            AlmacenPgvector(dsn="", tabla=veneno)
+
+
+def test_cerrar_el_circulo_contra_la_base_no_revienta(cargado, tmp_path):
+    """Registrar desde el patio con el almacén en PostgreSQL.
+
+    `registrar()` anota la firma del historial y la API guarda el índice.
+    Sin esos dos métodos reventaba con AttributeError *después* de haber
+    escrito el historial: el técnico veía un 500, reintentaba, y el reintento
+    se rechazaba por duplicado. El informe quedaba escrito y sin indexar.
+    """
+    from nefer.fixmate import cierre
+
+    historial = tmp_path / "historial.json"
+    guardado = cierre.registrar(
+        {"resumen_falla": "gotea aceite por el cilindro del brazo",
+         "causa_raiz": "Sello del vástago vencido",
+         "solucion_aplicada": "Cambio de sello"},
+        historial, indice=cargado)
+
+    assert guardado["codigo_ot"]
+    cargado.guardar(historial)        # existe y no hace nada: ya está escrito
+    assert cargado.fuentes[str(historial)]
+    # Y lo registrado se encuentra en el acto, que es para lo que se registra.
+    assert any(guardado["codigo_ot"] in c.fragmento.id
+               for c in cargado.buscar("gotea aceite por el cilindro", limite=5))

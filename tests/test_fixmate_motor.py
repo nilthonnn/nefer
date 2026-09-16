@@ -424,3 +424,67 @@ def test_con_evidencia_fuerte_no_se_va_a_buscar_mas():
     assert coincidencias[0].puntaje >= m.UMBRAL_EVIDENCIA_FUERTE
     assert motor.apoyo_estadistico(
         consulta, coincidencias, motor.causas_probables(consulta)) is None
+
+
+def _coincidencia(ot, causa, pasos=None, torques=None, puntaje=0.4, tipo="informe"):
+    from nefer.fixmate.indice import Coincidencia, Fragmento
+
+    meta = {"codigo_ot": ot, "causa_raiz": causa}
+    if pasos:
+        meta["pasos"] = pasos
+    if torques:
+        meta["torques"] = torques
+    return Coincidencia(Fragmento(id="ot:" + ot, texto="humo negro al subir",
+                                  fuente="historial.json", tipo=tipo, metadatos=meta),
+                        puntaje, puntaje, puntaje)
+
+
+PROBABLES = [{"causa": "Filtro de aire colmatado", "probabilidad": 0.9, "casos": 12}]
+
+
+def test_el_procedimiento_no_se_toma_de_una_averia_distinta():
+    """Se respondía una causa y se entregaba el procedimiento de otra.
+
+    «humo negro» recupera igual el informe del filtro de aire y el del
+    inyector. Tomando los pasos del primero que tuviera, salía «filtro de
+    aire colmatado, según OT-1» con el procedimiento de cambiar un inyector
+    debajo —y su par de apriete— atribuido a OT-1. El técnico aprieta a ese
+    valor un perno que no es ese, que es justo lo que este paquete promete
+    que no pasa.
+    """
+    from nefer.fixmate.motor import Consulta, redactar_extractivo
+
+    filtro = _coincidencia("OT-1", "Filtro de aire colmatado", puntaje=0.30)
+    inyector = _coincidencia("OT-2", "Inyector con retorno excesivo",
+                             pasos=["Desmontar el inyector 3",
+                                    "Apretar el prisionero a 30 N·m"],
+                             torques=["30 N·m"], puntaje=0.40)
+
+    salida = redactar_extractivo(Consulta(texto="humo negro al subir"),
+                                 [inyector, filtro], causas_probables=PROBABLES)
+
+    assert salida["causa_raiz_mas_probable"] == "Filtro de aire colmatado"
+    assert salida["pasos_recomendados"] == [], "el procedimiento era de otra avería"
+    assert salida["torques"] == [], "el par de apriete era de otra avería"
+    # Y no se promete un procedimiento que no se entrega.
+    assert "el procedimiento salen" not in salida["diagnostico_probabilistico"]
+
+
+def test_el_procedimiento_de_la_misma_causa_si_se_usa_y_se_cita():
+    from nefer.fixmate.motor import Consulta, redactar_extractivo
+
+    filtro = _coincidencia("OT-1", "Filtro de aire colmatado", puntaje=0.30)
+    inyector = _coincidencia("OT-2", "Inyector con retorno excesivo",
+                             pasos=["Desmontar el inyector 3"], puntaje=0.40)
+    otro_filtro = _coincidencia("OT-3", "Filtro de aire colmatado",
+                                pasos=["Cambiar el filtro primario"],
+                                torques=["12 N·m"], puntaje=0.25)
+
+    salida = redactar_extractivo(Consulta(texto="humo negro al subir"),
+                                 [inyector, filtro, otro_filtro],
+                                 causas_probables=PROBABLES)
+
+    assert salida["pasos_recomendados"] == ["Cambiar el filtro primario"]
+    assert salida["torques"] == ["12 N·m"]
+    # De dónde salió se dice: si no, no se sabe a qué se refiere el apriete.
+    assert "OT-3" in salida["diagnostico_probabilistico"]

@@ -5630,7 +5630,16 @@ var FIXMATE = (function () {
     "entre era es esa ese eso esta estan este esto fue ha hace han hasta hay la " +
     "las le les lo los mas me mi muy no para pero por porque que se segun ser si " +
     "sin sobre solo son su sus tiene tras un una uno unos unas y ya").split(" ");
-  var ES_VACIA = {};
+  // Una tabla indexada por texto del taller no puede ser un objeto normal:
+  // `{}` hereda "constructor", "toString", "valueOf" y "hasOwnProperty", asi
+  // que esas cuatro palabras salian por verdaderas sin que nadie las pusiera.
+  // Como palabras vacias se descartaban —y Python las conserva, con lo que
+  // los dos motores dejaban de coincidir—, y como clave de la cache de
+  // posiciones se leia una funcion donde tenia que haber un par de numeros.
+  // Sin prototipo no hay nada heredado que leer.
+  function tabla() { return Object.create(null); }
+
+  var ES_VACIA = tabla();
   VACIAS.forEach(function (p) { ES_VACIA[p] = true; });
 
   var RE_PALABRA = /[0-9a-z]+(?:[.\-/][0-9a-z]+)*/g;
@@ -5673,7 +5682,7 @@ var FIXMATE = (function () {
     return h;
   }
 
-  var cachePosicion = {};
+  var cachePosicion = tabla();
   function posicion(rasgo) {
     var guardada = cachePosicion[rasgo];
     if (guardada) return guardada;
@@ -5684,7 +5693,7 @@ var FIXMATE = (function () {
   }
 
   function vector(texto) {
-    var v = new Float64Array(DIMENSION), cuenta = {}, peso = {};
+    var v = new Float64Array(DIMENSION), cuenta = tabla(), peso = tabla();
     tokenizar(texto).forEach(function (token) {
       cuenta[token] = (cuenta[token] || 0) + 1;
       peso[token] = 1;
@@ -5752,11 +5761,11 @@ var FIXMATE = (function () {
     var total = this.fragmentos.length;
     this.frecuencias = [];
     this.largos = [];
-    this.documentosPorToken = {};
+    this.documentosPorToken = tabla();
     var suma = 0, self = this;
     this.fragmentos.forEach(function (f) {
       var tokens = tokenizar(f.texto + " " + textoDeMetadatos(f.metadatos));
-      var frecuencia = {};
+      var frecuencia = tabla();
       tokens.forEach(function (t) { frecuencia[t] = (frecuencia[t] || 0) + 1; });
       Object.keys(frecuencia).forEach(function (t) {
         self.documentosPorToken[t] = (self.documentosPorToken[t] || 0) + 1;
@@ -5769,9 +5778,9 @@ var FIXMATE = (function () {
   };
 
   Indice.prototype.bm25 = function (consulta, candidatos) {
-    var tokens = tokenizar(consulta), puntajes = {}, self = this;
+    var tokens = tokenizar(consulta), puntajes = tabla(), self = this;
     if (!tokens.length || !this.largoMedio) return puntajes;
-    var total = this.fragmentos.length, vistos = {};
+    var total = this.fragmentos.length, vistos = tabla();
     tokens.forEach(function (token) {
       if (vistos[token]) return;
       vistos[token] = true;
@@ -5865,9 +5874,9 @@ var FIXMATE = (function () {
     var ta = tokenizar(a), tb = tokenizar(b);
     if (!ta.length || !tb.length) return false;
     if (nucleo(ta) === nucleo(tb)) return true;
-    var sa = {}, comunes = 0, union = 0;
+    var sa = tabla(), comunes = 0, union = 0;
     ta.forEach(function (t) { sa[t] = true; });
-    var sb = {};
+    var sb = tabla();
     tb.forEach(function (t) { sb[t] = true; });
     Object.keys(sa).forEach(function (t) { if (sb[t]) comunes++; });
     union = Object.keys(sa).length + Object.keys(sb).length - comunes;
@@ -5878,7 +5887,7 @@ var FIXMATE = (function () {
   }
 
   function agruparCausas(causas) {
-    var frecuencia = {};
+    var frecuencia = tabla();
     causas.forEach(function (c) {
       var limpia = String(c || "").trim();
       if (limpia) frecuencia[limpia] = (frecuencia[limpia] || 0) + 1;
@@ -5888,7 +5897,7 @@ var FIXMATE = (function () {
       if (a.length !== b.length) return a.length - b.length;
       return a < b ? -1 : 1;
     });
-    var representantes = [], mapa = {};
+    var representantes = [], mapa = tabla();
     ordenadas.forEach(function (causa) {
       for (var i = 0; i < representantes.length; i++) {
         if (mismaCausa(causa, representantes[i])) { mapa[causa] = representantes[i]; return; }
@@ -5910,26 +5919,26 @@ var FIXMATE = (function () {
     });
     var mapa = agruparCausas(pares.map(function (p) { return p[1]; }));
 
-    var cuentaCausas = {};
+    var cuentaCausas = tabla();
     pares.forEach(function (p) {
       var c = mapa[p[1]];
       cuentaCausas[c] = (cuentaCausas[c] || 0) + 1;
     });
-    var utiles = {};
+    var utiles = tabla();
     Object.keys(cuentaCausas).forEach(function (c) {
       if (cuentaCausas[c] >= MINIMO_POR_CAUSA) utiles[c] = cuentaCausas[c];
     });
 
     this.casosPorCausa = utiles;
-    this.cuenta = {};
-    this.total = {};
-    this.vocabulario = {};
+    this.cuenta = tabla();
+    this.total = tabla();
+    this.vocabulario = tabla();
     var self = this, ejemplos = 0;
     pares.forEach(function (p) {
       var causa = mapa[p[1]];
       if (!utiles[causa]) return;
       ejemplos++;
-      var porCausa = self.cuenta[causa] || (self.cuenta[causa] = {});
+      var porCausa = self.cuenta[causa] || (self.cuenta[causa] = tabla());
       var tokens = tokenizar(p[0]);
       tokens.forEach(function (t) {
         porCausa[t] = (porCausa[t] || 0) + 1;
@@ -5960,7 +5969,7 @@ var FIXMATE = (function () {
     var universo = Object.keys(this.vocabulario).length || 1;
     var n = causas.reduce(function (s, c) { return s + self.casosPorCausa[c]; }, 0);
 
-    var puntajes = {};
+    var puntajes = tabla();
     causas.forEach(function (causa) {
       var log = Math.log(self.casosPorCausa[causa] / n);
       var porCausa = self.cuenta[causa] || {};
@@ -5974,7 +5983,7 @@ var FIXMATE = (function () {
 
     var mayor = -Infinity;
     causas.forEach(function (c) { mayor = Math.max(mayor, puntajes[c]); });
-    var suma = 0, pesos = {};
+    var suma = 0, pesos = tabla();
     causas.forEach(function (c) {
       pesos[c] = Math.exp(puntajes[c] - mayor);
       suma += pesos[c];
@@ -6005,7 +6014,7 @@ var FIXMATE = (function () {
     "respalda el historial; compare los dos antes de desarmar nada.";
 
   function unicos(valores) {
-    var vistos = {}, salida = [];
+    var vistos = tabla(), salida = [];
     (valores || []).forEach(function (valor) {
       var limpio = String(valor).replace(/^[\s.;-]+|[\s.;-]+$/g, "");
       var clave = normalizar(limpio);
@@ -6032,6 +6041,21 @@ var FIXMATE = (function () {
       if (valores.indexOf(valor) < 0) valores.push(valor);
     }
     return valores;
+  }
+
+  // Un antecedente con pasos que sirvan para la causa que se esta dando:
+  // el de la misma causa, o un manual —una seccion de manual es un
+  // procedimiento, no una causa que compita—. Si no hay ninguno, no hay
+  // procedimiento, y eso se dice.
+  function procedimientoPara(coincidencias, causa) {
+    for (var i = 0; i < coincidencias.length; i++) {
+      var c = coincidencias[i];
+      if (!pasosDe(c).length) continue;
+      var suya = String(c.fragmento.metadatos.causa_raiz || "").trim();
+      if (c.fragmento.tipo === "manual" || !suya) return c;
+      if (causa && mismaCausa(suya, causa)) return c;
+    }
+    return null;
   }
 
   function pasosDe(coincidencia) {
@@ -6137,20 +6161,27 @@ var FIXMATE = (function () {
       diagnostico += ".";
     }
     if (apoyo && apoyo !== mejor) {
-      diagnostico += " La causa y el procedimiento salen de " + referenciaDe(apoyo) +
+      diagnostico += " La causa sale de " + referenciaDe(apoyo) +
         ", que es el antecedente recuperado que coincide con esa estadistica.";
     }
 
-    if (!pasosDe(origen).length) {
-      for (var i = 0; i < coincidencias.length; i++) {
-        if (pasosDe(coincidencias[i]).length) { origen = coincidencias[i]; break; }
-      }
+    // Los pasos salen de UN antecedente, y tiene que servir para ESTA causa.
+    // El primero que traiga pasos no sirve: el orden es por parecido de
+    // palabras, y asi se respondia «filtro de aire colmatado, segun OT-1» con
+    // el procedimiento de cambiar un inyector debajo, y su par de apriete,
+    // atribuido a OT-1. El tecnico aprieta a ese valor un perno que no es ese.
+    var fuente = pasosDe(origen).length ? origen : procedimientoPara(coincidencias, causa);
+    var pasos = fuente ? pasosDe(fuente) : [];
+    if (fuente && fuente !== origen) {
+      diagnostico += " El procedimiento y sus valores salen de " +
+        referenciaDe(fuente) + ".";
     }
-    var pasos = pasosDe(origen);
 
-    var herramientas = (origen.fragmento.metadatos.herramientas || []).slice()
-      .concat(origen.fragmento.metadatos.repuestos || []);
-    var valores = (origen.fragmento.metadatos.torques || []).concat(torques(origen.fragmento.texto));
+    // Las herramientas y los torques acompañan al procedimiento.
+    var base = fuente || origen;
+    var herramientas = (base.fragmento.metadatos.herramientas || []).slice()
+      .concat(base.fragmento.metadatos.repuestos || []);
+    var valores = (base.fragmento.metadatos.torques || []).concat(torques(base.fragmento.texto));
     coincidencias.forEach(function (c) {
       if (c.fragmento.tipo !== "manual") return;
       herramientas = herramientas.concat(c.fragmento.metadatos.herramientas || []);
@@ -6209,7 +6240,7 @@ var FIXMATE = (function () {
       var fuertes = conCausa(coincidencias);
       var yaEsta = respaldado(coincidencias, causas) !== null;
       if (!yaEsta && !(fuertes.length && fuertes[0].puntaje >= UMBRAL_EVIDENCIA_FUERTE)) {
-        var vistos = {};
+        var vistos = tabla();
         coincidencias.forEach(function (c) { vistos[c.fragmento.id] = true; });
         var esperada = causas[0].causa;
         var extra = this.indice.buscar(consulta.texto, {

@@ -307,3 +307,42 @@ process.stdout.write(JSON.stringify({
     assert js["causa"] == d.causa_raiz_mas_probable
     assert js["evidencia"] == [[e.id, e.similitud] for e in d.evidencia_historica]
     assert "Correa" in js["causa"], "lo recién cerrado tiene que ser la respuesta"
+
+
+# Palabras que un objeto de JavaScript trae puestas de fábrica. `{}` hereda
+# "constructor", "toString", "valueOf" y "hasOwnProperty", así que una tabla
+# indexada por token las daba por presentes sin que nadie las metiera: el
+# teléfono las descartaba como palabras vacías y Python las conservaba, y la
+# caché de posiciones devolvía una función donde esperaba un par de números.
+HEREDADAS = ["constructor", "tostring", "valueof", "hasownproperty",
+             "prototype", "__proto__"]
+
+
+def test_el_tokenizador_no_hereda_palabras_del_lenguaje(tmp_path):
+    """Los dos motores tienen que partir el mismo texto en los mismos tokens."""
+    import subprocess
+
+    guion = tmp_path / "tokens.js"
+    guion.write_text(motor_js() + """
+var fs = require("fs");
+var palabras = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+console.log(JSON.stringify(palabras.map(function (p) {
+  return [tokenizar(p), Array.prototype.slice.call(vector(p))];
+})));
+""", encoding="utf-8")
+    entrada = tmp_path / "palabras.json"
+    entrada.write_text(json.dumps(HEREDADAS), encoding="utf-8")
+
+    crudo = subprocess.run([NODE, str(guion), str(entrada)],
+                           check=True, capture_output=True, text=True).stdout
+    del_telefono = json.loads(crudo)
+
+    from nefer.fixmate import embeddings, texto as _texto
+
+    embebedor = embeddings.EmbebedorLocal()
+    for palabra, (tokens_js, vector_js) in zip(HEREDADAS, del_telefono):
+        assert tokens_js == _texto.tokenizar(palabra), (
+            f"«{palabra}» se parte distinto en el teléfono")
+        vector_py = embebedor.embeber([palabra])[0]
+        assert [round(v, 9) for v in vector_js] == [round(v, 9) for v in vector_py], (
+            f"«{palabra}» da otro vector en el teléfono")
