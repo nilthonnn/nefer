@@ -1,0 +1,414 @@
+<title>Control de Faenamiento</title>
+<!--
+  El mismo demo de `demo_camal.html`, adaptado para abrirse desde un enlace en
+  el celular. La lógica de registro, validación y totales es la del prototipo,
+  letra por letra: los defectos que recoge ANALISIS.md siguen ahí a propósito,
+  porque es lo que se está probando.
+
+  Dos piezas cambian, y solo porque el visor las bloquea:
+
+  1. El peso ya no se pide con `prompt()` —los navegadores incrustados lo
+     bloquean— sino con una gaveta propia y teclado numérico.
+  2. `Exportar a Excel` no descarga: el visor anula toda descarga que la propia
+     página inicie. Muestra el CSV listo para copiar, con el mismo contenido,
+     byte por byte, que el archivo que sí baja al abrir el demo desde el disco.
+-->
+<style>
+  :root {
+    --verde: #00A86B;
+    --naranja: #FF9F00;
+    --rojo: #D9534F;
+    --azul: #0056B3;
+    --turquesa: #20B2AA;
+    --gris-bg: #1E222A;
+    --card-bg: #2A2E39;
+    --texto: #FFFFFF;
+    --texto-tenue: #A9B0BD;
+    --input-bg: #3A3F4D;
+    --borde: #454B5A;
+    --cifra: #00FF95;
+    --tinta-oscura: #14171D;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--gris-bg);
+    color: var(--texto);
+    margin: 0;
+    padding-block: 12px;
+    padding-inline: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  h2, h3 { margin: 6px 0; text-align: center; text-wrap: balance; }
+  h2 { font-size: 21px; }
+  h3 { font-size: 17px; }
+
+  .encabezado { text-align: center; }
+
+  .demo-badge {
+    background: var(--naranja);
+    color: #000;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    display: inline-block;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .btn-count {
+    border: none;
+    color: #fff;
+    padding: 18px 10px;
+    font-size: 16px;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: center;
+    touch-action: manipulation;
+    font-family: inherit;
+  }
+  .btn-alpaca  { background-color: var(--verde); }
+  .btn-llama   { background-color: var(--azul); }
+  .btn-obs     { background-color: var(--naranja); color: #000; }
+  .btn-vieja   { background-color: var(--rojo); }
+  .btn-cordero { background-color: var(--turquesa); color: #04312F; }
+
+  label { display: block; margin-top: 10px; font-size: 14px; color: var(--texto-tenue); }
+
+  input, select, textarea {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #555;
+    background: var(--input-bg);
+    color: #fff;
+    border-radius: 8px;
+    box-sizing: border-box;
+    margin-top: 4px;
+    font-family: inherit;
+  }
+
+  .total-box {
+    background: var(--tinta-oscura);
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 16px;
+    text-align: center;
+    border: 1px solid var(--verde);
+    color: var(--cifra);
+    margin-top: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .btn-action {
+    background: var(--verde);
+    color: #fff;
+    border: none;
+    padding: 16px;
+    width: 100%;
+    font-size: 16px;
+    font-weight: 700;
+    border-radius: 8px;
+    margin-top: 10px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-export { background: #4A5568; }
+  .btn-demo   { background: #6B46C1; }
+
+  .envoltura-tabla { overflow-x: auto; }
+
+  .tabla-registros {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 13px;
+    text-align: left;
+  }
+  .tabla-registros th { background: var(--tinta-oscura); color: var(--cifra); padding: 8px; }
+  .tabla-registros td { padding: 8px; border-bottom: 1px solid #444; }
+  .tabla-registros td:nth-child(3),
+  .tabla-registros td:nth-child(4) { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* Gaveta del peso: reemplaza al prompt() del navegador. */
+  .velo {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 10;
+  }
+  .gaveta {
+    background: var(--card-bg);
+    width: 100%;
+    max-width: 520px;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+  }
+  .gaveta h3 { margin-bottom: 2px; }
+  .gaveta p { margin: 0; text-align: center; font-size: 13px; color: var(--texto-tenue); }
+  .gaveta input { font-size: 28px; text-align: center; font-weight: 700; padding: 14px; }
+  .fila-gaveta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .fila-gaveta .btn-action { margin-top: 0; }
+  .btn-cancelar { background: var(--input-bg); }
+
+  /* Panel del CSV: sustituye a la descarga, que el visor bloquea. */
+  #panelCSV { margin-top: 12px; }
+  #panelCSV p { font-size: 13px; color: var(--texto-tenue); margin: 0 0 6px; }
+  #textoCSV {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    min-height: 150px;
+    white-space: pre;
+    margin-top: 0;
+  }
+
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 3px solid var(--cifra);
+    outline-offset: 2px;
+  }
+</style>
+
+<div class="encabezado">
+  <span class="demo-badge">MODO DEMOSTRACIÓN</span>
+  <h2>Control de Faenamiento - Camal</h2>
+</div>
+
+<!-- Seccion 1: Conteo Rapido -->
+<div class="card">
+  <h3>1. Conteo Rápido</h3>
+  <div class="grid">
+    <button class="btn-count btn-alpaca" onclick="registrarPasoRapido('Alpaca')">+ Alpaca</button>
+    <button class="btn-count btn-llama" onclick="registrarPasoRapido('Llama')">+ Llama</button>
+    <button class="btn-count btn-obs" onclick="registrarPasoRapido('Alpaca Observada')">+ Alpaca Obs.</button>
+    <button class="btn-count btn-vieja" onclick="registrarPasoRapido('Alpaca Vieja')">+ Alpaca Vieja</button>
+    <button class="btn-count btn-cordero" style="grid-column: span 2;" onclick="registrarPasoRapido('Cordero')">+ Cordero</button>
+  </div>
+</div>
+
+<!-- Seccion 2: Registro Detallado y Partes -->
+<div class="card">
+  <h3>2. Registro Detallado / Partes</h3>
+  <label for="tipoParte">Categoría / Parte:</label>
+  <select id="tipoParte">
+    <option value="Degollado Entero">Degollado Entero (Carcasa)</option>
+    <option value="Cuero Alpaca">Cuero Alpaca</option>
+    <option value="Cuero Cordero">Cuero Cordero</option>
+    <option value="Menudencias / Panzas">Menudencias / Panzas</option>
+    <option value="Cabeza y Patas">Cabeza y Patas</option>
+    <option value="Bife / Cortes">Bife / Cortes</option>
+  </select>
+
+  <label for="pesoKg">Peso Neto (kg):</label>
+  <input type="number" id="pesoKg" step="0.1" inputmode="decimal" placeholder="Ej. 45.5">
+
+  <label for="precioSoles">Precio por Kg (S/):</label>
+  <input type="number" id="precioSoles" step="0.5" inputmode="decimal" value="14.00">
+
+  <button class="btn-action" onclick="guardarEntrada()">Guardar Registro</button>
+</div>
+
+<!-- Seccion 3: Consolidados y Tabla de Prueba -->
+<div class="card">
+  <h3>3. Consolidados y Reporte</h3>
+  <div class="total-box" id="resumenTotales">
+    Registros: 0 | Peso: 0.0 kg<br>Total: S/ 0.00
+  </div>
+  <button class="btn-action btn-export" onclick="exportarCSV()">Exportar a Excel (.CSV)</button>
+  <button class="btn-action btn-demo" onclick="cargarDatosDemo()">Cargar Más Datos Demo</button>
+
+  <div id="panelCSV" hidden>
+    <p id="notaCSV">Este es el archivo que se descarga cuando el demo se abre desde el teléfono. Aquí va para copiarlo y pegarlo en Google Sheets.</p>
+    <textarea id="textoCSV" readonly spellcheck="false"></textarea>
+    <button class="btn-action btn-export" onclick="copiarCSV()">Copiar el reporte</button>
+  </div>
+</div>
+
+<!-- Seccion 4: Vista Previa de Tabla de Registros -->
+<div class="card">
+  <h3>Vista Previa en Tiempo Real</h3>
+  <div class="envoltura-tabla">
+    <table class="tabla-registros">
+      <thead>
+        <tr>
+          <th>Hora</th>
+          <th>Categoría</th>
+          <th>Kg</th>
+          <th>S/ Total</th>
+        </tr>
+      </thead>
+      <tbody id="cuerpoTabla"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Gaveta del peso: lo que en el demo original hace prompt() -->
+<div class="velo" id="veloPeso" hidden>
+  <div class="gaveta" role="dialog" aria-modal="true" aria-labelledby="tituloGaveta">
+    <h3 id="tituloGaveta">Peso en kg</h3>
+    <p id="categoriaGaveta">Alpaca</p>
+    <input type="number" id="pesoRapido" step="0.1" inputmode="decimal" value="40.0">
+    <div class="fila-gaveta">
+      <button class="btn-action btn-cancelar" onclick="cerrarGaveta(null)">Cancelar</button>
+      <button class="btn-action" onclick="cerrarGaveta(document.getElementById('pesoRapido').value)">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Datos de prueba precargados para la demo
+  let registros = [
+    { fecha: "07:30:15", categoria: "Alpaca", peso: 42.5, precio: 14.00, subtotal: 595.00 },
+    { fecha: "07:35:40", categoria: "Cuero Alpaca", peso: 4.8, precio: 18.00, subtotal: 86.40 },
+    { fecha: "07:42:10", categoria: "Alpaca Observada", peso: 39.0, precio: 12.00, subtotal: 468.00 }
+  ];
+
+  // --- Gaveta del peso -------------------------------------------------
+  // El demo original abre un prompt() del navegador; los navegadores
+  // incrustados lo bloquean, asi que aqui se pide igual pero en la pagina.
+  let categoriaEnCurso = null;
+
+  function registrarPasoRapido(categoria) {
+    categoriaEnCurso = categoria;
+    document.getElementById("categoriaGaveta").textContent = categoria;
+    const campo = document.getElementById("pesoRapido");
+    campo.value = "40.0";
+    document.getElementById("veloPeso").hidden = false;
+    campo.focus();
+    campo.select();
+  }
+
+  function cerrarGaveta(peso) {
+    document.getElementById("veloPeso").hidden = true;
+    const categoria = categoriaEnCurso;
+    categoriaEnCurso = null;
+    if (peso !== null && peso !== "") {
+      let p = parseFloat(peso) || 0;
+      let precio = parseFloat(document.getElementById("precioSoles").value) || 0;
+      registros.push({
+        fecha: new Date().toLocaleTimeString(),
+        categoria: categoria,
+        peso: p,
+        precio: precio,
+        subtotal: p * precio
+      });
+      actualizarVista();
+    }
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !document.getElementById("veloPeso").hidden) cerrarGaveta(null);
+  });
+
+  document.getElementById("pesoRapido").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") cerrarGaveta(this.value);
+  });
+
+  // --- Lo que sigue es el demo tal cual --------------------------------
+  function guardarEntrada() {
+    let categoria = document.getElementById("tipoParte").value;
+    let pesoInput = document.getElementById("pesoKg");
+    let peso = parseFloat(pesoInput.value) || 0;
+    let precio = parseFloat(document.getElementById("precioSoles").value) || 0;
+
+    if (peso > 0) {
+      registros.push({
+        fecha: new Date().toLocaleTimeString(),
+        categoria: categoria,
+        peso: peso,
+        precio: precio,
+        subtotal: peso * precio
+      });
+      pesoInput.value = "";
+      actualizarVista();
+    } else {
+      alert("Ingrese un peso válido en kilos.");
+    }
+  }
+
+  function cargarDatosDemo() {
+    registros.push(
+      { fecha: new Date().toLocaleTimeString(), categoria: "Llama", peso: 55.0, precio: 13.00, subtotal: 715.00 },
+      { fecha: new Date().toLocaleTimeString(), categoria: "Cordero", peso: 18.5, precio: 16.00, subtotal: 296.00 }
+    );
+    actualizarVista();
+  }
+
+  function actualizarVista() {
+    let totalKg = registros.reduce((acc, r) => acc + r.peso, 0);
+    let totalSoles = registros.reduce((acc, r) => acc + r.subtotal, 0);
+
+    document.getElementById("resumenTotales").innerHTML =
+      `Registros: ${registros.length} | Peso Total: ${totalKg.toFixed(1)} kg<br>Monto Total: S/ ${totalSoles.toFixed(2)}`;
+
+    let htmlTabla = "";
+    registros.slice().reverse().forEach(r => {
+      htmlTabla += `<tr>
+        <td>${r.fecha}</td>
+        <td>${r.categoria}</td>
+        <td>${r.peso.toFixed(1)}</td>
+        <td>S/ ${r.subtotal.toFixed(2)}</td>
+      </tr>`;
+    });
+    document.getElementById("cuerpoTabla").innerHTML = htmlTabla;
+
+    // Si el reporte ya estaba a la vista, que siga cuadrando con la tabla.
+    if (!document.getElementById("panelCSV").hidden) {
+      document.getElementById("textoCSV").value = armarCSV();
+    }
+  }
+
+  function armarCSV() {
+    let csv = "Hora,Categoria/Parte,Peso (kg),Precio x Kg (S/),Total (S/)\n";
+    registros.forEach(r => {
+      csv += `"${r.fecha}","${r.categoria}",${r.peso},${r.precio},${r.subtotal.toFixed(2)}\n`;
+    });
+    return csv;
+  }
+
+  // El demo original baja el archivo aqui. El visor anula toda descarga que
+  // la pagina inicie, asi que se muestra el mismo contenido para copiarlo.
+  function exportarCSV() {
+    if (registros.length === 0) { alert("No hay datos para exportar."); return; }
+    document.getElementById("textoCSV").value = armarCSV();
+    document.getElementById("panelCSV").hidden = false;
+    document.getElementById("panelCSV").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function copiarCSV() {
+    const campo = document.getElementById("textoCSV");
+    const nota = document.getElementById("notaCSV");
+    const dicho = nota.textContent;
+    campo.select();
+    const avisar = (texto) => {
+      nota.textContent = texto;
+      setTimeout(() => { nota.textContent = dicho; }, 2500);
+    };
+    try {
+      navigator.clipboard.writeText(campo.value).then(
+        () => avisar("Reporte copiado. Pégalo en Google Sheets o en Excel."),
+        () => avisar("El texto quedó seleccionado: cópialo a mano.")
+      );
+    } catch (e) {
+      avisar("El texto quedó seleccionado: cópialo a mano.");
+    }
+  }
+
+  actualizarVista();
+</script>
