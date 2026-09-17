@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 
 RAIZ = Path(__file__).resolve().parents[1]
-APP = RAIZ / "docs" / "app" / "index.html"
+APP = RAIZ / "docs" / "fixmate" / "app" / "index.html"
 EJEMPLOS = RAIZ / "ejemplos" / "fixmate"
 
 NODE = shutil.which("node")

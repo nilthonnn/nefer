@@ -106,3 +106,38 @@ def test_la_pagina_no_pide_nada_a_un_tercero(html):
     externos = re.findall(r'(?:src|href)="(https?://[^"]+)"', html)
     permitidos = {"https://github.com/nilthonnn/nefer"}
     assert not (set(externos) - permitidos), f"llama fuera: {externos}"
+
+
+def test_el_fixmate_descargable_no_puede_envejecer(tmp_path):
+    """`docs/fixmate-app.html` es la app entera en un archivo.
+
+    Si alguien cambia la app y se olvida de rehacerlo, quien lo descargue se
+    lleva una versión vieja sin enterarse — y es justo lo que hace imposible
+    saber por qué «sigue fallando».
+    """
+    import subprocess
+    import sys
+
+    raiz = Path(__file__).resolve().parents[1]
+    descargable = raiz / "docs" / "fixmate-app.html"
+    assert descargable.exists(), "falta docs/fixmate-app.html"
+
+    recien = tmp_path / "recien.html"
+    herramienta = raiz / "herramientas" / "empaquetar-fixmate.py"
+    subprocess.run([sys.executable, str(herramienta), str(recien)],
+                   check=True, capture_output=True)
+    assert descargable.read_bytes() == recien.read_bytes(), (
+        "docs/fixmate-app.html no coincide con la app: rehacerlo con "
+        "`python herramientas/empaquetar-fixmate.py`")
+
+
+def test_la_pagina_publicada_manda_a_fixmate_y_no_a_la_app_de_actas():
+    """Mandaba a la app de actas, que es otro producto.
+
+    Quien llega a la página de FixMate viene por el diagnóstico; darle la
+    app de levantar actas fotográficas es perderlo en la puerta.
+    """
+    raiz = Path(__file__).resolve().parents[1]
+    pagina = (raiz / "docs" / "fixmate" / "index.html").read_text(encoding="utf-8")
+    assert 'href="../fixmate-app.html"' in pagina
+    assert 'href="app/"' in pagina

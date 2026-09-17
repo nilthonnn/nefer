@@ -22,7 +22,7 @@ from playwright.sync_api import sync_playwright  # noqa: E402
 from navegador import HAY_CHROMIUM, opciones  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[1]
-APP = RAIZ / "docs" / "app" / "index.html"
+APP = RAIZ / "docs" / "fixmate" / "app" / "index.html"
 EJEMPLOS = RAIZ / "ejemplos" / "fixmate"
 
 pytestmark = pytest.mark.skipif(not HAY_CHROMIUM, reason="no hay Chromium disponible")
@@ -51,7 +51,6 @@ class Telefono:
             **(contexto_extra or {}))
         self.pg = self.contexto.new_page()
         self.pg.goto(APP.as_uri())
-        self.pg.click("#tab-diagnostico")
 
     def cargar(self, ruta: Path):
         with self.pg.expect_file_chooser() as elegido:
@@ -140,7 +139,6 @@ def test_el_indice_queda_guardado_para_la_proxima_vez(indice):
             # Se vuelve a abrir la app en el mismo teléfono, sin tocar nada.
             otra = t.contexto.new_page()
             otra.goto(APP.as_uri())
-            otra.click("#tab-diagnostico")
             otra.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
             assert "guardado en este teléfono" in otra.text_content("#dx-estado")
 
@@ -182,13 +180,12 @@ def test_el_archivo_suelto_no_se_abre_con_datos_inventados_dentro():
     existió nunca. Peor: dos órdenes reales con el mismo número que una
     inventada se pisaban en silencio, y desaparecían del índice.
     """
-    descargable = RAIZ / "docs" / "nefer-app.html"
+    descargable = RAIZ / "docs" / "fixmate-app.html"
     with sync_playwright() as pw:
         navegador = pw.chromium.launch(**opciones())
         pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
         try:
             pg.goto(descargable.as_uri())
-            pg.click("#tab-diagnostico")
             pg.wait_for_selector("#dx-sin-indice:not([hidden])", timeout=15000)
             assert not pg.is_visible("#dx-listo"), "se abrió con datos ya cargados"
             # Pero el ejemplo sigue estando, a un toque y rotulado.
@@ -200,13 +197,12 @@ def test_el_archivo_suelto_no_se_abre_con_datos_inventados_dentro():
 
 def test_el_taller_de_ejemplo_se_pide_y_sale_rotulado_como_inventado():
     """Demuestra el diagnóstico sin preparar nada, y sin hacerse pasar por real."""
-    descargable = RAIZ / "docs" / "nefer-app.html"
+    descargable = RAIZ / "docs" / "fixmate-app.html"
     with sync_playwright() as pw:
         navegador = pw.chromium.launch(**opciones())
         pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
         try:
             pg.goto(descargable.as_uri())
-            pg.click("#tab-diagnostico")
             pg.wait_for_selector("#dx-ejemplo:not([hidden])", timeout=15000)
             pg.click("#dx-ver-ejemplo")
             pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
@@ -227,13 +223,12 @@ def test_el_taller_de_ejemplo_se_pide_y_sale_rotulado_como_inventado():
 def test_la_cuenta_de_archivos_no_miente():
     """Decía «23 fragmentos de 0 archivos»: miraba una lista que un índice
     armado afuera no trae."""
-    descargable = RAIZ / "docs" / "nefer-app.html"
+    descargable = RAIZ / "docs" / "fixmate-app.html"
     with sync_playwright() as pw:
         navegador = pw.chromium.launch(**opciones())
         pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
         try:
             pg.goto(descargable.as_uri())
-            pg.click("#tab-diagnostico")
             pg.wait_for_selector("#dx-ejemplo:not([hidden])", timeout=15000)
             pg.click("#dx-ver-ejemplo")
             pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
@@ -250,13 +245,12 @@ def test_un_numero_de_orden_repetido_se_avisa_y_no_desaparece_callado(historial_
     Perder una sin avisar es perder un antecedente que el próximo técnico va
     a necesitar, y nadie se entera hasta que no aparece.
     """
-    descargable = RAIZ / "docs" / "nefer-app.html"
+    descargable = RAIZ / "docs" / "fixmate-app.html"
     with sync_playwright() as pw:
         navegador = pw.chromium.launch(**opciones())
         pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
         try:
             pg.goto(descargable.as_uri())
-            pg.click("#tab-diagnostico")
             pg.wait_for_selector("#dx-ejemplo:not([hidden])", timeout=15000)
             pg.click("#dx-ver-ejemplo")
             pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
@@ -337,7 +331,6 @@ def test_lo_registrado_sobrevive_a_cerrar_la_app(indice):
 
             otra = t.contexto.new_page()
             otra.goto(APP.as_uri())
-            otra.click("#tab-diagnostico")
             otra.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
             otra.wait_for_timeout(300)
             assert "por enviar" in otra.text_content("#dx-pend")
@@ -547,7 +540,6 @@ def test_lo_cargado_sigue_ahi_al_reabrir(historial_xlsx):
 
             otra = t.contexto.new_page()
             otra.goto(APP.as_uri())
-            otra.click("#tab-diagnostico")
             otra.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
             otra.fill("#dx-consulta", "gotea aceite del brazo")
             otra.click("#dx-buscar")

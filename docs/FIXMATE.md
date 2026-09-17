@@ -293,6 +293,27 @@ confirmada, o con una sola causa en todo el historial, se declara sin entrenar
 y no devuelve ningún porcentaje. Un porcentaje sobre cuatro informes es peor
 que ninguno, porque parece medido.
 
+## La app de campo es suya, no una pestaña prestada
+
+FixMate vivía dentro de **Nefer · Actas de campo**, que levanta actas
+fotográficas de despacho y recepción. Otro producto, otro momento del trabajo
+y otro usuario: eran 1900 líneas de diagnóstico dentro de 8100, y el mecánico
+que viene a preguntar por una falla pasaba antes por tres pestañas que no le
+sirven.
+
+Ahora vive en `docs/fixmate/app/` y entra directo a lo suyo.
+
+| | |
+|---|---|
+| **Para mandar por WhatsApp** | `docs/fixmate-app.html`, un archivo de 192 KB. Doble clic y anda |
+| **Servida** | <https://nilthonnn.github.io/nefer/fixmate/app/> |
+| **Rehacer el archivo suelto** | `python3 herramientas/empaquetar-fixmate.py` |
+
+Pesa 192 KB y no 600 porque no aloja tipografía: la app de actas lo hace
+porque una portada impresa tiene que salir igual en cualquier máquina, y aquí
+lo que importa es leer una causa raíz con guantes y a contraluz. Para eso la
+del propio teléfono es tan buena y cuesta cero bytes.
+
 ## Cargar los papeles desde el propio teléfono
 
 La oficina ya no es obligatoria. En la pestaña **Diagnóstico** hay un menú
