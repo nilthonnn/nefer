@@ -127,17 +127,39 @@ def misma_causa(a: str, b: str) -> bool:
     return menor >= 3 and comunes / menor >= SOLAPE_CAUSAS
 
 
-def agrupar_causas(causas) -> dict[str, str]:
+def agrupar_causas(causas, catalogo=None) -> dict[str, str]:
     """De cada causa escrita como se escribio, a la forma que las agrupa.
 
-    Manda la mas frecuente: es la que da nombre al grupo, porque es como la
-    escribe la mayoria del taller.
+    Primero el catalogo: si el texto casa con una entrada, el grupo es la
+    causa canonica de esa entrada. Un codigo del catalogo es estable —no
+    cambia porque este mes se escribio distinto— y es comparable entre
+    equipos, entre talleres y entre años, que es para lo que existe.
+
+    Lo que el catalogo no reconoce se agrupa como siempre, por parecido, y
+    **no se mezcla con lo codificado**: meterlo en un grupo del catalogo
+    seria adivinar, y un codigo equivocado ensucia la cuenta de la flota
+    entera mientras que uno que falta se ve.
+
+    Entre lo no codificado manda la mas frecuente: es como lo escribe la
+    mayoria del taller.
     """
+    from .catalogo import POR_DEFECTO
+
+    catalogo = POR_DEFECTO if catalogo is None else catalogo
+
     frecuencia: dict[str, int] = {}
     for causa in causas:
         limpia = str(causa).strip()
         if limpia:
             frecuencia[limpia] = frecuencia.get(limpia, 0) + 1
+
+    # Lo que el catalogo reconoce queda resuelto aqui y no entra al parecido.
+    mapa_catalogo: dict[str, str] = {}
+    for causa in list(frecuencia):
+        entrada = catalogo.clasificar(causa)
+        if entrada is not None:
+            mapa_catalogo[causa] = entrada.causa
+            del frecuencia[causa]
 
     # A igual frecuencia manda la mas corta: es la forma generica, y es
     # mejor nombre de grupo que el detalle de una maquina concreta.
@@ -152,6 +174,7 @@ def agrupar_causas(causas) -> dict[str, str]:
         else:
             representantes.append(causa)
             mapa[causa] = causa
+    mapa.update(mapa_catalogo)
     return mapa
 
 

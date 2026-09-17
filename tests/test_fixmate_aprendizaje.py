@@ -100,7 +100,11 @@ def test_las_probabilidades_suman_uno_y_bajan_en_orden():
     prediccion = _entrenado().predecir("fuga de aceite por el cilindro", limite=10)
     assert abs(sum(c.probabilidad for c in prediccion) - 1.0) < 0.01
     assert prediccion == sorted(prediccion, key=lambda c: -c.probabilidad)
-    assert prediccion[0].causa == "Sello del vastago cortado"
+    # El grupo ya no se llama como lo tecleó la mayoría, sino con el nombre
+    # canónico del catálogo: es estable entre equipos, talleres y años, que
+    # es para lo que existe. «Sello del vástago cortado», «sello vencido» y
+    # «retén del cilindro picado» son el mismo código.
+    assert prediccion[0].causa == "Sello o reten de cilindro vencido"
 
 
 def test_una_palabra_que_nunca_se_vio_no_inclina_nada():

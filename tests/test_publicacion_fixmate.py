@@ -72,11 +72,29 @@ def test_lo_que_la_pagina_afirma_lo_sigue_diciendo_la_demo(cifra, porque, html,
 
 
 def test_los_porcentajes_del_clasificador_son_los_medidos(html, salida_demo):
-    # Son los dos numeros que sostienen la parte de aprendizaje: si el
-    # acierto medido cambia, la pagina esta mintiendo.
-    assert "100% de acierto sobre 14 casos" in salida_demo
-    assert "daria 21%" in salida_demo
-    assert "100&nbsp;%" in html and "21&nbsp;%" in html
+    """Los dos números que sostienen la parte de aprendizaje.
+
+    No van escritos aquí a mano: se sacan de la demo y se busca **esos** en
+    la página. Escritos a mano, esta prueba se rompía cada vez que el motor
+    mejoraba y había que venir a cambiarle el número, que es justo lo que
+    hace que una prueba deje de vigilar y empiece a estorbar.
+    """
+    import re
+
+    medido = re.search(r"(\d+)% de acierto sobre (\d+) casos", salida_demo)
+    assert medido, "la demo ya no publica su acierto medido"
+    base = re.search(r"daria (\d+)%", salida_demo)
+    assert base, "la demo ya no publica su línea base"
+
+    acierto, linea_base = medido.group(1), base.group(1)
+    assert f"{acierto}&nbsp;%" in html, (
+        f"la demo mide {acierto}% y la página no lo dice. Vuelva a correr "
+        "`python3 herramientas/demo-fixmate.py` y actualice "
+        "docs/fixmate/index.html.")
+    assert f"{linea_base}&nbsp;%" in html, (
+        f"la demo da una línea base de {linea_base}% y la página no lo dice.")
+    # Y el acierto sin la línea base al lado no significa nada.
+    assert acierto != linea_base or "línea base" in html
 
 
 def test_la_pagina_dice_lo_que_todavia_no_hace(html):

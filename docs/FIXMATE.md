@@ -350,6 +350,86 @@ causa más común acertaría el 58%»—. El número es el mismo que daría la
 oficina, a los tres decimales con que se publica, y hay una prueba que lo
 compara.
 
+## El catálogo de causas
+
+La causa raíz era texto libre, y ese era el techo de todo lo demás. «Filtro
+de aire colmatado», «filtro aire tapado» y «FILTROS DE AIRE OBSTRUIDOS» eran
+tres causas para el clasificador, tres intervalos para el MTBF y tres líneas
+en la lista de repuestos. Lo que las juntaba era una heurística de parecido,
+que acierta seguido y falla en silencio.
+
+Ahora hay un catálogo con la estructura de **ISO 14224**, la norma de
+recolección de datos de confiabilidad, que separa tres cosas que se
+confunden todo el tiempo —y confundirlas es el error de datos más común del
+rubro—:
+
+| | qué es | ejemplo |
+|---|---|---|
+| **Modo de falla** | lo que se observa | `Fuga externa` |
+| **Mecanismo** | el proceso físico | `Desgaste` |
+| **Causa** | la condición raíz | `Sello o retén de cilindro vencido` |
+
+35 entradas de fábrica, repartidas así:
+
+| Sistema | Entradas |
+|---|---|
+| `admision` | 2 |
+| `combustible` | 4 |
+| `electrico` | 6 |
+| `escape` | 1 |
+| `estructura` | 3 |
+| `frenos` | 1 |
+| `hidraulico` | 6 |
+| `lubricacion` | 2 |
+| `neumatico` | 2 |
+| `operacion` | 1 |
+| `termico` | 4 |
+| `transmision` | 3 |
+
+### Tres decisiones, y por qué
+
+**No existe «Otro».** Es la recomendación explícita de la norma, por una
+razón empírica: «Otro» termina siendo el código más usado de cualquier base
+mal llevada, y desde ahí los datos no sirven. Lo que no casa se queda **sin
+codificar y se cuenta**. `nefer fixmate estado` lo muestra, con los textos
+ordenados por frecuencia: esa lista es exactamente lo que hay que agregarle.
+
+**No se adivina.** Un texto entra en una entrada cuando trae al menos dos de
+sus palabras, y un empate entre dos entradas no se resuelve a la suerte: se
+deja sin código. Codificar mal es peor que no codificar — un código
+equivocado se suma con los demás y ensucia la cuenta de toda la flota,
+mientras que uno que falta se ve.
+
+**El mantenimiento cumplido no es una falla.** «Cambio de aceite programado»
+no se codifica; «intervalo atrasado 180 horas» sí. Mezclarlos infla el MTBF y
+llena de cambios de aceite la lista de lo que le vuelve a pasar a la máquina.
+
+### Las pistas son raíces
+
+`bateri` encuentra «batería» y «baterías»; `sulfatad` encuentra las cuatro
+terminaciones. El tokenizador no lematiza, y sin esto «Baterías sulfatadas»
+—así, en plural y femenino— no casaba con ninguna entrada.
+
+### Cada taller agrega las suyas
+
+```bash
+# catalogo-taller.json
+[{"codigo": "QUI.CORROSION.UREA", "sistema": "postratamiento",
+  "modo": "Corrosión", "mecanismo": "Ataque químico",
+  "causa": "Corrosión galvánica en el soporte del tanque de urea",
+  "pistas": ["urea", "corrosion", "galvanica", "soporte"]}]
+```
+
+Un catálogo que no se puede ampliar obliga a elegir la entrada equivocada,
+que es volver al problema de «Otro» por otro camino. Se rechaza una entrada
+a la que le falte cualquiera de los tres niveles, o que traiga una sola
+pista: con una sola, `bomba` se lleva por delante la hidráulica, la de
+inyección y la de agua.
+
+El catálogo está espejado en el motor del teléfono y la prueba cruzada
+compara los dos: dos catálogos que se separan harían que el teléfono agrupe
+distinto que la oficina.
+
 ## Lo que el historial anticipa
 
 > **No es mantenimiento predictivo, y la diferencia importa al comprar.** En

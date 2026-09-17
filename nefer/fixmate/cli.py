@@ -133,6 +133,27 @@ def cmd_estado(args) -> int:
         tipos[fragmento.tipo] = tipos.get(fragmento.tipo, 0) + 1
     print("Por tipo:   " + ", ".join(f"{n} {t}" for t, n in sorted(tipos.items())))
 
+    # Cuanto del historial reconoce el catalogo, y sobre todo que no. Ese
+    # segundo numero es la lista de lo que hay que agregarle: mientras esta
+    # ahi, esas causas se agrupan por parecido y no se pueden comparar entre
+    # equipos ni entre años.
+    from .catalogo import POR_DEFECTO as catalogo
+
+    cobertura = catalogo.cobertura(
+        f.metadatos.get("causa_raiz", "") for f in indice.fragmentos)
+    if cobertura["total"]:
+        print(f"\nCatálogo de causas: {cobertura['codificadas']} de "
+              f"{cobertura['total']} codificadas ({cobertura['cobertura']:.0%}), "
+              f"{len(cobertura['por_codigo'])} códigos distintos")
+        for codigo, casos in list(cobertura["por_codigo"].items())[:6]:
+            entrada = catalogo.get(codigo)
+            print(f"  {casos:>3} · {codigo:<34} {entrada.modo if entrada else ''}")
+        if cobertura["faltantes"]:
+            print(f"  Sin código ({cobertura['sin_codigo']}). Lo más repetido "
+                  f"primero: es lo que más rinde agregar al catálogo.")
+            for texto in cobertura["faltantes"][:5]:
+                print(f"      · {texto[:66]}")
+
     clasificador = motor.clasificador
     print(f"\nClasificador de causas: {clasificador.motivo}")
     if clasificador.entrenado:

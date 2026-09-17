@@ -59,6 +59,7 @@ jobs:
             tests/test_demo_fixmate.py \
             tests/test_fixmate_api.py \
             tests/test_fixmate_aprendizaje.py \
+            tests/test_fixmate_catalogo.py \
             tests/test_fixmate_cierre.py \
             tests/test_fixmate_cruce.py \
             tests/test_fixmate_documentos.py \

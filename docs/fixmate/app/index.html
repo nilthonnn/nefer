@@ -690,11 +690,106 @@ var FIXMATE = (function () {
     return menor >= 3 && comunes / menor >= SOLAPE_CAUSAS;
   }
 
+  // Espejo de nefer/fixmate/catalogo.py, generado desde el. Dos catalogos
+  // que se separan harian que el telefono agrupe distinto que la oficina,
+  // y la prueba cruzada lo dice.
+  var CAT_MINIMO_PISTAS = 2;
+  var CAT_MINIMO_PREFIJO = 4;
+  var CAT_INEQUIVOCAS = ["acumulador", "alternador", "cavitacion", "colmatad", "embrague", "inyector", "radiador", "sulfatad", "termostato", "turbo", "vastago"];
+  var CAT_PLANIFICADO = ["programado", "programada", "preventivo", "preventiva", "rutina", "rutinario", "segun plan", "por horas", "mantenimiento de", "servicio de", "pm "];
+  var CAT_ENTRADAS = [
+    ["ADM.RESTRICCION.FILTRO", "Filtro de aire colmatado", ["filtro", "aire", "colmatad", "tapad", "obstruid", "saturad", "restriccion", "admision", "sucio"]],
+    ["ESC.FUGA.MULTIPLE", "Junta o multiple de escape fisurado", ["escape", "multiple", "junta", "fisura", "fuga", "gases", "sopla"]],
+    ["ADM.BAJA_PRESION.TURBO", "Turbo con holgura o alabes da\u00f1ados", ["turbo", "turbocompresor", "holgura", "alabe", "sopla", "presion"]],
+    ["COM.COMBUSTION.INYECTOR", "Inyector con retorno excesivo o goteo", ["inyector", "retorno", "gote", "pulveriza", "combustion", "excesiv"]],
+    ["COM.RESTRICCION.FILTRO", "Filtro de combustible colmatado", ["filtro", "combustible", "petroleo", "diesel", "colmatad", "tapad", "obstruid"]],
+    ["COM.CONTAMINACION.AGUA", "Agua o particulas en el combustible", ["agua", "combustible", "contaminad", "particula", "sedimento", "tanque", "condensacion"]],
+    ["COM.BAJA_PRESION.BOMBA", "Bomba de inyeccion con baja presion", ["bomba", "inyeccion", "presion", "combustible", "riel"]],
+    ["HID.FUGA.SELLO", "Sello o reten de cilindro vencido", ["sello", "reten", "vastago", "cilindro", "fuga", "gote", "aceite", "empaquetadura"]],
+    ["HID.FUGA.MANGUERA", "Manguera picada o acople flojo", ["manguera", "acople", "picad", "rozand", "fuga", "reventad", "conexion", "abrazadera"]],
+    ["HID.BAJA_PRESION.BOMBA", "Bomba hidraulica con baja presion", ["bomba", "hidraulic", "presion", "caudal", "fuerza", "desgaste"]],
+    ["HID.DERIVA.VALVULA", "Valvula de retencion o de mando con fuga interna", ["valvula", "retencion", "deriva", "interna", "mando", "distribuidor"]],
+    ["HID.CONTAMINACION.ACEITE", "Aceite hidraulico contaminado o vencido", ["aceite", "hidraulic", "contaminad", "sucio", "particula", "analisis"]],
+    ["HID.SOBRECALENTAMIENTO.ENFRIADOR", "Enfriador de aceite obstruido", ["enfriador", "aceite", "obstruid", "temperatura", "hidraulic", "panal"]],
+    ["ELE.NO_ARRANCA.BORNES", "Bornes de bateria sulfatados o flojos", ["borne", "bateri", "sulfatad", "flojo", "corrosion", "terminal"]],
+    ["ELE.NO_ARRANCA.BATERIA", "Bateria descargada o con vaso en corto", ["bateri", "descargad", "vaso", "densidad", "corto", "arranca", "lento"]],
+    ["ELE.NO_CARGA.ALTERNADOR", "Alternador o regulador en falla", ["alternador", "carga", "regulador", "carbon", "correa", "amperaje", "voltaje"]],
+    ["ELE.NO_ARRANCA.MOTOR_ARRANQUE", "Motor de arranque o solenoide en falla", ["arranque", "solenoide", "bendix", "carbon", "burro"]],
+    ["ELE.FALSO_CONTACTO.ARNES", "Arnes rozado o conector con falso contacto", ["arnes", "conector", "cable", "falso", "contacto", "intermitente", "rozad", "empalme"]],
+    ["ELE.LECTURA_ERRATICA.SENSOR", "Sensor descalibrado o en falla", ["sensor", "lectura", "erratic", "descalibrad", "se\u00f1al", "tablero", "testigo"]],
+    ["TER.SOBRECALENTAMIENTO.RADIADOR", "Radiador obstruido por tierra o incrustacion", ["radiador", "obstruid", "panal", "tierra", "incrustacion", "sobrecalient", "calient", "temperatura"]],
+    ["TER.SOBRECALENTAMIENTO.TERMOSTATO", "Termostato trabado", ["termostato", "trabad", "abiert", "cerrad", "temperatura", "calient"]],
+    ["TER.FUGA.REFRIGERANTE", "Manguera, tapa o bomba de agua con fuga", ["refrigerante", "fuga", "agua", "tapa", "manguera", "nivel"]],
+    ["TER.SOBRECALENTAMIENTO.VENTILADOR", "Ventilador, correa o embrague viscoso en falla", ["ventilador", "correa", "viscos", "embrague", "tensor", "floj"]],
+    ["NEU.FUGA.AIRE", "Fuga en circuito de aire comprimido", ["aire", "comprimid", "fuga", "presion", "calderin", "purga", "neumatic"]],
+    ["NEU.BAJA_PRESION.LLANTA", "Llanta con perforacion o valvula con fuga", ["llanta", "neumatic", "perforacion", "clavo", "valvula", "presion"]],
+    ["TRA.PATINA.EMBRAGUE", "Embrague o disco desgastado", ["embrague", "disco", "patina", "desgastad", "clutch", "resbala"]],
+    ["TRA.RUIDO.RODAMIENTO", "Rodamiento picado o sin lubricacion", ["rodamiento", "ruido", "picad", "cojinete", "balero", "zumbido"]],
+    ["TRA.FUGA.RETEN", "Reten de transmision o mando final vencido", ["reten", "transmision", "mando", "final", "fuga", "diferencial", "corona"]],
+    ["FRE.BAJA_EFICACIA.PASTILLAS", "Pastillas, bandas o discos desgastados", ["freno", "pastilla", "banda", "disco", "desgastad", "zapata", "frena"]],
+    ["EST.FISURA.SOLDADURA", "Fisura en soldadura o elemento estructural", ["fisura", "grieta", "soldadura", "rajad", "estructura", "chasis", "quebrad", "trizad"]],
+    ["EST.DESGASTE.TREN_RODAJE", "Tren de rodaje o cadena fuera de tolerancia", ["cadena", "rodaje", "zapata", "rodillo", "eslabon", "desgaste", "tension", "oruga"]],
+    ["EST.DESGASTE.DIENTES", "Dientes o cuchillas de cucharon gastados", ["diente", "cuchilla", "cucharon", "gastad", "adaptador"]],
+    ["LUB.FALTA.NIVEL", "Nivel de aceite bajo por consumo o fuga", ["nivel", "aceite", "consumo", "rellenar", "lubricacion"]],
+    ["LUB.VENCIDO.INTERVALO", "Aceite o filtro fuera de intervalo", ["intervalo", "vencid", "atrasad", "sobrepasad", "excedid", "horas"]],
+    ["OPE.DA\u00d1O.OPERACION", "Sobrecarga, golpe o maniobra indebida", ["golpe", "sobrecarga", "operador", "maniobra", "choque", "impacto"]],
+  ];
+
+  // Las pistas se escriben como raiz y casan por prefijo: «bateri»
+  // encuentra «bateria» y «baterias». El tokenizador no lematiza, y sin
+  // esto «Baterias sulfatadas» no casaba con ninguna entrada.
+  function casaPista(pista, palabras) {
+    if (palabras[pista]) return true;
+    if (pista.length < CAT_MINIMO_PREFIJO) return false;
+    for (var p in palabras) { if (p.indexOf(pista) === 0) return true; }
+    return false;
+  }
+
+  // Un servicio planificado no es una falla: mezclarlos infla el MTBF y
+  // llena de cambios de aceite la lista de lo que le vuelve a pasar.
+  function catalogoClasificar(texto) {
+    var normal = normalizar(texto);
+    for (var m = 0; m < CAT_PLANIFICADO.length; m++) {
+      if (normal.indexOf(CAT_PLANIFICADO[m]) !== -1) return null;
+    }
+    var palabras = tabla();
+    tokenizar(texto).forEach(function (t) { palabras[t] = true; });
+
+    var marcador = [];
+    CAT_ENTRADAS.forEach(function (entrada) {
+      var pistas = entrada[2], puntos = 0;
+      for (var i = 0; i < pistas.length; i++) {
+        var pista = normalizar(pistas[i]);
+        if (!casaPista(pista, palabras)) continue;
+        puntos += 1;
+        // Una pista inequivoca en el rubro vale por dos.
+        if (CAT_INEQUIVOCAS.indexOf(pista) >= 0) puntos += 1;
+      }
+      if (puntos >= CAT_MINIMO_PISTAS) marcador.push([puntos, entrada]);
+    });
+    if (!marcador.length) return null;
+    marcador.sort(function (a, b) {
+      if (b[0] !== a[0]) return b[0] - a[0];
+      return a[1][0] < b[1][0] ? -1 : 1;
+    });
+    // Empate: ninguna. Dos entradas igual de defendibles quieren decir que
+    // el texto no alcanza para decidir, y elegir a la suerte ensucia la
+    // cuenta de toda la flota.
+    if (marcador.length > 1 && marcador[0][0] === marcador[1][0]) return null;
+    return marcador[0][1];
+  }
+
   function agruparCausas(causas) {
-    var frecuencia = tabla();
+    var frecuencia = tabla(), mapaCatalogo = tabla();
     causas.forEach(function (c) {
       var limpia = String(c || "").trim();
       if (limpia) frecuencia[limpia] = (frecuencia[limpia] || 0) + 1;
+    });
+    // Primero el catalogo; lo que reconoce no entra al parecido, porque
+    // meterlo en un grupo seria adivinar.
+    Object.keys(frecuencia).forEach(function (causa) {
+      var entrada = catalogoClasificar(causa);
+      if (entrada) { mapaCatalogo[causa] = entrada[1]; delete frecuencia[causa]; }
     });
     var ordenadas = Object.keys(frecuencia).sort(function (a, b) {
       if (frecuencia[b] !== frecuencia[a]) return frecuencia[b] - frecuencia[a];
@@ -709,6 +804,7 @@ var FIXMATE = (function () {
       representantes.push(causa);
       mapa[causa] = causa;
     });
+    Object.keys(mapaCatalogo).forEach(function (c) { mapa[c] = mapaCatalogo[c]; });
     return mapa;
   }
 

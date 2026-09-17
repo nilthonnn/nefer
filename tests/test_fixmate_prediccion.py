@@ -91,12 +91,15 @@ def test_una_causa_que_volvio_tiene_intervalo_y_una_sola_vez_no():
     parte = prediccion.pronostico(_indice(CON_HISTORIA), "GE074-01", HOY)
     porcausa = {r.causa: r for r in parte.reincidencias}
 
+    # El grupo lleva el nombre canónico del catálogo, no el que más se
+    # tecleó: es el mismo código para las tres formas de escribirlo, y es
+    # comparable entre equipos y entre años.
     filtro = porcausa["Filtro de aire colmatado"]
     assert filtro.casos == 3                    # las tres formas de escribirlo
     assert filtro.intervalo_medio_dias == 66    # (64 + 69) / 2, redondeado
     assert filtro.proxima_estimada == "2026-08-07"
 
-    inyector = porcausa["Inyector con retorno excesivo"]
+    inyector = porcausa["Inyector con retorno excesivo o goteo"]
     assert inyector.casos == 1
     assert inyector.intervalo_medio_dias is None
     assert inyector.proxima_estimada is None
