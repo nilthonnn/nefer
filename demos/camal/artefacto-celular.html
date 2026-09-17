@@ -1075,19 +1075,23 @@ function fila(numero, celdas) {
 const T = (v, s) => ({ v: v, s: s });                   // texto o número
 const F = (formula, valor, s) => ({ v: valor, s: s, f: formula });
 
-function hoja(filas, anchos, congelar, autofiltro) {
+function hoja(filas, anchos, congelar, autofiltro, paraImprimir) {
   const cols = anchos.map((a, i) =>
     `<col min="${i + 1}" max="${i + 1}" width="${a}" customWidth="1"/>`).join("");
   const panel = congelar
     ? `<sheetView workbookViewId="0"><pane ySplit="${congelar}" topLeftCell="A${congelar + 1}" activePane="bottomLeft" state="frozen"/></sheetView>`
     : `<sheetView workbookViewId="0"/>`;
+  // El orden de los bloques no es decorativo: si `sheetPr` no va primero,
+  // Excel da el archivo por corrupto y no lo abre.
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+${paraImprimir ? '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' : ""}
 <sheetViews>${panel}</sheetViews>
 <sheetFormatPr defaultRowHeight="15"/>
 <cols>${cols}</cols>
 <sheetData>${filas.join("")}</sheetData>
 ${autofiltro ? `<autoFilter ref="${autofiltro}"/>` : ""}
+${paraImprimir ? '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup orientation="portrait" fitToWidth="1" fitToHeight="0" paperSize="9"/>' : ""}
 </worksheet>`;
 }
 
@@ -1144,7 +1148,7 @@ function libroExcel() {
       T(f.codigoLote, anul ? 7 : 0), T(f.lote), T(f.categoria, anul ? 7 : 0),
       T(f.n), T(Number(kg(f.kg)), 3),
       f.precio === null ? T("") : T(Number(soles(f.precio)), 4),
-      F(`IF($L${r}="VIGENTE",ROUND($H${r}*$I${r},2),0)`, sub === "" ? 0 : sub, 4),
+      F(`IF(OR($L${r}<>"VIGENTE",$I${r}=""),"",ROUND($H${r}*$I${r},2))`, sub, 4),
       T(f.registrado), T(f.estado, anul ? 7 : 0), T(f.motivo, 7), T(f.responsable)
     ]));
   });
@@ -1178,6 +1182,98 @@ function libroExcel() {
     F(`SUM(I2:I${nR + 1})`, Number(soles(resumen.reduce((a, f) => a + (f.total || 0), 0))), 6)
   ]));
 
+  // --- PESOS POR LOTE: la misma verdad que DETALLE, pero en bloques y en el
+  //     orden en que se trabaja. Cada lote lleva sus pesos, su peso total y su
+  //     precio total, y entre lote y lote hay una fila en blanco: es la hoja
+  //     que se imprime y se lee, no la que se filtra.
+  const filasL = [
+    fila(1, [T("PESOS POR LOTE", 2)]),
+    fila(2, [T("Un bloque por lote. Los totales son fórmulas: excluyen lo anulado y se recalculan si se corrige un peso.", 7)])
+  ];
+  let r = 3;
+  const celdasTotalPeso = [], celdasTotalMonto = [];
+
+  jornada.lotes.forEach((lote) => {
+    const esPeso = lote.tipo === "peso";
+    const pesadas = lote.pesos.slice().sort((a, b) => a.n - b.n);
+
+    r++;                                    // una fila en blanco separa los lotes
+    filasL.push(fila(r, [
+      T(codigoLote(lote), 1), T(lote.categoria, 1),
+      T(esPeso ? `${vigentes(lote).length} cabezas` : `${lote.cantidad} unidades`, 1),
+      T(lote.estado === "abierto" ? "EN CURSO" : "CULMINADO", 1),
+      T("", 1), T(`${lote.inicio}${lote.fin ? " a " + lote.fin : ""}`, 1)
+    ]));
+    r++;
+
+    filasL.push(fila(r, [T("N°", 8), T("ID DE REGISTRO", 8), T("PESO_KG", 8),
+                         T("PRECIO", 8), T("SUBTOTAL", 8), T("ESTADO", 8)]));
+    r++;
+
+    const primera = r;
+    if (esPeso) {
+      pesadas.forEach((p) => {
+        const anul = !!p.anulado;
+        filasL.push(fila(r, [
+          T(p.n, anul ? 7 : 0), T(codigoPesada(lote, p), anul ? 7 : 0),
+          T(Number(kg(p.kg)), 3),
+          lote.precio === null ? T("") : T(Number(soles(lote.precio)), 4),
+          F(`IF(OR($F${r}<>"VIGENTE",$D${r}=""),"",ROUND($C${r}*$D${r},2))`,
+            (anul || lote.precio === null) ? "" : Math.round(p.kg * lote.precio * 100) / 100, 4),
+          T(anul ? "ANULADO" : "VIGENTE", anul ? 7 : 0)
+        ]));
+        r++;
+      });
+      if (!pesadas.length) {
+        filasL.push(fila(r, [T(""), T("Sin pesadas registradas.", 7)]));
+        r++;
+      }
+    } else {
+      filasL.push(fila(r, [
+        T(""), T("Menudencias contadas por unidad", 0), T(lote.cantidad),
+        lote.precio === null ? T("") : T(Number(soles(lote.precio)), 4),
+        F(`IF($D${r}="","",ROUND($C${r}*$D${r},2))`, totalLote(lote) === null ? "" : totalLote(lote), 4),
+        T("VIGENTE")
+      ]));
+      r++;
+    }
+    const ultima = r - 1;
+
+    const filaPeso = r;
+    if (esPeso) {
+      filasL.push(fila(r, [
+        T(""), T("PESO TOTAL DEL LOTE", 5),
+        F(`SUMIF($F${primera}:$F${ultima},"VIGENTE",$C${primera}:$C${ultima})`, Number(kg(pesoLote(lote))), 3)
+      ]));
+      r++;
+    }
+    filasL.push(fila(r, [
+      T(""), T(esPeso ? "PRECIO POR KG" : "PRECIO POR UNIDAD", 5), null,
+      lote.precio === null ? T("") : T(Number(soles(lote.precio)), 4)
+    ]));
+    const filaPrecio = r;
+    r++;
+    filasL.push(fila(r, [
+      T(""), T("PRECIO TOTAL DEL LOTE", 5), null, null,
+      F(esPeso ? `IF($D${filaPrecio}="","",ROUND($C${filaPeso}*$D${filaPrecio},2))`
+               : `IF($D${filaPrecio}="","",ROUND($C${primera}*$D${filaPrecio},2))`,
+        totalLote(lote) === null ? "" : totalLote(lote), 6)
+    ]));
+    if (esPeso) celdasTotalPeso.push(`C${filaPeso}`);
+    celdasTotalMonto.push(`E${r}`);
+    r++;
+  });
+
+  r++;
+  filasL.push(fila(r, [
+    T("TOTAL DE LA JORNADA", 5), null,
+    F(celdasTotalPeso.length ? `SUM(${celdasTotalPeso.join(",")})` : "0",
+      Number(kg(totalesJornada().kilos)), 3),
+    null,
+    F(celdasTotalMonto.length ? `SUM(${celdasTotalMonto.join(",")})` : "0",
+      Number(soles(totalesJornada().monto)), 6)
+  ]));
+
   // --- BITÁCORA: el rastro completo, en orden de ocurrencia.
   const cabB = ["MARCA_TIEMPO", "ACCION", "REFERENCIA", "ANTES", "DESPUES", "MOTIVO", "RESPONSABLE"];
   const filasB = [fila(1, cabB.map((c) => T(c, 1)))];
@@ -1192,6 +1288,7 @@ function libroExcel() {
   const control = [
     fila(1, [T(FORMATO.nombre, 2)]),
     fila(2, [T("Documento controlado. Las cifras se calculan desde las hojas DETALLE y RESUMEN.", 7)]),
+    fila(3, [T("PESOS POR LOTE trae cada lote en su bloque, con peso total y precio total; DETALLE es la tabla para filtrar.", 7)]),
     fila(4, [T("Código del formato", 8), T(FORMATO.codigo, 8)]),
     fila(5, [T("Versión del formato", 8), T(FORMATO.version, 8)]),
     fila(6, [T("Aplicación de origen", 8), T(FORMATO.app, 8)]),
@@ -1212,7 +1309,8 @@ function libroExcel() {
   ];
 
   const hojas = [
-    { nombre: "CONTROL", xml: hoja(control, [32, 46], 0, null) },
+    { nombre: "CONTROL", xml: hoja(control, [32, 46], 0, null, true) },
+    { nombre: "PESOS POR LOTE", xml: hoja(filasL, [8, 30, 12, 11, 13, 12], 0, null, true) },
     { nombre: "DETALLE", xml: hoja(filasD, [24, 18, 12, 20, 7, 26, 12, 11, 11, 15, 20, 11, 30, 22], 1, `A1:N${Math.max(2, nD + 1)}`) },
     { nombre: "RESUMEN", xml: hoja(filasR, [20, 7, 13, 26, 11, 9, 15, 11, 14, 12, 11, 11], 1, `A1:L${Math.max(2, nR + 1)}`) },
     { nombre: "BITACORA", xml: hoja(filasB, [20, 26, 24, 16, 16, 34, 22], 1, `A1:G${Math.max(2, jornada.bitacora.length + 1)}`) }
@@ -1972,7 +2070,7 @@ function pantallaExportar() {
     <div class="tarjeta">
       <div class="rotulo">Archivos de la jornada</div>
       <button class="btn" onclick="exportarExcel()">Descargar Excel (.xlsx)</button>
-      <p class="nota">Cuatro hojas: CONTROL, DETALLE, RESUMEN y BITACORA. El resumen no lleva números pegados sino fórmulas: si en la oficina corrigen un peso en DETALLE, el resumen y el control se recalculan solos.</p>
+      <p class="nota">Cinco hojas: CONTROL, PESOS POR LOTE —cada lote con sus pesos, su peso total y su precio total, en bloques—, DETALLE, RESUMEN y BITACORA. Los totales no son números pegados sino fórmulas: si en la oficina corrigen un peso, todo lo demás se recalcula solo.</p>
       <button class="btn btn-azul" onclick="exportarPDF()">Descargar el acta en PDF</button>
       <p class="nota" id="notaCopia">El acta trae el control documental, el resumen, el detalle con sus anulaciones, la bitácora y las dos firmas.</p>
       ${jornada.operador ? "" : '<div class="aviso">No hay responsable declarado. Los archivos saldrán con «(sin declarar)» en el control documental.</div>'}

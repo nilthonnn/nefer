@@ -171,8 +171,40 @@ print("\n[12] El Excel, abierto con openpyxl")
 from openpyxl import load_workbook
 
 wb = load_workbook(libro)                      # con las fórmulas tal cual
-exigir(wb.sheetnames == ["CONTROL", "DETALLE", "RESUMEN", "BITACORA"],
-       f"cuatro hojas en orden: {wb.sheetnames}")
+exigir(wb.sheetnames == ["CONTROL", "PESOS POR LOTE", "DETALLE", "RESUMEN", "BITACORA"],
+       f"cinco hojas en orden: {wb.sheetnames}")
+
+lot = wb["PESOS POR LOTE"]
+lotv = load_workbook(libro, data_only=True)["PESOS POR LOTE"]
+etiquetas = [lot.cell(row=r, column=2).value for r in range(1, lot.max_row + 1)]
+exigir(etiquetas.count("PESO TOTAL DEL LOTE") == 3,
+       "un «peso total del lote» por cada lote de pesaje")
+exigir(etiquetas.count("PRECIO TOTAL DEL LOTE") == 5,
+       "y un «precio total del lote» por cada lote, menudencias incluidas")
+exigir(any(str(lot.cell(row=r, column=3).value).startswith('=SUMIF(')
+           for r in range(1, lot.max_row + 1)),
+       "el peso total del bloque suma solo lo vigente, con fórmula")
+exigir(any("ROUND(" in str(lot.cell(row=r, column=5).value)
+           for r in range(1, lot.max_row + 1)),
+       "y el precio total sale de peso por precio")
+# El lote en curso no tiene precio puesto: sus celdas de dinero han de quedar
+# vacías. Un cero ahí se leería como «cobrado a cero», que es otra cosa.
+inicio_sin_precio = next(r for r in range(1, lot.max_row + 1)
+                         if str(lot.cell(row=r, column=1).value or "").endswith("-L003"))
+fin_sin_precio = next(r for r in range(inicio_sin_precio, lot.max_row + 1)
+                      if lot.cell(row=r, column=2).value == "PRECIO TOTAL DEL LOTE")
+dinero = [lotv.cell(row=r, column=5).value
+          for r in range(inicio_sin_precio, fin_sin_precio + 1)
+          if lotv.cell(row=r, column=5).value != "SUBTOTAL"]   # sin la cabecera
+exigir(all(v is None for v in dinero),
+       f"un lote sin precio deja las celdas de dinero vacías, no en cero: {dinero}")
+exigir(lot.cell(row=lot.max_row, column=1).value == "TOTAL DE LA JORNADA",
+       "el bloque final cierra con el total de la jornada")
+
+exigir(abs(lotv.cell(row=lotv.max_row, column=3).value - 506.80) < 0.01,
+       "el peso de la jornada cuadra: 506.80 kg")
+exigir(abs(lotv.cell(row=lotv.max_row, column=5).value - 6385.70) < 0.01,
+       "y el monto: S/ 6385.70")
 
 det = wb["DETALLE"]
 cab = [c.value for c in det[1]]

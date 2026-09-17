@@ -48,7 +48,7 @@ Después sale del navegador y **audita lo exportado con librerías ajenas a la
 app**: abre el `.xlsx` con openpyxl —comprueba las cuatro hojas, que no haya
 dos identificadores repetidos, que la anulada viaje marcada, que el resumen
 sean fórmulas contra el detalle y que el total en frío cuadre con la pantalla—
-y el PDF con pypdf. Cuarenta y dos comprobaciones; cualquiera que falle
+y el PDF con pypdf. Sesenta y tres comprobaciones; cualquiera que falle
 devuelve código 1.
 
 ### Lo que arregla del prototipo
@@ -95,8 +95,16 @@ Los dos se arman dentro de la app, sin librerías: en el camal no hay señal par
 descargarlas. El `.xlsx` es un zip de XML escrito a mano y el PDF se ensambla
 objeto por objeto, con Helvetica en WinAnsi, que cubre el castellano entero.
 
-**Excel, cuatro hojas.** `CONTROL` (portada y cifras del día), `DETALLE` (una
-fila por cabeza), `RESUMEN` (una fila por lote) y `BITACORA` (el rastro).
+**Excel, cinco hojas.** `CONTROL` (portada y cifras del día), `PESOS POR LOTE`
+(la hoja que se lee), `DETALLE` (la tabla que se filtra), `RESUMEN` (una fila
+por lote) y `BITACORA` (el rastro).
+
+`PESOS POR LOTE` está segmentada: un bloque por lote, separado por una fila en
+blanco, con su banda de encabezado —código, categoría, cantidad, estado y
+horas—, debajo los pesos uno a uno con su identificador y su estado, y al pie
+tres filas alineadas bajo su columna: **peso total del lote**, **precio por
+kg** y **precio total del lote**. Al final, el total de la jornada. Es la hoja
+que se imprime: va con ajuste a una página de ancho.
 
 Lo importante no es que haya cuatro hojas sino que estén **vinculadas**: el
 resumen no lleva números pegados sino fórmulas —`SUMIFS` y `COUNTIFS` contra el
@@ -111,6 +119,9 @@ firmas: responsable del registro y conformidad del cliente. Pie de página con
 código de formato, jornada, hora de emisión y numeración.
 
 ### El Excel
+
+Un lote todavía sin precio deja las celdas de dinero **vacías**, no en cero:
+cero se lee como «cobrado a cero», y no es lo mismo que «aún sin tasar».
 
 Columnas, por hoja:
 
