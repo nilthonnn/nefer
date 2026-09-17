@@ -1,0 +1,2144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1A1E25">
+<meta name="description" content="Registro de faenamiento: lotes con correlativo, Excel y acta en PDF, sin conexión.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icono-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- Generado por construir.py desde app-camal.cuerpo.html. No editar a mano: se pisa. -->
+<title>Control de Faenamiento</title>
+<style>
+  /* Un solo tema, oscuro y a propósito: la app se usa en galpón, de
+     madrugada, y con la pantalla al máximo de brillo. Tipografía del
+     sistema, sin fuentes remotas: en el camal no hay señal. */
+  :root {
+    --fondo: #1A1E25;
+    --tarjeta: #252A33;
+    --tarjeta-alta: #2E343F;
+    --campo: #383F4C;
+    --borde: #454D5C;
+    --texto: #FFFFFF;
+    --tenue: #A3ABB9;
+    --verde: #00A86B;
+    --verde-claro: #00FF95;
+    --naranja: #FF9F00;
+    --rojo: #D9534F;
+    --azul: #2C7BE5;
+    --turquesa: #20B2AA;
+    --morado: #7C5CD6;
+    --tinta: #12151B;
+  }
+
+  * { -webkit-tap-highlight-color: rgba(0, 168, 107, 0.25); }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    background: var(--fondo);
+    color: var(--texto);
+    margin: 0;
+    padding-inline: 16px;
+    padding-block: 10px 96px;
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  h1 { font-size: 20px; }
+  h2 { font-size: 17px; }
+  h3 { font-size: 15px; }
+
+  .cifra { font-variant-numeric: tabular-nums; }
+
+  /* ---- Encabezado ---- */
+  .barra-sup {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-block: 6px 12px;
+  }
+  .barra-sup .titulo { flex: 1; min-width: 0; }
+  .barra-sup .titulo span { display: block; font-size: 12px; color: var(--tenue); }
+  .insignia {
+    background: var(--naranja);
+    color: #000;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    padding: 3px 7px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .btn-atras {
+    background: var(--campo);
+    color: var(--texto);
+    border: none;
+    border-radius: 9px;
+    font-size: 20px;
+    line-height: 1;
+    width: 42px;
+    height: 42px;
+    cursor: pointer;
+    flex: none;
+  }
+
+  /* ---- Bloques ---- */
+  .tarjeta {
+    background: var(--tarjeta);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .rotulo {
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--tenue);
+    margin-bottom: 8px;
+  }
+
+  .tiras { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tira {
+    background: var(--tinta);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .tira .valor { font-size: 21px; font-weight: 700; color: var(--verde-claro); }
+  .tira .pie { font-size: 12px; color: var(--tenue); }
+
+  /* ---- Controles ---- */
+  label { display: block; font-size: 13px; color: var(--tenue); margin-bottom: 4px; }
+  .campo-grupo { margin-bottom: 12px; }
+
+  input, select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 13px;
+    font-size: 16px;
+    font-family: inherit;
+    border: 1px solid var(--borde);
+    background: var(--campo);
+    color: var(--texto);
+    border-radius: 9px;
+  }
+  input:disabled, select:disabled { opacity: 0.45; }
+  input.grande {
+    font-size: 30px;
+    font-weight: 700;
+    text-align: center;
+    padding: 14px;
+    letter-spacing: 0.02em;
+  }
+
+  .paso { display: grid; grid-template-columns: 56px 1fr 56px; gap: 8px; }
+  .paso button {
+    background: var(--campo);
+    color: var(--texto);
+    border: 1px solid var(--borde);
+    border-radius: 9px;
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .btn {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 10px;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: inherit;
+    color: #fff;
+    background: var(--verde);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .btn + .btn { margin-top: 10px; }
+  .btn-sec { background: var(--campo); }
+  .btn-gris { background: #49505F; }
+  .btn-azul { background: var(--azul); }
+  .btn-turquesa { background: var(--turquesa); color: #04312F; }
+  .btn-morado { background: var(--morado); }
+  .btn-rojo { background: var(--rojo); }
+  .btn-chico { padding: 11px; font-size: 14px; }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .duo .btn + .btn { margin-top: 0; }
+
+  /* ---- Barra fija de acción (el pulgar vive aquí) ---- */
+  .barra-accion {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to top, var(--fondo) 72%, rgba(26, 30, 37, 0));
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    z-index: 5;
+  }
+
+  /* ---- Lista de lotes ---- */
+  .lote {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    background: var(--tarjeta);
+    border: 1px solid transparent;
+    border-left: 4px solid var(--verde);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 8px;
+    color: var(--texto);
+    font-family: inherit;
+    font-size: 15px;
+    cursor: pointer;
+  }
+  .lote.en-curso { border-left-color: var(--naranja); }
+  .lote .col { flex: 1; min-width: 0; }
+  .lote .nombre { font-weight: 700; }
+  .lote .detalle { font-size: 12.5px; color: var(--tenue); }
+  .lote .monto { text-align: right; font-weight: 700; color: var(--verde-claro); white-space: nowrap; }
+  .lote .monto small { display: block; font-weight: 400; color: var(--tenue); font-size: 12px; }
+
+  .chip {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--verde);
+    color: #04241A;
+  }
+  .chip.abierto { background: var(--naranja); color: #2B1A00; }
+
+  /* ---- Progreso del lote ---- */
+  .progreso {
+    height: 8px;
+    background: var(--tinta);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-top: 10px;
+  }
+  .progreso i { display: block; height: 100%; background: var(--verde); border-radius: 99px; }
+
+  .correlativo { text-align: center; padding-block: 4px 12px; }
+  .correlativo .num { font-size: 46px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+  .correlativo .de { font-size: 14px; color: var(--tenue); }
+
+  /* ---- Pesadas registradas ---- */
+  .pesadas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .pesada {
+    background: var(--tinta);
+    border: 1px solid var(--borde);
+    color: var(--texto);
+    border-radius: 8px;
+    padding: 7px 9px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+  }
+  .pesada b { color: var(--tenue); font-weight: 700; margin-right: 4px; }
+
+  .vacio { color: var(--tenue); font-size: 14px; text-align: center; padding: 18px 8px; }
+
+  /* ---- Cierre del lote: peso, precio y total, en ese orden ---- */
+  .paso-cierre {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 12px;
+    align-items: start;
+    padding-block: 12px;
+  }
+  .paso-cierre + .paso-cierre { border-top: 1px solid var(--borde); }
+  .paso-cierre .orden {
+    background: var(--tinta);
+    border: 1px solid var(--borde);
+    border-radius: 99px;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--tenue);
+  }
+  .paso-cierre > div { min-width: 0; }
+  .resultado { font-size: 30px; font-weight: 800; line-height: 1.15; }
+  .resultado.en-soles { color: var(--verde-claro); }
+  .pie-paso { font-size: 12.5px; color: var(--tenue); margin-top: 2px; }
+
+  .aviso {
+    background: rgba(217, 83, 79, 0.16);
+    border: 1px solid var(--rojo);
+    color: #FFC9C7;
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 13.5px;
+    margin-top: 10px;
+  }
+  .nota { font-size: 12.5px; color: var(--tenue); margin-top: 8px; }
+
+  /* ---- Gaveta ---- */
+  .velo {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 20;
+  }
+  .gaveta {
+    background: var(--tarjeta-alta);
+    width: 100%;
+    max-width: 520px;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+  .gaveta h2 { text-align: center; margin-bottom: 12px; }
+
+  /* ---- Exportación ---- */
+  .pestanas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .pestanas button {
+    background: var(--campo);
+    color: var(--tenue);
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 13.5px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .pestanas button[aria-pressed="true"] { background: var(--verde); color: #fff; border-color: var(--verde); }
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 190px;
+    background: var(--tinta);
+    color: var(--texto);
+    border: 1px solid var(--borde);
+    border-radius: 9px;
+    padding: 11px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 3px solid var(--verde-claro);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /* ---- Trazabilidad ---- */
+  .codigo {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    color: var(--tenue);
+    letter-spacing: 0.02em;
+    word-break: break-all;
+  }
+  .pesada.anulada { opacity: 0.5; border-style: dashed; }
+  .pesada.anulada .valor-kg { text-decoration: line-through; }
+  .pesada .sello { display: block; font-size: 10px; color: var(--tenue); }
+
+  .bitacora { display: flex; flex-direction: column; gap: 8px; }
+  .apunte {
+    border-left: 3px solid var(--borde);
+    padding: 2px 0 2px 10px;
+    font-size: 13px;
+  }
+  .apunte.correccion { border-left-color: var(--naranja); }
+  .apunte.anulacion { border-left-color: var(--rojo); }
+  .apunte .cuando { font-size: 11.5px; color: var(--tenue); }
+  .apunte .que { font-weight: 700; }
+  .apunte .motivo { color: var(--tenue); }
+
+  .ficha-control { display: grid; gap: 6px; }
+  .ficha-control div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+  .ficha-control dt, .ficha-control .clave { color: var(--tenue); }
+  .ficha-control .valor-control { font-weight: 700; text-align: right; word-break: break-all; }
+
+  .pestanas.tres { grid-template-columns: 1fr 1fr 1fr; }
+  .pestanas button { font-size: 12.5px; padding: 9px 6px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="gaveta"></div>
+
+<script>
+// ===========================================================================
+// Control documental. Lo que identifica al formato, no a la jornada: viaja en
+// cada exportación, que es lo que permite saber con qué versión se registró.
+// ===========================================================================
+const FORMATO = {
+  codigo: "REG-CAM-001",
+  nombre: "Registro de faenamiento y pesaje por lotes",
+  version: "3.0",
+  app: "Control de Faenamiento 3.0"
+};
+
+// ---------------------------------------------------------------------------
+// Catálogo. Los precios son referenciales: se editan en cada lote y quedan
+// guardados con el lote, no aquí.
+// ---------------------------------------------------------------------------
+const CATEGORIAS_PESO = [
+  { id: "Alpaca degollada",           precio: 14.00 },
+  { id: "Alpaca observada degollada", precio: 12.00 },
+  { id: "Alpaca vieja degollada",     precio: 11.00 },
+  { id: "Llama degollada",            precio: 13.00 },
+  { id: "Cordero degollado",          precio: 16.00 },
+  { id: "Cuero de alpaca",            precio: 18.00 },
+  { id: "Cuero de cordero",           precio: 15.00 }
+];
+
+const CATEGORIAS_UNIDAD = [
+  { id: "Menudencia de alpaca",  precio: 25.00 },
+  { id: "Menudencia de cordero", precio: 18.00 }
+];
+
+const CLAVE = "camal.jornada.v3";
+const CLAVE_VIEJA = "camal.jornada.v2";
+
+// ===========================================================================
+// Estado
+// ===========================================================================
+let jornada = null;
+let vista = { pantalla: "jornada", loteId: null, error: "", hoja: "detalle", aviso: "" };
+
+const dosDigitos = (n) => String(n).padStart(2, "0");
+const tresDigitos = (n) => String(n).padStart(3, "0");
+
+function hoy() {
+  const d = new Date();
+  return `${d.getFullYear()}-${dosDigitos(d.getMonth() + 1)}-${dosDigitos(d.getDate())}`;
+}
+
+function hora() {
+  const d = new Date();
+  return `${dosDigitos(d.getHours())}:${dosDigitos(d.getMinutes())}:${dosDigitos(d.getSeconds())}`;
+}
+
+const sello = () => `${hoy()} ${hora()}`;
+
+// El identificador de la jornada lleva un sufijo al azar: dos teléfonos que
+// abran jornada el mismo día no pueden generar el mismo código, y sin eso los
+// archivos de dos balanzas se pisan al juntarlos en la oficina.
+function nuevoIdJornada() {
+  const azar = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `J-${hoy().replace(/-/g, "")}-${azar}`;
+}
+
+const codigoLote = (lote) => `${jornada.id}-L${tresDigitos(lote.id)}`;
+const codigoPesada = (lote, pesada) => `${codigoLote(lote)}-${tresDigitos(pesada.n)}`;
+
+// ---------------------------------------------------------------------------
+// Bitácora. Nada se borra: se anota. Un registro corregido conserva el valor
+// anterior aquí, con su hora, su motivo y quién lo hizo.
+// ---------------------------------------------------------------------------
+function anotar(accion, referencia, antes, despues, motivo) {
+  jornada.bitacora.push({
+    ts: sello(),
+    accion: accion,
+    referencia: referencia || "",
+    antes: antes === null || antes === undefined ? "" : String(antes),
+    despues: despues === null || despues === undefined ? "" : String(despues),
+    motivo: motivo || "",
+    responsable: jornada.operador || "(sin declarar)"
+  });
+}
+
+function jornadaVacia() {
+  return {
+    version: 3, id: nuevoIdJornada(), fecha: hoy(), operador: "",
+    demo: false, correlativoLote: 0, lotes: [], bitacora: []
+  };
+}
+
+// La jornada de ejemplo: la app abre mostrando cómo se ve en uso, no vacía.
+function jornadaDemo() {
+  const j = {
+    version: 3, id: `J-${hoy().replace(/-/g, "")}-DEMO`, fecha: hoy(),
+    operador: "", demo: true, correlativoLote: 3, bitacora: [],
+    lotes: [
+      {
+        id: 1, tipo: "peso", categoria: "Alpaca degollada", cantidad: 8,
+        pesos: [42.5, 39.8, 44.2, 41.0, 38.6, 45.3, 40.1, 43.7].map((kg, i) => (
+          { n: i + 1, kg: kg, ts: `${hoy()} 06:${dosDigitos(43 + i)}:00` })),
+        precio: 14.00, estado: "culminado", inicio: "06:42:10", fin: "07:05:38"
+      },
+      {
+        id: 2, tipo: "unidad", categoria: "Menudencia de alpaca", cantidad: 8,
+        pesos: [], precio: 25.00, estado: "culminado", inicio: "07:08:02", fin: "07:09:20"
+      },
+      {
+        id: 3, tipo: "peso", categoria: "Cordero degollado", cantidad: 12,
+        pesos: [18.4, 17.9, 19.2, 18.8, 16.5].map((kg, i) => (
+          { n: i + 1, kg: kg, ts: `${hoy()} 07:${dosDigitos(23 + i)}:00` })),
+        precio: null, estado: "abierto", inicio: "07:22:45", fin: null
+      }
+    ]
+  };
+  j.bitacora.push({
+    ts: `${hoy()} 06:40:00`, accion: "APERTURA DE JORNADA",
+    referencia: j.id, antes: "", despues: "jornada de demostración",
+    motivo: "datos de ejemplo para revisar la app", responsable: "(sin declarar)"
+  });
+  return j;
+}
+
+// Una jornada guardada con la versión anterior no se descarta: se sube de
+// versión, que es justamente lo que un registro trazable no puede perder.
+function migrar(vieja) {
+  const j = {
+    version: 3, id: nuevoIdJornada(), fecha: vieja.fecha || hoy(), operador: "",
+    demo: !!vieja.demo, correlativoLote: vieja.correlativoLote || vieja.lotes.length,
+    bitacora: [],
+    lotes: (vieja.lotes || []).map((l) => Object.assign({}, l, {
+      pesos: (l.pesos || []).map((kg, i) => ({ n: i + 1, kg: kg, ts: `${vieja.fecha || hoy()} ${l.inicio || "00:00:00"}` }))
+    }))
+  };
+  j.bitacora.push({
+    ts: sello(), accion: "MIGRACIÓN DE FORMATO", referencia: j.id,
+    antes: "formato 2.0", despues: `formato ${FORMATO.version}`,
+    motivo: "actualización de la aplicación", responsable: "(sin declarar)"
+  });
+  return j;
+}
+
+function cargar() {
+  try {
+    const crudo = localStorage.getItem(CLAVE);
+    if (crudo) {
+      const guardada = JSON.parse(crudo);
+      if (guardada && Array.isArray(guardada.lotes)) {
+        guardada.bitacora = guardada.bitacora || [];
+        return guardada;
+      }
+    }
+    const anterior = localStorage.getItem(CLAVE_VIEJA);
+    if (anterior) {
+      const v2 = JSON.parse(anterior);
+      if (v2 && Array.isArray(v2.lotes)) return migrar(v2);
+    }
+  } catch (e) { /* sin almacenamiento: se trabaja en memoria */ }
+  return jornadaDemo();
+}
+
+function guardar() {
+  try { localStorage.setItem(CLAVE, JSON.stringify(jornada)); } catch (e) { /* ídem */ }
+}
+
+// ---------------------------------------------------------------------------
+// Números: "38,5" es como se escribe el peso en el Perú.
+// ---------------------------------------------------------------------------
+function aNumero(texto) {
+  if (texto === null || texto === undefined) return null;
+  const limpio = String(texto).trim().replace(/\s/g, "").replace(",", ".");
+  if (limpio === "") return null;
+  if (!/^-?\d*\.?\d+$/.test(limpio)) return null;
+  const n = parseFloat(limpio);
+  return Number.isFinite(n) ? n : null;
+}
+
+const kg = (n) => n.toFixed(2);
+const soles = (n) => n.toFixed(2);
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ---------------------------------------------------------------------------
+// Cálculo. Lo anulado sigue en el registro, pero no suma.
+// ---------------------------------------------------------------------------
+const vigentes = (lote) => lote.pesos.filter((p) => !p.anulado);
+
+function pesoLote(lote) {
+  return vigentes(lote).reduce((a, p) => a + p.kg, 0);
+}
+
+function cantidadLote(lote) {
+  return lote.tipo === "peso" ? vigentes(lote).length : lote.cantidad;
+}
+
+function totalLote(lote) {
+  if (lote.precio === null || lote.precio === undefined) return null;
+  const base = lote.tipo === "peso" ? pesoLote(lote) : lote.cantidad;
+  return Math.round(base * lote.precio * 100) / 100;
+}
+
+function proximoCorrelativo(lote) {
+  return lote.pesos.reduce((m, p) => Math.max(m, p.n), 0) + 1;
+}
+
+function totalesJornada() {
+  let animales = 0, kilos = 0, monto = 0, pendientes = 0, anulados = 0;
+  jornada.lotes.forEach((l) => {
+    animales += cantidadLote(l);
+    kilos += pesoLote(l);
+    anulados += l.pesos.filter((p) => p.anulado).length;
+    const t = totalLote(l);
+    if (t === null) pendientes++; else monto += t;
+  });
+  return { lotes: jornada.lotes.length, animales, kilos, monto, pendientes, anulados };
+}
+
+const loteActual = () => jornada.lotes.find((l) => l.id === vista.loteId);
+
+// ===========================================================================
+// Navegación
+// ===========================================================================
+function ir(pantalla, loteId) {
+  vista.pantalla = pantalla;
+  vista.loteId = loteId === undefined ? vista.loteId : loteId;
+  vista.error = "";
+  pintar();
+  window.scrollTo(0, 0);
+}
+
+// ===========================================================================
+// Acciones
+// ===========================================================================
+function fijarOperador(valor) {
+  const antes = jornada.operador;
+  jornada.operador = valor.trim();
+  if (antes !== jornada.operador) {
+    anotar("RESPONSABLE DEL REGISTRO", jornada.id, antes || "(sin declarar)", jornada.operador || "(sin declarar)", "");
+    guardar();
+    pintar();
+  }
+}
+
+function nuevoLote(tipo) {
+  vista.nuevo = {
+    tipo: tipo,
+    categoria: (tipo === "peso" ? CATEGORIAS_PESO : CATEGORIAS_UNIDAD)[0].id,
+    cantidad: tipo === "peso" ? 40 : 1
+  };
+  ir(tipo === "peso" ? "nuevo-peso" : "nuevo-unidad");
+}
+
+function crearLote() {
+  const cantidad = aNumero(document.getElementById("cantidadLote").value);
+  const categoria = document.getElementById("categoriaLote").value;
+  const tipo = vista.nuevo.tipo;
+
+  if (cantidad === null || cantidad < 1 || cantidad % 1 !== 0) {
+    vista.error = "La cantidad del lote es un número entero de cabezas, desde 1.";
+    return pintar();
+  }
+
+  jornada.correlativoLote = (jornada.correlativoLote || 0) + 1;
+  const lote = {
+    id: jornada.correlativoLote, tipo: tipo, categoria: categoria,
+    cantidad: cantidad, pesos: [], precio: null,
+    estado: "abierto", inicio: hora(), fin: null
+  };
+  jornada.lotes.push(lote);
+  anotar("APERTURA DE LOTE", codigoLote(lote), "",
+         `${categoria}, ${cantidad} ${tipo === "peso" ? "cabezas" : "unidades"}`, "");
+  guardar();
+  ir(tipo === "peso" ? "pesaje" : "unidad", lote.id);
+}
+
+// El corazón del pesaje: se anota el peso y salta solo al correlativo siguiente.
+function registrarPeso() {
+  const lote = loteActual();
+  const campo = document.getElementById("pesoActual");
+  const peso = aNumero(campo.value);
+
+  if (peso === null) {
+    vista.error = "Escribe el peso en kilos. Se acepta con coma o con punto: 38,5 o 38.5.";
+    return pintar();
+  }
+  if (peso <= 0) {
+    vista.error = "El peso tiene que ser mayor que cero.";
+    return pintar();
+  }
+  if (peso > 400) {
+    vista.error = `${kg(peso)} kg no es el peso de un animal de camal. Revisa la balanza.`;
+    return pintar();
+  }
+
+  const pesada = { n: proximoCorrelativo(lote), kg: peso, ts: sello() };
+  lote.pesos.push(pesada);
+  if (vigentes(lote).length > lote.cantidad) lote.cantidad = vigentes(lote).length;
+  anotar("REGISTRO DE PESO", codigoPesada(lote, pesada), "", `${kg(peso)} kg`, "");
+  guardar();
+  vista.error = "";
+  pintar();
+  const nuevo = document.getElementById("pesoActual");
+  if (nuevo) { nuevo.value = ""; nuevo.focus(); }
+}
+
+function ampliarCantidad(delta) {
+  const lote = loteActual();
+  const minimo = Math.max(1, vigentes(lote).length);
+  const antes = lote.cantidad;
+  lote.cantidad = Math.max(minimo, lote.cantidad + delta);
+  if (antes !== lote.cantidad) anotar("AJUSTE DE CANTIDAD DEL LOTE", codigoLote(lote), antes, lote.cantidad, "");
+  guardar();
+  pintar();
+}
+
+function fijarCantidad(valor) {
+  const lote = loteActual();
+  const n = aNumero(valor);
+  if (n === null || n % 1 !== 0) return pintar();
+  const antes = lote.cantidad;
+  lote.cantidad = Math.max(Math.max(1, vigentes(lote).length), n);
+  if (antes !== lote.cantidad) anotar("AJUSTE DE CANTIDAD DEL LOTE", codigoLote(lote), antes, lote.cantidad, "");
+  guardar();
+  pintar();
+}
+
+function terminarLote() {
+  const lote = loteActual();
+  if (lote.tipo === "peso" && vigentes(lote).length === 0) {
+    vista.error = "El lote no tiene ninguna pesada vigente todavía.";
+    return pintar();
+  }
+  lote.estado = "culminado";
+  lote.fin = hora();
+  if (lote.tipo === "peso") lote.cantidad = vigentes(lote).length;
+  if (lote.precio === null) {
+    const cat = CATEGORIAS_PESO.concat(CATEGORIAS_UNIDAD).find((c) => c.id === lote.categoria);
+    lote.precio = cat ? cat.precio : null;
+  }
+  anotar("CIERRE DE LOTE", codigoLote(lote), "",
+         lote.tipo === "peso" ? `${kg(pesoLote(lote))} kg en ${cantidadLote(lote)} cabezas`
+                              : `${lote.cantidad} unidades`, "");
+  guardar();
+  ir("culminado", lote.id);
+}
+
+function reabrirLote() {
+  const lote = loteActual();
+  lote.estado = "abierto";
+  lote.fin = null;
+  anotar("REAPERTURA DE LOTE", codigoLote(lote), "culminado", "abierto", "");
+  guardar();
+  ir(lote.tipo === "peso" ? "pesaje" : "unidad", lote.id);
+}
+
+function fijarPrecio(valor) {
+  const lote = loteActual();
+  const p = aNumero(valor);
+  vista.error = (valor.trim() !== "" && p === null)
+    ? "El precio va en soles, con coma o punto: 14,50 o 14.50."
+    : "";
+  const antes = lote.precio;
+  lote.precio = p === null || p < 0 ? null : p;
+  if (antes !== lote.precio) {
+    anotar("PRECIO DEL LOTE", codigoLote(lote),
+           antes === null ? "" : soles(antes),
+           lote.precio === null ? "" : soles(lote.precio), "");
+  }
+  guardar();
+  pintar();
+}
+
+function fijarUnidades(valor) {
+  const lote = loteActual();
+  const n = aNumero(valor);
+  if (n === null || n < 0 || n % 1 !== 0) return pintar();
+  const antes = lote.cantidad;
+  lote.cantidad = n;
+  if (antes !== n) anotar("CANTIDAD DE MENUDENCIAS", codigoLote(lote), antes, n, "");
+  guardar();
+  pintar();
+}
+
+function pasoUnidades(delta) {
+  const lote = loteActual();
+  const antes = lote.cantidad;
+  lote.cantidad = Math.max(0, lote.cantidad + delta);
+  if (antes !== lote.cantidad) anotar("CANTIDAD DE MENUDENCIAS", codigoLote(lote), antes, lote.cantidad, "");
+  guardar();
+  pintar();
+}
+
+// ---------------------------------------------------------------------------
+// Corrección y anulación. Las dos piden motivo: es lo que separa un registro
+// auditable de una hoja que alguien pudo cambiar sin dejar rastro.
+// ---------------------------------------------------------------------------
+function abrirPesada(indice) {
+  const lote = loteActual();
+  const pesada = lote.pesos[indice];
+  vista.editando = indice;
+
+  if (pesada.anulado) {
+    return pintarGaveta(`
+      <h2>N° ${pesada.n} · anulada</h2>
+      <p class="codigo" style="text-align:center">${esc(codigoPesada(lote, pesada))}</p>
+      <p class="nota" style="text-align:center">Pesaba ${kg(pesada.kg)} kg. Se anuló por: ${esc(pesada.motivo || "sin motivo")}.
+      El registro se conserva en el Excel y en la bitácora, marcado como anulado.</p>
+      <button class="btn" onclick="restituirPesada()">Volver a darla por válida</button>
+      <button class="btn btn-sec btn-chico" onclick="cerrarGaveta()">Cerrar</button>
+    `);
+  }
+
+  pintarGaveta(`
+    <h2>N° ${pesada.n} del lote ${lote.id}</h2>
+    <p class="codigo" style="text-align:center">${esc(codigoPesada(lote, pesada))}</p>
+    <div class="campo-grupo">
+      <label for="pesoEditado">Peso en kg</label>
+      <input type="text" inputmode="decimal" id="pesoEditado" class="grande" value="${pesada.kg}">
+    </div>
+    <div class="campo-grupo">
+      <label for="motivoCambio">Motivo (queda en la bitácora)</label>
+      <input type="text" id="motivoCambio" placeholder="Ej. balanza mal tarada">
+    </div>
+    <div class="duo">
+      <button class="btn btn-rojo" onclick="anularPesada()">Anular</button>
+      <button class="btn" onclick="guardarPesada()">Guardar corrección</button>
+    </div>
+    <button class="btn btn-sec btn-chico" onclick="cerrarGaveta()">Cancelar</button>
+    <p class="nota">Ni corregir ni anular borran nada: el valor anterior queda en la bitácora con su hora y su motivo, y el correlativo no se reutiliza.</p>
+  `);
+}
+
+function motivoDeLaGaveta() {
+  const campo = document.getElementById("motivoCambio");
+  return campo ? campo.value.trim() : "";
+}
+
+function guardarPesada() {
+  const lote = loteActual();
+  const pesada = lote.pesos[vista.editando];
+  const p = aNumero(document.getElementById("pesoEditado").value);
+  const motivo = motivoDeLaGaveta();
+
+  if (p === null || p <= 0 || p > 400) {
+    vista.error = "Peso no válido: escribe kilos mayores que cero.";
+    cerrarGaveta();
+    return pintar();
+  }
+  if (!motivo) {
+    vista.error = "Una corrección sin motivo no es trazable: escribe por qué cambia el peso.";
+    cerrarGaveta();
+    return pintar();
+  }
+  if (p !== pesada.kg) {
+    anotar("CORRECCIÓN DE PESO", codigoPesada(lote, pesada), `${kg(pesada.kg)} kg`, `${kg(p)} kg`, motivo);
+    pesada.kg = p;
+    pesada.corregida = sello();
+  }
+  guardar();
+  cerrarGaveta();
+  pintar();
+}
+
+function anularPesada() {
+  const lote = loteActual();
+  const pesada = lote.pesos[vista.editando];
+  const motivo = motivoDeLaGaveta();
+  if (!motivo) {
+    vista.error = "Una anulación sin motivo no es trazable: escribe por qué se anula.";
+    cerrarGaveta();
+    return pintar();
+  }
+  pesada.anulado = true;
+  pesada.motivo = motivo;
+  pesada.anuladaEn = sello();
+  anotar("ANULACIÓN DE PESO", codigoPesada(lote, pesada), `${kg(pesada.kg)} kg`, "anulada", motivo);
+  guardar();
+  cerrarGaveta();
+  pintar();
+}
+
+function restituirPesada() {
+  const lote = loteActual();
+  const pesada = lote.pesos[vista.editando];
+  anotar("REPOSICIÓN DE PESO", codigoPesada(lote, pesada), "anulada", `${kg(pesada.kg)} kg`, pesada.motivo || "");
+  delete pesada.anulado;
+  delete pesada.motivo;
+  delete pesada.anuladaEn;
+  guardar();
+  cerrarGaveta();
+  pintar();
+}
+
+function vaciarJornada() {
+  pintarGaveta(`
+    <h2>Empezar jornada real</h2>
+    <p class="nota" style="text-align:center">Se cierran los ${jornada.lotes.length} lotes de demostración y se abre una jornada nueva, con su propio identificador y su bitácora en blanco. Los datos de ejemplo no se recuperan.</p>
+    <div class="duo" style="margin-top:14px">
+      <button class="btn btn-sec" onclick="cerrarGaveta()">Cancelar</button>
+      <button class="btn btn-rojo" onclick="confirmarVaciado()">Abrir jornada real</button>
+    </div>
+  `);
+}
+
+function confirmarVaciado() {
+  jornada = jornadaVacia();
+  anotar("APERTURA DE JORNADA", jornada.id, "", `formato ${FORMATO.codigo} v${FORMATO.version}`, "");
+  guardar();
+  cerrarGaveta();
+  ir("jornada", null);
+}
+
+// ===========================================================================
+// Las filas. Un solo sitio arma los datos, y de ahí salen el CSV, el Excel y
+// el PDF: tres formatos que nunca pueden decir cosas distintas.
+// ===========================================================================
+function filasDetalle() {
+  const filas = [];
+  jornada.lotes.filter((l) => l.tipo === "peso").forEach((lote) => {
+    lote.pesos.slice().sort((a, b) => a.n - b.n).forEach((p) => {
+      filas.push({
+        id: codigoPesada(lote, p),
+        jornada: jornada.id,
+        fecha: jornada.fecha,
+        codigoLote: codigoLote(lote),
+        lote: lote.id,
+        categoria: lote.categoria,
+        n: p.n,
+        kg: p.kg,
+        precio: lote.precio,
+        registrado: p.ts,
+        estado: p.anulado ? "ANULADO" : "VIGENTE",
+        motivo: p.motivo || "",
+        responsable: jornada.operador || "(sin declarar)"
+      });
+    });
+  });
+  return filas;
+}
+
+function filasResumen() {
+  return jornada.lotes.map((lote) => ({
+    codigoLote: codigoLote(lote),
+    lote: lote.id,
+    tipo: lote.tipo === "peso" ? "Pesaje" : "Menudencia",
+    categoria: lote.categoria,
+    cantidad: cantidadLote(lote),
+    unidad: lote.tipo === "peso" ? "kg" : "und",
+    peso: lote.tipo === "peso" ? pesoLote(lote) : null,
+    precio: lote.precio,
+    total: totalLote(lote),
+    estado: lote.estado === "abierto" ? "En curso" : "Culminado",
+    inicio: lote.inicio,
+    fin: lote.fin || ""
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// CSV, para pegar a mano en una hoja de cálculo.
+// ---------------------------------------------------------------------------
+const celdaCSV = (v) => (v === null || v === undefined || v === "") ? "" :
+  (typeof v === "number" ? String(v) : `"${String(v).replace(/"/g, '""')}"`);
+
+function csvDetalle() {
+  const cab = "ID_REGISTRO,JORNADA,FECHA,COD_LOTE,LOTE,CATEGORIA,CORRELATIVO,PESO_KG,PRECIO_KG,SUBTOTAL_SOLES,REGISTRADO,ESTADO,MOTIVO,RESPONSABLE\n";
+  return cab + filasDetalle().map((f) => [
+    f.id, f.jornada, f.fecha, f.codigoLote, f.lote, f.categoria, f.n,
+    Number(kg(f.kg)),
+    f.precio === null ? "" : Number(soles(f.precio)),
+    (f.precio === null || f.estado === "ANULADO") ? "" : Number(soles(f.kg * f.precio)),
+    f.registrado, f.estado, f.motivo, f.responsable
+  ].map(celdaCSV).join(",")).join("\n") + "\n";
+}
+
+function csvResumen() {
+  const cab = "COD_LOTE,LOTE,TIPO,CATEGORIA,CANTIDAD,UNIDAD,PESO_TOTAL_KG,PRECIO,TOTAL_SOLES,ESTADO,INICIO,FIN\n";
+  return cab + filasResumen().map((f) => [
+    f.codigoLote, f.lote, f.tipo, f.categoria, f.cantidad, f.unidad,
+    f.peso === null ? "" : Number(kg(f.peso)),
+    f.precio === null ? "" : Number(soles(f.precio)),
+    f.total === null ? "" : Number(soles(f.total)),
+    f.estado, f.inicio, f.fin
+  ].map(celdaCSV).join(",")).join("\n") + "\n";
+}
+
+function csvBitacora() {
+  const cab = "MARCA_TIEMPO,ACCION,REFERENCIA,ANTES,DESPUES,MOTIVO,RESPONSABLE\n";
+  return cab + jornada.bitacora.map((a) =>
+    [a.ts, a.accion, a.referencia, a.antes, a.despues, a.motivo, a.responsable]
+      .map(celdaCSV).join(",")).join("\n") + "\n";
+}
+
+// ===========================================================================
+// Excel de verdad. Un .xlsx es un zip de XML, así que se arma aquí mismo: en
+// el camal no hay señal para bajar librerías, y un CSV no guarda fórmulas.
+//
+// Lo que se gana con fórmulas y no con números pegados: si en la oficina
+// corrigen un peso en la hoja DETALLE, el resumen y el control documental se
+// recalculan solos. La hoja no miente aunque alguien la toque.
+// ===========================================================================
+const TABLA_CRC = (() => {
+  const t = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[i] = c >>> 0;
+  }
+  return t;
+})();
+
+function crc32(bytes) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < bytes.length; i++) c = TABLA_CRC[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+const aBytes = (texto) => new TextEncoder().encode(texto);
+
+// Zip por el método almacenado: sin comprimir, sin dependencias, y Excel lo
+// abre igual. Un registro de jornada pesa kilobytes; comprimirlo no compensa
+// el código que haría falta.
+function zip(archivos) {
+  const trozos = [], central = [];
+  let desplazamiento = 0;
+  const d = new Date();
+  const horaDOS = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const fechaDOS = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+
+  archivos.forEach((archivo) => {
+    const nombre = aBytes(archivo.nombre);
+    const datos = archivo.datos;
+    const crc = crc32(datos);
+
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(4, 20, true);
+    local.setUint16(6, 0, true);
+    local.setUint16(8, 0, true);            // almacenado
+    local.setUint16(10, horaDOS, true);
+    local.setUint16(12, fechaDOS, true);
+    local.setUint32(14, crc, true);
+    local.setUint32(18, datos.length, true);
+    local.setUint32(22, datos.length, true);
+    local.setUint16(26, nombre.length, true);
+    local.setUint16(28, 0, true);
+    trozos.push(new Uint8Array(local.buffer), nombre, datos);
+
+    const cab = new DataView(new ArrayBuffer(46));
+    cab.setUint32(0, 0x02014b50, true);
+    cab.setUint16(4, 20, true);
+    cab.setUint16(6, 20, true);
+    cab.setUint16(8, 0, true);
+    cab.setUint16(10, 0, true);
+    cab.setUint16(12, horaDOS, true);
+    cab.setUint16(14, fechaDOS, true);
+    cab.setUint32(16, crc, true);
+    cab.setUint32(20, datos.length, true);
+    cab.setUint32(24, datos.length, true);
+    cab.setUint16(28, nombre.length, true);
+    cab.setUint32(42, desplazamiento, true);
+    central.push(new Uint8Array(cab.buffer), nombre);
+
+    desplazamiento += 30 + nombre.length + datos.length;
+  });
+
+  const largoCentral = central.reduce((a, t) => a + t.length, 0);
+  const fin = new DataView(new ArrayBuffer(22));
+  fin.setUint32(0, 0x06054b50, true);
+  fin.setUint16(8, archivos.length, true);
+  fin.setUint16(10, archivos.length, true);
+  fin.setUint32(12, largoCentral, true);
+  fin.setUint32(16, desplazamiento, true);
+
+  const todo = trozos.concat(central, [new Uint8Array(fin.buffer)]);
+  const total = todo.reduce((a, t) => a + t.length, 0);
+  const salida = new Uint8Array(total);
+  let i = 0;
+  todo.forEach((t) => { salida.set(t, i); i += t.length; });
+  return salida;
+}
+
+const xmlEsc = (t) => String(t).replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" }[c]));
+
+const LETRA = (i) => String.fromCharCode(65 + i);
+
+// Una celda: texto, número, o fórmula con su valor ya calculado —Excel la
+// recalcula al abrir, pero el valor en frío hace que se lea bien en cualquier
+// visor de teléfono.
+function celda(ref, valor, estilo, formula) {
+  const s = estilo ? ` s="${estilo}"` : "";
+  if (formula !== undefined && formula !== null) {
+    const v = (valor === null || valor === undefined || valor === "") ? "" : `<v>${valor}</v>`;
+    return `<c r="${ref}"${s}><f>${xmlEsc(formula)}</f>${v}</c>`;
+  }
+  if (valor === null || valor === undefined || valor === "") return `<c r="${ref}"${s}/>`;
+  if (typeof valor === "number") return `<c r="${ref}"${s}><v>${valor}</v></c>`;
+  return `<c r="${ref}"${s} t="inlineStr"><is><t xml:space="preserve">${xmlEsc(valor)}</t></is></c>`;
+}
+
+function fila(numero, celdas) {
+  return `<row r="${numero}">${celdas.map((c, i) =>
+    c === null ? "" : celda(LETRA(i) + numero, c.v, c.s, c.f)).join("")}</row>`;
+}
+
+const T = (v, s) => ({ v: v, s: s });                   // texto o número
+const F = (formula, valor, s) => ({ v: valor, s: s, f: formula });
+
+function hoja(filas, anchos, congelar, autofiltro, paraImprimir) {
+  const cols = anchos.map((a, i) =>
+    `<col min="${i + 1}" max="${i + 1}" width="${a}" customWidth="1"/>`).join("");
+  const panel = congelar
+    ? `<sheetView workbookViewId="0"><pane ySplit="${congelar}" topLeftCell="A${congelar + 1}" activePane="bottomLeft" state="frozen"/></sheetView>`
+    : `<sheetView workbookViewId="0"/>`;
+  // El orden de los bloques no es decorativo: si `sheetPr` no va primero,
+  // Excel da el archivo por corrupto y no lo abre.
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+${paraImprimir ? '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' : ""}
+<sheetViews>${panel}</sheetViews>
+<sheetFormatPr defaultRowHeight="15"/>
+<cols>${cols}</cols>
+<sheetData>${filas.join("")}</sheetData>
+${autofiltro ? `<autoFilter ref="${autofiltro}"/>` : ""}
+${paraImprimir ? '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup orientation="portrait" fitToWidth="1" fitToHeight="0" paperSize="9"/>' : ""}
+</worksheet>`;
+}
+
+// Estilos: 1 cabecera, 2 título, 3 dos decimales, 4 soles, 5 negrita,
+// 6 soles en negrita, 7 anulado (gris), 8 clave del control documental.
+const ESTILOS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="1"><numFmt numFmtId="164" formatCode="&quot;S/ &quot;#,##0.00"/></numFmts>
+<fonts count="5">
+<font><sz val="11"/><name val="Calibri"/></font>
+<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>
+<font><b/><sz val="14"/><color rgb="FF1F4E3D"/><name val="Calibri"/></font>
+<font><b/><sz val="11"/><name val="Calibri"/></font>
+<font><i/><sz val="11"/><color rgb="FF8A8A8A"/><name val="Calibri"/></font>
+</fonts>
+<fills count="4">
+<fill><patternFill patternType="none"/></fill>
+<fill><patternFill patternType="gray125"/></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FF1F4E3D"/><bgColor indexed="64"/></patternFill></fill>
+<fill><patternFill patternType="solid"><fgColor rgb="FFF2F4F7"/><bgColor indexed="64"/></patternFill></fill>
+</fills>
+<borders count="2"><border/><border><bottom style="thin"><color rgb="FFB0B0B0"/></bottom></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="9">
+<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="2" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="0" fontId="3" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="164" fontId="3" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>
+<xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="0" fontId="3" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>
+</cellXfs>
+</styleSheet>`;
+
+function libroExcel() {
+  const detalle = filasDetalle();
+  const resumen = filasResumen();
+  const nD = detalle.length;
+  const nR = resumen.length;
+
+  // --- DETALLE: una fila por cabeza, anuladas incluidas y marcadas.
+  const cabD = ["ID_REGISTRO", "JORNADA", "FECHA", "COD_LOTE", "LOTE", "CATEGORIA",
+                "CORRELATIVO", "PESO_KG", "PRECIO_KG", "SUBTOTAL_SOLES", "REGISTRADO",
+                "ESTADO", "MOTIVO", "RESPONSABLE"];
+  const filasD = [fila(1, cabD.map((c) => T(c, 1)))];
+  detalle.forEach((f, i) => {
+    const r = i + 2;
+    const anul = f.estado === "ANULADO";
+    const sub = (f.precio === null || anul) ? "" : Math.round(f.kg * f.precio * 100) / 100;
+    filasD.push(fila(r, [
+      T(f.id, anul ? 7 : 0), T(f.jornada, anul ? 7 : 0), T(f.fecha, anul ? 7 : 0),
+      T(f.codigoLote, anul ? 7 : 0), T(f.lote), T(f.categoria, anul ? 7 : 0),
+      T(f.n), T(Number(kg(f.kg)), 3),
+      f.precio === null ? T("") : T(Number(soles(f.precio)), 4),
+      F(`IF(OR($L${r}<>"VIGENTE",$I${r}=""),"",ROUND($H${r}*$I${r},2))`, sub, 4),
+      T(f.registrado), T(f.estado, anul ? 7 : 0), T(f.motivo, 7), T(f.responsable)
+    ]));
+  });
+
+  // --- RESUMEN: cada cifra es una fórmula contra DETALLE, no un número pegado.
+  const cabR = ["COD_LOTE", "LOTE", "TIPO", "CATEGORIA", "CANTIDAD", "UNIDAD",
+                "PESO_TOTAL_KG", "PRECIO", "TOTAL_SOLES", "ESTADO", "INICIO", "FIN"];
+  const filasR = [fila(1, cabR.map((c) => T(c, 1)))];
+  resumen.forEach((f, i) => {
+    const r = i + 2;
+    const esPeso = f.unidad === "kg";
+    filasR.push(fila(r, [
+      T(f.codigoLote), T(f.lote), T(f.tipo), T(f.categoria),
+      esPeso ? F(`COUNTIFS(DETALLE!$D:$D,$A${r},DETALLE!$L:$L,"VIGENTE")`, f.cantidad)
+             : T(f.cantidad),
+      T(f.unidad),
+      esPeso ? F(`SUMIFS(DETALLE!$H:$H,DETALLE!$D:$D,$A${r},DETALLE!$L:$L,"VIGENTE")`, Number(kg(f.peso)), 3)
+             : T("", 3),
+      f.precio === null ? T("") : T(Number(soles(f.precio)), 4),
+      F(`ROUND(IF($F${r}="kg",$G${r},$E${r})*$H${r},2)`, f.total === null ? 0 : f.total, 4),
+      T(f.estado), T(f.inicio), T(f.fin)
+    ]));
+  });
+  const rTot = nR + 2;
+  filasR.push(fila(rTot, [
+    T("TOTALES", 5), null, null, null,
+    F(`SUM(E2:E${nR + 1})`, resumen.reduce((a, f) => a + f.cantidad, 0), 5),
+    null,
+    F(`SUM(G2:G${nR + 1})`, Number(kg(resumen.reduce((a, f) => a + (f.peso || 0), 0))), 5),
+    null,
+    F(`SUM(I2:I${nR + 1})`, Number(soles(resumen.reduce((a, f) => a + (f.total || 0), 0))), 6)
+  ]));
+
+  // --- PESOS POR LOTE: la misma verdad que DETALLE, pero en bloques y en el
+  //     orden en que se trabaja. Cada lote lleva sus pesos, su peso total y su
+  //     precio total, y entre lote y lote hay una fila en blanco: es la hoja
+  //     que se imprime y se lee, no la que se filtra.
+  const filasL = [
+    fila(1, [T("PESOS POR LOTE", 2)]),
+    fila(2, [T("Un bloque por lote. Los totales son fórmulas: excluyen lo anulado y se recalculan si se corrige un peso.", 7)])
+  ];
+  let r = 3;
+  const celdasTotalPeso = [], celdasTotalMonto = [];
+
+  jornada.lotes.forEach((lote) => {
+    const esPeso = lote.tipo === "peso";
+    const pesadas = lote.pesos.slice().sort((a, b) => a.n - b.n);
+
+    r++;                                    // una fila en blanco separa los lotes
+    filasL.push(fila(r, [
+      T(codigoLote(lote), 1), T(lote.categoria, 1),
+      T(esPeso ? `${vigentes(lote).length} cabezas` : `${lote.cantidad} unidades`, 1),
+      T(lote.estado === "abierto" ? "EN CURSO" : "CULMINADO", 1),
+      T("", 1), T(`${lote.inicio}${lote.fin ? " a " + lote.fin : ""}`, 1)
+    ]));
+    r++;
+
+    filasL.push(fila(r, [T("N°", 8), T("ID DE REGISTRO", 8), T("PESO_KG", 8),
+                         T("PRECIO", 8), T("SUBTOTAL", 8), T("ESTADO", 8)]));
+    r++;
+
+    const primera = r;
+    if (esPeso) {
+      pesadas.forEach((p) => {
+        const anul = !!p.anulado;
+        filasL.push(fila(r, [
+          T(p.n, anul ? 7 : 0), T(codigoPesada(lote, p), anul ? 7 : 0),
+          T(Number(kg(p.kg)), 3),
+          lote.precio === null ? T("") : T(Number(soles(lote.precio)), 4),
+          F(`IF(OR($F${r}<>"VIGENTE",$D${r}=""),"",ROUND($C${r}*$D${r},2))`,
+            (anul || lote.precio === null) ? "" : Math.round(p.kg * lote.precio * 100) / 100, 4),
+          T(anul ? "ANULADO" : "VIGENTE", anul ? 7 : 0)
+        ]));
+        r++;
+      });
+      if (!pesadas.length) {
+        filasL.push(fila(r, [T(""), T("Sin pesadas registradas.", 7)]));
+        r++;
+      }
+    } else {
+      filasL.push(fila(r, [
+        T(""), T("Menudencias contadas por unidad", 0), T(lote.cantidad),
+        lote.precio === null ? T("") : T(Number(soles(lote.precio)), 4),
+        F(`IF($D${r}="","",ROUND($C${r}*$D${r},2))`, totalLote(lote) === null ? "" : totalLote(lote), 4),
+        T("VIGENTE")
+      ]));
+      r++;
+    }
+    const ultima = r - 1;
+
+    const filaPeso = r;
+    if (esPeso) {
+      filasL.push(fila(r, [
+        T(""), T("PESO TOTAL DEL LOTE", 5),
+        F(`SUMIF($F${primera}:$F${ultima},"VIGENTE",$C${primera}:$C${ultima})`, Number(kg(pesoLote(lote))), 3)
+      ]));
+      r++;
+    }
+    filasL.push(fila(r, [
+      T(""), T(esPeso ? "PRECIO POR KG" : "PRECIO POR UNIDAD", 5), null,
+      lote.precio === null ? T("") : T(Number(soles(lote.precio)), 4)
+    ]));
+    const filaPrecio = r;
+    r++;
+    filasL.push(fila(r, [
+      T(""), T("PRECIO TOTAL DEL LOTE", 5), null, null,
+      F(esPeso ? `IF($D${filaPrecio}="","",ROUND($C${filaPeso}*$D${filaPrecio},2))`
+               : `IF($D${filaPrecio}="","",ROUND($C${primera}*$D${filaPrecio},2))`,
+        totalLote(lote) === null ? "" : totalLote(lote), 6)
+    ]));
+    if (esPeso) celdasTotalPeso.push(`C${filaPeso}`);
+    celdasTotalMonto.push(`E${r}`);
+    r++;
+  });
+
+  r++;
+  filasL.push(fila(r, [
+    T("TOTAL DE LA JORNADA", 5), null,
+    F(celdasTotalPeso.length ? `SUM(${celdasTotalPeso.join(",")})` : "0",
+      Number(kg(totalesJornada().kilos)), 3),
+    null,
+    F(celdasTotalMonto.length ? `SUM(${celdasTotalMonto.join(",")})` : "0",
+      Number(soles(totalesJornada().monto)), 6)
+  ]));
+
+  // --- BITÁCORA: el rastro completo, en orden de ocurrencia.
+  const cabB = ["MARCA_TIEMPO", "ACCION", "REFERENCIA", "ANTES", "DESPUES", "MOTIVO", "RESPONSABLE"];
+  const filasB = [fila(1, cabB.map((c) => T(c, 1)))];
+  jornada.bitacora.forEach((a, i) => {
+    filasB.push(fila(i + 2, [T(a.ts), T(a.accion), T(a.referencia), T(a.antes),
+                             T(a.despues), T(a.motivo), T(a.responsable)]));
+  });
+
+  // --- CONTROL: la portada del registro, con las cifras traídas de las otras
+  //     hojas. Es la hoja que se imprime y se archiva.
+  const t = totalesJornada();
+  const control = [
+    fila(1, [T(FORMATO.nombre, 2)]),
+    fila(2, [T("Documento controlado. Las cifras se calculan desde las hojas DETALLE y RESUMEN.", 7)]),
+    fila(3, [T("PESOS POR LOTE trae cada lote en su bloque, con peso total y precio total; DETALLE es la tabla para filtrar.", 7)]),
+    fila(4, [T("Código del formato", 8), T(FORMATO.codigo, 8)]),
+    fila(5, [T("Versión del formato", 8), T(FORMATO.version, 8)]),
+    fila(6, [T("Aplicación de origen", 8), T(FORMATO.app, 8)]),
+    fila(7, [T("Identificador de jornada", 8), T(jornada.id, 8)]),
+    fila(8, [T("Fecha de la jornada", 8), T(jornada.fecha, 8)]),
+    fila(9, [T("Responsable del registro", 8), T(jornada.operador || "(sin declarar)", 8)]),
+    fila(10, [T("Exportado", 8), T(sello(), 8)]),
+    fila(12, [T("Lotes de la jornada", 5), F(`COUNTA(RESUMEN!A2:A${nR + 1})`, nR)]),
+    fila(13, [T("Registros vigentes", 5), F(`COUNTIF(DETALLE!L:L,"VIGENTE")`, nD - t.anulados)]),
+    fila(14, [T("Registros anulados", 5), F(`COUNTIF(DETALLE!L:L,"ANULADO")`, t.anulados)]),
+    fila(15, [T("Peso total vigente (kg)", 5), F(`SUMIFS(DETALLE!H:H,DETALLE!L:L,"VIGENTE")`, Number(kg(t.kilos)), 3)]),
+    fila(16, [T("Monto total (S/)", 5), F(`SUM(RESUMEN!I2:I${nR + 1})`, Number(soles(t.monto)), 6)]),
+    fila(17, [T("Apuntes en bitácora", 5), F(`COUNTA(BITACORA!A2:A${jornada.bitacora.length + 1})`, jornada.bitacora.length)]),
+    fila(19, [T("Trazabilidad", 5)]),
+    fila(20, [T("Cada pesada lleva identificador único JORNADA-LOTE-CORRELATIVO.", 7)]),
+    fila(21, [T("Ningún registro se elimina: se anula con motivo y queda en DETALLE y BITACORA.", 7)]),
+    fila(22, [T("Corregir un peso en DETALLE recalcula RESUMEN y esta hoja.", 7)])
+  ];
+
+  const hojas = [
+    { nombre: "CONTROL", xml: hoja(control, [32, 46], 0, null, true) },
+    { nombre: "PESOS POR LOTE", xml: hoja(filasL, [8, 30, 12, 11, 13, 12], 0, null, true) },
+    { nombre: "DETALLE", xml: hoja(filasD, [24, 18, 12, 20, 7, 26, 12, 11, 11, 15, 20, 11, 30, 22], 1, `A1:N${Math.max(2, nD + 1)}`) },
+    { nombre: "RESUMEN", xml: hoja(filasR, [20, 7, 13, 26, 11, 9, 15, 11, 14, 12, 11, 11], 1, `A1:L${Math.max(2, nR + 1)}`) },
+    { nombre: "BITACORA", xml: hoja(filasB, [20, 26, 24, 16, 16, 34, 22], 1, `A1:G${Math.max(2, jornada.bitacora.length + 1)}`) }
+  ];
+
+  const tipos = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+${hojas.map((h, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+</Types>`;
+
+  const relsRaiz = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  const libro = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>${hojas.map((h, i) => `<sheet name="${h.nombre}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join("")}</sheets>
+<calcPr calcId="0" fullCalcOnLoad="1"/>
+</workbook>`;
+
+  const relsLibro = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${hojas.map((h, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join("")}
+<Relationship Id="rId${hojas.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`;
+
+  const archivos = [
+    { nombre: "[Content_Types].xml", datos: aBytes(tipos) },
+    { nombre: "_rels/.rels", datos: aBytes(relsRaiz) },
+    { nombre: "xl/workbook.xml", datos: aBytes(libro) },
+    { nombre: "xl/_rels/workbook.xml.rels", datos: aBytes(relsLibro) },
+    { nombre: "xl/styles.xml", datos: aBytes(ESTILOS) }
+  ].concat(hojas.map((h, i) => ({ nombre: `xl/worksheets/sheet${i + 1}.xml`, datos: aBytes(h.xml) })));
+
+  return zip(archivos);
+}
+
+// ===========================================================================
+// PDF. También a mano y también por lo mismo: sin señal no se baja una
+// librería, y el acta de la jornada tiene que poder firmarse en papel.
+// ===========================================================================
+const ANCHO_PAG = 595.28, ALTO_PAG = 841.89, MARGEN = 36;
+
+// El PDF escribe en WinAnsi, que cubre el castellano entero. Lo que no cabe
+// ahí se cambia por su equivalente antes de escribirlo, no después.
+function aWinAnsi(texto) {
+  return String(texto)
+    .replace(/[—–]/g, "-").replace(/[«»]/g, '"')
+    .replace(/[“”]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/…/g, "...").replace(/×/g, "x").replace(/·/g, "-")
+    .replace(/[^\x20-\xFF]/g, "?");
+}
+
+const escapaPDF = (t) => aWinAnsi(t).replace(/([\\()])/g, "\\$1");
+
+// Helvetica: los dígitos miden 0.556 em, y con eso basta para alinear cifras
+// a la derecha, que es lo único que se alinea así en este documento.
+const anchoCifra = (t, tam) => aWinAnsi(t).length * tam * 0.556;
+
+// Medir el texto por su largo miente cuando va en mayúsculas: en Helvetica una
+// A ocupa 0.68 em y una a, 0.52. Contarlas por separado es lo que evita que
+// «RESPONSABLE DEL REGISTRO» se meta en la columna de al lado.
+function anchoTexto(texto, tam, negrita) {
+  const t = aWinAnsi(texto);
+  let em = 0;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    em += (c >= "A" && c <= "Z") ? 0.68 : (c === " " || c === "." || c === "," ? 0.28 : 0.52);
+  }
+  return em * tam * (negrita ? 1.06 : 1);
+}
+
+function recortar(texto, ancho, tam, negrita) {
+  const t = aWinAnsi(texto);
+  if (!ancho || anchoTexto(t, tam, negrita) <= ancho) return t;
+  let corte = t.length;
+  while (corte > 1 && anchoTexto(t.slice(0, corte) + "...", tam, negrita) > ancho) corte--;
+  return t.slice(0, corte) + "...";
+}
+
+function pdfJornada() {
+  const paginas = [];
+  let flujo = [], y = 0;
+
+  const texto = (t, x, tam, negrita, gris) => {
+    flujo.push(`BT /${negrita ? "F2" : "F1"} ${tam} Tf ${gris ? "0.42 0.45 0.5" : "0.05 0.07 0.1"} rg 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${escapaPDF(t)}) Tj ET`);
+  };
+  const derecha = (t, x, tam, negrita) => texto(t, x - anchoCifra(t, tam), tam, negrita);
+  const regla = (grosor, color) => {
+    flujo.push(`${color || "0.75 0.78 0.82"} RG ${grosor || 0.6} w ${MARGEN} ${(y + 4).toFixed(2)} m ${(ANCHO_PAG - MARGEN).toFixed(2)} ${(y + 4).toFixed(2)} l S`);
+  };
+  const banda = (alto) => {
+    flujo.push(`0.12 0.31 0.24 rg ${MARGEN} ${(y - 4).toFixed(2)} ${(ANCHO_PAG - 2 * MARGEN).toFixed(2)} ${alto} re f`);
+  };
+
+  function nuevaPagina() {
+    if (flujo.length) paginas.push(flujo);
+    flujo = [];
+    y = ALTO_PAG - MARGEN - 14;
+  }
+  const sitio = (necesario) => { if (y < MARGEN + necesario) nuevaPagina(); };
+
+  function titulo(t) {
+    sitio(60);
+    texto(t, MARGEN, 12, true);
+    y -= 6;
+    regla(0.8);
+    y -= 12;
+  }
+
+  function cabeceraTabla(columnas) {
+    sitio(40);
+    banda(15);
+    columnas.forEach((c) => {
+      const x = c.alineado === "d" ? c.x - anchoTexto(c.t, 8, true) - 4 : c.x + 4;
+      flujo.push(`BT /F2 8 Tf 1 1 1 rg 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${escapaPDF(c.t)}) Tj ET`);
+    });
+    y -= 16;
+  }
+
+  function filaTabla(columnas, gris) {
+    sitio(26);
+    columnas.forEach((c) => {
+      if (c.alineado === "d") derecha(c.t, c.x - 4, 8.5, false);
+      else texto(recortar(c.t, c.w, 8.5, false), c.x + 4, 8.5, false, gris);
+    });
+    y -= 13;
+  }
+
+  // ---- Portada y control documental
+  nuevaPagina();
+  texto(FORMATO.nombre.toUpperCase(), MARGEN, 15, true);
+  y -= 16;
+  texto(`Jornada ${jornada.id}  ·  ${jornada.fecha}`, MARGEN, 10, false, true);
+  y -= 8;
+  regla(1.2, "0.12 0.31 0.24");
+  y -= 20;
+
+  const control = [
+    ["Código del formato", FORMATO.codigo],
+    ["Versión del formato", FORMATO.version],
+    ["Aplicación de origen", FORMATO.app],
+    ["Identificador de jornada", jornada.id],
+    ["Fecha de la jornada", jornada.fecha],
+    ["Responsable del registro", jornada.operador || "(sin declarar)"],
+    ["Emitido", sello()]
+  ];
+  control.forEach(([clave, valor]) => {
+    sitio(30);
+    texto(clave, MARGEN, 9, false, true);
+    texto(valor, MARGEN + 150, 9, true);
+    y -= 14;
+  });
+
+  y -= 10;
+  const t = totalesJornada();
+  const cifras = [
+    ["Lotes", String(t.lotes)],
+    ["Cabezas y unidades vigentes", String(t.animales)],
+    ["Registros anulados", String(t.anulados)],
+    ["Peso total vigente", `${kg(t.kilos)} kg`],
+    ["Monto total", `S/ ${soles(t.monto)}`]
+  ];
+  cifras.forEach(([clave, valor]) => {
+    sitio(30);
+    texto(clave, MARGEN, 9, false, true);
+    derecha(valor, ANCHO_PAG - MARGEN, 10, true);
+    y -= 15;
+  });
+
+  // ---- Resumen por lote
+  y -= 14;
+  titulo("Resumen por lote");
+  const colR = [
+    { t: "COD. LOTE", x: MARGEN, w: 114 }, { t: "CATEGORÍA", x: MARGEN + 118, w: 178 },
+    { t: "CANT.", x: MARGEN + 300, alineado: "d" }, { t: "KG", x: MARGEN + 362, alineado: "d" },
+    { t: "PRECIO", x: MARGEN + 428, alineado: "d" },
+    { t: "TOTAL S/", x: ANCHO_PAG - MARGEN, alineado: "d" }
+  ];
+  cabeceraTabla(colR);
+  filasResumen().forEach((f) => {
+    filaTabla([
+      { t: f.codigoLote, x: MARGEN, w: 114 },
+      { t: f.categoria, x: MARGEN + 118, w: 178 },
+      { t: String(f.cantidad) + " " + f.unidad, x: MARGEN + 300, alineado: "d" },
+      { t: f.peso === null ? "-" : kg(f.peso), x: MARGEN + 362, alineado: "d" },
+      { t: f.precio === null ? "-" : soles(f.precio), x: MARGEN + 428, alineado: "d" },
+      { t: f.total === null ? "pendiente" : soles(f.total), x: ANCHO_PAG - MARGEN, alineado: "d" }
+    ]);
+  });
+  y -= 2;
+  regla(0.8);
+  y -= 14;
+  texto("TOTAL DE LA JORNADA", MARGEN, 9.5, true);
+  derecha(`${kg(t.kilos)} kg`, MARGEN + 358, 9.5, true);
+  derecha(`S/ ${soles(t.monto)}`, ANCHO_PAG - MARGEN, 10.5, true);
+  y -= 24;
+
+  // ---- Detalle por cabeza
+  titulo("Detalle por cabeza");
+  const colD = [
+    { t: "ID DE REGISTRO", x: MARGEN, w: 146 }, { t: "CATEGORÍA", x: MARGEN + 150, w: 142 },
+    { t: "N°", x: MARGEN + 306, alineado: "d" }, { t: "KG", x: MARGEN + 356, alineado: "d" },
+    { t: "REGISTRADO", x: MARGEN + 364, w: 96 }, { t: "ESTADO", x: ANCHO_PAG - MARGEN - 52, w: 52 }
+  ];
+  cabeceraTabla(colD);
+  const detalle = filasDetalle();
+  if (!detalle.length) {
+    filaTabla([{ t: "Sin pesadas registradas en la jornada.", x: MARGEN }], true);
+  }
+  detalle.forEach((f) => {
+    const anul = f.estado === "ANULADO";
+    if (y < MARGEN + 40) { nuevaPagina(); cabeceraTabla(colD); }
+    filaTabla([
+      { t: f.id, x: MARGEN, w: 146 }, { t: f.categoria, x: MARGEN + 150, w: 142 },
+      { t: String(f.n), x: MARGEN + 306, alineado: "d" },
+      { t: kg(f.kg), x: MARGEN + 356, alineado: "d" },
+      { t: f.registrado, x: MARGEN + 364, w: 96 },
+      { t: anul ? "ANULADO" : "vigente", x: ANCHO_PAG - MARGEN - 52, w: 52 }
+    ], anul);
+    if (anul && f.motivo) {
+      texto(recortar(`motivo: ${f.motivo}`, ANCHO_PAG - 2 * MARGEN - 16, 7.5, false), MARGEN + 16, 7.5, false, true);
+      y -= 11;
+    }
+  });
+
+  // ---- Bitácora
+  y -= 14;
+  titulo("Bitácora de la jornada");
+  const colB = [
+    { t: "MARCA DE TIEMPO", x: MARGEN, w: 98 }, { t: "ACCIÓN", x: MARGEN + 102, w: 126 },
+    { t: "REFERENCIA", x: MARGEN + 232, w: 130 }, { t: "ANTES", x: MARGEN + 366, w: 70 },
+    { t: "DESPUÉS", x: MARGEN + 440, w: 84 }
+  ];
+  cabeceraTabla(colB);
+  jornada.bitacora.forEach((a) => {
+    if (y < MARGEN + 40) { nuevaPagina(); cabeceraTabla(colB); }
+    filaTabla([
+      { t: a.ts, x: MARGEN, w: 98 }, { t: a.accion, x: MARGEN + 102, w: 126 },
+      { t: a.referencia, x: MARGEN + 232, w: 130 }, { t: a.antes || "-", x: MARGEN + 366, w: 70 },
+      { t: a.despues || "-", x: MARGEN + 440, w: 84 }
+    ]);
+    if (a.motivo) {
+      texto(recortar(`motivo: ${a.motivo}`, ANCHO_PAG - 2 * MARGEN - 16, 7.5, false), MARGEN + 16, 7.5, false, true);
+      y -= 11;
+    }
+  });
+
+  // ---- Firmas
+  y -= 26;
+  sitio(90);
+  const anchoFirma = (ANCHO_PAG - 2 * MARGEN - 40) / 2;
+  [["Responsable del registro", jornada.operador || ""], ["Conformidad del cliente", ""]].forEach(([rotulo, nombre], i) => {
+    const x = MARGEN + i * (anchoFirma + 40);
+    flujo.push(`0.4 0.43 0.48 RG 0.7 w ${x} ${y.toFixed(2)} m ${(x + anchoFirma).toFixed(2)} ${y.toFixed(2)} l S`);
+    const guardado = y;
+    y -= 12;
+    texto(rotulo, x, 8.5, false, true);
+    if (nombre) { y -= 11; texto(nombre, x, 9, true); }
+    y = guardado;
+  });
+  y -= 40;
+
+  paginas.push(flujo);
+
+  // ---- Pie de página, una vez sabido cuántas son
+  paginas.forEach((pagina, i) => {
+    const pie = `Documento controlado ${FORMATO.codigo} v${FORMATO.version}  -  ${jornada.id}  -  emitido ${sello()}`;
+    pagina.push(`BT /F1 7.5 Tf 0.45 0.48 0.52 rg 1 0 0 1 ${MARGEN} ${MARGEN - 8} Tm (${escapaPDF(pie)}) Tj ET`);
+    const num = `Página ${i + 1} de ${paginas.length}`;
+    pagina.push(`BT /F1 7.5 Tf 0.45 0.48 0.52 rg 1 0 0 1 ${(ANCHO_PAG - MARGEN - anchoCifra(num, 7.5)).toFixed(2)} ${MARGEN - 8} Tm (${escapaPDF(num)}) Tj ET`);
+  });
+
+  return armarPDF(paginas);
+}
+
+// Ensamblado del archivo: objetos, tabla de referencias cruzadas y remolque.
+function armarPDF(paginas) {
+  const objetos = [];
+  const idPagina = (i) => 5 + i * 2;
+  const idContenido = (i) => 6 + i * 2;
+
+  objetos[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  objetos[2] = `<< /Type /Pages /Kids [${paginas.map((_, i) => `${idPagina(i)} 0 R`).join(" ")}] /Count ${paginas.length} >>`;
+  objetos[3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+  objetos[4] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
+
+  paginas.forEach((flujo, i) => {
+    const contenido = flujo.join("\n");
+    objetos[idPagina(i)] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${ANCHO_PAG} ${ALTO_PAG}] ` +
+      `/Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${idContenido(i)} 0 R >>`;
+    objetos[idContenido(i)] = `<< /Length ${contenido.length} >>\nstream\n${contenido}\nendstream`;
+  });
+
+  let pdf = "%PDF-1.4\n";
+  const posiciones = [];
+  for (let i = 1; i < objetos.length; i++) {
+    posiciones[i] = pdf.length;
+    pdf += `${i} 0 obj\n${objetos[i]}\nendobj\n`;
+  }
+  const inicioXref = pdf.length;
+  pdf += `xref\n0 ${objetos.length}\n0000000000 65535 f \n`;
+  for (let i = 1; i < objetos.length; i++) {
+    pdf += `${String(posiciones[i]).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objetos.length} /Root 1 0 R >>\nstartxref\n${inicioXref}\n%%EOF`;
+
+  // Una letra, un byte: el contenido ya viene en WinAnsi, así que las
+  // posiciones contadas sobre la cadena son las del archivo.
+  const bytes = new Uint8Array(pdf.length);
+  for (let i = 0; i < pdf.length; i++) bytes[i] = pdf.charCodeAt(i) & 0xFF;
+  return bytes;
+}
+
+// ===========================================================================
+// Entrega de archivos
+// ===========================================================================
+const enMarco = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+
+let entregador = null;   // lo pone el visor, si puede; puede quedarse en null
+
+if (enMarco && window.claude && typeof window.claude.use === "function") {
+  window.claude.use("downloads").then((d) => {
+    entregador = d;
+    if (vista.pantalla === "exportar") pintar();
+  }).catch(() => { /* sin descarga: queda copiar */ });
+}
+
+const nombreArchivo = (que, ext) => `${FORMATO.codigo}_${jornada.fecha}_${jornada.id}_${que}.${ext}`;
+
+function avisarExportacion(texto) {
+  const nota = document.getElementById("notaCopia");
+  if (nota) nota.textContent = texto;
+}
+
+function entregar(nombre, datos, mime, etiqueta) {
+  anotar("EXPORTACIÓN", nombre, "", etiqueta, "");
+  guardar();
+
+  const blob = new Blob([datos], { type: mime });
+  if (entregador) {
+    entregador.save({ filename: nombre, data: blob }).then(
+      () => avisarExportacion(`${nombre} guardado.`),
+      (e) => avisarExportacion((e && e.code === "declined")
+        ? "No se guardó nada. Vuelve a tocar el botón cuando quieras el archivo."
+        : "El teléfono no dejó guardar el archivo. Copia el texto de la hoja y pégalo en la hoja de cálculo.")
+    );
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement("a");
+  enlace.href = url;
+  enlace.download = nombre;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  avisarExportacion(`${nombre} descargado.`);
+}
+
+function exportarExcel() {
+  entregar(nombreArchivo("LIBRO", "xlsx"), libroExcel(),
+           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+           "libro Excel con CONTROL, DETALLE, RESUMEN y BITACORA");
+}
+
+function exportarPDF() {
+  entregar(nombreArchivo("ACTA", "pdf"), pdfJornada(),
+           "application/pdf", "acta en PDF de la jornada");
+}
+
+function textoHoja() {
+  if (vista.hoja === "detalle") return csvDetalle();
+  if (vista.hoja === "resumen") return csvResumen();
+  return csvBitacora();
+}
+
+function exportarCSV() {
+  entregar(nombreArchivo(vista.hoja.toUpperCase(), "csv"), "﻿" + textoHoja(),
+           "text/csv;charset=utf-8;", `hoja ${vista.hoja} en CSV`);
+}
+
+function copiarCSV() {
+  const campo = document.getElementById("textoCSV");
+  campo.select();
+  try {
+    navigator.clipboard.writeText(campo.value).then(
+      () => avisarExportacion("Copiado. Pégalo en Excel o en Google Sheets."),
+      () => avisarExportacion("El texto quedó seleccionado: cópialo a mano.")
+    );
+  } catch (e) { avisarExportacion("El texto quedó seleccionado: cópialo a mano."); }
+}
+
+// ===========================================================================
+// Gaveta
+// ===========================================================================
+function pintarGaveta(html) {
+  document.getElementById("gaveta").innerHTML =
+    `<div class="velo" onclick="if (event.target === this) cerrarGaveta()">
+       <div class="gaveta" role="dialog" aria-modal="true">${html}</div>
+     </div>`;
+  const primero = document.querySelector(".gaveta input");
+  if (primero) { primero.focus(); primero.select(); }
+}
+
+function cerrarGaveta() {
+  document.getElementById("gaveta").innerHTML = "";
+}
+
+// ===========================================================================
+// Pantallas
+// ===========================================================================
+function encabezado(titulo, subtitulo, volverA) {
+  return `<div class="barra-sup">
+    ${volverA ? `<button class="btn-atras" onclick="ir('${volverA}')" aria-label="Volver">‹</button>` : ""}
+    <div class="titulo">
+      <h1>${esc(titulo)}</h1>
+      <span>${esc(subtitulo)}</span>
+    </div>
+    ${jornada.demo ? '<span class="insignia">DEMO</span>' : ""}
+  </div>`;
+}
+
+function avisoError() {
+  return vista.error ? `<div class="aviso">${esc(vista.error)}</div>` : "";
+}
+
+function pantallaJornada() {
+  const t = totalesJornada();
+  const lotes = jornada.lotes.slice().reverse().map((lote) => {
+    const total = totalLote(lote);
+    const abierto = lote.estado === "abierto";
+    const avance = lote.tipo === "peso"
+      ? `${vigentes(lote).length} de ${lote.cantidad} pesadas · ${kg(pesoLote(lote))} kg`
+      : `${lote.cantidad} unidades`;
+    const destino = abierto ? (lote.tipo === "peso" ? "pesaje" : "unidad") : "culminado";
+    return `<button class="lote ${abierto ? "en-curso" : ""}" onclick="ir('${destino}', ${lote.id})">
+      <div class="col">
+        <div class="nombre">Lote ${lote.id} · ${esc(lote.categoria)}</div>
+        <div class="codigo">${esc(codigoLote(lote))}</div>
+        <div class="detalle cifra">${avance}</div>
+        <div style="margin-top:5px"><span class="chip ${abierto ? "abierto" : ""}">${abierto ? "EN CURSO" : "CULMINADO"}</span></div>
+      </div>
+      <div class="monto cifra">${total === null ? "—" : "S/ " + soles(total)}<small>${total === null ? "sin precio" : "total"}</small></div>
+    </button>`;
+  }).join("");
+
+  return encabezado("Jornada del camal", `${jornada.fecha} · ${jornada.id}`) + `
+    <div class="tarjeta">
+      <div class="rotulo">Consolidado del día</div>
+      <div class="tiras">
+        <div class="tira"><div class="valor cifra">${t.lotes}</div><div class="pie">lotes</div></div>
+        <div class="tira"><div class="valor cifra">${t.animales}</div><div class="pie">cabezas y unidades</div></div>
+        <div class="tira"><div class="valor cifra">${kg(t.kilos)}</div><div class="pie">kg vigentes</div></div>
+        <div class="tira"><div class="valor cifra">S/ ${soles(t.monto)}</div><div class="pie">${t.pendientes ? t.pendientes + " lote(s) sin precio" : "monto del día"}</div></div>
+      </div>
+      ${t.anulados ? `<p class="nota">${t.anulados} registro(s) anulado(s), conservados en el Excel y en la bitácora.</p>` : ""}
+    </div>
+
+    <div class="tarjeta">
+      <div class="rotulo">Control documental</div>
+      <div class="ficha-control">
+        <div><span class="clave">Formato</span><span class="valor-control">${FORMATO.codigo} v${FORMATO.version}</span></div>
+        <div><span class="clave">Jornada</span><span class="valor-control">${esc(jornada.id)}</span></div>
+      </div>
+      <div class="campo-grupo" style="margin-top:10px;margin-bottom:0">
+        <label for="operador">Responsable del registro</label>
+        <input type="text" id="operador" value="${esc(jornada.operador)}"
+               placeholder="Nombre de quien registra" onchange="fijarOperador(this.value)">
+      </div>
+      ${jornada.operador ? "" : '<p class="nota">Sin responsable declarado, el Excel y el PDF salen con «(sin declarar)»: para un registro auditable, escríbelo antes de exportar.</p>'}
+    </div>
+
+    <div class="duo">
+      <button class="btn" onclick="nuevoLote('peso')">Nuevo lote de pesaje</button>
+      <button class="btn btn-turquesa" onclick="nuevoLote('unidad')">Nuevo lote de menudencias</button>
+    </div>
+
+    <div class="tarjeta" style="margin-top:12px">
+      <div class="rotulo">Lotes de la jornada</div>
+      ${lotes || '<div class="vacio">Todavía no hay lotes. Empieza con «Nuevo lote de pesaje».</div>'}
+    </div>
+
+    <button class="btn btn-gris" onclick="ir('exportar')">Exportar: Excel, PDF y bitácora</button>
+    <button class="btn btn-sec btn-chico" onclick="ir('bitacora')">Ver la bitácora (${jornada.bitacora.length} apuntes)</button>
+    ${jornada.demo ? '<button class="btn btn-sec btn-chico" onclick="vaciarJornada()">Cerrar la demostración y abrir la jornada real</button>' : ""}
+  `;
+}
+
+function pantallaNuevoPeso() {
+  const opciones = CATEGORIAS_PESO.map((c) =>
+    `<option value="${esc(c.id)}">${esc(c.id)} — referencia S/ ${soles(c.precio)} por kg</option>`).join("");
+  return encabezado("Nuevo lote de pesaje", "Cuántas cabezas entran al lote", "jornada") + `
+    <div class="tarjeta">
+      <div class="campo-grupo">
+        <label for="categoriaLote">Categoría del lote</label>
+        <select id="categoriaLote">${opciones}</select>
+      </div>
+      <div class="campo-grupo">
+        <label for="cantidadLote">Cantidad a pesar</label>
+        <div class="paso">
+          <button type="button" onclick="ajustarCampo('cantidadLote', -1)" aria-label="Quitar una">−</button>
+          <input type="text" inputmode="numeric" id="cantidadLote" class="grande" value="${vista.nuevo.cantidad}">
+          <button type="button" onclick="ajustarCampo('cantidadLote', 1)" aria-label="Sumar una">+</button>
+        </div>
+        <p class="nota">Es solo el punto de partida: mientras pesas puedes ampliarlo si llegan más animales.</p>
+      </div>
+      ${avisoError()}
+    </div>
+    <div class="barra-accion"><button class="btn" onclick="crearLote()">Empezar a pesar</button></div>
+  `;
+}
+
+function pantallaNuevoUnidad() {
+  const opciones = CATEGORIAS_UNIDAD.map((c) =>
+    `<option value="${esc(c.id)}">${esc(c.id)} — referencia S/ ${soles(c.precio)} por unidad</option>`).join("");
+  return encabezado("Nuevo lote de menudencias", "Se cuenta por unidad, no se pesa", "jornada") + `
+    <div class="tarjeta">
+      <div class="campo-grupo">
+        <label for="categoriaLote">Menudencia de</label>
+        <select id="categoriaLote">${opciones}</select>
+      </div>
+      <div class="campo-grupo">
+        <label for="cantidadLote">Cantidad de unidades</label>
+        <div class="paso">
+          <button type="button" onclick="ajustarCampo('cantidadLote', -1)" aria-label="Quitar una">−</button>
+          <input type="text" inputmode="numeric" id="cantidadLote" class="grande" value="${vista.nuevo.cantidad}">
+          <button type="button" onclick="ajustarCampo('cantidadLote', 1)" aria-label="Sumar una">+</button>
+        </div>
+      </div>
+      ${avisoError()}
+    </div>
+    <div class="barra-accion"><button class="btn btn-turquesa" onclick="crearLote()">Abrir el lote</button></div>
+  `;
+}
+
+function ajustarCampo(id, delta) {
+  const campo = document.getElementById(id);
+  const n = aNumero(campo.value) || 0;
+  campo.value = Math.max(1, Math.round(n) + delta);
+}
+
+function fichasPesadas(lote) {
+  return lote.pesos.slice().sort((a, b) => a.n - b.n).map((p, i) => {
+    const indice = lote.pesos.indexOf(p);
+    return `<button class="pesada ${p.anulado ? "anulada" : ""}" onclick="abrirPesada(${indice})">
+      <b>${p.n}</b><span class="valor-kg">${kg(p.kg)}</span>
+      ${p.anulado ? '<span class="sello">anulada</span>' : (p.corregida ? '<span class="sello">corregida</span>' : "")}
+    </button>`;
+  }).join("");
+}
+
+function pantallaPesaje() {
+  const lote = loteActual();
+  const hechas = vigentes(lote).length;
+  const completo = hechas >= lote.cantidad;
+  const suma = pesoLote(lote);
+  const siguiente = proximoCorrelativo(lote);
+  const avance = Math.min(100, lote.cantidad ? (hechas / lote.cantidad) * 100 : 0);
+
+  const entrada = completo
+    ? `<div class="vacio">Las ${lote.cantidad} cabezas del lote están pesadas.<br>Ciérralo, o amplía la cantidad si llegaron más.</div>`
+    : `<div class="correlativo">
+         <div class="rotulo" style="margin-bottom:2px">${esc(lote.categoria)} número</div>
+         <div class="num cifra">${siguiente}</div>
+         <div class="de">de ${lote.cantidad}</div>
+       </div>
+       <input type="text" inputmode="decimal" id="pesoActual" class="grande" placeholder="0.0" autocomplete="off"
+              onkeydown="if (event.key === 'Enter') registrarPeso()">
+       <p class="nota" style="text-align:center">Kilos en la balanza. Con coma o con punto, da igual.</p>`;
+
+  return encabezado(`Lote ${lote.id} · ${lote.categoria}`, `${codigoLote(lote)} · ${hechas} pesadas · ${kg(suma)} kg`, "jornada") + `
+    <div class="tarjeta">
+      ${entrada}
+      ${avisoError()}
+      <div class="progreso"><i style="width:${avance}%"></i></div>
+    </div>
+
+    <div class="tarjeta">
+      <div class="rotulo">Cantidad del lote</div>
+      <div class="paso">
+        <button type="button" onclick="ampliarCantidad(-1)" aria-label="Quitar una cabeza">−</button>
+        <input type="text" inputmode="numeric" id="cantidadEnCurso" value="${lote.cantidad}"
+               onchange="fijarCantidad(this.value)">
+        <button type="button" onclick="ampliarCantidad(1)" aria-label="Sumar una cabeza">+</button>
+      </div>
+      <p class="nota">Nunca baja de lo ya pesado (${hechas}).</p>
+    </div>
+
+    <div class="tarjeta">
+      <div class="rotulo">Pesadas del lote · toca una para corregirla o anularla</div>
+      ${lote.pesos.length ? `<div class="pesadas">${fichasPesadas(lote)}</div>` : '<div class="vacio">Aún no hay pesadas.</div>'}
+      <div class="tiras" style="margin-top:12px">
+        <div class="tira"><div class="valor cifra">${hechas}</div><div class="pie">pesadas vigentes</div></div>
+        <div class="tira"><div class="valor cifra">${kg(suma)}</div><div class="pie">kg acumulados</div></div>
+      </div>
+      <p class="nota">El precio se pide al cerrar el lote, con la suma ya cuadrada contra la balanza.</p>
+    </div>
+
+    <div class="barra-accion">
+      ${completo
+        ? `<button class="btn" onclick="terminarLote()">Terminar el lote</button>`
+        : `<div class="duo">
+             <button class="btn btn-sec" onclick="terminarLote()">Terminar lote</button>
+             <button class="btn" onclick="registrarPeso()">Registrar N° ${siguiente}</button>
+           </div>`}
+    </div>
+  `;
+}
+
+function pantallaUnidad() {
+  const lote = loteActual();
+  const total = totalLote(lote);
+  return encabezado(`Lote ${lote.id} · ${lote.categoria}`, `${codigoLote(lote)} · por unidad`, "jornada") + `
+    <div class="tarjeta">
+      <div class="paso-cierre">
+        <span class="orden">1</span>
+        <div>
+          <label for="unidadesLote">Cantidad por unidad</label>
+          <div class="paso">
+            <button type="button" onclick="pasoUnidades(-1)" aria-label="Quitar una">−</button>
+            <input type="text" inputmode="numeric" id="unidadesLote" class="grande" value="${lote.cantidad}"
+                   onchange="fijarUnidades(this.value)">
+            <button type="button" onclick="pasoUnidades(1)" aria-label="Sumar una">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="paso-cierre">
+        <span class="orden">2</span>
+        <div>
+          <label for="precioUnidad">Precio por unidad (S/)</label>
+          <input type="text" inputmode="decimal" id="precioUnidad" class="grande"
+                 value="${lote.precio === null ? "" : soles(lote.precio)}"
+                 placeholder="0.00" onchange="fijarPrecio(this.value)">
+        </div>
+      </div>
+      ${avisoError()}
+
+      <div class="paso-cierre">
+        <span class="orden">3</span>
+        <div>
+          <div class="rotulo" style="margin-bottom:2px">Precio total</div>
+          <div class="resultado cifra ${total === null ? "" : "en-soles"}">${total === null ? "—" : "S/ " + soles(total)}</div>
+          <div class="pie-paso">${lote.cantidad} und × S/ ${lote.precio === null ? "—" : soles(lote.precio)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="barra-accion"><button class="btn btn-turquesa" onclick="terminarLote()">Cerrar el lote</button></div>
+  `;
+}
+
+function pantallaCulminado() {
+  const lote = loteActual();
+  const esPeso = lote.tipo === "peso";
+  const suma = pesoLote(lote);
+  const total = totalLote(lote);
+  const cuantas = vigentes(lote).length;
+  const promedio = esPeso && cuantas ? suma / cuantas : 0;
+  const anuladas = lote.pesos.filter((p) => p.anulado).length;
+
+  const primerRotulo = esPeso ? "Peso total del lote" : "Cantidad del lote";
+  const primerValor = esPeso ? `${kg(suma)} kg` : `${lote.cantidad} und`;
+  const primerPie = esPeso ? `suma de las ${cuantas} pesadas vigentes` : "unidades contadas";
+
+  return encabezado("Lote culminado", `${codigoLote(lote)} · ${lote.categoria} · ${lote.inicio} a ${lote.fin}`, "jornada") + `
+    <div class="tarjeta">
+      <div class="rotulo">Lo que salió del lote</div>
+      <div class="tiras">
+        <div class="tira"><div class="valor cifra">${cantidadLote(lote)}</div><div class="pie">${esPeso ? "cabezas pesadas" : "unidades"}</div></div>
+        ${esPeso ? `<div class="tira"><div class="valor cifra">${kg(promedio)}</div><div class="pie">kg promedio por cabeza</div></div>` : ""}
+      </div>
+      ${anuladas ? `<p class="nota">${anuladas} pesada(s) anulada(s): no suman, pero siguen en el registro.</p>` : ""}
+    </div>
+
+    <div class="tarjeta">
+      <div class="paso-cierre">
+        <span class="orden">1</span>
+        <div>
+          <div class="rotulo" style="margin-bottom:2px">${primerRotulo}</div>
+          <div class="resultado cifra">${primerValor}</div>
+          <div class="pie-paso">${primerPie}</div>
+        </div>
+      </div>
+
+      <div class="paso-cierre">
+        <span class="orden">2</span>
+        <div>
+          <label for="precioLote">Precio por ${esPeso ? "kg" : "unidad"} (S/)</label>
+          <input type="text" inputmode="decimal" id="precioLote" class="grande"
+                 value="${lote.precio === null ? "" : soles(lote.precio)}"
+                 placeholder="0.00" onchange="fijarPrecio(this.value)">
+        </div>
+      </div>
+      ${avisoError()}
+
+      <div class="paso-cierre">
+        <span class="orden">3</span>
+        <div>
+          <div class="rotulo" style="margin-bottom:2px">Precio total</div>
+          <div class="resultado cifra ${total === null ? "" : "en-soles"}">${total === null ? "—" : "S/ " + soles(total)}</div>
+          <div class="pie-paso">${esPeso ? kg(suma) + " kg" : lote.cantidad + " und"} × S/ ${lote.precio === null ? "—" : soles(lote.precio)}</div>
+        </div>
+      </div>
+    </div>
+
+    ${esPeso ? `<div class="tarjeta">
+      <div class="rotulo">Pesadas · toca una para corregirla o anularla</div>
+      <div class="pesadas">${fichasPesadas(lote)}</div>
+    </div>` : ""}
+
+    <button class="btn btn-sec" onclick="reabrirLote()">Reabrir el lote y seguir ${esPeso ? "pesando" : "contando"}</button>
+    <div class="barra-accion"><button class="btn" onclick="ir('jornada')">Volver a la jornada</button></div>
+  `;
+}
+
+function pantallaBitacora() {
+  const apuntes = jornada.bitacora.slice().reverse().map((a) => {
+    const clase = a.accion.indexOf("CORRECCIÓN") === 0 ? "correccion"
+                : a.accion.indexOf("ANULACIÓN") === 0 ? "anulacion" : "";
+    const cambio = (a.antes || a.despues)
+      ? `${a.antes ? esc(a.antes) : "—"} → ${a.despues ? esc(a.despues) : "—"}`
+      : "";
+    return `<div class="apunte ${clase}">
+      <div class="cuando">${esc(a.ts)} · ${esc(a.responsable)}</div>
+      <div class="que">${esc(a.accion)}</div>
+      <div class="codigo">${esc(a.referencia)}</div>
+      ${cambio ? `<div class="cifra">${cambio}</div>` : ""}
+      ${a.motivo ? `<div class="motivo">Motivo: ${esc(a.motivo)}</div>` : ""}
+    </div>`;
+  }).join("");
+
+  return encabezado("Bitácora de la jornada", `${jornada.bitacora.length} apuntes · ${jornada.id}`, "jornada") + `
+    <div class="tarjeta">
+      <p class="nota" style="margin-top:0">Todo lo que pasó en la jornada, en orden. Sale completa en el Excel y en el PDF: es la hoja que responde «quién cambió qué, cuándo y por qué».</p>
+      <div class="bitacora">${apuntes || '<div class="vacio">Sin apuntes todavía.</div>'}</div>
+    </div>
+  `;
+}
+
+function pantallaExportar() {
+  const texto = textoHoja();
+  const filas = texto.trim().split("\n").length - 1;
+  const explica = {
+    detalle: "Una fila por cabeza, con su identificador único y su estado. Es la hoja para auditar contra la balanza.",
+    resumen: "Una fila por lote, pesaje y menudencias juntos. En el Excel sus cifras son fórmulas contra el detalle.",
+    bitacora: "Quién cambió qué, cuándo y por qué. Es la hoja que sostiene la trazabilidad."
+  }[vista.hoja];
+
+  return encabezado("Exportar", `${jornada.fecha} · ${jornada.id}`, "jornada") + `
+    <div class="tarjeta">
+      <div class="rotulo">Archivos de la jornada</div>
+      <button class="btn" onclick="exportarExcel()">Descargar Excel (.xlsx)</button>
+      <p class="nota">Cinco hojas: CONTROL, PESOS POR LOTE —cada lote con sus pesos, su peso total y su precio total, en bloques—, DETALLE, RESUMEN y BITACORA. Los totales no son números pegados sino fórmulas: si en la oficina corrigen un peso, todo lo demás se recalcula solo.</p>
+      <button class="btn btn-azul" onclick="exportarPDF()">Descargar el acta en PDF</button>
+      <p class="nota" id="notaCopia">El acta trae el control documental, el resumen, el detalle con sus anulaciones, la bitácora y las dos firmas.</p>
+      ${jornada.operador ? "" : '<div class="aviso">No hay responsable declarado. Los archivos saldrán con «(sin declarar)» en el control documental.</div>'}
+    </div>
+
+    <div class="tarjeta">
+      <div class="rotulo">Ver y copiar una hoja suelta</div>
+      <div class="pestanas tres">
+        <button aria-pressed="${vista.hoja === "detalle"}" onclick="vista.hoja='detalle'; pintar()">Detalle</button>
+        <button aria-pressed="${vista.hoja === "resumen"}" onclick="vista.hoja='resumen'; pintar()">Resumen</button>
+        <button aria-pressed="${vista.hoja === "bitacora"}" onclick="vista.hoja='bitacora'; pintar()">Bitácora</button>
+      </div>
+      <p class="nota" style="margin-top:0">${explica} ${filas} fila(s).</p>
+      <textarea id="textoCSV" readonly spellcheck="false">${esc(texto)}</textarea>
+      <div class="duo" style="margin-top:10px">
+        <button class="btn btn-sec btn-chico" onclick="copiarCSV()">Copiar</button>
+        <button class="btn btn-sec btn-chico" onclick="exportarCSV()">Bajar en CSV</button>
+      </div>
+    </div>
+  `;
+}
+
+// ===========================================================================
+// Pintado
+// ===========================================================================
+function pintar() {
+  const lote = loteActual();
+  if (["pesaje", "unidad", "culminado"].includes(vista.pantalla) && !lote) vista.pantalla = "jornada";
+
+  let html;
+  switch (vista.pantalla) {
+    case "nuevo-peso":   html = pantallaNuevoPeso(); break;
+    case "nuevo-unidad": html = pantallaNuevoUnidad(); break;
+    case "pesaje":       html = pantallaPesaje(); break;
+    case "unidad":       html = pantallaUnidad(); break;
+    case "culminado":    html = pantallaCulminado(); break;
+    case "bitacora":     html = pantallaBitacora(); break;
+    case "exportar":     html = pantallaExportar(); break;
+    default:             html = pantallaJornada();
+  }
+  document.getElementById("app").innerHTML = html;
+
+  const peso = document.getElementById("pesoActual");
+  if (peso) peso.focus();
+}
+
+jornada = cargar();
+pintar();
+</script>
+<script>
+// Sin esto la app abre solo con señal, y en el camal no la hay.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("./sw.js").catch(function () {});
+  });
+}
+</script>
+</body>
+</html>

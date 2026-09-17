@@ -28,6 +28,7 @@ python3 demos/camal/construir.py
 |---|---|
 | `app-camal.html` | El que se guarda en el teléfono y se abre sin señal |
 | `artefacto-celular.html` | El que se publica como enlace; sin envoltura, la pone el visor |
+| `docs/camal/index.html` | La forma instalable en Android; Pages sirve `docs/` |
 
 Los dos se generan: editarlos a mano es perder el cambio en la siguiente
 construcción. Lo que se toca es el cuerpo.
@@ -50,6 +51,32 @@ dos identificadores repetidos, que la anulada viaje marcada, que el resumen
 sean fórmulas contra el detalle y que el total en frío cuadre con la pantalla—
 y el PDF con pypdf. Sesenta y tres comprobaciones; cualquiera que falle
 devuelve código 1.
+
+### La app instalable en Android
+
+`docs/camal/` es la app como aplicación: `index.html` generado, más el
+manifiesto, el trabajador de servicio, los tres iconos —dibujados por
+`iconos.py`, una balanza de dos platillos— y el QR que lleva a la dirección
+publicada. GitHub Pages sirve `docs/` desde `main`, así que queda en
+**https://nilthonnn.github.io/nefer/camal/** en cuanto la rama se integre.
+
+En Android, Chrome ofrece «Instalar aplicación» y queda con su icono, abre sin
+barra de navegador y funciona sin señal. En iPhone es *Compartir › Añadir a
+pantalla de inicio*.
+
+Se comprueba como app, no como página:
+
+```bash
+python3 demos/camal/probar_android.py salidas/
+```
+
+Levanta un servidor sobre `docs/camal/` —igual que hará Pages—, conduce un
+Chromium emulando un Pixel con pantalla táctil, y verifica lo que Android
+exige para instalarla: manifiesto con nombre, `display: standalone`, iconos de
+192 y 512 con uno recortable, y un trabajador de servicio activo con la app ya
+guardada. Después **corta la red**: recarga, comprueba que la jornada sigue
+entera, pesa otra cabeza y descarga el Excel y el PDF sin conexión. Termina
+midiendo que ninguna pantalla se salga de ancho en 393 px.
 
 ### Lo que arregla del prototipo
 
