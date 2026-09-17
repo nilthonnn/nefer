@@ -70,3 +70,12 @@ inservible un archivo:
 
 Los precios que trae el catálogo son referenciales y están para confirmarse:
 no son los del camal.
+
+### El cierre del lote, en tres pasos
+
+La pantalla del lote culminado va numerada porque es una secuencia, no una
+lista de campos: **1** el peso total, que sale de sumar las pesadas; **2** el
+precio por kg, que recién ahí se pide; **3** el precio total, que es el
+producto de los dos. Cobrar antes de cuadrar el peso contra la balanza es
+exactamente lo que ese orden impide. Los lotes de menudencias llevan la misma
+secuencia con cantidad por unidad en el primer paso.

@@ -242,6 +242,32 @@
 
   .vacio { color: var(--tenue); font-size: 14px; text-align: center; padding: 18px 8px; }
 
+  /* ---- Cierre del lote: peso, precio y total, en ese orden ---- */
+  .paso-cierre {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 12px;
+    align-items: start;
+    padding-block: 12px;
+  }
+  .paso-cierre + .paso-cierre { border-top: 1px solid var(--borde); }
+  .paso-cierre .orden {
+    background: var(--tinta);
+    border: 1px solid var(--borde);
+    border-radius: 99px;
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--tenue);
+  }
+  .paso-cierre > div { min-width: 0; }
+  .resultado { font-size: 30px; font-weight: 800; line-height: 1.15; }
+  .resultado.en-soles { color: var(--verde-claro); }
+  .pie-paso { font-size: 12.5px; color: var(--tenue); margin-top: 2px; }
+
   .aviso {
     background: rgba(217, 83, 79, 0.16);
     border: 1px solid var(--rojo);
@@ -317,14 +343,16 @@
 // Catálogo. Los precios son referenciales: se editan en cada lote y quedan
 // guardados con el lote, no aquí.
 // ---------------------------------------------------------------------------
+// Lo que se pesa en el camal es el degollado —la carcasa— y de ahí salen los
+// cueros. El nombre de la categoría es el que se canta en la playa de faenado.
 const CATEGORIAS_PESO = [
-  { id: "Alpaca",            precio: 14.00 },
-  { id: "Alpaca Observada",  precio: 12.00 },
-  { id: "Alpaca Vieja",      precio: 11.00 },
-  { id: "Llama",             precio: 13.00 },
-  { id: "Cordero",           precio: 16.00 },
-  { id: "Cuero Alpaca",      precio: 18.00 },
-  { id: "Cuero Cordero",     precio: 15.00 }
+  { id: "Alpaca degollada",           precio: 14.00 },
+  { id: "Alpaca observada degollada", precio: 12.00 },
+  { id: "Alpaca vieja degollada",     precio: 11.00 },
+  { id: "Llama degollada",            precio: 13.00 },
+  { id: "Cordero degollado",          precio: 16.00 },
+  { id: "Cuero de alpaca",            precio: 18.00 },
+  { id: "Cuero de cordero",           precio: 15.00 }
 ];
 
 const CATEGORIAS_UNIDAD = [
@@ -358,7 +386,7 @@ function jornadaDemo() {
     correlativoLote: 3,
     lotes: [
       {
-        id: 1, tipo: "peso", categoria: "Alpaca", cantidad: 8,
+        id: 1, tipo: "peso", categoria: "Alpaca degollada", cantidad: 8,
         pesos: [42.5, 39.8, 44.2, 41.0, 38.6, 45.3, 40.1, 43.7],
         precio: 14.00, estado: "culminado", inicio: "06:42:10", fin: "07:05:38"
       },
@@ -367,7 +395,7 @@ function jornadaDemo() {
         pesos: [], precio: 25.00, estado: "culminado", inicio: "07:08:02", fin: "07:09:20"
       },
       {
-        id: 3, tipo: "peso", categoria: "Cordero", cantidad: 12,
+        id: 3, tipo: "peso", categoria: "Cordero degollado", cantidad: 12,
         pesos: [18.4, 17.9, 19.2, 18.8, 16.5],
         precio: null, estado: "abierto", inicio: "07:22:45", fin: null
       }
@@ -940,25 +968,37 @@ function pantallaUnidad() {
   const total = lote.precio === null ? null : lote.cantidad * lote.precio;
   return encabezado(`Lote ${lote.id} · ${lote.categoria}`, `Abierto ${lote.inicio} · por unidad`, "jornada") + `
     <div class="tarjeta">
-      <div class="rotulo">Cantidad por unidad</div>
-      <div class="paso">
-        <button type="button" onclick="pasoUnidades(-1)" aria-label="Quitar una">−</button>
-        <input type="text" inputmode="numeric" id="unidadesLote" class="grande" value="${lote.cantidad}"
-               onchange="fijarUnidades(this.value)">
-        <button type="button" onclick="pasoUnidades(1)" aria-label="Sumar una">+</button>
+      <div class="paso-cierre">
+        <span class="orden">1</span>
+        <div>
+          <label for="unidadesLote">Cantidad por unidad</label>
+          <div class="paso">
+            <button type="button" onclick="pasoUnidades(-1)" aria-label="Quitar una">−</button>
+            <input type="text" inputmode="numeric" id="unidadesLote" class="grande" value="${lote.cantidad}"
+                   onchange="fijarUnidades(this.value)">
+            <button type="button" onclick="pasoUnidades(1)" aria-label="Sumar una">+</button>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div class="tarjeta">
-      <div class="campo-grupo">
-        <label for="precioUnidad">Precio por unidad (S/)</label>
-        <input type="text" inputmode="decimal" id="precioUnidad" value="${lote.precio === null ? "" : soles(lote.precio)}"
-               placeholder="Ej. 25.00" onchange="fijarPrecio(this.value)">
+      <div class="paso-cierre">
+        <span class="orden">2</span>
+        <div>
+          <label for="precioUnidad">Precio por unidad (S/)</label>
+          <input type="text" inputmode="decimal" id="precioUnidad" class="grande"
+                 value="${lote.precio === null ? "" : soles(lote.precio)}"
+                 placeholder="0.00" onchange="fijarPrecio(this.value)">
+        </div>
       </div>
       ${avisoError()}
-      <div class="tiras">
-        <div class="tira"><div class="valor cifra">${lote.cantidad}</div><div class="pie">unidades</div></div>
-        <div class="tira"><div class="valor cifra">${total === null ? "—" : "S/ " + soles(total)}</div><div class="pie">total del lote</div></div>
+
+      <div class="paso-cierre">
+        <span class="orden">3</span>
+        <div>
+          <div class="rotulo" style="margin-bottom:2px">Precio total</div>
+          <div class="resultado cifra ${total === null ? "" : "en-soles"}">${total === null ? "—" : "S/ " + soles(total)}</div>
+          <div class="pie-paso">${lote.cantidad} und × S/ ${lote.precio === null ? "—" : soles(lote.precio)}</div>
+        </div>
       </div>
     </div>
 
@@ -973,31 +1013,54 @@ function pantallaCulminado() {
   const total = totalLote(lote);
   const promedio = esPeso && lote.pesos.length ? suma / lote.pesos.length : 0;
 
+  // Las tres filas van numeradas porque son una secuencia de verdad: primero
+  // cuadra el peso contra la balanza, después se pone el precio, y el total
+  // sale de los dos. Ese orden es el que evita cobrar sobre una suma a medias.
+  const primerRotulo = esPeso ? "Peso total del lote" : "Cantidad del lote";
+  const primerValor = esPeso ? `${kg(suma)} kg` : `${lote.cantidad} und`;
+  const primerPie = esPeso
+    ? `suma de las ${lote.pesos.length} pesadas`
+    : "unidades contadas";
+
   return encabezado("Lote culminado", `Lote ${lote.id} · ${lote.categoria} · ${lote.inicio} a ${lote.fin}`, "jornada") + `
     <div class="tarjeta">
       <div class="rotulo">Lo que salió del lote</div>
       <div class="tiras">
         <div class="tira"><div class="valor cifra">${cantidadLote(lote)}</div><div class="pie">${esPeso ? "cabezas pesadas" : "unidades"}</div></div>
         ${esPeso
-          ? `<div class="tira"><div class="valor cifra">${kg(suma)}</div><div class="pie">kg en total</div></div>
-             <div class="tira"><div class="valor cifra">${kg(promedio)}</div><div class="pie">kg promedio</div></div>`
+          ? `<div class="tira"><div class="valor cifra">${kg(promedio)}</div><div class="pie">kg promedio por cabeza</div></div>`
           : ""}
       </div>
     </div>
 
     <div class="tarjeta">
-      <div class="rotulo">Precio ${esPeso ? "por kilo" : "por unidad"}</div>
-      <div class="campo-grupo">
-        <label for="precioLote">Soles (S/)</label>
-        <input type="text" inputmode="decimal" id="precioLote" class="grande"
-               value="${lote.precio === null ? "" : soles(lote.precio)}"
-               placeholder="0.00" onchange="fijarPrecio(this.value)">
+      <div class="paso-cierre">
+        <span class="orden">1</span>
+        <div>
+          <div class="rotulo" style="margin-bottom:2px">${primerRotulo}</div>
+          <div class="resultado cifra">${primerValor}</div>
+          <div class="pie-paso">${primerPie}</div>
+        </div>
+      </div>
+
+      <div class="paso-cierre">
+        <span class="orden">2</span>
+        <div>
+          <label for="precioLote">Precio por ${esPeso ? "kg" : "unidad"} (S/)</label>
+          <input type="text" inputmode="decimal" id="precioLote" class="grande"
+                 value="${lote.precio === null ? "" : soles(lote.precio)}"
+                 placeholder="0.00" onchange="fijarPrecio(this.value)">
+        </div>
       </div>
       ${avisoError()}
-      <div class="tira" style="text-align:center">
-        <div class="pie">${esPeso ? `${kg(suma)} kg × S/ ${lote.precio === null ? "—" : soles(lote.precio)}` : `${lote.cantidad} und × S/ ${lote.precio === null ? "—" : soles(lote.precio)}`}</div>
-        <div class="valor cifra" style="font-size:30px">${total === null ? "—" : "S/ " + soles(total)}</div>
-        <div class="pie">total del lote</div>
+
+      <div class="paso-cierre">
+        <span class="orden">3</span>
+        <div>
+          <div class="rotulo" style="margin-bottom:2px">Precio total</div>
+          <div class="resultado cifra ${total === null ? "" : "en-soles"}">${total === null ? "—" : "S/ " + soles(total)}</div>
+          <div class="pie-paso">${esPeso ? kg(suma) + " kg" : lote.cantidad + " und"} × S/ ${lote.precio === null ? "—" : soles(lote.precio)}</div>
+        </div>
       </div>
     </div>
 
