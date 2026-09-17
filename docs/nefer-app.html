@@ -658,6 +658,13 @@
   .dx-biblio-botones label, .dx-biblio-botones button { flex:1 1 auto;
                           text-align:center; }
 
+  .dx-ejemplo { margin:.8rem 0 0; padding:.7rem .8rem; border:1px dashed var(--rule);
+                border-radius:6px; display:flex; flex-direction:column; gap:.6rem; }
+  .dx-ev-ejemplo { border-left:3px solid var(--obs); padding-left:.6rem; }
+  .dx-marca { font-family:var(--mono); font-size:.6rem; letter-spacing:.07em;
+              text-transform:uppercase; color:var(--obs); border:1px solid var(--obs);
+              border-radius:3px; padding:.05rem .3rem; }
+
   .dx-cuidados { list-style:none; margin:.5rem 0 0; padding:0; display:flex;
                  flex-direction:column; gap:.5rem; }
   .dx-cuidados li { border-left:3px solid var(--obs); padding:.5rem .7rem;
@@ -1080,6 +1087,18 @@
                  accept=".pdf,.docx,.xlsx,.xlsm,.csv,.tsv,.json,.md,.txt"
                  hidden>
         </label>
+      </div>
+
+      <!-- El ejemplo es de un taller inventado, y por eso se pide a
+           propósito y se rotula. Mezclado con el historial de verdad haría
+           que el técnico leyera una orden que no existió nunca. -->
+      <div class="dx-ejemplo" id="dx-ejemplo" hidden>
+        <p class="nota">
+          ¿Sin datos a mano para probarlo? Puede cargar un
+          <b>taller de ejemplo</b>: 23 antecedentes de una flota inventada.
+          Sirve para ver cómo responde, no para diagnosticar nada.
+        </p>
+        <button type="button" id="dx-ver-ejemplo">Cargar el taller de ejemplo</button>
       </div>
 
       <!-- La biblioteca: qué hay cargado, qué aprendió, y de dónde salió. -->
@@ -6467,6 +6486,9 @@ var FIXMATE = (function () {
         var m = c.fragmento.metadatos;
         return {
           id: c.fragmento.id, tipo: c.fragmento.tipo, fuente: c.fragmento.fuente,
+          // Un antecedente del taller de ejemplo no se puede leer como si
+          // hubiera pasado de verdad.
+          ejemplo: !!m._ejemplo,
           similitud: c.puntaje,
           codigo_ot: String(m.codigo_ot || m.n_acta || ""),
           resumen_falla: String(m.resumen_falla || m.item || ""),
@@ -7589,7 +7611,9 @@ var FIXMATE = (function () {
 
     html += '<h2 class="rot">Evidencia</h2>';
     d.evidencia_historica.forEach(function (e) {
-      html += '<div class="dx-ev"><b>' + esc(e.codigo_ot || e.id) + "</b> " +
+      html += '<div class="dx-ev' + (e.ejemplo ? " dx-ev-ejemplo" : "") + '"><b>' +
+        esc(e.codigo_ot || e.id) + "</b> " +
+        (e.ejemplo ? '<span class="dx-marca">inventado</span> ' : "") +
         '<span class="met">' + esc(e.tipo) + " · " + Math.round(e.similitud * 100) +
         "% · " + esc(e.fuente) + "</span>";
       if (e.causa_raiz) html += "<div>causa: " + esc(e.causa_raiz) + "</div>";
@@ -7656,16 +7680,27 @@ var FIXMATE = (function () {
   // Lo cargado se acumula: agregar el historial de otra faena no borra el
   // anterior. Un id que ya estaba se reemplaza —el mismo informe corregido
   // pisa al viejo— y lo demas se suma, que es como se junta experiencia.
+  var ultimoAviso = "";
+
   function agregarFragmentos(fragmentos, fuente) {
     if (!motor) {
       motor = new FIXMATE.Motor(new FIXMATE.Indice(
         { embebedor: "local-fnv-" + FIXMATE.DIMENSION,
           dimension: FIXMATE.DIMENSION, fragmentos: [], fuentes: {} }));
     }
-    var nuevos = 0;
+    var nuevos = 0, pisados = [];
     fragmentos.forEach(function (f) {
       if (motor.indice.agregar(f)) nuevos++;
+      else pisados.push(f.metadatos && f.metadatos.codigo_ot || f.id);
     });
+    // Un fragmento que reemplaza a otro con el mismo id se dice. Dos
+    // historiales distintos pueden numerar sus ordenes igual, y perder una
+    // sin avisar es perder un antecedente que el proximo va a necesitar.
+    if (pisados.length) {
+      ultimoAviso = pisados.length + " reemplazaron a otros con el mismo " +
+        "número de orden (" + pisados.slice(0, 3).join(", ") +
+        (pisados.length > 3 ? "…" : "") + ")";
+    }
     motor.indice.fuentes = motor.indice.fuentes || {};
     motor.indice.fuentes[fuente] = String(fragmentos.length);
     // El clasificador se vuelve a entrenar con todo lo que hay: lo que se
@@ -7722,7 +7757,11 @@ var FIXMATE = (function () {
     }, Promise.resolve());
 
     cadena.then(function () {
-      if (motor) mostrarListo(agregados + " fragmento(s) nuevos");
+      if (motor) {
+        mostrarListo(agregados + " fragmento(s) nuevos" +
+                     (ultimoAviso ? " · " + ultimoAviso : ""));
+        ultimoAviso = "";
+      }
       pintarBiblioteca();
       if (problemas.length) {
         $("#dx-estado").textContent += " · " + problemas.join(" · ");
@@ -7745,13 +7784,25 @@ var FIXMATE = (function () {
     });
   }
 
+  // De cuantos archivos salio lo que hay. Se cuenta sobre los fragmentos y
+  // no sobre `fuentes`: un indice armado en la oficina no siempre lo trae, y
+  // decia «23 fragmentos de 0 archivos», que es una cuenta que no puede ser.
+  function archivosDe(indice) {
+    var vistos = {};
+    (indice.fragmentos || []).forEach(function (f) {
+      vistos[f.fuente || "(sin nombre)"] = true;
+    });
+    return Object.keys(vistos).length;
+  }
+
   function mostrarListo(extra) {
     $("#dx-sin-indice").hidden = true;
+    $("#dx-ejemplo").hidden = true;
     $("#dx-listo").hidden = false;
     $("#dx-biblio").hidden = false;
     var cl = motor.clasificador;
     $("#dx-estado").textContent = motor.indice.fragmentos.length +
-      " fragmentos de " + Object.keys(motor.indice.fuentes || {}).length +
+      " fragmentos de " + archivosDe(motor.indice) +
       " archivos · " + (cl.entrenado
         ? cl.casos + " casos con causa confirmada"
         : "sin clasificador: " + cl.motivo) +
@@ -7964,6 +8015,24 @@ var FIXMATE = (function () {
         entrada.value = "";       // el mismo archivo se puede volver a elegir
       });
     });
+    var verEjemplo = $("#dx-ver-ejemplo");
+    if (verEjemplo) {
+      verEjemplo.addEventListener("click", function () {
+        var demo = document.getElementById("fixmate-indice-demo");
+        if (!demo || !demo.textContent.trim()) return;
+        var datos = JSON.parse(demo.textContent);
+        // Cada fragmento queda marcado: la evidencia lo dice en pantalla.
+        (datos.fragmentos || []).forEach(function (f) {
+          f.metadatos = f.metadatos || {};
+          f.metadatos._ejemplo = true;
+          f.fuente = "(ejemplo) " + (f.fuente || "");
+        });
+        usarIndice(JSON.stringify(datos), "taller de ejemplo, no son datos suyos");
+        pintarBiblioteca();
+        guardarBiblioteca();
+      });
+    }
+
     var vaciar = $("#dx-vaciar");
     if (vaciar) {
       vaciar.addEventListener("click", function () {
@@ -7999,9 +8068,15 @@ var FIXMATE = (function () {
         pintarBiblioteca();
         return null;
       }
+      // El ejemplo NO se carga solo. Se abria con el historial de un taller
+      // inventado ya dentro, y al cargar el historial de verdad encima los
+      // dos quedaban mezclados: el tecnico veia «segun OT-2026-0233» sin
+      // manera de saber que esa orden no existio nunca. Peor: dos ordenes
+      // reales con el mismo numero que una inventada se pisaban en silencio.
+      // Ahora se entra a esto vacio, y el ejemplo es un boton aparte.
       if (demo && demo.textContent.trim()) {
-        usarIndice(demo.textContent, "índice de ejemplo incrustado");
-        pintarBiblioteca();
+        var caja = $("#dx-ejemplo");
+        if (caja) caja.hidden = false;
         return null;
       }
       return fetch("indice.json").then(function (r) {

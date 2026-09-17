@@ -11,6 +11,7 @@ Se salta entera sin Playwright o sin Chromium.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -173,8 +174,14 @@ def test_un_indice_de_otro_embebedor_se_rechaza_con_su_motivo(indice, tmp_path):
             t.cerrar()
 
 
-def test_el_archivo_suelto_trae_su_indice_de_ejemplo():
-    """El que se manda por WhatsApp demuestra el diagnóstico sin preparar nada."""
+def test_el_archivo_suelto_no_se_abre_con_datos_inventados_dentro():
+    """Se abría con el historial de un taller inventado ya cargado.
+
+    Cargando el historial de verdad encima, los dos quedaban mezclados y la
+    evidencia citaba «OT-2026-0233» sin manera de saber que esa orden no
+    existió nunca. Peor: dos órdenes reales con el mismo número que una
+    inventada se pisaban en silencio, y desaparecían del índice.
+    """
     descargable = RAIZ / "docs" / "nefer-app.html"
     with sync_playwright() as pw:
         navegador = pw.chromium.launch(**opciones())
@@ -182,13 +189,90 @@ def test_el_archivo_suelto_trae_su_indice_de_ejemplo():
         try:
             pg.goto(descargable.as_uri())
             pg.click("#tab-diagnostico")
+            pg.wait_for_selector("#dx-sin-indice:not([hidden])", timeout=15000)
+            assert not pg.is_visible("#dx-listo"), "se abrió con datos ya cargados"
+            # Pero el ejemplo sigue estando, a un toque y rotulado.
+            assert pg.is_visible("#dx-ejemplo")
+            assert "inventada" in pg.text_content("#dx-ejemplo")
+        finally:
+            navegador.close()
+
+
+def test_el_taller_de_ejemplo_se_pide_y_sale_rotulado_como_inventado():
+    """Demuestra el diagnóstico sin preparar nada, y sin hacerse pasar por real."""
+    descargable = RAIZ / "docs" / "nefer-app.html"
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(descargable.as_uri())
+            pg.click("#tab-diagnostico")
+            pg.wait_for_selector("#dx-ejemplo:not([hidden])", timeout=15000)
+            pg.click("#dx-ver-ejemplo")
             pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
-            assert "ejemplo incrustado" in pg.text_content("#dx-estado")
+            assert "no son datos suyos" in pg.text_content("#dx-estado")
 
             pg.fill("#dx-consulta", "humo negro y pierde fuerza")
             pg.click("#dx-buscar")
-            pg.wait_for_timeout(300)
-            assert "Filtro de aire" in pg.text_content("#dx-salida")
+            pg.wait_for_timeout(500)
+            salida = pg.text_content("#dx-salida")
+            assert "Filtro de aire" in salida
+            # Y cada antecedente dice que no pasó de verdad.
+            assert "inventado" in salida.lower()
+            assert "(ejemplo)" in salida
+        finally:
+            navegador.close()
+
+
+def test_la_cuenta_de_archivos_no_miente():
+    """Decía «23 fragmentos de 0 archivos»: miraba una lista que un índice
+    armado afuera no trae."""
+    descargable = RAIZ / "docs" / "nefer-app.html"
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(descargable.as_uri())
+            pg.click("#tab-diagnostico")
+            pg.wait_for_selector("#dx-ejemplo:not([hidden])", timeout=15000)
+            pg.click("#dx-ver-ejemplo")
+            pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+            estado = pg.text_content("#dx-estado")
+            assert "de 0 archivos" not in estado, estado
+            assert "de 2 archivos" in estado, estado
+        finally:
+            navegador.close()
+
+
+def test_un_numero_de_orden_repetido_se_avisa_y_no_desaparece_callado(historial_xlsx):
+    """Dos historiales distintos pueden numerar sus órdenes igual.
+
+    Perder una sin avisar es perder un antecedente que el próximo técnico va
+    a necesitar, y nadie se entera hasta que no aparece.
+    """
+    descargable = RAIZ / "docs" / "nefer-app.html"
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(descargable.as_uri())
+            pg.click("#tab-diagnostico")
+            pg.wait_for_selector("#dx-ejemplo:not([hidden])", timeout=15000)
+            pg.click("#dx-ver-ejemplo")
+            pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+
+            # El historial de prueba repite una orden con la del ejemplo.
+            with pg.expect_file_chooser() as elegido:
+                pg.click("#dx-biblio summary")
+                pg.click("label[for='dx-archivo-2']")
+            elegido.value.set_files(str(historial_xlsx))
+            pg.wait_for_timeout(2500)
+
+            estado = pg.text_content("#dx-estado")
+            assert "mismo número de orden" in estado, estado
+            # Y dice cuál, no sólo que pasó: un número que no se nombra no
+            # se puede ir a buscar.
+            assert re.search(r"OT-\d{4}-\d+", estado), estado
         finally:
             navegador.close()
 
