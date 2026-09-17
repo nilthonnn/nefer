@@ -2909,6 +2909,94 @@ var FIXMATE = (function () {
 })();
 </script>
 
+<script>
+/* ---------- que Android la pueda instalar ----------
+
+   Servida, los archivos de al lado son mejores: el navegador los cachea y el
+   trabajador de servicio los guarda para abrir sin señal. Abierta como
+   archivo suelto no hay vecinos que pedir, así que el icono y el manifiesto
+   viajan dentro del propio documento — los pone el empaquetador.
+
+   El manifiesto suelto se arma aquí y no se escribe a mano porque `start_url`
+   tiene que ser la dirección real desde la que se abrió: un manifiesto en
+   `data:` no tiene base para resolver rutas relativas, y sin `start_url`
+   correcto Android instala un acceso directo que abre en blanco.
+   ------------------------------------------------------------------------ */
+(function () {
+  "use strict";
+
+  function poner(rel, href, extra) {
+    var l = document.createElement("link");
+    l.rel = rel;
+    l.href = href;
+    Object.keys(extra || {}).forEach(function (k) { l.setAttribute(k, extra[k]); });
+    document.head.appendChild(l);
+  }
+
+  var servida = location.protocol === "http:" || location.protocol === "https:";
+
+  function enganchar() {
+  if (servida) {
+    poner("icon", "icono-192.png", { type: "image/png", sizes: "192x192" });
+    poner("apple-touch-icon", "apple-touch-icon.png", { sizes: "180x180" });
+    poner("manifest", "manifest.webmanifest");
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(function () {
+        /* sin él la app sigue funcionando; sólo deja de abrir sin señal */
+      });
+    }
+    return;
+  }
+
+  var caja = document.getElementById("fixmate-iconos");
+  if (!caja || !caja.textContent.trim()) return;   // servida sin empaquetar
+  var iconos;
+  try { iconos = JSON.parse(caja.textContent); } catch (e) { return; }
+
+  poner("icon", "data:image/png;base64," + iconos["192"],
+        { type: "image/png", sizes: "192x192" });
+  poner("apple-touch-icon", "data:image/png;base64," + iconos["180"],
+        { sizes: "180x180" });
+
+  var manifiesto = {
+    name: "FixMate · Diagnóstico en campo",
+    short_name: "FixMate",
+    description: "Busca la falla en el historial de la flota y en los " +
+                 "manuales, desde el patio y sin señal.",
+    start_url: location.href,
+    scope: location.href,
+    display: "standalone",
+    orientation: "portrait-primary",
+    background_color: "#16191B",
+    theme_color: "#16191B",
+    lang: "es",
+    dir: "ltr",
+    icons: [
+      { src: "data:image/png;base64," + iconos["192"], sizes: "192x192",
+        type: "image/png", purpose: "any" },
+      { src: "data:image/png;base64," + iconos["512"], sizes: "512x512",
+        type: "image/png", purpose: "any" },
+      { src: "data:image/png;base64," + iconos["512r"], sizes: "512x512",
+        type: "image/png", purpose: "maskable" }
+    ]
+  };
+  poner("manifest", "data:application/manifest+json;charset=utf-8," +
+        encodeURIComponent(JSON.stringify(manifiesto)));
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", enganchar);
+  } else {
+    enganchar();
+  }
+})();
+</script>
+
+<!-- Los iconos del archivo suelto, puestos por
+     herramientas/empaquetar-fixmate.py. Servida, la app usa los de al lado y
+     esta etiqueta queda vacía. -->
+<script type="application/json" id="fixmate-iconos"></script>
+
 <!-- El demo de un solo archivo trae aquí su índice de ejemplo, puesto por
      herramientas/empaquetar-demo.py. Servida, la app usa lo que se le cargue
      o el índice publicado a su lado, y esta etiqueta queda vacía. -->

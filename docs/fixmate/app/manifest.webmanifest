@@ -1,0 +1,18 @@
+{
+  "name": "FixMate · Diagnóstico en campo",
+  "short_name": "FixMate",
+  "description": "Busca la falla en el historial de la flota y en los manuales, desde el patio y sin señal.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#16191B",
+  "theme_color": "#16191B",
+  "lang": "es",
+  "dir": "ltr",
+  "icons": [
+    { "src": "icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icono-512-recortable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

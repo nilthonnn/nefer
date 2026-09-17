@@ -547,3 +547,78 @@ def test_lo_cargado_sigue_ahi_al_reabrir(historial_xlsx):
             assert "Sello del vástago" in otra.inner_text("#dx-salida")
         finally:
             t.cerrar()
+
+
+# ------------------------------------------- que Android la pueda instalar
+
+def test_servida_se_puede_instalar_en_el_telefono(tmp_path):
+    """Sin manifiesto, Android ofrece «agregar a pantalla de inicio» con una
+    captura de la página por icono, y el acceso directo abre en blanco."""
+    import functools
+    import http.server
+    import json
+    import threading
+    import urllib.request
+
+    raiz = (RAIZ / "docs" / "fixmate" / "app").resolve()
+    srv = http.server.ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(raiz)))
+    puerto = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        with sync_playwright() as pw:
+            navegador = pw.chromium.launch(**opciones())
+            pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+            try:
+                pg.goto(f"http://127.0.0.1:{puerto}/")
+                pg.wait_for_timeout(1200)
+                assert pg.eval_on_selector("link[rel=manifest]", "l => l.href")
+
+                base = f"http://127.0.0.1:{puerto}/"
+                man = json.loads(urllib.request.urlopen(base + "manifest.webmanifest").read())
+                assert man["display"] == "standalone"
+                assert man["name"].startswith("FixMate")
+                # Android recorta el icono: sin uno «maskable» lo recorta mal.
+                assert any(i["purpose"] == "maskable" for i in man["icons"])
+                for icono in man["icons"]:
+                    assert urllib.request.urlopen(base + icono["src"]).getcode() == 200
+
+                # Y el trabajador de servicio, que es lo que la hace abrir
+                # sin señal una vez instalada.
+                registrados = pg.evaluate(
+                    "async () => (await navigator.serviceWorker.getRegistrations()).length")
+                assert registrados == 1
+            finally:
+                navegador.close()
+    finally:
+        srv.shutdown()
+
+
+def test_el_archivo_suelto_tambien_se_puede_instalar():
+    """Lleva el icono y el manifiesto dentro: un archivo mandado por WhatsApp
+    no tiene vecinos a los que pedirles nada."""
+    import json
+    import urllib.parse
+
+    descargable = RAIZ / "docs" / "fixmate-app.html"
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(descargable.as_uri())
+            pg.wait_for_timeout(1200)
+            href = pg.eval_on_selector("link[rel=manifest]", "l => l.href")
+            assert href.startswith("data:application/manifest+json")
+
+            man = json.loads(urllib.parse.unquote(href.split(",", 1)[1]))
+            assert man["display"] == "standalone"
+            # `start_url` tiene que ser la dirección real desde la que se
+            # abrió: un manifiesto en `data:` no resuelve rutas relativas, y
+            # sin esto el acceso directo abre en blanco.
+            assert man["start_url"] == pg.url
+            assert any(i["purpose"] == "maskable" for i in man["icons"])
+            assert all(i["src"].startswith("data:image/png;base64,")
+                       for i in man["icons"])
+        finally:
+            navegador.close()

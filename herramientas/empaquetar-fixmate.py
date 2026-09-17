@@ -70,6 +70,27 @@ def indice_de_ejemplo() -> str:
     return json.dumps(datos, ensure_ascii=False, separators=(",", ":"))
 
 
+def iconos_incrustados() -> str:
+    """Los iconos en base64, para que el archivo suelto se pueda instalar.
+
+    Sin ellos, Android ofrece «agregar a pantalla de inicio» con una captura
+    de la pagina como icono, y el acceso directo abre en blanco porque el
+    manifiesto no tiene con que resolver `start_url`.
+    """
+    import base64
+
+    carpeta = APP.parent
+    nombres = {"192": "icono-192.png", "512": "icono-512.png",
+               "512r": "icono-512-recortable.png", "180": "apple-touch-icon.png"}
+    salida = {}
+    for clave, nombre in nombres.items():
+        ruta = carpeta / nombre
+        if not ruta.exists():
+            raise SystemExit(f"falta {nombre}: correr herramientas/iconos-fixmate.py")
+        salida[clave] = base64.b64encode(ruta.read_bytes()).decode("ascii")
+    return json.dumps(salida, separators=(",", ":"))
+
+
 def main() -> None:
     destino = (pathlib.Path(sys.argv[1]) if len(sys.argv) > 1
                else RAIZ / "docs" / "fixmate-app.html")
@@ -80,6 +101,14 @@ def main() -> None:
             "aqui, o el archivo suelto se abre sin ella")
 
     html = html.replace("<style>", AVISO + "<style>", 1)
+
+    hueco_iconos = '<script type="application/json" id="fixmate-iconos"></script>'
+    if hueco_iconos not in html:
+        raise SystemExit("la app ya no declara la etiqueta de los iconos")
+    html = html.replace(
+        hueco_iconos,
+        '<script type="application/json" id="fixmate-iconos">'
+        + iconos_incrustados() + "</script>", 1)
 
     hueco = '<script type="application/json" id="fixmate-indice-demo"></script>'
     if hueco not in html:
