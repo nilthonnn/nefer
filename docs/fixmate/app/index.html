@@ -1,0 +1,3003 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>FixMate · Diagnóstico en campo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Busca la falla en el historial de la flota y en los manuales, desde el patio y sin señal.">
+<meta name="theme-color" content="#16191B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FixMate">
+<!-- Esta app es sólo FixMate.
+     Vivió dentro de «Nefer · Actas de campo», que levanta actas fotográficas
+     de despacho y recepción: otro producto, otro momento del trabajo y otro
+     usuario. Eran 1900 líneas de diagnóstico dentro de 8100, y el mecánico
+     que viene a preguntar por una falla tenía que pasar por tres pestañas
+     que no le sirven. Ahora entra a lo suyo. -->
+<style>
+    :root {
+    --paper:#F3F4F2; --card:#FFFFFF; --card-2:#EAEDEB;
+    --ink:#16191B; --ink-2:#4E5860; --ink-3:#5F6A72;
+    --rule:#D6DCDA; --rule-2:#E6EAE8;
+    --accent:#1E4B6B; --accent-soft:#E3ECF3;
+    --ok:#1F6B4C; --ok-soft:#E1F0E9;
+    --obs:#8A5A00; --obs-soft:#F8EFDB; --obs-rule:#E0C894;
+    --mal:#96341F; --mal-soft:#F7E6E0; --mal-rule:#E0B2A2;
+    --barra:#16191B; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(22,25,27,.05), 0 10px 26px -16px rgba(22,25,27,.28);
+    /* Barlow va alojada; detrás, siempre, la del sistema: si el archivo aún
+       no llegó o no está —el demo descargado como archivo suelto no lo
+       lleva—, el texto se lee igual desde el primer instante. */
+    --cond:"Barlow Condensed",ui-sans-serif,system-ui,-apple-system,
+           "Roboto Condensed","Arial Narrow",sans-serif;
+    --sans:"Barlow",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    /* La monoespaciada no se aloja: la del aparato es buena y cuesta 0 bytes. */
+    --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+      --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+      --rule:#2F383D; --rule-2:#262E32;
+      --accent:#6FA8CE; --accent-soft:#16303F;
+      --ok:#6FC49B; --ok-soft:#143024;
+      --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+      --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+      --barra:#0E1113; --barra-ink:#E7ECEB;
+      --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+    --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+    --rule:#2F383D; --rule-2:#262E32;
+    --accent:#6FA8CE; --accent-soft:#16303F;
+    --ok:#6FC49B; --ok-soft:#143024;
+    --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+    --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+    --barra:#0E1113; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+
+  *, *::before, *::after { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body { margin:0; background:var(--paper); color:var(--ink);
+         font-family:var(--sans); font-size:16px; line-height:1.5;
+         padding:0 16px env(safe-area-inset-bottom); }
+  main { max-width:44rem; margin:0 auto; padding:1rem 0 3rem; }
+  .barra { background:var(--barra); color:var(--barra-ink); margin:0 -16px;
+           padding:.7rem 16px calc(.7rem + env(safe-area-inset-top));
+           display:flex; align-items:baseline; gap:.6rem; }
+  .barra b { font-family:var(--cond); font-size:1.15rem; letter-spacing:.04em;
+             text-transform:uppercase; }
+  .barra span { font-family:var(--mono); font-size:.66rem; opacity:.7;
+                letter-spacing:.06em; text-transform:uppercase; }
+  button, label.primary { font:inherit; font-size:.9rem; cursor:pointer;
+          border:1px solid var(--rule); background:var(--card); color:var(--ink);
+          border-radius:6px; padding:.55rem .9rem; display:inline-block; }
+  button.primary, label.primary { background:var(--accent); color:#fff;
+          border-color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  input, textarea, select { font:inherit; width:100%; padding:.5rem .6rem;
+          border:1px solid var(--rule); border-radius:6px;
+          background:var(--card); color:var(--ink); }
+  label { display:block; font-size:.8rem; color:var(--ink-2); }
+  .lb { font-family:var(--mono); font-size:.7rem; letter-spacing:.05em;
+        text-transform:uppercase; color:var(--ink-3); }
+  .aviso { border-left:3px solid var(--obs); background:var(--obs-soft);
+           padding:.55rem .7rem; border-radius:0 4px 4px 0; font-size:.86rem; }
+  ol.pasos { list-style:none; margin:.4rem 0 0; padding:0; }
+  ol.pasos li { display:grid; grid-template-columns:1.9rem 1fr; gap:.5rem;
+                padding:.35rem 0; border-bottom:1px solid var(--rule-2);
+                font-size:.92rem; }
+  ol.pasos .n { font-family:var(--mono); font-size:.72rem; color:var(--ink-3); }
+
+    /* ---------- DIAGNÓSTICO: consulta y respuesta ---------- */
+  .dx-cargar { display:flex; gap:1rem; align-items:center; flex-wrap:wrap;
+               background:var(--card); border:1px solid var(--rule);
+               border-left:4px solid var(--accent); border-radius:0 8px 8px 0;
+               padding:1rem 1.1rem; }
+  .dx-cargar > div { flex:1 1 16rem; min-width:0; }
+  .dx-cargar b { display:block; }
+  .dx-cargar p { margin:.25rem 0 0; font-size:.88rem; color:var(--ink-2); }
+  .dx-cargar label.primary { cursor:pointer; }
+
+  .dx-buscar { display:flex; gap:.5rem; flex-wrap:wrap; margin:1rem 0 .6rem; }
+  .dx-buscar input { flex:1 1 14rem; min-width:0; }
+  .dx-filtros { display:flex; gap:.7rem; flex-wrap:wrap; }
+  .dx-filtros label { display:flex; flex-direction:column; gap:.2rem;
+                      font-size:.72rem; text-transform:uppercase;
+                      letter-spacing:.07em; color:var(--ink-3); flex:1 1 8rem; }
+  .dx-filtros input { text-transform:uppercase; }
+
+  .dx-causa { background:var(--card); border:1px solid var(--rule);
+              border-top:3px solid var(--accent); border-radius:3px;
+              padding:.9rem 1rem; margin:1rem 0 0; }
+  .dx-causa .et { font-family:var(--mono); font-size:.66rem; letter-spacing:.1em;
+                  text-transform:uppercase; color:var(--accent); }
+  .dx-causa p { margin:.3rem 0 0; font-size:1.02rem; color:var(--ink); }
+  .dx-conf { font-family:var(--mono); font-size:.66rem; letter-spacing:.06em;
+             text-transform:uppercase; color:var(--ink-3); }
+
+  /* Las precauciones. Se leen con guantes y a contraluz: alto contraste,
+     borde a la izquierda y el sello de procedencia debajo, en chico. */
+  /* La biblioteca: qué hay cargado. Se pliega, porque el técnico que ya
+     la cargó viene a preguntar, no a mirar la lista. */
+  .dx-biblio { margin:.9rem 0 0; border:1px solid var(--rule); border-radius:6px;
+               background:var(--card); }
+  .dx-biblio > summary { cursor:pointer; padding:.6rem .8rem; font-family:var(--mono);
+                         font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
+                         color:var(--ink-2); }
+  .dx-biblio-cuerpo { padding:0 .8rem .8rem; display:flex; flex-direction:column;
+                      gap:.7rem; }
+  .dx-fuentes { list-style:none; margin:0; padding:0; display:flex;
+                flex-direction:column; gap:.3rem; }
+  .dx-fuentes li { display:flex; justify-content:space-between; gap:.7rem;
+                   font-size:.86rem; color:var(--ink-2); padding:.3rem .1rem;
+                   border-bottom:1px solid var(--rule-2); }
+  .dx-fuentes .dx-cuenta { font-family:var(--mono); font-size:.78rem;
+                           color:var(--ink-3); flex:0 0 auto; }
+  .dx-biblio-botones { display:flex; gap:.5rem; flex-wrap:wrap; }
+  .dx-biblio-botones label, .dx-biblio-botones button { flex:1 1 auto;
+                          text-align:center; }
+
+  .dx-ejemplo { margin:.8rem 0 0; padding:.7rem .8rem; border:1px dashed var(--rule);
+                border-radius:6px; display:flex; flex-direction:column; gap:.6rem; }
+  .dx-ev-ejemplo { border-left:3px solid var(--obs); padding-left:.6rem; }
+  .dx-marca { font-family:var(--mono); font-size:.6rem; letter-spacing:.07em;
+              text-transform:uppercase; color:var(--obs); border:1px solid var(--obs);
+              border-radius:3px; padding:.05rem .3rem; }
+
+  .dx-cuidados { list-style:none; margin:.5rem 0 0; padding:0; display:flex;
+                 flex-direction:column; gap:.5rem; }
+  .dx-cuidados li { border-left:3px solid var(--obs); padding:.5rem .7rem;
+                    border-radius:0 4px 4px 0; background:var(--obs-soft);
+                    display:flex; flex-direction:column; gap:.25rem;
+                    font-size:.9rem; color:var(--ink); line-height:1.45; }
+  .dx-cuidados .dx-sello { font-family:var(--mono); font-size:.62rem;
+                           letter-spacing:.06em; text-transform:uppercase;
+                           color:var(--ink-3); }
+
+  .dx-barras { list-style:none; margin:.5rem 0 0; padding:0; display:flex;
+               flex-direction:column; gap:.35rem; }
+  .dx-barras li { display:grid; grid-template-columns:3.2rem 1fr; gap:.6rem;
+                  align-items:center; font-size:.85rem; color:var(--ink-2); }
+  .dx-barras .pc { font-family:var(--mono); font-size:.8rem; color:var(--ink);
+                   text-align:right; }
+  .dx-barras .bar-i { display:block; height:.5rem; border-radius:2px;
+                      background:var(--accent); opacity:.85; min-width:2px; }
+  .dx-barras .txt { font-size:.85rem; }
+
+  .dx-form { display:flex; flex-direction:column; gap:.6rem; }
+  .dx-form label { display:flex; flex-direction:column; gap:.2rem;
+                   font-size:.72rem; text-transform:uppercase;
+                   letter-spacing:.07em; color:var(--ink-3); }
+  .dx-form .op { text-transform:none; letter-spacing:0; color:var(--ink-3);
+                 opacity:.8; }
+
+  .dx-ev { border-top:1px solid var(--rule); padding:.55rem 0; font-size:.85rem;
+           color:var(--ink-2); }
+  .dx-ev b { color:var(--ink); }
+  .dx-ev .met { font-family:var(--mono); font-size:.7rem; color:var(--ink-3); }
+
+  .nota { font-size:.82rem; color:var(--ink-3); margin:.6rem 0 0; }
+  h2.rot { font-family:var(--cond); font-size:1.3rem; font-weight:700;
+           text-transform:uppercase; letter-spacing:.02em; margin:1.5rem 0 .5rem;
+           padding-bottom:.3rem; border-bottom:2px solid var(--rule); }
+</style>
+
+<div class="barra"><b>FixMate</b><span>diagnóstico en campo</span></div>
+
+    <main id="v-diagnostico" aria-labelledby="tab-diagnostico">
+      <div class="encab">
+        <p class="kicker">asistente en campo</p>
+        <h1>Diagnóstico</h1>
+        <p class="sub">
+          Describa la falla como se la contaría a un compañero. Busca en el
+          historial de la flota y en los manuales que la oficina indexó, y
+          responde <b>sin señal</b>: el índice está en este teléfono.
+        </p>
+      </div>
+
+      <div class="dx-cargar" id="dx-sin-indice">
+        <div>
+          <b>Todavía no hay nada cargado</b>
+          <p>Agregue el historial de fallas y los manuales. Se leen aquí
+             mismo, en el teléfono, y quedan guardados: la próxima vez ya
+             están. Cada archivo que agregue se suma a lo que ya había.</p>
+        </div>
+        <label class="primary" for="dx-archivo">Agregar historiales y manuales
+          <input type="file" id="dx-archivo" multiple
+                 accept=".pdf,.docx,.xlsx,.xlsm,.csv,.tsv,.json,.md,.txt"
+                 hidden>
+        </label>
+      </div>
+
+      <!-- El ejemplo es de un taller inventado, y por eso se pide a
+           propósito y se rotula. Mezclado con el historial de verdad haría
+           que el técnico leyera una orden que no existió nunca. -->
+      <div class="dx-ejemplo" id="dx-ejemplo" hidden>
+        <p class="nota">
+          ¿Sin datos a mano para probarlo? Puede cargar un
+          <b>taller de ejemplo</b>: 23 antecedentes de una flota inventada.
+          Sirve para ver cómo responde, no para diagnosticar nada.
+        </p>
+        <button type="button" id="dx-ver-ejemplo">Cargar el taller de ejemplo</button>
+      </div>
+
+      <!-- La biblioteca: qué hay cargado, qué aprendió, y de dónde salió. -->
+      <details class="dx-biblio" id="dx-biblio" hidden>
+        <summary>
+          <span id="dx-biblio-resumen">Biblioteca</span>
+        </summary>
+        <div class="dx-biblio-cuerpo">
+          <p class="nota">
+            El historial en Excel y los manuales en PDF, Word o texto se leen
+            en este teléfono. Un PDF escaneado no trae texto sino una foto:
+            eso se dice, en vez de cargar un manual vacío.
+          </p>
+          <ul id="dx-fuentes" class="dx-fuentes"></ul>
+          <div class="dx-biblio-botones">
+            <label class="primary" for="dx-archivo-2">Agregar más
+              <input type="file" id="dx-archivo-2" multiple
+                     accept=".pdf,.docx,.xlsx,.xlsm,.csv,.tsv,.json,.md,.txt" hidden>
+            </label>
+            <button type="button" id="dx-vaciar">Vaciar la biblioteca</button>
+          </div>
+          <p class="lb" id="dx-aprendido"></p>
+        </div>
+      </details>
+
+      <div id="dx-listo" hidden>
+        <div class="dx-buscar">
+          <input type="search" id="dx-consulta" enterkeyhint="search"
+                 placeholder="humo negro y pierde fuerza en la subida"
+                 aria-label="Describa la falla">
+          <button type="button" id="dx-dictar" hidden
+                  aria-label="Dictar la consulta">Dictar</button>
+          <button type="button" class="primary" id="dx-buscar">Buscar</button>
+        </div>
+        <div class="dx-filtros">
+          <label>Código de falla
+            <input type="text" id="dx-dtc" placeholder="P0300" autocapitalize="characters">
+          </label>
+          <label>Equipo
+            <input type="text" id="dx-equipo" placeholder="GE074-01" autocapitalize="characters">
+          </label>
+        </div>
+        <p class="lb" id="dx-estado"></p>
+        <div id="dx-salida" aria-live="polite"></div>
+
+        <div id="dx-cierre" hidden>
+          <h2 class="rot">Cuando lo resuelva</h2>
+          <p class="nota" style="margin-bottom:.7rem">
+            Registre aquí lo que resultó. Queda en este teléfono y lo encuentra
+            el próximo que pregunte, aunque nadie tenga señal. Cuando la haya,
+            se envía a la oficina de una vez.
+          </p>
+          <div class="dx-form">
+            <label>Falla, como se vio
+              <input type="text" id="dx-c-falla"></label>
+            <label>Causa raíz confirmada
+              <input type="text" id="dx-c-causa"></label>
+            <label>Qué se hizo
+              <input type="text" id="dx-c-solucion"></label>
+            <label>Equipo
+              <input type="text" id="dx-c-equipo" autocapitalize="characters"></label>
+            <label>Repuestos <span class="op">separados por punto y coma</span>
+              <input type="text" id="dx-c-repuestos"></label>
+          </div>
+          <div class="bar">
+            <button type="button" class="primary" id="dx-registrar">Registrar</button>
+            <span class="lb" id="dx-c-aviso"></span>
+          </div>
+        </div>
+
+        <div class="bar" id="dx-envio" hidden>
+          <button type="button" id="dx-enviar">Enviar a la oficina</button>
+          <span class="lb" id="dx-pend"></span>
+        </div>
+      </div>
+    </main>
+
+<script>
+/* Las dos ayudas que la interfaz usa. Estaban en la app de actas, que es de
+   otro producto; aqui viven donde se usan. */
+var NEFER = (function () {
+  "use strict";
+
+  var VERSION = "2026-09-17 · FixMate";
+
+  function $(sel) { return document.querySelector(sel); }
+
+  function esc(t) {
+    return String(t == null ? "" : t).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;",
+               '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function hoy() { return new Date().toISOString().slice(0, 10); }
+
+  function avisador(sel) {
+    return function (texto) {
+      var n = $(sel);
+      if (!n) return;
+      n.textContent = texto;
+      if (texto) setTimeout(function () { if (n.textContent === texto) n.textContent = ""; }, 4000);
+    };
+  }
+
+  var incrustada = (function () {
+    try { return window.self !== window.top; } catch (e) { return true; }
+  })();
+
+  // Publicada como página, el visor no deja que la página descargue por su
+  // cuenta: hay que pedirle al anfitrión que guarde el archivo. Abierta desde
+  // el teléfono como aplicación no existe ese anfitrión y se descarga directo.
+  var guardadoAnfitrion = (window.claude && typeof window.claude.use === "function")
+    ? Promise.resolve(window.claude.use("downloads")).then(
+        function (d) { return d && typeof d.save === "function" ? d : null; },
+        function () { return null; })
+    : Promise.resolve(null);
+
+  function entregar(blob, nombre, avisar) {
+    var archivo = null;
+    try { archivo = new File([blob], nombre, { type: "application/zip" }); } catch (e) { /* File viejo */ }
+
+    if (archivo && navigator.canShare && navigator.share &&
+        navigator.canShare({ files: [archivo] })) {
+      navigator.share({ files: [archivo], title: nombre }).then(
+        function () { avisar("compartido"); },
+        function (err) {
+          if (err && err.name === "AbortError") { avisar(""); return; }
+          descargar(blob, nombre, avisar);
+        });
+      return;
+    }
+    descargar(blob, nombre, avisar);
+  }
+
+  function descargar(blob, nombre, avisar) {
+    guardadoAnfitrion.then(function (guardar) {
+      if (!guardar) { porEnlace(blob, nombre, avisar); return; }
+      guardar.save({ filename: nombre, data: blob }).then(
+        function (r) { avisar(r && r.status === "delivered" ? "entregado" : "guardado: " + nombre); },
+        function (err) {
+          var codigo = err && err.code;
+          if (codigo === "declined") { avisar(""); return; }
+          if (codigo === "rate_limited") { avisar("espere un momento y reintente"); return; }
+          porEnlace(blob, nombre, avisar);
+        });
+    });
+  }
+
+  function porEnlace(blob, nombre, avisar) {
+    if (incrustada) {
+      avisar("aquí no se puede descargar — use el archivo instalado");
+      return;
+    }
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 4000);
+    avisar("guardado: " + nombre);
+  }
+
+
+  return { $: $, esc: esc, hoy: hoy, avisador: avisador, entregar: entregar,
+           VERSION: VERSION, incrustada: incrustada };
+})();
+</script>
+
+<script>
+/* ---------- FixMate: el mismo motor de diagnóstico, en el teléfono ----------
+
+   El índice se arma en la oficina, donde están el Excel y los PDF, y se copia
+   aquí. Buscar es aritmética sobre ese archivo —BM25 y un producto punto— y
+   eso sí cabe en el teléfono, que es donde está el mecánico y donde no hay
+   señal.
+
+   Todo lo de aquí es espejo de `nefer/fixmate/*.py`, número por número. El
+   hash es FNV-1a justamente para que las dos mitades calculen el mismo
+   vector; `tests/test_fixmate_cruce.py` corre las mismas consultas en los dos
+   motores y falla si un ranking se separa.
+   ------------------------------------------------------------------------ */
+var FIXMATE = (function () {
+  "use strict";
+
+  /* fixmate:motor:inicio — lo que hay entre estas marcas se prueba en node */
+
+  var DIMENSION = 256, SEMILLA = "fixmate", PESO_NGRAMA = 0.35;
+  var PESO_VECTOR = 0.6, PESO_LEXICO = 0.4, BONO_PREFERENCIA = 0.08;
+  var K1 = 1.5, B = 0.75;
+  var UMBRAL_MINIMO = 0.20, UMBRAL_CONFIANZA = 0.30;
+  var UMBRAL_EVIDENCIA_FUERTE = 0.50, APOYO_MINIMO = 0.35;
+  var PARECIDO_CAUSAS = 0.6, SOLAPE_CAUSAS = 0.8, PALABRAS_NUCLEO = 2;
+  var MINIMO_CASOS = 12, MINIMO_CAUSAS = 2, MINIMO_POR_CAUSA = 2, ALFA = 0.3;
+
+  var VACIAS = ("a al ante con como cuando de del desde donde el ella ellos en " +
+    "entre era es esa ese eso esta estan este esto fue ha hace han hasta hay la " +
+    "las le les lo los mas me mi muy no para pero por porque que se segun ser si " +
+    "sin sobre solo son su sus tiene tras un una uno unos unas y ya").split(" ");
+  // Una tabla indexada por texto del taller no puede ser un objeto normal:
+  // `{}` hereda "constructor", "toString", "valueOf" y "hasOwnProperty", asi
+  // que esas cuatro palabras salian por verdaderas sin que nadie las pusiera.
+  // Como palabras vacias se descartaban —y Python las conserva, con lo que
+  // los dos motores dejaban de coincidir—, y como clave de la cache de
+  // posiciones se leia una funcion donde tenia que haber un par de numeros.
+  // Sin prototipo no hay nada heredado que leer.
+  function tabla() { return Object.create(null); }
+
+  var ES_VACIA = tabla();
+  VACIAS.forEach(function (p) { ES_VACIA[p] = true; });
+
+  var RE_PALABRA = /[0-9a-z]+(?:[.\-/][0-9a-z]+)*/g;
+  var RE_TORQUE = new RegExp(
+    "(\\d+(?:[.,]\\d+)?)\\s*(?:(?:a|-|–|\\.\\.\\.)\\s*(\\d+(?:[.,]\\d+)?)\\s*)?" +
+    "(N[·.\\s-]?m|Nm|newton\\s*metros?|lbf?[\\s·.-]*(?:pie|ft|pulg|in)|kgf?[\\s·.-]*m)\\b",
+    "gi");
+  var RE_NO_TORQUE = /(torquimetro|llave de torque|torque wrench|capacidad|rango|escala)[^.;]{0,12}$/i;
+
+  function sinTildes(t) {
+    return String(t).normalize("NFKD").replace(/[̀-ͯ]/g, "");
+  }
+  function normalizar(t) {
+    return sinTildes(t).toLowerCase().replace(/\s+/g, " ").trim();
+  }
+  function tokenizar(t) {
+    var crudos = normalizar(t).match(RE_PALABRA) || [];
+    return crudos.filter(function (p) { return !ES_VACIA[p] && p.length > 1; });
+  }
+  function ngramas(token, n) {
+    n = n || 4;
+    var marcado = "^" + token + "$";
+    if (marcado.length <= n) return [marcado];
+    var trozos = [];
+    for (var i = 0; i <= marcado.length - n; i++) trozos.push(marcado.slice(i, i + n));
+    return trozos;
+  }
+
+  /* FNV-1a de 64 bits: las mismas dos constantes que en Python, y por eso el
+     mismo número. Sin esto, el vector de la consulta escrita aquí no casaría
+     con los vectores del índice y la búsqueda devolvería ruido sin avisar. */
+  var FNV_INICIO = 0xcbf29ce484222325n, FNV_PRIMO = 0x100000001b3n;
+  var codificador = new TextEncoder();
+
+  function fnv1a(cadena) {
+    var h = FNV_INICIO, bytes = codificador.encode(cadena);
+    for (var i = 0; i < bytes.length; i++) {
+      h = BigInt.asUintN(64, (h ^ BigInt(bytes[i])) * FNV_PRIMO);
+    }
+    return h;
+  }
+
+  var cachePosicion = tabla();
+  function posicion(rasgo) {
+    var guardada = cachePosicion[rasgo];
+    if (guardada) return guardada;
+    var h = fnv1a(SEMILLA + ":" + rasgo);
+    guardada = [Number(h % BigInt(DIMENSION)), (h >> 63n) & 1n ? 1 : -1];
+    cachePosicion[rasgo] = guardada;
+    return guardada;
+  }
+
+  function vector(texto) {
+    var v = new Float64Array(DIMENSION), cuenta = tabla(), peso = tabla();
+    tokenizar(texto).forEach(function (token) {
+      cuenta[token] = (cuenta[token] || 0) + 1;
+      peso[token] = 1;
+      ngramas(token).forEach(function (trozo) {
+        cuenta[trozo] = (cuenta[trozo] || 0) + 1;
+        peso[trozo] = PESO_NGRAMA;
+      });
+    });
+    Object.keys(cuenta).forEach(function (rasgo) {
+      var p = posicion(rasgo);
+      v[p[0]] += p[1] * peso[rasgo] * (1 + Math.log(cuenta[rasgo]));
+    });
+    var norma = 0;
+    for (var i = 0; i < DIMENSION; i++) norma += v[i] * v[i];
+    norma = Math.sqrt(norma);
+    if (norma > 0) for (var j = 0; j < DIMENSION; j++) v[j] /= norma;
+    return v;
+  }
+
+  function redondear(x, n) {
+    var f = Math.pow(10, n);
+    // Python redondea al par en los empates; con esta corrección coinciden
+    // los cuatro decimales que compara la prueba cruzada.
+    var escalado = x * f, entero = Math.round(escalado);
+    if (Math.abs(escalado % 1) === 0.5 && entero % 2 !== 0) entero -= 1;
+    return entero / f;
+  }
+
+  function numero(valor) {
+    if (typeof valor !== "number") return String(valor);
+    return String(valor);
+  }
+
+  function textoDeMetadatos(meta) {
+    var partes = [];
+    Object.keys(meta || {}).forEach(function (clave) {
+      if (clave.charAt(0) === "_") return;
+      var valor = meta[clave];
+      if (Array.isArray(valor)) {
+        valor.forEach(function (v) { partes.push(numero(v)); });
+      } else if (typeof valor === "string" || typeof valor === "number") {
+        partes.push(numero(valor));
+      }
+    });
+    return partes.join(" ");
+  }
+
+  /* ---------- el índice ---------- */
+
+  function Indice(datos) {
+    this.embebedor = datos.embebedor || "";
+    this.medicion = datos.medicion || null;
+    this.fuentes = datos.fuentes || {};
+    this.fragmentos = (datos.fragmentos || []).map(function (f) {
+      return {
+        id: String(f.id), texto: f.texto || "", fuente: f.fuente || "",
+        tipo: f.tipo || "documento", metadatos: f.metadatos || {},
+        vector: Float64Array.from(f.vector || [])
+      };
+    });
+    this._indexar();
+  }
+
+  Indice.prototype._indexar = function () {
+    var total = this.fragmentos.length;
+    this.frecuencias = [];
+    this.largos = [];
+    this.documentosPorToken = tabla();
+    var suma = 0, self = this;
+    this.fragmentos.forEach(function (f) {
+      var tokens = tokenizar(f.texto + " " + textoDeMetadatos(f.metadatos));
+      var frecuencia = tabla();
+      tokens.forEach(function (t) { frecuencia[t] = (frecuencia[t] || 0) + 1; });
+      Object.keys(frecuencia).forEach(function (t) {
+        self.documentosPorToken[t] = (self.documentosPorToken[t] || 0) + 1;
+      });
+      self.frecuencias.push(frecuencia);
+      self.largos.push(tokens.length);
+      suma += tokens.length;
+    });
+    this.largoMedio = total ? suma / total : 0;
+  };
+
+  Indice.prototype.bm25 = function (consulta, candidatos) {
+    var tokens = tokenizar(consulta), puntajes = tabla(), self = this;
+    if (!tokens.length || !this.largoMedio) return puntajes;
+    var total = this.fragmentos.length, vistos = tabla();
+    tokens.forEach(function (token) {
+      if (vistos[token]) return;
+      vistos[token] = true;
+      var documentos = self.documentosPorToken[token] || 0;
+      if (!documentos) return;
+      var idf = Math.log(1 + (total - documentos + 0.5) / (documentos + 0.5));
+      candidatos.forEach(function (i) {
+        var frecuencia = self.frecuencias[i][token] || 0;
+        if (!frecuencia) return;
+        var denominador = frecuencia + K1 * (1 - B + B * self.largos[i] / self.largoMedio);
+        puntajes[i] = (puntajes[i] || 0) + idf * frecuencia * (K1 + 1) / denominador;
+      });
+    });
+    return puntajes;
+  };
+
+  function casaFiltro(fragmento, clave, esperado) {
+    var real = fragmento.metadatos[clave];
+    if (real === undefined && clave.slice(-1) === "s") real = fragmento.metadatos[clave.slice(0, -1)];
+    if (real === undefined && clave.slice(-1) !== "s") real = fragmento.metadatos[clave + "s"];
+    if (real === undefined || real === null) return false;
+    var reales = (Array.isArray(real) ? real : [real]).map(function (v) {
+      return normalizar(numero(v));
+    });
+    var esperados = (Array.isArray(esperado) ? esperado : [esperado]);
+    return esperados.some(function (e) {
+      return reales.indexOf(normalizar(numero(e))) >= 0;
+    });
+  }
+
+  function pasaFiltros(fragmento, filtros) {
+    if (!filtros) return true;
+    return Object.keys(filtros).every(function (clave) {
+      var esperado = filtros[clave];
+      if (esperado === null || esperado === undefined || esperado === "" ||
+          (Array.isArray(esperado) && !esperado.length)) return true;
+      return casaFiltro(fragmento, clave, esperado);
+    });
+  }
+
+  function preferenciasQueCasan(fragmento, preferencias) {
+    if (!preferencias) return 0;
+    return Object.keys(preferencias).filter(function (clave) {
+      var valor = preferencias[clave];
+      if (valor === null || valor === undefined || valor === "") return false;
+      return casaFiltro(fragmento, clave, valor);
+    }).length;
+  }
+
+  Indice.prototype.buscar = function (consulta, opciones) {
+    opciones = opciones || {};
+    var limite = opciones.limite || 3, umbral = opciones.umbral || 0;
+    var self = this, candidatos = [];
+    this.fragmentos.forEach(function (f, i) {
+      if (!pasaFiltros(f, opciones.filtros)) return;
+      if (opciones.acepta && !opciones.acepta(f)) return;
+      candidatos.push(i);
+    });
+    if (!candidatos.length) return [];
+
+    var v = vector(consulta);
+    // Las posiciones del vector de consulta que no son cero, una vez por
+    // consulta y no una por fragmento. «gotea aceite» llena 11 de 256; las
+    // otras 245 multiplicaban por cero y se sumaban sin cambiar el total, y
+    // eso era el grueso del tiempo de cada busqueda. En el mismo orden de
+    // indice, para que la suma acumule igual que en Python.
+    var utiles = [];
+    for (var u = 0; u < DIMENSION; u++) if (v[u]) utiles.push([u, v[u]]);
+    var lexicos = this.bm25(consulta, candidatos);
+    var mayor = 0;
+    candidatos.forEach(function (i) { mayor = Math.max(mayor, lexicos[i] || 0); });
+
+    var resultados = [];
+    candidatos.forEach(function (i) {
+      var f = self.fragmentos[i], similitud = 0;
+      for (var k = 0; k < utiles.length; k++) {
+        similitud += utiles[k][1] * (f.vector[utiles[k][0]] || 0);
+      }
+      var lexico = mayor > 0 ? (lexicos[i] || 0) / mayor : 0;
+      var puntaje = PESO_VECTOR * Math.max(similitud, 0) + PESO_LEXICO * lexico;
+      puntaje = Math.min(1, puntaje + BONO_PREFERENCIA *
+                         preferenciasQueCasan(f, opciones.preferencias));
+      if (puntaje >= umbral) {
+        resultados.push({ fragmento: f, similitud: redondear(similitud, 4),
+                          lexico: redondear(lexico, 4), puntaje: redondear(puntaje, 4) });
+      }
+    });
+    resultados.sort(function (a, b) {
+      if (b.puntaje !== a.puntaje) return b.puntaje - a.puntaje;
+      return a.fragmento.id < b.fragmento.id ? -1 : 1;
+    });
+    return resultados.slice(0, limite);
+  };
+
+  /* ---------- lo que dice el historial entero ---------- */
+
+  function nucleo(tokens) { return tokens.slice(0, PALABRAS_NUCLEO).join(" "); }
+
+  function mismaCausa(a, b) {
+    var ta = tokenizar(a), tb = tokenizar(b);
+    if (!ta.length || !tb.length) return false;
+    if (nucleo(ta) === nucleo(tb)) return true;
+    var sa = tabla(), comunes = 0, union = 0;
+    ta.forEach(function (t) { sa[t] = true; });
+    var sb = tabla();
+    tb.forEach(function (t) { sb[t] = true; });
+    Object.keys(sa).forEach(function (t) { if (sb[t]) comunes++; });
+    union = Object.keys(sa).length + Object.keys(sb).length - comunes;
+    if (!comunes) return false;
+    if (comunes / union >= PARECIDO_CAUSAS) return true;
+    var menor = Math.min(Object.keys(sa).length, Object.keys(sb).length);
+    return menor >= 3 && comunes / menor >= SOLAPE_CAUSAS;
+  }
+
+  // Espejo de nefer/fixmate/catalogo.py, generado desde el. Dos catalogos
+  // que se separan harian que el telefono agrupe distinto que la oficina,
+  // y la prueba cruzada lo dice.
+  var CAT_MINIMO_PISTAS = 2;
+  var CAT_MINIMO_PREFIJO = 4;
+  var CAT_INEQUIVOCAS = ["acumulador", "alternador", "cavitacion", "colmatad", "embrague", "inyector", "radiador", "sulfatad", "termostato", "turbo", "vastago"];
+  var CAT_PLANIFICADO = ["programado", "programada", "preventivo", "preventiva", "rutina", "rutinario", "segun plan", "por horas", "mantenimiento de", "servicio de", "pm "];
+  var CAT_ENTRADAS = [
+    ["ADM.RESTRICCION.FILTRO", "Filtro de aire colmatado", ["filtro", "aire", "colmatad", "tapad", "obstruid", "saturad", "restriccion", "admision", "sucio"]],
+    ["ESC.FUGA.MULTIPLE", "Junta o multiple de escape fisurado", ["escape", "multiple", "junta", "fisura", "fuga", "gases", "sopla"]],
+    ["ADM.BAJA_PRESION.TURBO", "Turbo con holgura o alabes da\u00f1ados", ["turbo", "turbocompresor", "holgura", "alabe", "sopla", "presion"]],
+    ["COM.COMBUSTION.INYECTOR", "Inyector con retorno excesivo o goteo", ["inyector", "retorno", "gote", "pulveriza", "combustion", "excesiv"]],
+    ["COM.RESTRICCION.FILTRO", "Filtro de combustible colmatado", ["filtro", "combustible", "petroleo", "diesel", "colmatad", "tapad", "obstruid"]],
+    ["COM.CONTAMINACION.AGUA", "Agua o particulas en el combustible", ["agua", "combustible", "contaminad", "particula", "sedimento", "tanque", "condensacion"]],
+    ["COM.BAJA_PRESION.BOMBA", "Bomba de inyeccion con baja presion", ["bomba", "inyeccion", "presion", "combustible", "riel"]],
+    ["HID.FUGA.SELLO", "Sello o reten de cilindro vencido", ["sello", "reten", "vastago", "cilindro", "fuga", "gote", "aceite", "empaquetadura"]],
+    ["HID.FUGA.MANGUERA", "Manguera picada o acople flojo", ["manguera", "acople", "picad", "rozand", "fuga", "reventad", "conexion", "abrazadera"]],
+    ["HID.BAJA_PRESION.BOMBA", "Bomba hidraulica con baja presion", ["bomba", "hidraulic", "presion", "caudal", "fuerza", "desgaste"]],
+    ["HID.DERIVA.VALVULA", "Valvula de retencion o de mando con fuga interna", ["valvula", "retencion", "deriva", "interna", "mando", "distribuidor"]],
+    ["HID.CONTAMINACION.ACEITE", "Aceite hidraulico contaminado o vencido", ["aceite", "hidraulic", "contaminad", "sucio", "particula", "analisis"]],
+    ["HID.SOBRECALENTAMIENTO.ENFRIADOR", "Enfriador de aceite obstruido", ["enfriador", "aceite", "obstruid", "temperatura", "hidraulic", "panal"]],
+    ["ELE.NO_ARRANCA.BORNES", "Bornes de bateria sulfatados o flojos", ["borne", "bateri", "sulfatad", "flojo", "corrosion", "terminal"]],
+    ["ELE.NO_ARRANCA.BATERIA", "Bateria descargada o con vaso en corto", ["bateri", "descargad", "vaso", "densidad", "corto", "arranca", "lento"]],
+    ["ELE.NO_CARGA.ALTERNADOR", "Alternador o regulador en falla", ["alternador", "carga", "regulador", "carbon", "correa", "amperaje", "voltaje"]],
+    ["ELE.NO_ARRANCA.MOTOR_ARRANQUE", "Motor de arranque o solenoide en falla", ["arranque", "solenoide", "bendix", "carbon", "burro"]],
+    ["ELE.FALSO_CONTACTO.ARNES", "Arnes rozado o conector con falso contacto", ["arnes", "conector", "cable", "falso", "contacto", "intermitente", "rozad", "empalme"]],
+    ["ELE.LECTURA_ERRATICA.SENSOR", "Sensor descalibrado o en falla", ["sensor", "lectura", "erratic", "descalibrad", "se\u00f1al", "tablero", "testigo"]],
+    ["TER.SOBRECALENTAMIENTO.RADIADOR", "Radiador obstruido por tierra o incrustacion", ["radiador", "obstruid", "panal", "tierra", "incrustacion", "sobrecalient", "calient", "temperatura"]],
+    ["TER.SOBRECALENTAMIENTO.TERMOSTATO", "Termostato trabado", ["termostato", "trabad", "abiert", "cerrad", "temperatura", "calient"]],
+    ["TER.FUGA.REFRIGERANTE", "Manguera, tapa o bomba de agua con fuga", ["refrigerante", "fuga", "agua", "tapa", "manguera", "nivel"]],
+    ["TER.SOBRECALENTAMIENTO.VENTILADOR", "Ventilador, correa o embrague viscoso en falla", ["ventilador", "correa", "viscos", "embrague", "tensor", "floj"]],
+    ["NEU.FUGA.AIRE", "Fuga en circuito de aire comprimido", ["aire", "comprimid", "fuga", "presion", "calderin", "purga", "neumatic"]],
+    ["NEU.BAJA_PRESION.LLANTA", "Llanta con perforacion o valvula con fuga", ["llanta", "neumatic", "perforacion", "clavo", "valvula", "presion"]],
+    ["TRA.PATINA.EMBRAGUE", "Embrague o disco desgastado", ["embrague", "disco", "patina", "desgastad", "clutch", "resbala"]],
+    ["TRA.RUIDO.RODAMIENTO", "Rodamiento picado o sin lubricacion", ["rodamiento", "ruido", "picad", "cojinete", "balero", "zumbido"]],
+    ["TRA.FUGA.RETEN", "Reten de transmision o mando final vencido", ["reten", "transmision", "mando", "final", "fuga", "diferencial", "corona"]],
+    ["FRE.BAJA_EFICACIA.PASTILLAS", "Pastillas, bandas o discos desgastados", ["freno", "pastilla", "banda", "disco", "desgastad", "zapata", "frena"]],
+    ["EST.FISURA.SOLDADURA", "Fisura en soldadura o elemento estructural", ["fisura", "grieta", "soldadura", "rajad", "estructura", "chasis", "quebrad", "trizad"]],
+    ["EST.DESGASTE.TREN_RODAJE", "Tren de rodaje o cadena fuera de tolerancia", ["cadena", "rodaje", "zapata", "rodillo", "eslabon", "desgaste", "tension", "oruga"]],
+    ["EST.DESGASTE.DIENTES", "Dientes o cuchillas de cucharon gastados", ["diente", "cuchilla", "cucharon", "gastad", "adaptador"]],
+    ["LUB.FALTA.NIVEL", "Nivel de aceite bajo por consumo o fuga", ["nivel", "aceite", "consumo", "rellenar", "lubricacion"]],
+    ["LUB.VENCIDO.INTERVALO", "Aceite o filtro fuera de intervalo", ["intervalo", "vencid", "atrasad", "sobrepasad", "excedid", "horas"]],
+    ["OPE.DA\u00d1O.OPERACION", "Sobrecarga, golpe o maniobra indebida", ["golpe", "sobrecarga", "operador", "maniobra", "choque", "impacto"]],
+  ];
+
+  // Las pistas se escriben como raiz y casan por prefijo: «bateri»
+  // encuentra «bateria» y «baterias». El tokenizador no lematiza, y sin
+  // esto «Baterias sulfatadas» no casaba con ninguna entrada.
+  function casaPista(pista, palabras) {
+    if (palabras[pista]) return true;
+    if (pista.length < CAT_MINIMO_PREFIJO) return false;
+    for (var p in palabras) { if (p.indexOf(pista) === 0) return true; }
+    return false;
+  }
+
+  // Un servicio planificado no es una falla: mezclarlos infla el MTBF y
+  // llena de cambios de aceite la lista de lo que le vuelve a pasar.
+  function catalogoClasificar(texto) {
+    var normal = normalizar(texto);
+    for (var m = 0; m < CAT_PLANIFICADO.length; m++) {
+      if (normal.indexOf(CAT_PLANIFICADO[m]) !== -1) return null;
+    }
+    var palabras = tabla();
+    tokenizar(texto).forEach(function (t) { palabras[t] = true; });
+
+    var marcador = [];
+    CAT_ENTRADAS.forEach(function (entrada) {
+      var pistas = entrada[2], puntos = 0;
+      for (var i = 0; i < pistas.length; i++) {
+        var pista = normalizar(pistas[i]);
+        if (!casaPista(pista, palabras)) continue;
+        puntos += 1;
+        // Una pista inequivoca en el rubro vale por dos.
+        if (CAT_INEQUIVOCAS.indexOf(pista) >= 0) puntos += 1;
+      }
+      if (puntos >= CAT_MINIMO_PISTAS) marcador.push([puntos, entrada]);
+    });
+    if (!marcador.length) return null;
+    marcador.sort(function (a, b) {
+      if (b[0] !== a[0]) return b[0] - a[0];
+      return a[1][0] < b[1][0] ? -1 : 1;
+    });
+    // Empate: ninguna. Dos entradas igual de defendibles quieren decir que
+    // el texto no alcanza para decidir, y elegir a la suerte ensucia la
+    // cuenta de toda la flota.
+    if (marcador.length > 1 && marcador[0][0] === marcador[1][0]) return null;
+    return marcador[0][1];
+  }
+
+  function agruparCausas(causas) {
+    var frecuencia = tabla(), mapaCatalogo = tabla();
+    causas.forEach(function (c) {
+      var limpia = String(c || "").trim();
+      if (limpia) frecuencia[limpia] = (frecuencia[limpia] || 0) + 1;
+    });
+    // Primero el catalogo; lo que reconoce no entra al parecido, porque
+    // meterlo en un grupo seria adivinar.
+    Object.keys(frecuencia).forEach(function (causa) {
+      var entrada = catalogoClasificar(causa);
+      if (entrada) { mapaCatalogo[causa] = entrada[1]; delete frecuencia[causa]; }
+    });
+    var ordenadas = Object.keys(frecuencia).sort(function (a, b) {
+      if (frecuencia[b] !== frecuencia[a]) return frecuencia[b] - frecuencia[a];
+      if (a.length !== b.length) return a.length - b.length;
+      return a < b ? -1 : 1;
+    });
+    var representantes = [], mapa = tabla();
+    ordenadas.forEach(function (causa) {
+      for (var i = 0; i < representantes.length; i++) {
+        if (mismaCausa(causa, representantes[i])) { mapa[causa] = representantes[i]; return; }
+      }
+      representantes.push(causa);
+      mapa[causa] = causa;
+    });
+    Object.keys(mapaCatalogo).forEach(function (c) { mapa[c] = mapaCatalogo[c]; });
+    return mapa;
+  }
+
+  function Clasificador(indice) {
+    var pares = [];
+    indice.fragmentos.forEach(function (f) {
+      var causa = String(f.metadatos.causa_raiz || "").trim();
+      if (!causa) return;
+      var falla = [f.metadatos.resumen_falla || "", f.metadatos.solucion_aplicada || ""]
+        .join(" ").trim();
+      pares.push([falla || f.texto, causa]);
+    });
+    var mapa = agruparCausas(pares.map(function (p) { return p[1]; }));
+
+    var cuentaCausas = tabla();
+    pares.forEach(function (p) {
+      var c = mapa[p[1]];
+      cuentaCausas[c] = (cuentaCausas[c] || 0) + 1;
+    });
+    var utiles = tabla();
+    Object.keys(cuentaCausas).forEach(function (c) {
+      if (cuentaCausas[c] >= MINIMO_POR_CAUSA) utiles[c] = cuentaCausas[c];
+    });
+
+    this.casosPorCausa = utiles;
+    this.ejemplos = [];
+    this.cuenta = tabla();
+    this.total = tabla();
+    this.vocabulario = tabla();
+    var self = this, ejemplos = 0;
+    pares.forEach(function (p) {
+      var causa = mapa[p[1]];
+      if (!utiles[causa]) return;
+      ejemplos++;
+      var porCausa = self.cuenta[causa] || (self.cuenta[causa] = tabla());
+      var tokens = tokenizar(p[0]);
+      tokens.forEach(function (t) {
+        porCausa[t] = (porCausa[t] || 0) + 1;
+        self.vocabulario[t] = true;
+      });
+      self.total[causa] = (self.total[causa] || 0) + tokens.length;
+      // Se guardan para poder medirse dejando uno fuera. Sin esto, un
+      // indice armado en el propio telefono no tiene con que validarse y
+      // el porcentaje sale de la nada.
+      self.ejemplos.push([tokens, causa]);
+    });
+
+    this.casos = ejemplos;
+    if (ejemplos < MINIMO_CASOS) {
+      this.entrenado = false;
+      this.motivo = "hacen falta " + MINIMO_CASOS + " casos con causa confirmada y hay " + ejemplos;
+    } else if (Object.keys(utiles).length < MINIMO_CAUSAS) {
+      this.entrenado = false;
+      this.motivo = "hacen falta " + MINIMO_CAUSAS + " causas distintas";
+    } else {
+      this.entrenado = true;
+      this.motivo = "entrenado";
+    }
+
+    // Al final, cuando ya se sabe si esta entrenado. Si la oficina lo midio,
+    // viene en el indice; si el indice se armo en este telefono no lo midio
+    // nadie, y entonces se mide solo. Publicar una causa probable sin decir
+    // cuanto acierta es lo que esta herramienta promete no hacer.
+    this.medicion = indice.medicion || this.evaluar();
+  }
+
+  // La puntuacion, sobre las tablas que se le pasen: `predecir` usa las
+  // del clasificador entero y `evaluar` las mismas con un caso restado.
+  Clasificador.prototype._puntuar = function (tokens, cuenta, total, casos) {
+    var self = this, causas = Object.keys(casos);
+    if (!tokens.length || !causas.length) return [];
+    var universo = Object.keys(this.vocabulario).length || 1;
+    var n = causas.reduce(function (s, c) { return s + casos[c]; }, 0);
+
+    var puntajes = tabla();
+    causas.forEach(function (causa) {
+      var log = Math.log(casos[causa] / n);
+      var porCausa = cuenta[causa] || {};
+      var denominador = (total[causa] || 0) + ALFA * universo;
+      tokens.forEach(function (token) {
+        if (!self.vocabulario[token]) return;
+        log += Math.log(((porCausa[token] || 0) + ALFA) / denominador);
+      });
+      puntajes[causa] = log;
+    });
+
+    var mayor = -Infinity;
+    causas.forEach(function (c) { mayor = Math.max(mayor, puntajes[c]); });
+    var suma = 0, pesos = tabla();
+    causas.forEach(function (c) {
+      pesos[c] = Math.exp(puntajes[c] - mayor);
+      suma += pesos[c];
+    });
+    var salida = causas.map(function (c) {
+      return { causa: c, probabilidad: redondear(pesos[c] / (suma || 1), 4),
+               casos: casos[c] };
+    });
+    salida.sort(function (a, b) {
+      if (b.probabilidad !== a.probabilidad) return b.probabilidad - a.probabilidad;
+      return a.causa < b.causa ? -1 : 1;
+    });
+    return salida;
+  };
+
+  Clasificador.prototype.predecir = function (consulta, limite) {
+    if (!this.entrenado) return [];
+    return this._puntuar(tokenizar(consulta), this.cuenta, this.total,
+                         this.casosPorCausa).slice(0, limite || 3);
+  };
+
+  // Validacion dejando uno fuera. Es la unica forma honesta de dar un
+  // porcentaje cuando el historial es pequeno, y en el telefono hace falta:
+  // el indice que se arma aqui no trae medicion de nadie.
+  //
+  // Quitar un caso es restarlo de las cuentas y volver a sumarlo despues, no
+  // rehacerlas: rehacerlas es cuadratico y con miles de ordenes el telefono
+  // se queda pensando. El resultado es el mismo numero.
+  Clasificador.prototype.evaluar = function () {
+    if (!this.entrenado || this.ejemplos.length < MINIMO_CASOS) return null;
+
+    var cuenta = tabla(), total = tabla(), casos = tabla(), self = this;
+    Object.keys(this.cuenta).forEach(function (c) {
+      var copia = tabla();
+      Object.keys(self.cuenta[c]).forEach(function (t) { copia[t] = self.cuenta[c][t]; });
+      cuenta[c] = copia;
+    });
+    Object.keys(this.total).forEach(function (c) { total[c] = self.total[c]; });
+    Object.keys(this.casosPorCausa).forEach(function (c) {
+      casos[c] = self.casosPorCausa[c];
+    });
+
+    var aciertos = 0;
+    this.ejemplos.forEach(function (par) {
+      var tokens = par[0], causa = par[1], porCausa = cuenta[causa];
+      tokens.forEach(function (t) { porCausa[t] -= 1; });
+      total[causa] -= tokens.length;
+      casos[causa] -= 1;
+      var quitada = casos[causa] === 0;
+      if (quitada) delete casos[causa];
+
+      var prediccion = self._puntuar(tokens, cuenta, total, casos);
+      if (prediccion.length && prediccion[0].causa === causa) aciertos++;
+
+      if (quitada) casos[causa] = 0;
+      casos[causa] += 1;
+      total[causa] += tokens.length;
+      tokens.forEach(function (t) { porCausa[t] += 1; });
+    });
+
+    var totales = this.ejemplos.length, mayor = 0;
+    Object.keys(this.casosPorCausa).forEach(function (c) {
+      mayor = Math.max(mayor, self.casosPorCausa[c]);
+    });
+    // A tres decimales, como `Medicion.a_dict()`: el numero que se publica
+    // tiene que ser el mismo, no parecido.
+    return { casos: totales, causas: Object.keys(this.casosPorCausa).length,
+             aciertos: aciertos, precision: redondear(aciertos / totales, 3),
+             linea_base: redondear(mayor / totales, 3) };
+  };
+
+  /* ---------- el diagnóstico ---------- */
+
+  var AVISO_SIN_FILTRO = "Ningun antecedente cita ese codigo de falla; lo que sigue " +
+    "se encontro por la descripcion de la falla.";
+  var AVISO_POCA_EVIDENCIA = "Evidencia debil: ningun antecedente se parece lo " +
+    "suficiente. Trate esto como una pista, no como un diagnostico.";
+  var AVISO_SIN_PROCEDIMIENTO = "Ningun antecedente trae un procedimiento escrito. " +
+    "Lea el extracto de la evidencia: ahi esta lo que hay.";
+  var AVISO_TORQUE = "Contraste cada par de apriete con el manual OEM del equipo " +
+    "antes de aplicarlo.";
+  var AVISO_APOYO = "La busqueda por palabras y el historial completo apuntaban a " +
+    "causas distintas. Se anadio a la evidencia el antecedente de la causa que " +
+    "respalda el historial; compare los dos antes de desarmar nada.";
+
+  function unicos(valores) {
+    var vistos = tabla(), salida = [];
+    (valores || []).forEach(function (valor) {
+      var limpio = String(valor).replace(/^[\s.;-]+|[\s.;-]+$/g, "");
+      var clave = normalizar(limpio);
+      if (limpio && !vistos[clave]) { vistos[clave] = true; salida.push(limpio); }
+    });
+    return salida;
+  }
+
+  function frases(texto) {
+    return String(texto).split(/(?<=[.;])\s+|\n+/)
+      .map(function (f) { return f.replace(/^[\s.;\t]+|[\s.;\t]+$/g, ""); })
+      .filter(function (f) { return f.length; });
+  }
+
+  function torques(texto) {
+    var crudo = String(texto), valores = [], m;
+    RE_TORQUE.lastIndex = 0;
+    while ((m = RE_TORQUE.exec(crudo)) !== null) {
+      var previo = sinTildes(crudo.slice(Math.max(0, m.index - 60), m.index));
+      if (RE_NO_TORQUE.test(previo)) continue;
+      var unidad = m[3].replace(/\s+/g, " ").trim();
+      var rango = m[2] ? m[1] + "-" + m[2] : m[1];
+      var valor = rango + " " + unidad;
+      if (valores.indexOf(valor) < 0) valores.push(valor);
+    }
+    return valores;
+  }
+
+  // Un antecedente con pasos que sirvan para la causa que se esta dando:
+  // el de la misma causa, o un manual —una seccion de manual es un
+  // procedimiento, no una causa que compita—. Si no hay ninguno, no hay
+  // procedimiento, y eso se dice.
+  function procedimientoPara(coincidencias, causa) {
+    for (var i = 0; i < coincidencias.length; i++) {
+      var c = coincidencias[i];
+      if (!pasosDe(c).length) continue;
+      var suya = String(c.fragmento.metadatos.causa_raiz || "").trim();
+      if (c.fragmento.tipo === "manual" || !suya) return c;
+      if (causa && mismaCausa(suya, causa)) return c;
+    }
+    return null;
+  }
+
+  // Espejo de nefer/fixmate/seguridad.py. Si los dos cuadros se separan,
+  // la prueba cruzada lo dice: el telefono no puede dar un procedimiento
+  // con menos precauciones que la oficina.
+  var SEG_SISTEMAS = [
+    ["hidraulico", ["cilindro", "hidraulic", "manguera", "vastago", "sello", "bomba", "valvula", "acumulador", "presion", "pluma", "brazo", "cucharon", "aguilon", "estabilizador", "mastil"],
+     "Descargue la presion hidraulica y apoye en el suelo lo que este levantado. El circuito queda con presion y la carga baja sola con la maquina apagada."],
+    ["electrico", ["bateria", "borne", "arranque", "alternador", "fusible", "arnes", "electric", "motor de arranque", "alternador", "cable", "sensor", "ecm", "tablero"],
+     "Desconecte el borne negativo de la bateria y espere. Un arranque que gira con alguien dentro del compartimiento no avisa."],
+    ["combustible", ["inyector", "riel", "common rail", "combustible", "bomba de inyeccion", "caneria de alta", "petroleo", "diesel"],
+     "El riel de inyeccion queda a presion despues de parar. Purgue segun el manual y no afloje una caneria de alta con el motor caliente: el chorro atraviesa un guante."],
+    ["termico", ["refrigerante", "radiador", "termostato", "sobrecalent", "temperatura", "recalent", "tapa del radiador", "ventilador"],
+     "Deje enfriar antes de abrir. Un radiador caliente esta presurizado y el ventilador puede arrancar solo."],
+    ["neumatico", ["neumatic", "aire comprimido", "compresor", "calderin", "llanta", "aro", "neumatico"],
+     "Purgue el aire comprimido antes de desarmar. Un aro con presion es una granada."],
+  ];
+  var SEG_BASE = "Bloquee y senalice la maquina antes de intervenir: motor detenido, llave fuera, tarjeta puesta. Si el procedimiento no le consta, pare y consulte el manual OEM.";
+  var SEG_HERRAMIENTA = "regla de la herramienta";
+  var SEG_MANUAL = "manual";
+  var SEG_AVISOS = ["peligro", "advertencia", "precaucion", "atencion", "cuidado", "aviso", "riesgo", "nunca ", "no opere", "antes de intervenir", "antes de desmontar", "bloquee", "despresurice", "desconecte la bateria"];
+
+  function precaucionesDe(pasos, coincidencias, causa) {
+    if (!pasos || !pasos.length) return [];
+    var junto = normalizar(pasos.join(" ") + " " + (causa || ""));
+    var salida = [{ texto: SEG_BASE, origen: SEG_HERRAMIENTA }];
+    SEG_SISTEMAS.forEach(function (s) {
+      var nombre = s[0], palabras = s[1], aviso = s[2];
+      for (var i = 0; i < palabras.length; i++) {
+        if (junto.indexOf(palabras[i]) !== -1) {
+          salida.push({ texto: aviso, origen: SEG_HERRAMIENTA, sistema: nombre });
+          return;
+        }
+      }
+    });
+    var vistas = {};
+    salida.forEach(function (p) { vistas[p.texto] = true; });
+    (coincidencias || []).forEach(function (c) {
+      var f = c.fragmento || c;
+      if (f.tipo !== "manual") return;
+      var referencia = (f.metadatos && f.metadatos.seccion) || f.fuente || f.id;
+      String(f.texto || "").split("\n").forEach(function (linea) {
+        var limpia = linea.replace(/^[\s\-*\t]+|[\s\-*\t]+$/g, "");
+        if (limpia.length < 12) return;
+        var n = normalizar(limpia);
+        for (var i = 0; i < SEG_AVISOS.length; i++) {
+          if (n.indexOf(SEG_AVISOS[i]) === 0 && !vistas[limpia]) {
+            salida.push({ texto: limpia, origen: SEG_MANUAL,
+                          referencia: String(referencia) });
+            vistas[limpia] = true;
+            return;
+          }
+        }
+      });
+    });
+    return salida;
+  }
+
+  function pasosDe(coincidencia) {
+    var meta = coincidencia.fragmento.metadatos;
+    if (meta.pasos && meta.pasos.length) return meta.pasos.slice();
+    if (meta.solucion_aplicada) return frases(meta.solucion_aplicada);
+    return [];
+  }
+
+  function conCausa(coincidencias) {
+    return coincidencias.filter(function (c) {
+      return String(c.fragmento.metadatos.causa_raiz || "").trim();
+    });
+  }
+
+  function respaldado(coincidencias, causas) {
+    var lista = conCausa(coincidencias);
+    if (!causas || !causas.length || !lista.length) return null;
+    if (lista[0].puntaje >= UMBRAL_EVIDENCIA_FUERTE) return null;
+    var esperada = causas[0].causa, encontrado = null;
+    lista.forEach(function (c) {
+      if (!encontrado && mismaCausa(c.fragmento.metadatos.causa_raiz, esperada)) {
+        encontrado = c;
+      }
+    });
+    return encontrado;
+  }
+
+  function referenciaDe(c) {
+    var m = c.fragmento.metadatos;
+    return String(m.codigo_ot || m.n_acta || m.seccion || c.fragmento.fuente || c.fragmento.id);
+  }
+
+  function recortar(texto, largo) {
+    var limpio = String(texto).replace(/\s+/g, " ").trim();
+    return limpio.length <= largo ? limpio : limpio.slice(0, largo - 1).replace(/\s+$/, "") + "…";
+  }
+
+  function detalleDe(c) {
+    var m = c.fragmento.metadatos;
+    var item = String(m.item || "").trim(), estado = String(m.estado || "").trim();
+    return String(m.resumen_falla || m.observacion ||
+                  (item && estado ? item + " (" + estado + ")" : item) ||
+                  recortar(c.fragmento.texto, 220));
+  }
+
+  function causaNoConfirmada(c) {
+    var m = c.fragmento.metadatos;
+    var donde = String(m.seccion || m.item || "").trim();
+    if (c.fragmento.tipo === "manual") {
+      return donde
+        ? "No consta una causa raiz confirmada en el historial; lo recuperado es " +
+          "documentacion del manual («" + donde + "»)."
+        : "No consta una causa raiz confirmada en el historial; lo recuperado es " +
+          "documentacion del manual.";
+    }
+    return donde
+      ? "No consta una causa raiz confirmada; el antecedente solo registra el hecho («" +
+        donde + "»)."
+      : "No consta una causa raiz confirmada en el historial.";
+  }
+
+  function frasePorcentaje(x) { return (x * 100).toFixed(0); }
+
+  function redactar(consulta, coincidencias, causas, medicion) {
+    var mejor = coincidencias[0];
+    var apoyo = respaldado(coincidencias, causas);
+    var lista = conCausa(coincidencias);
+    var origen = apoyo || (lista.length ? lista[0] : mejor);
+    var causa = String(origen.fragmento.metadatos.causa_raiz || "").trim();
+    if (!causa) causa = causaNoConfirmada(mejor);
+
+    var diagnostico = coincidencias.length + " antecedente(s) —historial y manuales— " +
+      "coinciden con «" + consulta.texto + "». El mas parecido (" + referenciaDe(mejor) +
+      ", " + frasePorcentaje(mejor.puntaje) + "%) registra: " + detalleDe(mejor);
+
+    var iguales = coincidencias.filter(function (c) {
+      return c !== origen && String(c.fragmento.metadatos.causa_raiz || "").trim() &&
+             mismaCausa(c.fragmento.metadatos.causa_raiz, causa);
+    });
+    if (iguales.length) {
+      diagnostico += " Otros " + iguales.length + " antecedente(s) terminaron en la " +
+        "misma causa, lo que la refuerza.";
+    }
+    var otras = lista.filter(function (c) {
+      return c !== origen && c !== mejor && iguales.indexOf(c) < 0;
+    });
+    if (otras.length) {
+      diagnostico += " Otros antecedentes (" + otras.map(referenciaDe).join(", ") +
+        ") terminaron en otra causa; estan en la evidencia, con su propio procedimiento.";
+    }
+    if (consulta.codigo_dtc) diagnostico += " Filtrado por el codigo " + consulta.codigo_dtc + ".";
+    if (causas && causas.length) {
+      var top = causas[0];
+      diagnostico += " En todo el historial, las descripciones parecidas a esta " +
+        "terminaron en «" + top.causa + "» el " + frasePorcentaje(top.probabilidad) +
+        "% de las veces (" + top.casos + " casos registrados)";
+      if (medicion) {
+        diagnostico += "; el clasificador acierta el " + frasePorcentaje(medicion.precision) +
+          "% midiendolo contra sus propios " + medicion.casos + " casos, y contestar " +
+          "siempre la causa mas comun acertaria el " + frasePorcentaje(medicion.linea_base) + "%";
+      }
+      diagnostico += ".";
+    }
+    if (apoyo && apoyo !== mejor) {
+      diagnostico += " La causa sale de " + referenciaDe(apoyo) +
+        ", que es el antecedente recuperado que coincide con esa estadistica.";
+    }
+
+    // Los pasos salen de UN antecedente, y tiene que servir para ESTA causa.
+    // El primero que traiga pasos no sirve: el orden es por parecido de
+    // palabras, y asi se respondia «filtro de aire colmatado, segun OT-1» con
+    // el procedimiento de cambiar un inyector debajo, y su par de apriete,
+    // atribuido a OT-1. El tecnico aprieta a ese valor un perno que no es ese.
+    var fuente = pasosDe(origen).length ? origen : procedimientoPara(coincidencias, causa);
+    var pasos = fuente ? pasosDe(fuente) : [];
+    if (fuente && fuente !== origen) {
+      diagnostico += " El procedimiento y sus valores salen de " +
+        referenciaDe(fuente) + ".";
+    }
+
+    // Las herramientas y los torques acompañan al procedimiento.
+    var base = fuente || origen;
+    var herramientas = (base.fragmento.metadatos.herramientas || []).slice()
+      .concat(base.fragmento.metadatos.repuestos || []);
+    var valores = (base.fragmento.metadatos.torques || []).concat(torques(base.fragmento.texto));
+    coincidencias.forEach(function (c) {
+      if (c.fragmento.tipo !== "manual") return;
+      herramientas = herramientas.concat(c.fragmento.metadatos.herramientas || []);
+      valores = valores.concat(c.fragmento.metadatos.torques || []);
+    });
+
+    return {
+      diagnostico_probabilistico: diagnostico,
+      causa_raiz_mas_probable: causa || "No consta en el historial recuperado.",
+      pasos_recomendados: unicos(pasos).slice(0, 10),
+      herramientas_y_repuestos: unicos(herramientas),
+      torques: unicos(valores),
+      _apoyo: apoyo
+    };
+  }
+
+  function Motor(indice) {
+    this.indice = indice;
+    this.clasificador = new Clasificador(indice);
+    this.medicion = this.clasificador.medicion;
+  }
+
+  Motor.prototype.consultar = function (consulta) {
+    if (!consulta || !String(consulta.texto || "").trim()) {
+      throw new Error("la consulta no puede estar vacia.");
+    }
+    var limite = Math.max(1, Math.min(consulta.limite || 3, 10));
+    var dtc = consulta.codigo_dtc
+      ? String(consulta.codigo_dtc).replace(/[\s:_-]+/g, "").toUpperCase()
+          .replace(/^(SPN|FMI|CID)0+(?=\d)/, "$1")
+      : null;
+    var filtros = { codigos_dtc: dtc };
+    var preferencias = { codigo_equipo: consulta.codigo_equipo || null,
+                         categoria: consulta.categoria || null };
+    var avisos = [];
+
+    var coincidencias = this.indice.buscar(consulta.texto, {
+      limite: limite, filtros: filtros, umbral: UMBRAL_MINIMO,
+      preferencias: preferencias });
+    if (!coincidencias.length && dtc) {
+      coincidencias = this.indice.buscar(consulta.texto, {
+        limite: limite, umbral: UMBRAL_MINIMO, preferencias: preferencias });
+      if (coincidencias.length) avisos.push(AVISO_SIN_FILTRO);
+    }
+    if (!coincidencias.length) {
+      var vacio = new Error("No hay antecedentes en el indice que respalden esa " +
+        "consulta. Registre el caso al cerrarlo y el proximo tecnico si los tendra.");
+      vacio.sinEvidencia = true;
+      throw vacio;
+    }
+
+    var causas = this.clasificador.predecir(consulta.texto, 3);
+    var medicion = causas.length ? this.clasificador.medicion : null;
+
+    // El antecedente que la búsqueda no trajo y el historial sí respalda.
+    if (causas.length && causas[0].probabilidad >= APOYO_MINIMO) {
+      var fuertes = conCausa(coincidencias);
+      var yaEsta = respaldado(coincidencias, causas) !== null;
+      if (!yaEsta && !(fuertes.length && fuertes[0].puntaje >= UMBRAL_EVIDENCIA_FUERTE)) {
+        var vistos = tabla();
+        coincidencias.forEach(function (c) { vistos[c.fragmento.id] = true; });
+        var esperada = causas[0].causa;
+        var extra = this.indice.buscar(consulta.texto, {
+          limite: 1, umbral: 0,
+          acepta: function (f) {
+            return !vistos[f.id] && mismaCausa(String(f.metadatos.causa_raiz || ""), esperada);
+          } });
+        if (extra.length) { coincidencias = coincidencias.concat(extra); avisos.push(AVISO_APOYO); }
+      }
+    }
+
+    var partes = redactar({ texto: consulta.texto, codigo_dtc: dtc }, coincidencias,
+                          causas, medicion);
+    var mejor = coincidencias[0].puntaje;
+    var confianza = mejor >= 0.55 ? "alta" : (mejor >= UMBRAL_CONFIANZA ? "media" : "baja");
+    if (confianza === "baja") avisos.push(AVISO_POCA_EVIDENCIA);
+    if (!partes.pasos_recomendados.length) avisos.push(AVISO_SIN_PROCEDIMIENTO);
+    if (partes.torques.length) avisos.push(AVISO_TORQUE);
+
+    // Igual que en la oficina: la puerta va aqui y no en el redactor. Si la
+    // respuesta lleva pasos, lleva precauciones, redacte quien redacte.
+    return {
+      diagnostico_probabilistico: partes.diagnostico_probabilistico,
+      causa_raiz_mas_probable: partes.causa_raiz_mas_probable,
+      pasos_recomendados: partes.pasos_recomendados,
+      precauciones: precaucionesDe(partes.pasos_recomendados, coincidencias,
+                                   partes.causa_raiz_mas_probable),
+      herramientas_y_repuestos: partes.herramientas_y_repuestos,
+      torques: partes.torques,
+      evidencia_historica: coincidencias.map(function (c) {
+        var m = c.fragmento.metadatos;
+        return {
+          id: c.fragmento.id, tipo: c.fragmento.tipo, fuente: c.fragmento.fuente,
+          // Un antecedente del taller de ejemplo no se puede leer como si
+          // hubiera pasado de verdad.
+          ejemplo: !!m._ejemplo,
+          similitud: c.puntaje,
+          codigo_ot: String(m.codigo_ot || m.n_acta || ""),
+          resumen_falla: String(m.resumen_falla || m.item || ""),
+          causa_raiz: String(m.causa_raiz || ""),
+          solucion_aplicada: String(m.solucion_aplicada || ""),
+          extracto: recortar(c.fragmento.texto, 400)
+        };
+      }),
+      confianza: confianza,
+      redactor: "extractivo",
+      avisos: avisos,
+      causas_probables: causas,
+      precision_medida: medicion,
+      consulta_interpretada: consulta.texto
+    };
+  };
+
+
+  /* ---------- lo que se cierra en faena ----------
+
+     El informe que el técnico registra en el patio tiene que quedar igual que
+     si lo hubiera escrito la oficina: mismo texto, mismos metadatos, mismo
+     vector. Si no, al recibirlo allá el índice cambiaría y las dos mitades
+     dejarían de coincidir. Esto es espejo de `ingesta.de_informe`. */
+
+  var RE_DTC = [
+    /\b[PBCU][0-9]{4}\b/gi,
+    /\bSPN[\s:-]*([0-9]{1,6})\b/gi,
+    /\bFMI[\s:-]*([0-9]{1,2})\b/gi,
+    /\bCID[\s:-]*([0-9]{2,4})\b/gi,
+    /\bE[0-9]{3}(?:[.-][0-9])?\b/g
+  ];
+
+  function normalizarDtc(codigo) {
+    var limpio = sinTildes(String(codigo)).replace(/[\s:_-]+/g, "").toUpperCase();
+    return limpio.replace(/^(SPN|FMI|CID)0+(?=\d)/, "$1");
+  }
+
+  function codigosDtc(texto) {
+    var encontrados = [];
+    RE_DTC.forEach(function (patron) {
+      patron.lastIndex = 0;
+      var m;
+      while ((m = patron.exec(String(texto))) !== null) {
+        var codigo = normalizarDtc(m[0]);
+        if (codigo && encontrados.indexOf(codigo) < 0) encontrados.push(codigo);
+      }
+    });
+    return encontrados;
+  }
+
+  function limpiarLista(cosas) {
+    return (cosas || []).map(function (c) { return String(c).trim(); })
+      .filter(function (c) { return c.length; });
+  }
+
+  function fragmentoDeInforme(informe, fuente, n) {
+    var ot = String(informe.codigo_ot || "").trim() || ("SIN-OT-" + ((n || 0) + 1));
+    var pasos = limpiarLista(informe.pasos);
+    var herramientas = limpiarLista(informe.herramientas);
+    var repuestos = limpiarLista(informe.repuestos);
+
+    var lineas = ["ORDEN DE TRABAJO " + ot];
+    [["Equipo", "codigo_equipo"], ["Modelo", "modelo_equipo"], ["Fecha", "fecha"],
+     ["Falla reportada", "resumen_falla"], ["Causa raiz confirmada", "causa_raiz"],
+     ["Solucion aplicada", "solucion_aplicada"]].forEach(function (par) {
+      var valor = String(informe[par[1]] || "").trim();
+      if (valor) lineas.push(par[0] + ": " + valor);
+    });
+    if (pasos.length) {
+      lineas.push("Procedimiento: " + pasos.map(function (p, i) {
+        return (i + 1) + ". " + p;
+      }).join(" "));
+    }
+    if (herramientas.length) lineas.push("Herramientas: " + herramientas.join(", "));
+    if (repuestos.length) lineas.push("Repuestos: " + repuestos.join(", "));
+    var cuerpo = lineas.join("\n");
+
+    var declarados = informe.codigos_dtc || informe.codigo_dtc || [];
+    if (typeof declarados === "string") declarados = [declarados];
+    var codigos = [];
+    declarados.forEach(function (c) {
+      if (String(c).trim()) codigos.push(normalizarDtc(c));
+    });
+    codigosDtc(cuerpo).forEach(function (c) {
+      if (codigos.indexOf(c) < 0) codigos.push(c);
+    });
+
+    var metadatos = {};
+    ["codigo_ot", "fecha", "codigo_equipo", "modelo_equipo", "categoria",
+     "resumen_falla", "causa_raiz", "solucion_aplicada", "horas_hombre",
+     "horometro"].forEach(function (clave) {
+      if (informe[clave]) metadatos[clave] = informe[clave];
+    });
+    metadatos.codigo_ot = ot;
+    metadatos.codigos_dtc = codigos;
+    metadatos.pasos = pasos;
+    metadatos.herramientas = herramientas;
+    metadatos.repuestos = repuestos;
+    metadatos.torques = torques(cuerpo);
+
+    return { id: "ot:" + ot, texto: cuerpo, fuente: fuente || ot,
+             tipo: "informe", metadatos: metadatos, vector: vector(cuerpo) };
+  }
+
+  Indice.prototype.agregar = function (fragmento) {
+    // Un id que ya estaba se reemplaza, como en la herramienta de escritorio.
+    for (var i = 0; i < this.fragmentos.length; i++) {
+      if (this.fragmentos[i].id === fragmento.id) {
+        this.fragmentos[i] = fragmento;
+        this._indexar();
+        return false;
+      }
+    }
+    this.fragmentos.push(fragmento);
+    this._indexar();
+    return true;
+  };
+
+  /* fixmate:ingesta:inicio — se prueba en node, igual que el motor */
+
+  // Leer los papeles del taller aqui mismo, en el telefono. Antes esto solo
+  // pasaba en la oficina y el telefono recibia el indice ya cocinado; con el
+  // indice cocinado afuera, cargar el historial de un equipo nuevo obligaba a
+  // volver a la computadora. Ahora el Excel entra por el menu.
+  //
+  // Sin librerias: un .xlsx es un zip con XML adentro, y el navegador sabe
+  // descomprimir (DecompressionStream) y leer XML (DOMParser) de fabrica.
+
+  // El mismo cuadro de sinonimos que nefer/fixmate/ingesta.py. Generado
+  // desde el, para que no se puedan separar en silencio.
+  var COLUMNAS_INFORME = {
+    "codigo_ot": ["ot", "n ot", "nro ot", "num ot", "numero ot", "orden", "orden de trabajo", "codigo ot", "ot n", "n orden", "os"],
+    "fecha": ["fecha", "fecha de atencion", "fecha atencion", "fecha cierre", "fecha de cierre", "dia"],
+    "codigo_equipo": ["equipo", "codigo equipo", "cod equipo", "codigo de equipo", "unidad", "maquina", "flota", "placa", "interno"],
+    "modelo_equipo": ["modelo", "descripcion del equipo", "marca modelo"],
+    "categoria": ["categoria", "familia", "tipo de equipo", "linea"],
+    "codigos_dtc": ["dtc", "codigo de falla", "codigo falla", "cod falla", "codigo dtc", "spn", "fmi", "codigo de error"],
+    "resumen_falla": ["falla", "sintoma", "sintomas", "descripcion de la falla", "problema", "reporte", "falla reportada", "descripcion", "detalle de la falla"],
+    "causa_raiz": ["causa", "causa raiz", "causa basica", "diagnostico", "causa de la falla", "origen"],
+    "solucion_aplicada": ["solucion", "solucion aplicada", "trabajo realizado", "accion", "accion correctiva", "reparacion", "actividad realizada", "correctivo"],
+    "pasos": ["pasos", "procedimiento", "secuencia"],
+    "herramientas": ["herramientas", "herramienta", "herramental"],
+    "repuestos": ["repuestos", "repuesto", "materiales", "partes", "insumos"],
+    "horas_hombre": ["horas hombre", "hh", "horas", "tiempo"],
+    "horometro": ["horometro", "horas de equipo", "km", "kilometraje"],
+  };
+
+  function claveColumna(nombre) {
+    var limpio = normalizar(String(nombre || "")).replace(/[^a-z0-9]+/g, " ").trim();
+    if (!limpio) return "";
+    // Primero exacto para todos los campos, y recien despues parecido: si
+    // "Falla" se resolviera por parecido podria caer en "codigo de falla".
+    for (var campo in COLUMNAS_INFORME) {
+      if (COLUMNAS_INFORME[campo].indexOf(limpio) >= 0) return campo;
+    }
+    for (var campo2 in COLUMNAS_INFORME) {
+      var nombres = COLUMNAS_INFORME[campo2];
+      for (var i = 0; i < nombres.length; i++) {
+        if (limpio.indexOf(nombres[i]) >= 0 && nombres[i].length > 3) return campo2;
+      }
+    }
+    return "";
+  }
+
+  /* ---------- el zip que hay dentro de un .xlsx ---------- */
+
+  function leerU16(v, i) { return v[i] | (v[i + 1] << 8); }
+  function leerU32(v, i) {
+    return (v[i] | (v[i + 1] << 8) | (v[i + 2] << 16)) + v[i + 3] * 16777216;
+  }
+
+  // Las entradas del zip, por nombre. Se recorre el directorio central, que
+  // es lo unico que dice donde empieza cada archivo sin adivinar.
+  function entradasZip(datos) {
+    var v = new Uint8Array(datos), fin = -1;
+    for (var i = v.length - 22; i >= 0 && i > v.length - 65558; i--) {
+      if (leerU32(v, i) === 0x06054b50) { fin = i; break; }
+    }
+    if (fin < 0) throw new Error("no parece un archivo .xlsx (zip sin cierre)");
+    var cuantos = leerU16(v, fin + 10), p = leerU32(v, fin + 16), entradas = {};
+    for (var n = 0; n < cuantos; n++) {
+      if (leerU32(v, p) !== 0x02014b50) break;
+      var metodo = leerU16(v, p + 10);
+      var comprimido = leerU32(v, p + 20), largoNombre = leerU16(v, p + 28);
+      var extra = leerU16(v, p + 30), comentario = leerU16(v, p + 32);
+      var desplazamiento = leerU32(v, p + 42);
+      var nombre = new TextDecoder().decode(v.subarray(p + 46, p + 46 + largoNombre));
+      entradas[nombre] = { metodo: metodo, comprimido: comprimido,
+                           desplazamiento: desplazamiento };
+      p += 46 + largoNombre + extra + comentario;
+    }
+    return entradas;
+  }
+
+  function contenidoZip(datos, entrada) {
+    var v = new Uint8Array(datos), p = entrada.desplazamiento;
+    if (leerU32(v, p) !== 0x04034b50) throw new Error("zip: cabecera local rota");
+    var inicio = p + 30 + leerU16(v, p + 26) + leerU16(v, p + 28);
+    var crudo = v.subarray(inicio, inicio + entrada.comprimido);
+    if (entrada.metodo === 0) return Promise.resolve(new TextDecoder().decode(crudo));
+    if (entrada.metodo !== 8) {
+      return Promise.reject(new Error("zip: compresion no soportada"));
+    }
+    if (typeof DecompressionStream === "undefined") {
+      return Promise.reject(new Error(
+        "este navegador no sabe descomprimir; abra el Excel en la oficina " +
+        "o guardelo como CSV"));
+    }
+    var flujo = new Blob([crudo]).stream()
+      .pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Response(flujo).text();
+  }
+
+  /* ---------- el .xlsx como filas ---------- */
+
+  function textoDe(nodo) {
+    // <si> puede venir partido en varios <t> por el formato enriquecido.
+    var ts = nodo.getElementsByTagName("t"), salida = "";
+    for (var i = 0; i < ts.length; i++) salida += ts[i].textContent;
+    return salida;
+  }
+
+  function columnaDe(ref) {
+    var letras = String(ref || "").replace(/[0-9]/g, ""), n = 0;
+    for (var i = 0; i < letras.length; i++) {
+      n = n * 26 + (letras.charCodeAt(i) - 64);
+    }
+    return n - 1;
+  }
+
+  function filasDeHoja(xml, compartidas) {
+    var doc = new DOMParser().parseFromString(xml, "application/xml");
+    var filas = [], nodos = doc.getElementsByTagName("row");
+    for (var i = 0; i < nodos.length; i++) {
+      var celdas = nodos[i].getElementsByTagName("c"), fila = [];
+      for (var j = 0; j < celdas.length; j++) {
+        var c = celdas[j], donde = columnaDe(c.getAttribute("r"));
+        var tipo = c.getAttribute("t"), valor = "";
+        if (tipo === "s") {
+          var vs = c.getElementsByTagName("v");
+          if (vs.length) valor = compartidas[parseInt(vs[0].textContent, 10)] || "";
+        } else if (tipo === "inlineStr") {
+          valor = textoDe(c);
+        } else {
+          var vn = c.getElementsByTagName("v");
+          if (vn.length) valor = vn[0].textContent;
+        }
+        while (fila.length < donde) fila.push("");
+        fila[donde >= 0 ? donde : fila.length] = valor;
+      }
+      filas.push(fila);
+    }
+    return filas;
+  }
+
+  function esNumero(v) {
+    if (v === "" || v === null || v === undefined) return false;
+    return !isNaN(parseFloat(String(v).replace(",", "."))) &&
+           isFinite(String(v).replace(",", "."));
+  }
+
+  // El encabezado no esta en la primera fila: arriba hay logo, titulo y dos
+  // filas en blanco. La fila con mas celdas de texto distintas, entre las
+  // diez primeras, es el encabezado. Misma regla que documentos.tabla().
+  function registrosDeFilas(filas) {
+    var mejor = 0, puntaje = 0;
+    for (var i = 0; i < Math.min(10, filas.length); i++) {
+      var textos = {}, cuenta = 0;
+      filas[i].forEach(function (v) {
+        var s = String(v == null ? "" : v).trim();
+        if (!s || esNumero(v)) return;
+        cuenta++; textos[s.toLowerCase()] = true;
+      });
+      if (cuenta > puntaje && Object.keys(textos).length === cuenta) {
+        mejor = i; puntaje = cuenta;
+      }
+    }
+    var encabezados = (filas[mejor] || []).map(function (v) {
+      return String(v == null ? "" : v).trim();
+    });
+    var registros = [];
+    for (var f = mejor + 1; f < filas.length; f++) {
+      var registro = {}, algo = false;
+      encabezados.forEach(function (clave, k) {
+        if (!clave) return;
+        var valor = String(filas[f][k] == null ? "" : filas[f][k]).trim();
+        registro[clave] = valor;
+        if (valor) algo = true;
+      });
+      if (algo) registros.push(registro);
+    }
+    return registros;
+  }
+
+  function informesDeRegistros(registros) {
+    var mapa = {}, primero = registros[0] || {};
+    Object.keys(primero).forEach(function (columna) {
+      var campo = claveColumna(columna);
+      if (campo && !mapa[campo]) mapa[campo] = columna;
+    });
+    if (!mapa.resumen_falla && !mapa.causa_raiz) return null;
+
+    return registros.map(function (r) {
+      var informe = {};
+      Object.keys(mapa).forEach(function (campo) {
+        var valor = String(r[mapa[campo]] || "").trim();
+        if (!valor) return;
+        if (campo === "pasos" || campo === "herramientas" || campo === "repuestos") {
+          informe[campo] = valor.split(/\s*[;\n]\s*/).filter(Boolean);
+        } else if (campo === "codigos_dtc") {
+          informe[campo] = valor.split(/\s*[,;/]\s*/).filter(Boolean);
+        } else {
+          informe[campo] = valor;
+        }
+      });
+      // La solucion, cuando no hay columna de pasos, es el procedimiento.
+      if (!informe.pasos && informe.solucion_aplicada) {
+        informe.pasos = [informe.solucion_aplicada];
+      }
+      return informe;
+    }).filter(function (i) {
+      return i.resumen_falla || i.causa_raiz || i.solucion_aplicada;
+    });
+  }
+
+  function csvAFilas(texto) {
+    var filas = [], fila = [], campo = "", comillas = false;
+    for (var i = 0; i < texto.length; i++) {
+      var c = texto[i];
+      if (comillas) {
+        if (c === '"' && texto[i + 1] === '"') { campo += '"'; i++; }
+        else if (c === '"') comillas = false;
+        else campo += c;
+      } else if (c === '"') comillas = true;
+      else if (c === "," || c === ";" || c === "\t") { fila.push(campo); campo = ""; }
+      else if (c === "\n") { fila.push(campo); filas.push(fila); fila = []; campo = ""; }
+      else if (c !== "\r") campo += c;
+    }
+    if (campo || fila.length) { fila.push(campo); filas.push(fila); }
+    return filas;
+  }
+
+
+  /* ---------- un manual en texto: un fragmento por seccion ---------- */
+
+  var RE_TITULO_MD = /^\s{0,3}(#{1,6})\s+(.*)$/;
+  var RE_HERRAMIENTAS = /^\s*(?:herramientas?|herramental)\s*:\s*(.+)$/i;
+
+  // Se corta por titulo, no por numero de caracteres: un torque recuperado
+  // sin el paso que lo pide no le sirve a nadie en campo.
+  function seccionesDe(contenido) {
+    var secciones = [], titulo = "", lineas = [];
+    String(contenido).split("\n").forEach(function (linea) {
+      var m = RE_TITULO_MD.exec(linea);
+      if (m) {
+        if (lineas.join("\n").trim()) secciones.push([titulo, lineas.join("\n").trim()]);
+        titulo = m[2].trim(); lineas = [];
+      } else lineas.push(linea);
+    });
+    if (lineas.join("\n").trim()) secciones.push([titulo, lineas.join("\n").trim()]);
+    return secciones;
+  }
+
+  function trocear(texto, maximo) {
+    maximo = maximo || 900;
+    var trozos = [], acumulado = "";
+    String(texto).trim().split(/\n\s*\n/).forEach(function (parrafo) {
+      parrafo = parrafo.trim();
+      if (!parrafo) return;
+      if (parrafo.length > maximo) {
+        if (acumulado) { trozos.push(acumulado); acumulado = ""; }
+        for (var i = 0; i < parrafo.length; i += maximo) {
+          trozos.push(parrafo.slice(i, i + maximo));
+        }
+        return;
+      }
+      if (acumulado && acumulado.length + parrafo.length + 2 > maximo) {
+        trozos.push(acumulado); acumulado = parrafo;
+      } else acumulado = acumulado ? acumulado + "\n\n" + parrafo : parrafo;
+    });
+    if (acumulado) trozos.push(acumulado);
+    return trozos;
+  }
+
+  // La marca del archivo: dos manuales que se llamen igual en carpetas
+  // distintas no pueden ser el mismo fragmento. Del nombre, que es lo que
+  // el telefono tiene: aqui no hay rutas.
+  function marcaDe(clave) {
+    var h = fnv1a(String(clave));
+    return (h & 0xffffn).toString(16).padStart(4, "0");
+  }
+
+  function fragmentosDeManual(contenido, fuente) {
+    var base = String(fuente || "manual").replace(/\.[^.]+$/, "") || "manual";
+    var sello = marcaDe(fuente || "manual"), fragmentos = [];
+    seccionesDe(contenido).forEach(function (par) {
+      var seccion = par[0];
+      trocear(par[1]).forEach(function (trozo, n) {
+        var cuerpo = (seccion ? seccion + "\n" : "") + trozo;
+        var herramientas = [];
+        trozo.split("\n").forEach(function (linea) {
+          var m = RE_HERRAMIENTAS.exec(linea);
+          if (!m) return;
+          m[1].split(/[,;]/).forEach(function (h) {
+            var limpio = h.replace(/^[\s.\-]+|[\s.\-]+$/g, "");
+            if (limpio) herramientas.push(limpio);
+          });
+        });
+        fragmentos.push({
+          id: "man:" + base + "@" + sello + ":" + (fragmentos.length + 1),
+          texto: cuerpo, fuente: fuente, tipo: "manual",
+          metadatos: { seccion: seccion, codigo_equipo: "", categoria: "",
+                       codigos_dtc: codigosDtc(cuerpo), torques: torques(cuerpo),
+                       herramientas: herramientas, parte: n + 1 },
+          vector: vector(cuerpo)
+        });
+      });
+    });
+    return fragmentos;
+  }
+
+
+  /* ---------- Word: un .docx es el mismo zip, con otro XML ---------- */
+
+  var W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+  function texinoDeNodo(nodo) {
+    // Recorre el subarbol juntando <w:t>, tabuladores y saltos, como en
+    // documentos.py: lo que se ve en Word es lo que se indexa.
+    var partes = [];
+    (function bajar(n) {
+      for (var h = n.firstChild; h; h = h.nextSibling) {
+        if (h.nodeType !== 1) continue;
+        var etiqueta = (h.localName || h.nodeName).replace(/^w:/, "");
+        if (etiqueta === "t") partes.push(h.textContent || "");
+        else if (etiqueta === "tab") partes.push("\t");
+        else if (etiqueta === "br" || etiqueta === "cr") partes.push("\n");
+        else bajar(h);
+      }
+    })(nodo);
+    return partes.join("").trim();
+  }
+
+  function hijosPorNombre(nodo, nombre) {
+    var salida = [];
+    for (var h = nodo.firstChild; h; h = h.nextSibling) {
+      if (h.nodeType === 1 && (h.localName || h.nodeName).replace(/^w:/, "") === nombre) {
+        salida.push(h);
+      }
+    }
+    return salida;
+  }
+
+  function estiloDeParrafo(p) {
+    var pPr = hijosPorNombre(p, "pPr")[0];
+    if (!pPr) return "";
+    var estilo = hijosPorNombre(pPr, "pStyle")[0];
+    if (!estilo) return "";
+    return estilo.getAttribute("w:val") ||
+           estilo.getAttributeNS(W, "val") || "";
+  }
+
+  function parrafoDocx(p) {
+    var texto = texinoDeNodo(p);
+    var nombre = estiloDeParrafo(p) || "";
+    // Un titulo de Word es una seccion, y asi lo trocea la ingesta: se
+    // convierte en titulo Markdown para que corte por ahi.
+    var m = /^(?:Heading|T[íi]tulo|Ttulo)\s*(\d)$/i.exec(nombre);
+    if (m && texto.trim()) {
+      return new Array(Math.min(parseInt(m[1], 10), 6) + 1).join("#") + " " + texto.trim();
+    }
+    if (/^(heading|titulo|título)/i.test(nombre) && texto.trim()) {
+      return "## " + texto.trim();
+    }
+    return texto;
+  }
+
+  function tablaDocx(tabla) {
+    var filas = [];
+    hijosPorNombre(tabla, "tr").forEach(function (tr) {
+      var celdas = hijosPorNombre(tr, "tc").map(function (tc) {
+        return texinoDeNodo(tc).replace(/\s+/g, " ").trim();
+      });
+      if (celdas.join("")) filas.push(celdas.join(" | "));
+    });
+    return filas;
+  }
+
+  function juntarLineas(lineas) {
+    var salida = [];
+    lineas.forEach(function (linea) {
+      var limpia = String(linea).replace(/\s+$/, "");
+      if (!limpia.trim()) {
+        if (salida.length && salida[salida.length - 1] !== "") salida.push("");
+      } else salida.push(limpia);
+    });
+    return salida.length ? salida.join("\n").trim() + "\n" : "";
+  }
+
+  function textoDeDocx(xml) {
+    var doc = new DOMParser().parseFromString(xml, "application/xml");
+    var cuerpos = doc.getElementsByTagName("w:body");
+    if (!cuerpos.length) cuerpos = doc.getElementsByTagName("body");
+    var cuerpo = cuerpos.length ? cuerpos[0] : doc.documentElement;
+    var lineas = [];
+    for (var h = cuerpo.firstChild; h; h = h.nextSibling) {
+      if (h.nodeType !== 1) continue;
+      var etiqueta = (h.localName || h.nodeName).replace(/^w:/, "");
+      if (etiqueta === "p") lineas.push(parrafoDocx(h));
+      else if (etiqueta === "tbl") lineas = lineas.concat(tablaDocx(h));
+    }
+    return juntarLineas(lineas);
+  }
+
+  /* ---------- PDF: el mismo lector que la oficina, en el navegador ---------- */
+  //
+  // Port de nefer/fixmate/pdf_texto.py. Los bytes viajan como cadena latin1
+  // —un byte, un caracter— para poder usar expresiones regulares igual que
+  // en Python; convertir a bytes de verdad solo hace falta al descomprimir.
+  //
+  // Un PDF escaneado no trae texto: trae una foto de una pagina. Eso se
+  // detecta y se dice, en vez de indexar un manual vacio.
+
+  function bytesACadena(bytes) {
+    var trozos = [], TAM = 0x8000;
+    for (var i = 0; i < bytes.length; i += TAM) {
+      trozos.push(String.fromCharCode.apply(null, bytes.subarray(i, i + TAM)));
+    }
+    return trozos.join("");
+  }
+
+  function cadenaABytes(s) {
+    var b = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) b[i] = s.charCodeAt(i) & 0xff;
+    return b;
+  }
+
+  function inflar(bytes, formato) {
+    if (typeof DecompressionStream === "undefined") return Promise.resolve(null);
+    try {
+      var flujo = new Blob([bytes]).stream()
+        .pipeThrough(new DecompressionStream(formato));
+      return new Response(flujo).arrayBuffer()
+        .then(function (b) { return bytesACadena(new Uint8Array(b)); })
+        .catch(function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
+  }
+
+  function desde85(s) {
+    var limpio = s.replace(/^<~/, "").replace(/~>[\s\S]*$/, "").replace(/\s/g, "");
+    var salida = [], grupo = [];
+    for (var i = 0; i < limpio.length; i++) {
+      var c = limpio[i];
+      if (c === "z" && !grupo.length) { salida.push(0, 0, 0, 0); continue; }
+      grupo.push(limpio.charCodeAt(i) - 33);
+      if (grupo.length === 5) {
+        var n = 0;
+        for (var g = 0; g < 5; g++) n = n * 85 + grupo[g];
+        salida.push((n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255);
+        grupo = [];
+      }
+    }
+    if (grupo.length) {
+      var faltan = 5 - grupo.length;
+      for (var f = 0; f < faltan; f++) grupo.push(84);
+      var m = 0;
+      for (var k = 0; k < 5; k++) m = m * 85 + grupo[k];
+      var bytes = [(m >>> 24) & 255, (m >>> 16) & 255, (m >>> 8) & 255, m & 255];
+      salida = salida.concat(bytes.slice(0, 4 - faltan));
+    }
+    return String.fromCharCode.apply(null, salida);
+  }
+
+  function desdeHex(s) {
+    var limpio = s.split(">")[0].replace(/[^0-9A-Fa-f]/g, "");
+    if (limpio.length % 2) limpio += "0";
+    var salida = "";
+    for (var i = 0; i < limpio.length; i += 2) {
+      salida += String.fromCharCode(parseInt(limpio.substr(i, 2), 16));
+    }
+    return salida;
+  }
+
+  // Los objetos del archivo: su diccionario y su flujo sin decodificar.
+  function objetosPdf(crudo) {
+    var encontrados = {}, re = /(\d+)\s+\d+\s+obj\b([\s\S]*?)\bendobj/g, m;
+    while ((m = re.exec(crudo)) !== null) {
+      var numero = parseInt(m[1], 10), cuerpo = m[2];
+      var corte = cuerpo.indexOf("stream");
+      if (corte < 0) { encontrados[numero] = [cuerpo, null]; continue; }
+      var dic = cuerpo.slice(0, corte), resto = cuerpo.slice(corte + 6);
+      if (resto.slice(0, 2) === "\r\n") resto = resto.slice(2);
+      else if (resto[0] === "\n" || resto[0] === "\r") resto = resto.slice(1);
+      var fin = resto.lastIndexOf("endstream");
+      encontrados[numero] = [dic, fin >= 0 ? resto.slice(0, fin) : resto];
+    }
+    return encontrados;
+  }
+
+  function filtrosDe(dic) {
+    var m = /\/Filter\s*(\[[^\]]*\]|\/\w+)/.exec(dic);
+    if (!m) return [];
+    return (m[1].match(/\/(\w+)/g) || []).map(function (f) { return f.slice(1); });
+  }
+
+  // Descomprimir es asincrono en el navegador, asi que todos los flujos se
+  // decodifican de una vez y lo demas trabaja sobre el resultado, igual de
+  // sincrono que en Python.
+  function decodificarTodo(objetos) {
+    var pendientes = [];
+    Object.keys(objetos).forEach(function (n) {
+      var dic = objetos[n][0], flujo = objetos[n][1];
+      if (flujo === null) { objetos[n][2] = null; return; }
+      var filtros = filtrosDe(dic);
+      if (!filtros.length) { objetos[n][2] = flujo; return; }
+      var paso = Promise.resolve(flujo);
+      filtros.forEach(function (filtro) {
+        paso = paso.then(function (datos) {
+          if (datos === null) return null;
+          if (filtro === "FlateDecode") {
+            var bytes = cadenaABytes(datos.replace(/^[\r\n]+|[\r\n]+$/g, ""));
+            return inflar(bytes, "deflate").then(function (r) {
+              return r !== null ? r : inflar(bytes, "deflate-raw");
+            });
+          }
+          if (filtro === "ASCII85Decode") { try { return desde85(datos); } catch (e) { return null; } }
+          if (filtro === "ASCIIHexDecode") { try { return desdeHex(datos); } catch (e) { return null; } }
+          return null;      // LZW, JPX, DCT: no es texto o no se sabe leer
+        });
+      });
+      pendientes.push(paso.then(function (r) { objetos[n][2] = r; }));
+    });
+    return Promise.all(pendientes).then(function () { return objetos; });
+  }
+
+  function referenciaPdf(dic, clave) {
+    var m = new RegExp("/" + clave + "\\s+(\\d+)\\s+\\d+\\s+R").exec(dic);
+    return m ? parseInt(m[1], 10) : null;
+  }
+
+  function hijosPdf(numero, objetos, vistos) {
+    if (vistos[numero] || !objetos[numero]) return [];
+    vistos[numero] = true;
+    var dic = objetos[numero][0];
+    var m = /\/Kids\s*\[([\s\S]*?)\]/.exec(dic);
+    if (!m) return /\/Type\s*\/Page\b/.test(dic) ? [numero] : [];
+    var salida = [];
+    (m[1].match(/(\d+)\s+\d+\s+R/g) || []).forEach(function (r) {
+      salida = salida.concat(hijosPdf(parseInt(r, 10), objetos, vistos));
+    });
+    return salida;
+  }
+
+  function paginasPdf(objetos) {
+    var numeros = Object.keys(objetos).map(Number);
+    var paginas = numeros.filter(function (n) {
+      return /\/Type\s*\/Page\b/.test(objetos[n][0]);
+    });
+    var raiz = null;
+    numeros.forEach(function (n) {
+      if (raiz === null && /\/Type\s*\/Pages\b/.test(objetos[n][0])) raiz = n;
+    });
+    if (raiz === null) return paginas.sort(function (a, b) { return a - b; });
+    var orden = hijosPdf(raiz, objetos, {});
+    // Lo que el arbol no alcanza igual se lee: un PDF remendado a mano deja
+    // paginas colgando y perderlas seria perder el manual.
+    paginas.sort(function (a, b) { return a - b; }).forEach(function (n) {
+      if (orden.indexOf(n) < 0) orden.push(n);
+    });
+    return orden;
+  }
+
+  function hexATexto(crudo) {
+    var limpio = crudo.replace(/\s/g, "");
+    if (limpio.length % 2) limpio += "0";
+    var bytes = new Uint8Array(limpio.length / 2);
+    for (var i = 0; i < bytes.length; i++) {
+      bytes[i] = parseInt(limpio.substr(i * 2, 2), 16);
+    }
+    try {
+      return new TextDecoder("utf-16be", { fatal: true }).decode(bytes);
+    } catch (e) {
+      return new TextDecoder("latin1").decode(bytes);
+    }
+  }
+
+  function cmapPdf(datos) {
+    var mapa = {}, bloque;
+    var reChar = /beginbfchar([\s\S]*?)endbfchar/g;
+    while ((bloque = reChar.exec(datos)) !== null) {
+      var partes = (bloque[1].match(/<([0-9A-Fa-f\s]*)>/g) || []).map(function (h) {
+        return h.slice(1, -1);
+      });
+      for (var i = 0; i + 1 < partes.length; i += 2) {
+        mapa[parseInt(partes[i].replace(/\s/g, "") || "0", 16)] = hexATexto(partes[i + 1]);
+      }
+    }
+    var reRango = /beginbfrange([\s\S]*?)endbfrange/g;
+    while ((bloque = reRango.exec(datos)) !== null) {
+      var trozos = (bloque[1].match(/<([0-9A-Fa-f\s]*)>/g) || []).map(function (h) {
+        return h.slice(1, -1);
+      });
+      for (var j = 0; j + 2 < trozos.length; j += 3) {
+        var inicio = parseInt(trozos[j].replace(/\s/g, "") || "0", 16);
+        var fin = parseInt(trozos[j + 1].replace(/\s/g, "") || "0", 16);
+        var destino = hexATexto(trozos[j + 2]);
+        if (!destino) continue;
+        var cuantos = Math.min(fin - inicio, 1024);
+        for (var salto = 0; salto <= cuantos; salto++) {
+          mapa[inicio + salto] = String.fromCharCode(destino.charCodeAt(0) + salto);
+        }
+      }
+    }
+    return mapa;
+  }
+
+  function recursosPdf(dic, objetos) {
+    var ref = referenciaPdf(dic, "Resources");
+    if (ref !== null && objetos[ref]) return objetos[ref][0];
+    var m = /\/Resources\s*<<([\s\S]*)/.exec(dic);
+    return m ? m[1] : dic;
+  }
+
+  function fuentesDePagina(dic, objetos) {
+    var recursos = recursosPdf(dic, objetos);
+    var m = /\/Font\s*<<([\s\S]*?)>>/.exec(recursos);
+    if (!m) return {};
+    var fuentes = {}, re = /\/([^\s/<>\[\]]+)\s+(\d+)\s+\d+\s+R/g, par;
+    while ((par = re.exec(m[1])) !== null) {
+      var objeto = objetos[parseInt(par[2], 10)];
+      if (!objeto) continue;
+      var cmap = {}, unicodeRef = referenciaPdf(objeto[0], "ToUnicode");
+      if (unicodeRef !== null && objetos[unicodeRef] && objetos[unicodeRef][2]) {
+        cmap = cmapPdf(objetos[unicodeRef][2]);
+      }
+      fuentes[par[1]] = { cmap: cmap,
+                          dosBytes: /\/Subtype\s*\/Type0\b/.test(objeto[0]) };
+    }
+    return fuentes;
+  }
+
+  function contenidosPdf(dic, objetos) {
+    var numeros = [], ref = referenciaPdf(dic, "Contents");
+    if (ref !== null) numeros.push(ref);
+    else {
+      var m = /\/Contents\s*\[([\s\S]*?)\]/.exec(dic);
+      if (m) {
+        (m[1].match(/(\d+)\s+\d+\s+R/g) || []).forEach(function (r) {
+          numeros.push(parseInt(r, 10));
+        });
+      }
+    }
+    var flujos = [];
+    numeros.forEach(function (n) {
+      if (objetos[n] && objetos[n][2]) flujos.push(objetos[n][2]);
+    });
+    return flujos;
+  }
+
+  var ESCAPES_PDF = { n: "\n", r: "\r", t: "\t", b: "\b", f: "\f",
+                      "(": "(", ")": ")", "\\": "\\" };
+
+  function cadenaLiteralPdf(crudo) {
+    var salida = "", i = 0;
+    while (i < crudo.length) {
+      var c = crudo[i];
+      if (c !== "\\") { salida += c; i++; continue; }
+      var siguiente = crudo[i + 1];
+      if (siguiente === undefined) { i++; continue; }
+      if (ESCAPES_PDF[siguiente] !== undefined) { salida += ESCAPES_PDF[siguiente]; i += 2; }
+      else if (siguiente >= "0" && siguiente <= "7") {
+        // Se corta en el primero que no sea octal, no se filtran los que
+        // lo son: «\1a2» es el caracter 1 seguido de «a2».
+        var digitos = "";
+        for (var d = 1; d <= 3; d++) {
+          var ch = crudo[i + d];
+          if (ch === undefined || ch < "0" || ch > "7") break;
+          digitos += ch;
+        }
+        salida += String.fromCharCode(parseInt(digitos, 8) & 0xff);
+        i += 1 + digitos.length;
+      } else if (siguiente === "\n" || siguiente === "\r") { i += 2; }
+      else { salida += siguiente; i += 2; }
+    }
+    return salida;
+  }
+
+  function mostrarPdf(crudo, fuente) {
+    if (fuente && Object.keys(fuente.cmap).length) {
+      var paso = fuente.dosBytes ? 2 : 1, salida = [];
+      for (var i = 0; i < crudo.length; i += paso) {
+        var codigo = paso === 2
+          ? ((crudo.charCodeAt(i) & 0xff) << 8) | (crudo.charCodeAt(i + 1) & 0xff)
+          : crudo.charCodeAt(i) & 0xff;
+        var c = fuente.cmap[codigo];
+        salida.push(c !== undefined ? c : String.fromCharCode(codigo));
+      }
+      var texto = salida.join("");
+      if (texto.trim()) return texto;
+    }
+    // Sin ToUnicode, el codigo es el byte: WinAnsi, que cp1252 reproduce.
+    try {
+      return new TextDecoder("windows-1252").decode(cadenaABytes(crudo));
+    } catch (e) { return crudo; }
+  }
+
+  var RE_TOKEN_PDF = new RegExp(
+    "\\((?:\\\\[\\s\\S]|[^\\\\()]|\\((?:\\\\[\\s\\S]|[^\\\\()])*\\))*\\)" +
+    "|<[0-9A-Fa-f\\s]*>" +
+    "|[-+]?\\d*\\.?\\d+" +
+    "|/[^\\s/<>\\[\\]()]+" +
+    "|[A-Za-z'\"*]+" +
+    "|\\[|\\]", "g");
+
+  function textoDeContenido(contenido, fuentes) {
+    var salida = [], pila = [], fuente = null, yActual = null, m;
+    RE_TOKEN_PDF.lastIndex = 0;
+    while ((m = RE_TOKEN_PDF.exec(contenido)) !== null) {
+      var t = m[0];
+      if (t[0] === "(") { pila.push(["cadena", cadenaLiteralPdf(t.slice(1, -1))]); continue; }
+      if (t[0] === "<") {
+        var limpio = t.slice(1, -1).replace(/\s/g, "");
+        if (limpio.length % 2) limpio += "0";
+        var s = "";
+        for (var h = 0; h < limpio.length; h += 2) {
+          s += String.fromCharCode(parseInt(limpio.substr(h, 2), 16));
+        }
+        pila.push(["cadena", s]); continue;
+      }
+      if (/^[-+]?\d*\.?\d+$/.test(t)) { pila.push(["numero", parseFloat(t)]); continue; }
+      if (t[0] === "/") { pila.push(["nombre", t.slice(1)]); continue; }
+      if (t === "[" || t === "]") { pila.push([t === "[" ? "abre" : "cierra", null]); continue; }
+
+      var op = t;
+      if (op === "Tf") {
+        var nombres = pila.filter(function (p) { return p[0] === "nombre"; });
+        fuente = nombres.length ? fuentes[nombres[nombres.length - 1][1]] : null;
+      } else if (op === "Tj" || op === "'" || op === '"') {
+        var cadenas = pila.filter(function (p) { return p[0] === "cadena"; });
+        if (op !== "Tj") salida.push("\n");
+        if (cadenas.length) salida.push(mostrarPdf(cadenas[cadenas.length - 1][1], fuente));
+      } else if (op === "TJ") {
+        pila.forEach(function (p) {
+          if (p[0] === "cadena") salida.push(mostrarPdf(p[1], fuente));
+          // Un salto grande entre trozos es un espacio que la tipografia
+          // no escribio.
+          else if (p[0] === "numero" && p[1] < -100) salida.push(" ");
+        });
+      } else if (op === "Td" || op === "TD") {
+        var ns = pila.filter(function (p) { return p[0] === "numero"; });
+        if (ns.length >= 2 && ns[ns.length - 1][1] !== 0) salida.push("\n");
+      } else if (op === "T*") {
+        salida.push("\n");
+      } else if (op === "Tm") {
+        var nm = pila.filter(function (p) { return p[0] === "numero"; });
+        if (nm.length >= 6) {
+          var y = nm[nm.length - 1][1];
+          if (yActual !== null && Math.abs(y - yActual) > 0.5) salida.push("\n");
+          yActual = y;
+        }
+      } else if (op === "BT" || op === "ET") {
+        salida.push("\n");
+      }
+      pila = [];
+    }
+    var texto = salida.join("")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n");
+    return texto.split("\n").map(function (l) { return l.trim(); }).join("\n").trim();
+  }
+
+  // Un manual OEM de cuatro paginas con menos de esto es una foto, no texto.
+  var MINIMO_UTIL_PDF = 10;
+
+  function textoDePdf(datos) {
+    var crudo = bytesACadena(new Uint8Array(datos));
+    if (crudo.slice(0, 5) !== "%PDF-") {
+      return Promise.reject(new Error("no empieza por %PDF-: ¿es un PDF?"));
+    }
+    return decodificarTodo(objetosPdf(crudo)).then(function (objetos) {
+      var salida = [];
+      paginasPdf(objetos).forEach(function (n) {
+        if (!objetos[n]) return;
+        var dic = objetos[n][0], fuentes = fuentesDePagina(dic, objetos);
+        contenidosPdf(dic, objetos).forEach(function (contenido) {
+          var pagina = textoDeContenido(contenido, fuentes);
+          if (pagina.trim()) salida.push(pagina.trim());
+        });
+      });
+      var texto = salida.join("\n\n");
+      if (texto.replace(/\s/g, "").length < MINIMO_UTIL_PDF) {
+        throw new Error("no trae texto: parece escaneado. Hay que pasarlo por " +
+                        "OCR antes de indexarlo.");
+      }
+      return texto;
+    });
+  }
+
+  /* ---------- la puerta: un archivo cualquiera -> fragmentos ---------- */
+
+  var EXTENSIONES_MANUAL = ["md", "txt", "markdown", "text"];
+
+  function fragmentosDeArchivo(nombre, datos) {
+    var ext = (String(nombre).split(".").pop() || "").toLowerCase();
+
+    if (ext === "xlsx" || ext === "xlsm") {
+      var entradas = entradasZip(datos);
+      var hoja = null;
+      Object.keys(entradas).forEach(function (n) {
+        if (!hoja && /^xl\/worksheets\/sheet1\.xml$/.test(n)) hoja = n;
+      });
+      if (!hoja) {
+        Object.keys(entradas).forEach(function (n) {
+          if (!hoja && /^xl\/worksheets\/.+\.xml$/.test(n)) hoja = n;
+        });
+      }
+      if (!hoja) return Promise.reject(new Error(nombre + ": el Excel no trae hojas"));
+      var compartidas = [];
+      var previo = entradas["xl/sharedStrings.xml"]
+        ? contenidoZip(datos, entradas["xl/sharedStrings.xml"]).then(function (xml) {
+            var doc = new DOMParser().parseFromString(xml, "application/xml");
+            var sis = doc.getElementsByTagName("si");
+            for (var i = 0; i < sis.length; i++) compartidas.push(textoDe(sis[i]));
+          })
+        : Promise.resolve();
+      return previo.then(function () {
+        return contenidoZip(datos, entradas[hoja]);
+      }).then(function (xml) {
+        var registros = registrosDeFilas(filasDeHoja(xml, compartidas));
+        var informes = informesDeRegistros(registros);
+        if (!informes || !informes.length) {
+          throw new Error(nombre + ": no se reconoce ninguna columna de falla " +
+                          "ni de causa. Renombre la columna, o use la plantilla.");
+        }
+        return informes.map(function (inf, i) {
+          return fragmentoDeInforme(inf, nombre, i);
+        });
+      });
+    }
+
+    if (ext === "csv" || ext === "tsv") {
+      var registros2 = registrosDeFilas(csvAFilas(new TextDecoder().decode(datos)));
+      var informes2 = informesDeRegistros(registros2);
+      if (!informes2 || !informes2.length) {
+        return Promise.reject(new Error(nombre + ": no se reconoce ninguna " +
+                                        "columna de falla ni de causa."));
+      }
+      return Promise.resolve(informes2.map(function (inf, i) {
+        return fragmentoDeInforme(inf, nombre, i);
+      }));
+    }
+
+    if (ext === "json") {
+      var crudo = JSON.parse(new TextDecoder().decode(datos));
+      var lista = Array.isArray(crudo) ? crudo
+                : (crudo && Array.isArray(crudo.informes) ? crudo.informes : null);
+      if (!lista) {
+        return Promise.reject(new Error(nombre + ": el JSON no trae 'informes'."));
+      }
+      return Promise.resolve(lista.map(function (inf, i) {
+        return fragmentoDeInforme(inf, nombre, i);
+      }));
+    }
+
+    if (EXTENSIONES_MANUAL.indexOf(ext) >= 0) {
+      var texto = new TextDecoder().decode(datos);
+      var fs = fragmentosDeManual(texto, nombre);
+      if (!fs.length) return Promise.reject(new Error(nombre + ": no tiene texto."));
+      return Promise.resolve(fs);
+    }
+
+    if (ext === "pdf") {
+      return textoDePdf(datos).then(function (texto) {
+        var fs = fragmentosDeManual(texto, nombre);
+        if (!fs.length) throw new Error(nombre + ": no se sacó texto.");
+        return fs;
+      }).catch(function (e) {
+        throw new Error(nombre + ": " + (e && e.message ? e.message : e));
+      });
+    }
+
+    if (ext === "docx") {
+      var entradasW = entradasZip(datos);
+      if (!entradasW["word/document.xml"]) {
+        return Promise.reject(new Error(
+          nombre + ": no es un .docx legible. Si es un .doc de los antiguos, " +
+          "ábralo y guárdelo como .docx."));
+      }
+      return contenidoZip(datos, entradasW["word/document.xml"]).then(function (xml) {
+        var fs = fragmentosDeManual(textoDeDocx(xml), nombre);
+        if (!fs.length) throw new Error(nombre + ": no tiene texto.");
+        return fs;
+      });
+    }
+
+    if (ext === "doc" || ext === "odt" || ext === "rtf") {
+      return Promise.reject(new Error(
+        nombre + ": el formato " + ext.toUpperCase() + " es de los antiguos. " +
+        "Ábralo y guárdelo como .docx, o indéxelo en la oficina."));
+    }
+
+    return Promise.reject(new Error(nombre + ": no se sabe leer ese tipo."));
+  }
+  /* fixmate:ingesta:fin */
+
+  /* fixmate:motor:fin */
+
+  return { Indice: Indice, Motor: Motor, Clasificador: Clasificador,
+           fnv1a: fnv1a, vector: vector, tokenizar: tokenizar,
+           normalizar: normalizar, torques: torques, mismaCausa: mismaCausa,
+           agruparCausas: agruparCausas, DIMENSION: DIMENSION,
+           fragmentoDeInforme: fragmentoDeInforme, codigosDtc: codigosDtc,
+           normalizarDtc: normalizarDtc,
+           // La ingesta: lo que deja cargar los papeles aqui mismo.
+           fragmentosDeArchivo: fragmentosDeArchivo,
+           fragmentosDeManual: fragmentosDeManual,
+           claveColumna: claveColumna, csvAFilas: csvAFilas,
+           registrosDeFilas: registrosDeFilas,
+           informesDeRegistros: informesDeRegistros };
+})();
+</script>
+
+<script>
+/* ---------- DIAGNÓSTICO: el índice en el teléfono y la consulta encima ----
+
+   El índice se copia una vez y queda guardado aquí, en IndexedDB, para que la
+   consulta siguiente funcione sin señal ni servidor. Si la app está servida
+   junto a un `indice.json`, se toma ese la primera vez y el operario no tiene
+   que hacer nada.
+   ------------------------------------------------------------------------ */
+(function () {
+  "use strict";
+  var $ = NEFER.$, esc = NEFER.esc;
+  var BD = "nefer-fixmate", ALMACEN = "indice", CLAVE = "actual";
+  var PENDIENTES = "pendientes";
+  var motor = null, pendientes = [], ultima = null;
+
+  /* ---------- guardado en el teléfono ---------- */
+  function abrirBD() {
+    return new Promise(function (listo, falla) {
+      if (!window.indexedDB) return falla(new Error("sin IndexedDB"));
+      var pedido = indexedDB.open(BD, 1);
+      pedido.onupgradeneeded = function () {
+        pedido.result.createObjectStore(ALMACEN);
+      };
+      pedido.onsuccess = function () { listo(pedido.result); };
+      pedido.onerror = function () { falla(pedido.error || new Error("no abre")); };
+    });
+  }
+
+  function enElTelefono(clave, valor) {
+    return abrirBD().then(function (bd) {
+      return new Promise(function (listo, falla) {
+        var escribe = valor !== undefined;
+        var t = bd.transaction(ALMACEN, escribe ? "readwrite" : "readonly");
+        var almacen = t.objectStore(ALMACEN);
+        var pedido = escribe ? almacen.put(valor, clave) : almacen.get(clave);
+        pedido.onsuccess = function () { listo(pedido.result); };
+        pedido.onerror = function () { falla(pedido.error); };
+      });
+    });
+  }
+
+  function guardado(texto) { return enElTelefono(CLAVE, texto); }
+
+  /* ---------- pintar la respuesta ---------- */
+  function lista(clase, titulo, cosas) {
+    if (!cosas || !cosas.length) return "";
+    return '<h2 class="rot">' + titulo + '</h2><ol class="pasos">' +
+      cosas.map(function (c, i) {
+        return '<li><span class="n">' + ("0" + (i + 1)).slice(-2) + '</span>' +
+               "<span>" + esc(c) + "</span></li>";
+      }).join("") + "</ol>";
+  }
+
+  function pintar(d) {
+    var html = '<div class="dx-causa">' +
+      '<span class="et">causa raíz más probable</span>' +
+      "<p>" + esc(d.causa_raiz_mas_probable) + "</p>" +
+      '<p class="dx-conf">confianza ' + esc(d.confianza) + " · " +
+      d.evidencia_historica.length + " antecedente(s)</p></div>";
+
+    // Antes de los pasos, y no se puede plegar: quien lee esto va a meter
+    // las manos en la maquina. Cada una dice de donde sale.
+    if (d.precauciones && d.precauciones.length) {
+      html += '<h2 class="rot">Antes de tocar la máquina</h2>' +
+              '<ul class="dx-cuidados">';
+      d.precauciones.forEach(function (c) {
+        var sello = c.origen === "manual"
+          ? ("manual" + (c.referencia ? ": " + c.referencia : ""))
+          : "regla de la herramienta";
+        html += '<li><span>' + esc(c.texto) + "</span>" +
+                '<span class="dx-sello">' + esc(sello) + "</span></li>";
+      });
+      html += "</ul>";
+    }
+
+    html += lista("pasos", "Pasos", d.pasos_recomendados);
+    html += lista("cosas", "Herramientas y repuestos", d.herramientas_y_repuestos);
+    if (d.torques.length) html += lista("torques", "Torques citados en la fuente", d.torques);
+
+    if (d.causas_probables.length) {
+      html += '<h2 class="rot">Lo que dice el historial completo</h2><ul class="dx-barras">';
+      d.causas_probables.forEach(function (c) {
+        var pc = Math.round(c.probabilidad * 100);
+        html += '<li><span class="pc">' + pc + "%</span><span>" +
+          '<span class="bar-i" style="width:' + Math.max(pc, 1) + '%"></span>' +
+          '<span class="txt">' + esc(c.causa) + " <i>(" + c.casos + " casos)</i></span>" +
+          "</span></li>";
+      });
+      html += "</ul>";
+      if (d.precision_medida) {
+        html += '<p class="nota">El clasificador acierta el ' +
+          Math.round(d.precision_medida.precision * 100) + "% medido sobre " +
+          d.precision_medida.casos + " casos; contestar siempre la causa más común " +
+          "acertaría el " + Math.round(d.precision_medida.linea_base * 100) + "%.</p>";
+      }
+    }
+
+    html += '<h2 class="rot">Evidencia</h2>';
+    d.evidencia_historica.forEach(function (e) {
+      html += '<div class="dx-ev' + (e.ejemplo ? " dx-ev-ejemplo" : "") + '"><b>' +
+        esc(e.codigo_ot || e.id) + "</b> " +
+        (e.ejemplo ? '<span class="dx-marca">inventado</span> ' : "") +
+        '<span class="met">' + esc(e.tipo) + " · " + Math.round(e.similitud * 100) +
+        "% · " + esc(e.fuente) + "</span>";
+      if (e.causa_raiz) html += "<div>causa: " + esc(e.causa_raiz) + "</div>";
+      else if (e.resumen_falla) html += "<div>registra: " + esc(e.resumen_falla) + "</div>";
+      html += "<div>" + esc(e.extracto) + "</div></div>";
+    });
+
+    d.avisos.forEach(function (a) {
+      html += '<div class="aviso" style="margin-top:.8rem">' + esc(a) + "</div>";
+    });
+    $("#dx-salida").innerHTML = html;
+  }
+
+  /* ---------- la consulta ---------- */
+  function buscar() {
+    var texto = ($("#dx-consulta").value || "").trim();
+    var estado = $("#dx-estado");
+    if (!motor) { estado.textContent = "Cargue primero el índice."; return; }
+    if (!texto) { estado.textContent = "Escriba o dicte la falla."; return; }
+    estado.textContent = "";
+    try {
+      var d = motor.consultar({
+        texto: texto,
+        codigo_dtc: ($("#dx-dtc").value || "").trim() || null,
+        codigo_equipo: ($("#dx-equipo").value || "").trim() || null
+      });
+      pintar(d);
+      ultima = d;
+      prepararCierre(texto, d);
+    } catch (e) {
+      $("#dx-salida").innerHTML = "";
+      ultima = null;
+      // Sin antecedentes es justo cuando más importa registrar lo que resulte:
+      // es la falla que nadie anotó todavía.
+      prepararCierre(texto, null);
+      // Que no haya antecedentes es una respuesta, no una avería: se dice con
+      // las mismas palabras que da la herramienta de escritorio.
+      estado.textContent = e && e.sinEvidencia
+        ? e.message
+        : "No se pudo resolver la consulta: " + (e && e.message ? e.message : e);
+    }
+  }
+
+  function usarIndice(texto, origen) {
+    var datos = JSON.parse(texto);
+    if (!datos || !datos.fragmentos || !datos.fragmentos.length) {
+      throw new Error("ese archivo no trae fragmentos: ¿es el índice?");
+    }
+    // Mezclar embebedores no da error: da respuestas sin sentido. Y el
+    // nombre no basta: un índice de 512 posiciones contra un vector de 256
+    // puntúa contra la mitad del vector y contesta ruido sin avisar.
+    var esperado = "local-fnv-" + FIXMATE.DIMENSION;
+    if (String(datos.embebedor || "") !== esperado ||
+        (datos.dimension && datos.dimension !== FIXMATE.DIMENSION)) {
+      throw new Error("el índice se armó con «" + datos.embebedor + "» y el " +
+        "teléfono sólo sabe calcular «" + esperado + "». Vuelva a indexarlo.");
+    }
+    motor = new FIXMATE.Motor(new FIXMATE.Indice(datos));
+    mostrarListo(origen);
+  }
+
+  /* ---------- la biblioteca: agregar papeles y acumular ---------- */
+
+  // Lo cargado se acumula: agregar el historial de otra faena no borra el
+  // anterior. Un id que ya estaba se reemplaza —el mismo informe corregido
+  // pisa al viejo— y lo demas se suma, que es como se junta experiencia.
+  var ultimoAviso = "";
+
+  function agregarFragmentos(fragmentos, fuente) {
+    if (!motor) {
+      motor = new FIXMATE.Motor(new FIXMATE.Indice(
+        { embebedor: "local-fnv-" + FIXMATE.DIMENSION,
+          dimension: FIXMATE.DIMENSION, fragmentos: [], fuentes: {} }));
+    }
+    var nuevos = 0, pisados = [];
+    fragmentos.forEach(function (f) {
+      if (motor.indice.agregar(f)) nuevos++;
+      else pisados.push(f.metadatos && f.metadatos.codigo_ot || f.id);
+    });
+    // Un fragmento que reemplaza a otro con el mismo id se dice. Dos
+    // historiales distintos pueden numerar sus ordenes igual, y perder una
+    // sin avisar es perder un antecedente que el proximo va a necesitar.
+    if (pisados.length) {
+      ultimoAviso = pisados.length + " reemplazaron a otros con el mismo " +
+        "número de orden (" + pisados.slice(0, 3).join(", ") +
+        (pisados.length > 3 ? "…" : "") + ")";
+    }
+    motor.indice.fuentes = motor.indice.fuentes || {};
+    motor.indice.fuentes[fuente] = String(fragmentos.length);
+    // El clasificador se vuelve a entrenar con todo lo que hay: lo que se
+    // acaba de cargar ya cuenta para el proximo diagnostico.
+    motor = new FIXMATE.Motor(motor.indice);
+    return nuevos;
+  }
+
+  function leerArchivo(archivo) {
+    return new Promise(function (listo, falla) {
+      var lector = new FileReader();
+      lector.onload = function () { listo(lector.result); };
+      lector.onerror = function () { falla(new Error("no se pudo leer")); };
+      lector.readAsArrayBuffer(archivo);
+    });
+  }
+
+  function esIndiceYa(datos) {
+    // Un indice ya armado por la oficina entra por su propio camino: trae
+    // los vectores calculados y no hay que volver a leer nada.
+    try {
+      var crudo = JSON.parse(new TextDecoder().decode(datos));
+      return crudo && crudo.embebedor && Array.isArray(crudo.fragmentos)
+             ? crudo : null;
+    } catch (e) { return null; }
+  }
+
+  function cargarArchivos(lista) {
+    var archivos = Array.prototype.slice.call(lista || []);
+    if (!archivos.length) return;
+    $("#dx-estado").textContent = "Leyendo " + archivos.length + " archivo(s)…";
+
+    var agregados = 0, problemas = [];
+    var cadena = archivos.reduce(function (antes, archivo) {
+      return antes.then(function () {
+        return leerArchivo(archivo).then(function (datos) {
+          var yaIndice = /\.json$/i.test(archivo.name) ? esIndiceYa(datos) : null;
+          if (yaIndice) {
+            usarIndice(new TextDecoder().decode(datos),
+                       "índice de " + archivo.name);
+            agregados += yaIndice.fragmentos.length;
+            return null;
+          }
+          return FIXMATE.fragmentosDeArchivo(archivo.name, datos)
+            .then(function (fragmentos) {
+              agregados += agregarFragmentos(fragmentos, archivo.name);
+            });
+        }).catch(function (e) {
+          // Un archivo que no se puede leer se nombra y se sigue: que un
+          // Excel raro deje sin cargar a los otros cinco no ayuda a nadie.
+          problemas.push(archivo.name + ": " + (e && e.message ? e.message : e));
+        });
+      });
+    }, Promise.resolve());
+
+    cadena.then(function () {
+      if (motor) {
+        mostrarListo(agregados + " fragmento(s) nuevos" +
+                     (ultimoAviso ? " · " + ultimoAviso : ""));
+        ultimoAviso = "";
+      }
+      pintarBiblioteca();
+      if (problemas.length) {
+        $("#dx-estado").textContent += " · " + problemas.join(" · ");
+      }
+      return guardarBiblioteca();
+    }).catch(function (e) {
+      $("#dx-estado").textContent = String(e && e.message ? e.message : e);
+    });
+  }
+
+  function guardarBiblioteca() {
+    if (!motor) return Promise.resolve();
+    var copia = { version: 1, embebedor: "local-fnv-" + FIXMATE.DIMENSION,
+                  dimension: FIXMATE.DIMENSION,
+                  fuentes: motor.indice.fuentes || {},
+                  fragmentos: motor.indice.fragmentos };
+    return guardado(JSON.stringify(copia)).catch(function () {
+      $("#dx-estado").textContent +=
+        " · no se pudo guardar en el teléfono (¿memoria llena?)";
+    });
+  }
+
+  // De cuantos archivos salio lo que hay. Se cuenta sobre los fragmentos y
+  // no sobre `fuentes`: un indice armado en la oficina no siempre lo trae, y
+  // decia «23 fragmentos de 0 archivos», que es una cuenta que no puede ser.
+  function archivosDe(indice) {
+    var vistos = {};
+    (indice.fragmentos || []).forEach(function (f) {
+      vistos[f.fuente || "(sin nombre)"] = true;
+    });
+    return Object.keys(vistos).length;
+  }
+
+  function mostrarListo(extra) {
+    $("#dx-sin-indice").hidden = true;
+    $("#dx-ejemplo").hidden = true;
+    $("#dx-listo").hidden = false;
+    $("#dx-biblio").hidden = false;
+    var cl = motor.clasificador;
+    $("#dx-estado").textContent = motor.indice.fragmentos.length +
+      " fragmentos de " + archivosDe(motor.indice) +
+      " archivos · " + (cl.entrenado
+        ? cl.casos + " casos con causa confirmada"
+        : "sin clasificador: " + cl.motivo) +
+      (extra ? " · " + extra : "");
+  }
+
+  function pintarBiblioteca() {
+    if (!motor) { $("#dx-biblio").hidden = true; return; }
+    $("#dx-biblio").hidden = false;
+    var fuentes = motor.indice.fuentes || {};
+    var nombres = Object.keys(fuentes);
+    var porFuente = {}, equipos = {}, conCausa = 0;
+    motor.indice.fragmentos.forEach(function (f) {
+      var d = f.fuente || "(sin nombre)";
+      porFuente[d] = (porFuente[d] || 0) + 1;
+      var eq = (f.metadatos && f.metadatos.codigo_equipo) || "";
+      if (eq) equipos[eq] = true;
+      if (f.metadatos && String(f.metadatos.causa_raiz || "").trim()) conCausa++;
+    });
+    $("#dx-biblio-resumen").textContent =
+      "Biblioteca · " + motor.indice.fragmentos.length + " fragmentos · " +
+      Object.keys(equipos).length + " equipos";
+
+    var ul = $("#dx-fuentes");
+    ul.innerHTML = "";
+    Object.keys(porFuente).sort().forEach(function (nombre) {
+      var li = document.createElement("li");
+      li.innerHTML = "<span>" + esc(nombre) + "</span><span class=\"dx-cuenta\">" +
+                     porFuente[nombre] + "</span>";
+      ul.appendChild(li);
+    });
+    if (!Object.keys(porFuente).length) {
+      ul.innerHTML = "<li><span>Nada cargado todavía</span></li>";
+    }
+
+    var cl = motor.clasificador, texto;
+    if (cl.entrenado) {
+      // `medicion` es un valor, no un método: la oficina la trae en el
+      // índice y, si el índice se armó aquí, el teléfono se mide solo.
+      var m = motor.medicion;
+      texto = "Aprendió de " + conCausa + " casos con causa confirmada.";
+      texto += m && m.precision != null
+        ? " Acierta el " + Math.round(m.precision * 100) +
+          "% medido dejando uno fuera; contestar siempre la causa más común " +
+          "acertaría el " + Math.round(m.linea_base * 100) + "%."
+        : " Todavía sin medir.";
+    } else {
+      texto = "Todavía no opina sobre causas: " + cl.motivo +
+              ". Sigue buscando en lo cargado igual.";
+    }
+    $("#dx-aprendido").textContent = texto;
+  }
+
+  function vaciarBiblioteca() {
+    motor = null;
+    $("#dx-listo").hidden = true;
+    $("#dx-biblio").hidden = true;
+    $("#dx-sin-indice").hidden = false;
+    $("#dx-salida").innerHTML = "";
+    $("#dx-estado").textContent = "";
+    return guardado("").catch(function () {});
+  }
+
+  /* ---------- cerrar el círculo, aquí mismo ---------- */
+
+  function codigoDeCampo() {
+    var f = new Date();
+    var dia = f.getFullYear() +
+      ("0" + (f.getMonth() + 1)).slice(-2) + ("0" + f.getDate()).slice(-2);
+    // Lleva CAMPO en el nombre a propósito: en la oficina se distingue de un
+    // correlativo suyo, y dos teléfonos distintos no chocan si se cuentan
+    // los que ya hay de ese día en este.
+    var delDia = pendientes.filter(function (p) {
+      return String(p.codigo_ot || "").indexOf("OT-CAMPO-" + dia) === 0;
+    }).length;
+    return "OT-CAMPO-" + dia + "-" + (delDia + 1);
+  }
+
+  function contarPendientes() {
+    var porEnviar = pendientes.filter(function (p) { return !p.enviado; }).length;
+    $("#dx-envio").hidden = !pendientes.length;
+    $("#dx-pend").textContent = porEnviar
+      ? porEnviar + " informe(s) por enviar"
+      : pendientes.length + " informe(s), todos enviados";
+  }
+
+  function prepararCierre(consulta, diagnostico) {
+    $("#dx-cierre").hidden = false;
+    $("#dx-c-falla").value = consulta;
+    // La causa que propone el motor viene puesta, pero editable: muchas veces
+    // el técnico desarma y era otra cosa, y lo que se registra es lo que
+    // encontró, no lo que la máquina supuso.
+    $("#dx-c-causa").value = diagnostico ? diagnostico.causa_raiz_mas_probable : "";
+    $("#dx-c-solucion").value = "";
+    $("#dx-c-equipo").value = ($("#dx-equipo").value || "").trim();
+    $("#dx-c-repuestos").value = "";
+  }
+
+  function registrar() {
+    var avisar = NEFER.avisador("#dx-c-aviso");
+    var informe = {
+      codigo_ot: codigoDeCampo(),
+      fecha: NEFER.hoy(),
+      resumen_falla: ($("#dx-c-falla").value || "").trim(),
+      causa_raiz: ($("#dx-c-causa").value || "").trim(),
+      solucion_aplicada: ($("#dx-c-solucion").value || "").trim(),
+      codigo_equipo: ($("#dx-c-equipo").value || "").trim(),
+      repuestos: ($("#dx-c-repuestos").value || "").split(";")
+        .map(function (r) { return r.trim(); })
+        .filter(function (r) { return r.length; })
+    };
+    var dtc = ($("#dx-dtc").value || "").trim();
+    if (dtc) informe.codigos_dtc = [dtc];
+
+    // Las mismas tres reglas que en la herramienta de escritorio: sin falla,
+    // causa y solución no es un antecedente, es una queja.
+    if (!informe.resumen_falla) { avisar("falta la falla"); return; }
+    if (!informe.causa_raiz) { avisar("falta la causa"); return; }
+    if (!informe.solucion_aplicada) { avisar("falta qué se hizo"); return; }
+    if (!motor) { avisar("no hay índice cargado"); return; }
+
+    motor.indice.agregar(FIXMATE.fragmentoDeInforme(informe, "campo", 0));
+    // El clasificador aprende del historial, así que se rehace con el nuevo.
+    motor = new FIXMATE.Motor(motor.indice);
+    pendientes.push(informe);
+
+    guardarTodo().then(function () {
+      avisar("registrado " + informe.codigo_ot);
+    }, function () {
+      avisar("registrado, pero no se pudo guardar en el teléfono");
+    });
+    contarPendientes();
+    $("#dx-cierre").hidden = true;
+  }
+
+  function guardarTodo() {
+    var copia = {
+      version: 1, embebedor: motor.indice.embebedor,
+      dimension: FIXMATE.DIMENSION, medicion: motor.indice.medicion,
+      fuentes: motor.indice.fuentes,
+      fragmentos: motor.indice.fragmentos.map(function (f) {
+        return { id: f.id, texto: f.texto, fuente: f.fuente, tipo: f.tipo,
+                 metadatos: f.metadatos,
+                 vector: Array.prototype.map.call(f.vector, function (v) {
+                   return Math.round(v * 1e6) / 1e6;
+                 }) };
+      })
+    };
+    return Promise.all([
+      enElTelefono(CLAVE, JSON.stringify(copia)),
+      enElTelefono(PENDIENTES, JSON.stringify(pendientes))
+    ]);
+  }
+
+  function enviar() {
+    var avisar = NEFER.avisador("#dx-pend");
+    if (!pendientes.length) { avisar("no hay nada que enviar"); return; }
+    var envio = {
+      generado: new Date().toISOString(),
+      version_app: NEFER.VERSION,
+      pendientes: pendientes.map(function (p) {
+        var copia = {};
+        Object.keys(p).forEach(function (k) { if (k !== "enviado") copia[k] = p[k]; });
+        return copia;
+      })
+    };
+    var nombre = "informes-de-campo-" + NEFER.hoy() + ".json";
+    var blob = new Blob([JSON.stringify(envio, null, 2)], { type: "application/json" });
+    NEFER.entregar(blob, nombre, avisar);
+    // Se marcan enviados pero no se borran: si el envío se pierde, se vuelve
+    // a mandar. En la oficina, recibir el mismo archivo dos veces no duplica.
+    pendientes.forEach(function (p) { p.enviado = true; });
+    enElTelefono(PENDIENTES, JSON.stringify(pendientes)).catch(function () {});
+    setTimeout(contarPendientes, 4200);
+  }
+
+  function dictado() {
+    var Voz = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Voz) return;                 // el botón se queda oculto
+    var boton = $("#dx-dictar");
+    boton.hidden = false;
+    var oyendo = null;
+    boton.addEventListener("click", function () {
+      if (oyendo) { oyendo.stop(); return; }
+      var voz = new Voz();
+      voz.lang = "es-PE";
+      voz.interimResults = false;
+      voz.onresult = function (e) {
+        // Lo dictado se escribe en el campo, a la vista: si entendió otra
+        // cosa, el técnico lo corrige antes de que nadie desarme nada.
+        $("#dx-consulta").value = e.results[0][0].transcript;
+        buscar();
+      };
+      voz.onerror = function () { $("#dx-estado").textContent = "No se oyó nada."; };
+      voz.onend = function () { oyendo = null; boton.textContent = "Dictar"; };
+      oyendo = voz;
+      boton.textContent = "Oyendo…";
+      voz.start();
+    });
+  }
+
+  function arrancar() {
+    // Los dos botones —el de la pantalla vacia y el de la biblioteca—
+    // hacen lo mismo: sumar lo que se elija a lo que ya hay.
+    ["#dx-archivo", "#dx-archivo-2"].forEach(function (sel) {
+      var entrada = $(sel);
+      if (!entrada) return;
+      entrada.addEventListener("change", function () {
+        cargarArchivos(entrada.files);
+        entrada.value = "";       // el mismo archivo se puede volver a elegir
+      });
+    });
+    var verEjemplo = $("#dx-ver-ejemplo");
+    if (verEjemplo) {
+      verEjemplo.addEventListener("click", function () {
+        var demo = document.getElementById("fixmate-indice-demo");
+        if (!demo || !demo.textContent.trim()) return;
+        var datos = JSON.parse(demo.textContent);
+        // Cada fragmento queda marcado: la evidencia lo dice en pantalla.
+        (datos.fragmentos || []).forEach(function (f) {
+          f.metadatos = f.metadatos || {};
+          f.metadatos._ejemplo = true;
+          f.fuente = "(ejemplo) " + (f.fuente || "");
+        });
+        usarIndice(JSON.stringify(datos), "taller de ejemplo, no son datos suyos");
+        pintarBiblioteca();
+        guardarBiblioteca();
+      });
+    }
+
+    var vaciar = $("#dx-vaciar");
+    if (vaciar) {
+      vaciar.addEventListener("click", function () {
+        if (window.confirm("Se borra todo lo cargado en este teléfono. " +
+                           "Los informes por enviar no se tocan. ¿Vaciar?")) {
+          vaciarBiblioteca();
+        }
+      });
+    }
+    $("#dx-buscar").addEventListener("click", buscar);
+    $("#dx-registrar").addEventListener("click", registrar);
+    $("#dx-enviar").addEventListener("click", enviar);
+    $("#dx-consulta").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); buscar(); }
+    });
+    dictado();
+
+    // Primero lo guardado en el teléfono; si no hay, un `indice.json` servido
+    // junto a la app. Las dos cosas fallan sin ruido: se queda pidiendo el
+    // archivo, que es lo que hay que hacer.
+    // En el archivo suelto que se manda por WhatsApp viene uno de ejemplo
+    // incrustado: así la pestaña demuestra algo nada más abrirla.
+    var demo = document.getElementById("fixmate-indice-demo");
+
+    enElTelefono(PENDIENTES).then(function (crudo) {
+      try { pendientes = crudo ? JSON.parse(crudo) : []; } catch (e) { pendientes = []; }
+      contarPendientes();
+    }).catch(function () { /* sin almacén: los informes duran la sesión */ });
+
+    guardado().then(function (texto) {
+      if (texto) {
+        usarIndice(texto, "guardado en este teléfono");
+        pintarBiblioteca();
+        return null;
+      }
+      // El ejemplo NO se carga solo. Se abria con el historial de un taller
+      // inventado ya dentro, y al cargar el historial de verdad encima los
+      // dos quedaban mezclados: el tecnico veia «segun OT-2026-0233» sin
+      // manera de saber que esa orden no existio nunca. Peor: dos ordenes
+      // reales con el mismo numero que una inventada se pisaban en silencio.
+      // Ahora se entra a esto vacio, y el ejemplo es un boton aparte.
+      if (demo && demo.textContent.trim()) {
+        var caja = $("#dx-ejemplo");
+        if (caja) caja.hidden = false;
+        return null;
+      }
+      return fetch("indice.json").then(function (r) {
+        return r.ok ? r.text() : null;
+      }).then(function (servido) {
+        if (!servido) return null;
+        usarIndice(servido, "servido junto a la app");
+        pintarBiblioteca();
+        return guardado(servido);
+      });
+    }).catch(function () { /* sin índice: la vista ya lo pide */ });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", arrancar);
+  } else {
+    arrancar();
+  }
+})();
+</script>
+
+<script>
+/* ---------- que Android la pueda instalar ----------
+
+   Servida, los archivos de al lado son mejores: el navegador los cachea y el
+   trabajador de servicio los guarda para abrir sin señal. Abierta como
+   archivo suelto no hay vecinos que pedir, así que el icono y el manifiesto
+   viajan dentro del propio documento — los pone el empaquetador.
+
+   El manifiesto suelto se arma aquí y no se escribe a mano porque `start_url`
+   tiene que ser la dirección real desde la que se abrió: un manifiesto en
+   `data:` no tiene base para resolver rutas relativas, y sin `start_url`
+   correcto Android instala un acceso directo que abre en blanco.
+   ------------------------------------------------------------------------ */
+(function () {
+  "use strict";
+
+  function poner(rel, href, extra) {
+    var l = document.createElement("link");
+    l.rel = rel;
+    l.href = href;
+    Object.keys(extra || {}).forEach(function (k) { l.setAttribute(k, extra[k]); });
+    document.head.appendChild(l);
+  }
+
+  var servida = location.protocol === "http:" || location.protocol === "https:";
+
+  function enganchar() {
+  if (servida) {
+    poner("icon", "icono-192.png", { type: "image/png", sizes: "192x192" });
+    poner("apple-touch-icon", "apple-touch-icon.png", { sizes: "180x180" });
+    poner("manifest", "manifest.webmanifest");
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(function () {
+        /* sin él la app sigue funcionando; sólo deja de abrir sin señal */
+      });
+    }
+    return;
+  }
+
+  var caja = document.getElementById("fixmate-iconos");
+  if (!caja || !caja.textContent.trim()) return;   // servida sin empaquetar
+  var iconos;
+  try { iconos = JSON.parse(caja.textContent); } catch (e) { return; }
+
+  poner("icon", "data:image/png;base64," + iconos["192"],
+        { type: "image/png", sizes: "192x192" });
+  poner("apple-touch-icon", "data:image/png;base64," + iconos["180"],
+        { sizes: "180x180" });
+
+  var manifiesto = {
+    name: "FixMate · Diagnóstico en campo",
+    short_name: "FixMate",
+    description: "Busca la falla en el historial de la flota y en los " +
+                 "manuales, desde el patio y sin señal.",
+    start_url: location.href,
+    scope: location.href,
+    display: "standalone",
+    orientation: "portrait-primary",
+    background_color: "#16191B",
+    theme_color: "#16191B",
+    lang: "es",
+    dir: "ltr",
+    icons: [
+      { src: "data:image/png;base64," + iconos["192"], sizes: "192x192",
+        type: "image/png", purpose: "any" },
+      { src: "data:image/png;base64," + iconos["512"], sizes: "512x512",
+        type: "image/png", purpose: "any" },
+      { src: "data:image/png;base64," + iconos["512r"], sizes: "512x512",
+        type: "image/png", purpose: "maskable" }
+    ]
+  };
+  poner("manifest", "data:application/manifest+json;charset=utf-8," +
+        encodeURIComponent(JSON.stringify(manifiesto)));
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", enganchar);
+  } else {
+    enganchar();
+  }
+})();
+</script>
+
+<!-- Los iconos del archivo suelto, puestos por
+     herramientas/empaquetar-fixmate.py. Servida, la app usa los de al lado y
+     esta etiqueta queda vacía. -->
+<script type="application/json" id="fixmate-iconos"></script>
+
+<!-- El demo de un solo archivo trae aquí su índice de ejemplo, puesto por
+     herramientas/empaquetar-demo.py. Servida, la app usa lo que se le cargue
+     o el índice publicado a su lado, y esta etiqueta queda vacía. -->
+<script type="application/json" id="fixmate-indice-demo"></script>

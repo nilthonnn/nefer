@@ -1,23 +1,20 @@
-/* Trabajador de servicio: guarda la aplicación en el teléfono para que abra
-   sin señal. Sólo funciona servida por http(s); desde un archivo local el
-   navegador no registra ninguno, y ahí el respaldo es el propio archivo. */
+/* Trabajador de servicio de FixMate: guarda la app en el teléfono para que
+   abra sin señal, que es la condición para la que se hizo. Sólo funciona
+   servida por http(s); desde un archivo suelto el navegador no registra
+   ninguno, y ahí el respaldo es el propio archivo.
 
-// La versión cambia con lo que se guarda: al subir, el trabajador nuevo
-// descarta la caché vieja y trae la tipografía.
-var CACHE = "nefer-2026-09-16";
+   No cachea la tipografía porque esta app no aloja ninguna: usa la del
+   aparato, que a contraluz y con guantes se lee igual y cuesta cero bytes. */
+
+var CACHE = "fixmate-2026-09-17";
 var PIEZAS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./icono-192.png",
   "./icono-512.png",
-  "./apple-touch-icon.png",
-  // Sin esto la tipografía sólo estaría la primera vez, con señal.
-  "./tipografia/barlow-400.woff2",
-  "./tipografia/barlow-600.woff2",
-  "./tipografia/barlow-700.woff2",
-  "./tipografia/barlow-cond-600.woff2",
-  "./tipografia/barlow-cond-700.woff2"
+  "./icono-512-recortable.png",
+  "./apple-touch-icon.png"
 ];
 
 self.addEventListener("install", function (e) {
@@ -44,8 +41,8 @@ self.addEventListener("fetch", function (e) {
   var pedido = e.request;
   if (pedido.method !== "GET") return;
 
-  // La navegación va primero a la red para recoger una versión nueva, y cae a
-  // la copia guardada en cuanto no hay señal, que es lo normal en el patio.
+  // La navegación va primero a la red para recoger una versión nueva, y cae
+  // a la copia guardada en cuanto no hay señal, que es lo normal en el patio.
   if (pedido.mode === "navigate") {
     e.respondWith(
       fetch(pedido)
@@ -63,7 +60,6 @@ self.addEventListener("fetch", function (e) {
     return;
   }
 
-  // El resto —iconos, manifiesto— desde la copia, que no cambia.
   e.respondWith(
     caches.match(pedido).then(function (r) {
       return r || fetch(pedido).then(function (red) {
