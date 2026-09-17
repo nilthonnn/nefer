@@ -1,4 +1,13 @@
-"""Recorre la app de lotes de punta a punta, como una jornada de verdad."""
+"""Recorre la app de punta a punta, como una jornada, y audita lo que exporta.
+
+No basta con que la pantalla diga lo correcto: el Excel y el PDF se abren
+después con librerías ajenas a la app —openpyxl y pypdf— y se comprueba que
+digan lo mismo. Un registro trazable que solo cuadra en su propia pantalla no
+sirve de nada.
+
+    python3 demos/camal/probar_lotes.py salidas/
+"""
+
 import pathlib
 import sys
 
@@ -13,40 +22,48 @@ SALIDA.mkdir(parents=True, exist_ok=True)
 
 errores, fallos = [], []
 
+
 def exigir(condicion, dicho):
     print(("  ok  " if condicion else "FALLA ") + dicho)
     if not condicion:
         fallos.append(dicho)
 
+
 with sync_playwright() as pw:
     nav = pw.chromium.launch(executable_path=ruta_del_navegador())
     ctx = nav.new_context(viewport={"width": 390, "height": 844},
                           device_scale_factor=2, locale="es-PE",
-                          timezone_id="America/Lima")
+                          timezone_id="America/Lima", accept_downloads=True)
     p = ctx.new_page()
     p.on("pageerror", lambda e: errores.append(str(e)))
     p.goto(APP.as_uri())
 
-    print("\n[1] La jornada abre con datos de ejemplo")
+    print("\n[1] La jornada abre con datos de ejemplo y su control documental")
     exigir("Jornada del camal" in p.inner_text("h1"), "se ve la jornada")
     exigir(p.locator(".lote").count() == 3, "tres lotes de demostración")
+    exigir(p.evaluate("jornada.id").startswith("J-"), "la jornada tiene identificador")
+    exigir("REG-CAM-001" in p.inner_text(".ficha-control"), "el formato está a la vista")
+    p.fill("#operador", "Nilthon Chit")
+    p.dispatch_event("#operador", "change")
+    exigir(p.evaluate("jornada.operador") == "Nilthon Chit", "queda el responsable del registro")
     p.screenshot(path=SALIDA / "1-jornada.png", full_page=True)
 
-    print("\n[2] Lote nuevo de pesaje: 40 cabezas de alpaca")
+    print("\n[2] Lote nuevo de pesaje: 40 alpacas degolladas")
     p.click("text=Nuevo lote de pesaje")
     p.select_option("#categoriaLote", "Alpaca degollada")
     exigir(p.input_value("#cantidadLote") == "40", "la cantidad propuesta es 40")
     p.click("text=Empezar a pesar")
     exigir("de 40" in p.inner_text(".correlativo"), "arranca en el correlativo 1 de 40")
+    exigir(p.evaluate("codigoLote(loteActual())").endswith("-L004"),
+           "el lote lleva código correlativo de tres cifras")
     p.screenshot(path=SALIDA / "2-pesaje-inicio.png", full_page=True)
 
     print("\n[3] Se pesa y salta solo al siguiente correlativo")
     for peso in ["42.5", "39,8", "44.2"]:      # el segundo va con coma, a propósito
         p.fill("#pesoActual", peso)
         p.click("text=/^Registrar N°/")
-    correl = p.inner_text(".correlativo .num")
-    exigir(correl == "4", f"tras tres pesadas toca el N° 4 (dice {correl})")
-    exigir(p.evaluate("loteActual().pesos[1]") == 39.8, "«39,8» con coma entra como 39.8")
+    exigir(p.inner_text(".correlativo .num") == "4", "tras tres pesadas toca el N° 4")
+    exigir(p.evaluate("loteActual().pesos[1].kg") == 39.8, "«39,8» con coma entra como 39.8")
     exigir("126.50" in p.inner_text(".tiras"), "acumula 126.50 kg")
     p.screenshot(path=SALIDA / "3-pesaje-tres.png", full_page=True)
 
@@ -63,18 +80,31 @@ with sync_playwright() as pw:
     p.fill("#cantidadEnCurso", "2")
     p.dispatch_event("#cantidadEnCurso", "change")
     exigir(p.evaluate("loteActual().cantidad") == 3, "no baja de las 3 pesadas")
-    p.fill("#cantidadEnCurso", "5")
-    p.dispatch_event("#cantidadEnCurso", "change")
 
-    print("\n[6] Una pesada mal tecleada se corrige y se borra")
+    print("\n[6] Corregir y anular exigen motivo, y no borran nada")
     p.click(".pesada >> nth=0")
     p.fill("#pesoEditado", "41,0")
-    p.click("text=Guardar")
-    exigir(p.evaluate("loteActual().pesos[0]") == 41.0, "la N° 1 queda en 41.0")
+    p.click(".gaveta button.btn:not(.btn-rojo):not(.btn-sec)")
+    exigir(p.evaluate("loteActual().pesos[0].kg") == 42.5, "sin motivo, la corrección no se aplica")
+    exigir(p.locator(".aviso").count() == 1, "y lo dice con un aviso")
+
+    p.click(".pesada >> nth=0")
+    p.fill("#pesoEditado", "41,0")
+    p.fill("#motivoCambio", "balanza mal tarada")
+    p.click(".gaveta button.btn:not(.btn-rojo):not(.btn-sec)")
+    exigir(p.evaluate("loteActual().pesos[0].kg") == 41.0, "con motivo, la N° 1 queda en 41.0")
+    exigir(any(a["accion"] == "CORRECCIÓN DE PESO" and a["antes"] == "42.50 kg"
+               for a in p.evaluate("jornada.bitacora")),
+           "el valor anterior queda en la bitácora")
+
     p.click(".pesada >> nth=2")
-    p.click("text=Eliminar")
-    exigir(p.evaluate("loteActual().pesos.length") == 2, "quedan dos pesadas")
-    exigir(p.inner_text(".correlativo .num") == "3", "el correlativo vuelve al 3")
+    p.fill("#motivoCambio", "carcasa decomisada por el inspector")
+    p.click(".gaveta button.btn-rojo")
+    exigir(p.evaluate("loteActual().pesos.length") == 3, "la pesada anulada sigue en el registro")
+    exigir(p.evaluate("vigentes(loteActual()).length") == 2, "pero no cuenta como vigente")
+    exigir(p.evaluate("pesoLote(loteActual())") == 80.8, "ni suma: quedan 80.80 kg")
+    exigir(p.inner_text(".correlativo .num") == "4",
+           "el correlativo sigue en 4: un número anulado no se reutiliza")
 
     print("\n[7] Se termina el lote y recién ahí se pone el precio")
     p.click("text=Terminar lote")
@@ -89,7 +119,7 @@ with sync_playwright() as pw:
     print("\n[8] Lote de menudencias: por unidad, no por peso")
     p.click("text=Volver a la jornada")
     p.click("text=Nuevo lote de menudencias")
-    p.select_option("#categoriaLote", "Menudencia de Cordero")
+    p.select_option("#categoriaLote", "Menudencia de cordero")
     p.fill("#cantidadLote", "12")
     p.click("text=Abrir el lote")
     p.fill("#precioUnidad", "18.50")
@@ -106,24 +136,88 @@ with sync_playwright() as pw:
     p.reload()
     exigir(p.inner_text(".tiras") == antes, "los totales siguen ahí tras recargar")
     exigir(p.locator(".lote").count() == 5, "los cinco lotes siguen ahí")
+    exigir(p.evaluate("jornada.operador") == "Nilthon Chit", "y el responsable también")
     p.screenshot(path=SALIDA / "6-jornada-final.png", full_page=True)
 
-    print("\n[10] Las dos hojas de Excel")
-    p.click("text=Exportar a Excel")
-    detalle = p.input_value("#textoCSV")
-    p.click("text=Resumen por lote")
-    resumen = p.input_value("#textoCSV")
-    exigir(detalle.startswith("Fecha,Lote,Categoria,N,Peso (kg)"), "el detalle lleva correlativo")
-    exigir(len(detalle.strip().split("\n")) == 1 + 8 + 5 + 2, "una fila por cabeza pesada")
-    exigir("Menudencia,\"Menudencia de Cordero\",13,unidades" in resumen, "las menudencias van por unidad")
-    exigir("Alpaca degollada" in detalle, "el degollado se nombra como tal en el Excel")
-    p.screenshot(path=SALIDA / "7-exportar.png", full_page=True)
-    (SALIDA / "Camal_detalle.csv").write_text(detalle, encoding="utf-8")
-    (SALIDA / "Camal_resumen.csv").write_text(resumen, encoding="utf-8")
-    print("\n--- resumen por lote ---\n" + resumen)
+    print("\n[10] La bitácora cuenta lo que pasó")
+    p.click("text=Ver la bitácora")
+    exigir(p.locator(".apunte.correccion").count() == 1, "la corrección aparece marcada")
+    exigir(p.locator(".apunte.anulacion").count() == 1, "la anulación también")
+    exigir("carcasa decomisada" in p.inner_text(".bitacora"), "con su motivo escrito")
+    p.screenshot(path=SALIDA / "7-bitacora.png", full_page=True)
+    p.click("button[aria-label='Volver']")
 
-    ctx.close(); nav.close()
+    print("\n[11] Los archivos de la jornada")
+    p.click("text=Exportar: Excel, PDF y bitácora")
+    with p.expect_download() as bajada:
+        p.click("text=Descargar Excel (.xlsx)")
+    libro = SALIDA / bajada.value.suggested_filename
+    bajada.value.save_as(libro)
+    with p.expect_download() as bajada:
+        p.click("text=Descargar el acta en PDF")
+    acta = SALIDA / bajada.value.suggested_filename
+    bajada.value.save_as(acta)
+    exigir(libro.suffix == ".xlsx" and libro.stat().st_size > 3000, f"baja {libro.name}")
+    exigir(acta.suffix == ".pdf" and acta.stat().st_size > 2000, f"baja {acta.name}")
+    p.screenshot(path=SALIDA / "8-exportar.png", full_page=True)
 
-print("--- errores de página:", errores or "ninguno")
+    ctx.close()
+    nav.close()
+
+# ---------------------------------------------------------------------------
+# Auditoría de los archivos, ya fuera del navegador.
+# ---------------------------------------------------------------------------
+print("\n[12] El Excel, abierto con openpyxl")
+from openpyxl import load_workbook
+
+wb = load_workbook(libro)                      # con las fórmulas tal cual
+exigir(wb.sheetnames == ["CONTROL", "DETALLE", "RESUMEN", "BITACORA"],
+       f"cuatro hojas en orden: {wb.sheetnames}")
+
+det = wb["DETALLE"]
+cab = [c.value for c in det[1]]
+exigir(cab[0] == "ID_REGISTRO" and "ESTADO" in cab, "el detalle empieza por el identificador")
+ids = [det.cell(row=r, column=1).value for r in range(2, det.max_row + 1)]
+exigir(len(ids) == len(set(ids)), "no hay dos registros con el mismo identificador")
+estados = [det.cell(row=r, column=12).value for r in range(2, det.max_row + 1)]
+exigir(estados.count("ANULADO") == 1, "la anulada viaja al Excel marcada como tal")
+exigir(det.cell(row=2, column=10).value.startswith("=IF("),
+       "el subtotal es fórmula, no un número pegado")
+
+res = wb["RESUMEN"]
+formulas = [res.cell(row=r, column=7).value for r in range(2, res.max_row)]
+exigir(any(str(f).startswith("=SUMIFS(DETALLE!") for f in formulas),
+       "el peso del resumen se calcula contra el detalle")
+exigir(any(str(res.cell(row=r, column=5).value).startswith("=COUNTIFS(DETALLE!")
+           for r in range(2, res.max_row)),
+       "y la cantidad también")
+
+con = wb["CONTROL"]
+textos = [str(c.value) for fila in con.iter_rows() for c in fila if c.value is not None]
+exigir("REG-CAM-001" in textos and "Nilthon Chit" in textos,
+       "el control documental lleva formato y responsable")
+exigir(any(str(t).startswith('=COUNTIF(DETALLE!L:L,"ANULADO")') for t in textos),
+       "y cuenta los anulados con fórmula")
+
+# Y con los valores en frío, que es como lo lee un visor de teléfono.
+wbv = load_workbook(libro, data_only=True)
+resv = wbv["RESUMEN"]
+total_frio = resv.cell(row=resv.max_row, column=9).value
+exigir(abs(total_frio - 6385.70) < 0.01,
+       f"el total en frío cuadra con la pantalla: S/ {total_frio}")
+
+print("\n[13] El PDF, abierto con pypdf")
+from pypdf import PdfReader
+
+lector = PdfReader(str(acta))
+texto_pdf = "\n".join(pagina.extract_text() or "" for pagina in lector.pages)
+exigir(len(lector.pages) >= 1, f"{len(lector.pages)} página(s)")
+exigir("REG-CAM-001" in texto_pdf, "trae el código del formato")
+exigir("Nilthon Chit" in texto_pdf, "trae al responsable del registro")
+exigir("ANULADO" in texto_pdf, "declara la pesada anulada")
+exigir("carcasa decomisada por el inspector" in texto_pdf, "con su motivo")
+exigir("Conformidad del cliente" in texto_pdf, "y deja las dos firmas")
+
+print("\n--- errores de página:", errores or "ninguno")
 print("--- fallos:", fallos or "ninguno")
 sys.exit(1 if (errores or fallos) else 0)

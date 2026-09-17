@@ -38,10 +38,17 @@ La app se prueba de punta a punta, como una jornada:
 python3 demos/camal/probar_lotes.py salidas/
 ```
 
-Abre un lote de 40 alpacas, pesa tres —una con coma decimal, a propósito—,
-rechaza lo que no es un peso, amplía el lote, corrige y borra una pesada,
-cierra, pone el precio, abre un lote de menudencias por unidad, recarga el
-teléfono y exporta las dos hojas. Veinte comprobaciones; cualquiera que falle
+Abre un lote de 40 alpacas degolladas, pesa tres —una con coma decimal, a
+propósito—, rechaza lo que no es un peso, amplía el lote, corrige una pesada
+sin motivo (y comprueba que no se aplica) y con motivo, anula otra, cierra,
+pone el precio, abre un lote de menudencias por unidad, recarga el teléfono,
+revisa la bitácora y descarga los dos archivos.
+
+Después sale del navegador y **audita lo exportado con librerías ajenas a la
+app**: abre el `.xlsx` con openpyxl —comprueba las cuatro hojas, que no haya
+dos identificadores repetidos, que la anulada viaje marcada, que el resumen
+sean fórmulas contra el detalle y que el total en frío cuadre con la pantalla—
+y el PDF con pypdf. Cuarenta y dos comprobaciones; cualquiera que falle
 devuelve código 1.
 
 ### Lo que arregla del prototipo
@@ -56,17 +63,69 @@ devuelve código 1.
 | No había contador por especie | Cada lote es de una categoría y lleva su propio avance |
 | La hora en dos formatos, sin fecha | Fecha y hora de 24 horas en las dos hojas |
 
+### Trazabilidad
+
+Un registro que se puede cambiar sin dejar rastro no vale para auditar, así que
+la app está construida sobre tres reglas:
+
+- **Todo tiene identificador.** La jornada es `J-AAAAMMDD-XXXX` —con sufijo al
+  azar, para que dos teléfonos no generen el mismo código el mismo día—, cada
+  lote es `…-L001` y cada pesada, `…-L001-007`. Ese código es el que aparece en
+  el Excel, en el PDF y en la pantalla: es la misma carcasa en los tres sitios.
+- **Nada se borra.** Una pesada equivocada se **anula con motivo**: deja de
+  sumar, pero sigue en el detalle marcada como `ANULADO`, con su motivo al lado.
+  Corregir un peso pide motivo también, y el valor anterior queda guardado.
+  El correlativo de una anulada no se reutiliza.
+- **Todo queda anotado.** La bitácora recoge cada apertura, pesada, corrección,
+  anulación, precio, cierre y exportación, con marca de tiempo, valor anterior,
+  valor nuevo, motivo y responsable. Responde a «quién cambió qué, cuándo y por
+  qué», que es lo que pregunta un auditor.
+
+El responsable del registro se declara en la pantalla de jornada y viaja en el
+control documental de cada archivo. Sin declararlo, los archivos salen con
+«(sin declarar)» a la vista: es mejor un hueco visible que un nombre supuesto.
+
+El control documental (código de formato `REG-CAM-001`, versión, aplicación de
+origen, identificador de jornada, fecha, responsable y hora de emisión) va en
+la portada del Excel y en la cabecera del PDF.
+
+### Los archivos
+
+Los dos se arman dentro de la app, sin librerías: en el camal no hay señal para
+descargarlas. El `.xlsx` es un zip de XML escrito a mano y el PDF se ensambla
+objeto por objeto, con Helvetica en WinAnsi, que cubre el castellano entero.
+
+**Excel, cuatro hojas.** `CONTROL` (portada y cifras del día), `DETALLE` (una
+fila por cabeza), `RESUMEN` (una fila por lote) y `BITACORA` (el rastro).
+
+Lo importante no es que haya cuatro hojas sino que estén **vinculadas**: el
+resumen no lleva números pegados sino fórmulas —`SUMIFS` y `COUNTIFS` contra el
+detalle, filtrando por `ESTADO="VIGENTE"`—, y la portada cuenta vigentes y
+anulados con `COUNTIF`. Si en la oficina corrigen un peso en `DETALLE`, el
+resumen y la portada se recalculan solos. El subtotal de cada fila también es
+fórmula: `=IF($L2="VIGENTE",ROUND($H2*$I2,2),0)`.
+
+**PDF, el acta firmable.** Control documental, cifras del día, resumen por
+lote, detalle por cabeza con sus anulaciones y motivos, bitácora completa y dos
+firmas: responsable del registro y conformidad del cliente. Pie de página con
+código de formato, jornada, hora de emisión y numeración.
+
 ### El Excel
 
-Dos hojas, porque son dos niveles de dato y mezclarlos es lo que vuelve
-inservible un archivo:
+Columnas, por hoja:
 
-- **Detalle por animal** — `Fecha, Lote, Categoria, N, Peso (kg), Precio x Kg, Subtotal`.
-  Una fila por cabeza, con su correlativo dentro del lote. Es la hoja para
-  auditar contra la balanza.
-- **Resumen por lote** — `Fecha, Lote, Tipo, Categoria, Cantidad, Unidad,
-  Peso total, Precio, Total, Estado, Inicio, Fin`. Una fila por lote, pesaje y
-  menudencias juntos. Es la hoja para cuadrar el dinero del día.
+- **DETALLE** — `ID_REGISTRO, JORNADA, FECHA, COD_LOTE, LOTE, CATEGORIA,
+  CORRELATIVO, PESO_KG, PRECIO_KG, SUBTOTAL_SOLES, REGISTRADO, ESTADO, MOTIVO,
+  RESPONSABLE`.
+- **RESUMEN** — `COD_LOTE, LOTE, TIPO, CATEGORIA, CANTIDAD, UNIDAD,
+  PESO_TOTAL_KG, PRECIO, TOTAL_SOLES, ESTADO, INICIO, FIN`, más una fila de
+  totales.
+- **BITACORA** — `MARCA_TIEMPO, ACCION, REFERENCIA, ANTES, DESPUES, MOTIVO,
+  RESPONSABLE`.
+
+Las tres van con fila de cabecera congelada y autofiltro puesto. Desde la
+pantalla de exportación, cualquiera de las tres se puede ver y copiar suelta en
+CSV, para pegarla en Google Sheets.
 
 Los precios que trae el catálogo son referenciales y están para confirmarse:
 no son los del camal.
