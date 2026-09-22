@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">RD RENTAL Actas</string>
+  <string name="guardado_en">Guardado en Descargas/%1$s</string>
+  <string name="sin_permiso_camara">Sin permiso de cámara: use la galería o
+      concédalo en Ajustes › Aplicaciones › RD RENTAL Actas › Permisos.</string>
+  <string name="no_se_pudo_guardar">No se pudo guardar el archivo</string>
+  <string name="elegir_archivo">Elegir archivo</string>
+</resources>
