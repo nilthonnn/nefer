@@ -50,6 +50,12 @@ android {
         }
     }
 
+    // Desde el plugin 8 hay que pedirlo: sin esto no se genera BuildConfig, y
+    // la app no sabría decir qué versión es.
+    buildFeatures {
+        buildConfig true
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
