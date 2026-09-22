@@ -62,6 +62,10 @@ apaga a mitad, nadie se encuentra un acta truncada en Descargas.
 | `CAMERA` | La cámara integrada, que es como se toman las fotos con el equipo delante. | La primera vez que se toca una casilla de foto. |
 | `WRITE_EXTERNAL_STORAGE` | Escribir en Descargas **sólo hasta Android 9**. De Android 10 en adelante se escribe por MediaStore y no hace falta permiso ninguno. | Al abrir la aplicación, en teléfonos viejos. |
 
+En la lista de permisos del teléfono aparecerá también
+`READ_EXTERNAL_STORAGE`, igualmente hasta Android 9: no está declarado en el
+manifiesto, lo añade la compilación porque el permiso de escritura lo implica.
+
 **No pide `INTERNET`.** La aplicación no puede salir a la red aunque se lo
 propusiera: no lo tiene concedido. Las fotos, los datos del equipo y las actas
 no salen del teléfono.
@@ -88,7 +92,9 @@ compila puede seguir incumpliendo:
 1. Que dentro va **exactamente** la misma app web que se publica en Pages
    (archivo por archivo, byte a byte).
 2. Que esa app trae el puente (`window.Anfitrion`, `CONTEXTO.enAndroid`).
-3. Que el `.apk` está bien firmado (`apksigner verify`).
+3. Que el `.apk` está bien firmado (`apksigner verify`). Sale con firma v2
+   solamente, que es la que Android 7 en adelante pide; la v1 sólo hace falta
+   por debajo de eso, y la aplicación no baja de Android 7.
 
 Si algo de eso falla, no se publica nada. Lo que se instalaría, si no, es una
 pantalla en negro.
