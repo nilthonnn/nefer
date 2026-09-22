@@ -25,7 +25,6 @@ env:
   # El nombre con el que se descarga. No cambia nunca: la dirección de descarga
   # y el QR impreso dependen de él.
   ARCHIVO: rd-rental-actas.apk
-  ETIQUETA: android
 
 jobs:
   apk:
@@ -174,6 +173,15 @@ jobs:
 
       # Publicar sólo desde `main`: la dirección de descarga es una sola y no
       # puede quedarse apuntando a lo que se estaba probando en una rama.
+      # Una publicación por compilación, con el .apk dentro desde el primer
+      # momento. No se reescribe una etiqueta fija porque aquí las
+      # publicaciones nacen INMUTABLES: una vez publicada no admite que se le
+      # cuelgue nada después, y ese fue exactamente el fallo de la primera
+      # versión de este paso —la publicación salía, pero vacía—.
+      #
+      # La dirección estable no la da la etiqueta, la da GitHub:
+      # /releases/latest/download/<archivo> siempre resuelve a la última
+      # publicación. Es la que llevan el botón de la portada y el QR impreso.
       - name: Publicar para descargar
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
@@ -181,6 +189,7 @@ jobs:
           FIRMA_PROPIA: ${{ steps.llave.outputs.propia }}
         run: |
           set -euo pipefail
+          etiqueta="android-v${{ github.run_number }}"
           notas="$RUNNER_TEMP/notas.md"
           {
             echo "Aplicación de Android de las actas de campo de RD RENTAL."
@@ -201,16 +210,23 @@ jobs:
             fi
           } > "$notas"
 
-          if gh release view "$ETIQUETA" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit "$ETIQUETA" --repo "$GITHUB_REPOSITORY" \
-              --title "Aplicación de Android" --notes-file "$notas" --latest
-          else
-            gh release create "$ETIQUETA" --repo "$GITHUB_REPOSITORY" \
-              --title "Aplicación de Android" --notes-file "$notas" --latest
-          fi
-          # --clobber: la dirección de descarga es siempre la misma, y lo que
-          # cambia es el archivo que hay detrás.
-          gh release upload "$ETIQUETA" "$APK" --repo "$GITHUB_REPOSITORY" --clobber
+          # El .apk va como argumento de la creación, no en una subida aparte:
+          # así queda dentro antes de que la publicación se cierre. Se adjunta
+          # con el nombre del archivo, que es el que lleva la dirección.
+          gh release create "$etiqueta" "$APK" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Aplicación de Android · 1.${{ github.run_number }}" \
+            --notes-file "$notas" \
+            --latest
 
-          echo "Descarga: https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIQUETA/$ARCHIVO" \
-            >> "$GITHUB_STEP_SUMMARY"
+          # Si el archivo no quedó dentro, la dirección de descarga da un 404 y
+          # nadie se entera hasta que un operario escanea el QR del taller.
+          sleep 3
+          gh release view "$etiqueta" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[].name' | grep -qx "$ARCHIVO" || {
+              echo "::error::la publicación $etiqueta salió sin el .apk"
+              exit 1
+            }
+
+          descarga="https://github.com/$GITHUB_REPOSITORY/releases/latest/download/$ARCHIVO"
+          echo "Descarga: $descarga" >> "$GITHUB_STEP_SUMMARY"

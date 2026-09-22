@@ -31,7 +31,7 @@ CODIGOS = [
     ("https://nilthonnn.github.io/nefer/rd-rental/app/",
      "docs/qr-app.svg",
      "la app de campo de RD RENTAL publicada"),
-    ("https://github.com/nilthonnn/nefer/releases/download/android/rd-rental-actas.apk",
+    ("https://github.com/nilthonnn/nefer/releases/latest/download/rd-rental-actas.apk",
      "docs/qr-apk.svg",
      "la aplicacion de Android de RD RENTAL, para descargar e instalar"),
 ]
