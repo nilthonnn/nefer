@@ -492,6 +492,126 @@ MEDIDA_ULTIMA_FOTO = """
 """
 
 
+def test_un_acta_a_medias_se_guarda_y_se_retoma_con_sus_fotos(servidor, fotos):
+    """El acta no se levanta de una sentada.
+
+    Se fotografia el equipo, el chofer se lleva la maquina y los datos del
+    cliente llegan por la tarde. Hasta ahora lo tecleado sobrevivia en
+    `localStorage` pero las fotos no, asi que cerrar el navegador costaba la
+    mañana entera. Aqui se recorre el camino entero: guardar a medias, cerrar
+    la pestaña, volver a abrir y seguir.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        ctx = _contexto(nav, movil=True)          # el almacen vive en el contexto
+        pg = ctx.new_page()
+        pg.on("dialog", lambda d: d.accept())
+        pg.goto(servidor)
+        app = App(pg).despacho()
+        assert pg.evaluate("() => RDRENTA.proyectos.hay()") is True
+
+        app.cargar_por_galeria([fotos["frontal"], fotos["posterior"]])
+        assert app.llenas == 2
+        pg.click("#d-datos summary")
+        pg.fill("#d-cliente", "MINERA DE PRUEBA S.A.C.")
+        pg.fill("#d-proy-nombre", "Acta a medias")
+        pg.wait_for_timeout(300)
+
+        # Sin guardar, la barra lo dice.
+        assert "sin guardar" in pg.inner_text("#d-proy-estado").lower()
+        pg.click("#d-proy-guardar")
+        pg.wait_for_timeout(900)
+        assert "borrador" in pg.inner_text("#d-proy-estado").lower()
+
+        # Se cierra la pestaña: es la prueba de verdad.
+        pg.close()
+        pg = ctx.new_page()
+        pg.on("dialog", lambda d: d.accept())
+        pg.goto(servidor)
+        pg.wait_for_timeout(900)
+        app = App(pg)
+
+        # Al volver, la app abre por donde se quedo: se va a la lista por el
+        # mismo boton que usaria el operador.
+        pg.click("#d-proy-abrir")
+        pg.wait_for_timeout(600)
+        filas = pg.eval_on_selector_all("#proy-lista .proy-fila .nom",
+                                        "n => n.map(x => x.textContent)")
+        assert len(filas) == 1 and filas[0].startswith("Acta a medias"), filas
+        assert "2 fotos" in filas[0], filas
+
+        pg.click("#proy-lista [data-abrir]")
+        pg.wait_for_timeout(1500)
+        pg.click("#d-datos summary")
+        assert pg.input_value("#d-cliente") == "MINERA DE PRUEBA S.A.C."
+        assert pg.input_value("#d-proy-nombre") == "Acta a medias"
+        assert app.llenas == 2, "las fotografias tienen que volver con el proyecto"
+
+        # Se sigue trabajando: una foto mas y a guardar otra vez.
+        app.despacho().cargar_por_galeria([fotos["horometro"]])
+        pg.click("#d-proy-guardar")
+        pg.wait_for_timeout(900)
+        pg.click("[data-ir='inicio']")
+        pg.wait_for_timeout(500)
+        filas = pg.eval_on_selector_all("#proy-lista .proy-fila .nom",
+                                        "n => n.map(x => x.textContent)")
+        assert len(filas) == 1, "guardar sobre el mismo proyecto no crea otro"
+        assert "3 fotos" in filas[0], filas
+
+        # Duplicar deja dos, y el duplicado nace como borrador.
+        pg.click("#proy-lista [data-duplicar]")
+        pg.wait_for_timeout(800)
+        filas = pg.eval_on_selector_all("#proy-lista .proy-fila .nom",
+                                        "n => n.map(x => x.textContent)")
+        assert len(filas) == 2, filas
+        assert any("(copia)" in f for f in filas), filas
+
+        # Eliminar uno deja el otro.
+        pg.click("#proy-lista .proy-fila:first-child [data-borrar]")
+        pg.wait_for_timeout(800)
+        assert pg.eval_on_selector_all("#proy-lista .proy-fila", "n => n.length") == 1
+        assert app.errores == []
+        nav.close()
+
+
+def test_exportar_no_cierra_el_proyecto_lo_deja_marcado(servidor, fotos):
+    """Guardar y exportar no son lo mismo.
+
+    Guardar es para seguir mañana; exportar produce el archivo que se firma.
+    Despues de exportar, el proyecto sigue abierto a cambios y solo cambia de
+    estado, que es lo que distingue un acta entregada de una a medias.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        ctx = _contexto(nav, movil=True, descargas=True)
+        pg = ctx.new_page()
+        pg.on("dialog", lambda d: d.accept())
+        pg.goto(servidor)
+        app = App(pg).despacho()
+
+        app.cargar_por_galeria([fotos["frontal"]])
+        pg.fill("#d-proy-nombre", "Acta para exportar")
+        pg.click("#d-proy-guardar")
+        pg.wait_for_timeout(900)
+        assert "borrador" in pg.inner_text("#d-proy-estado").lower()
+
+        with pg.expect_download(timeout=60000) as esperado:
+            pg.click("#d-xlsx")
+        esperado.value
+        pg.wait_for_timeout(1200)
+
+        assert "exportado" in pg.inner_text("#d-proy-estado").lower()
+        assert app.llenas == 1, "exportar no puede vaciar lo que hay en pantalla"
+
+        pg.click("[data-ir='inicio']")
+        pg.wait_for_timeout(600)
+        meta = pg.eval_on_selector_all("#proy-lista .proy-fila .meta",
+                                       "n => n.map(x => x.textContent)")
+        assert meta and "exportado" in meta[0], meta
+        assert app.errores == []
+        nav.close()
+
+
 def test_el_editor_encuadra_la_foto_antes_de_que_entre_al_acta(servidor):
     """Entre el disparo y la casilla hay una decision que toma el operario.
 

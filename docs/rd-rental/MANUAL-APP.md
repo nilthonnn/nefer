@@ -377,6 +377,50 @@ la app no puede saber cuándo se tomaron más que por lo que diga su EXIF.
 
 ---
 
+## 6 bis. Proyectos: guardar un acta a medias
+
+Un acta no se levanta de una sentada. Se fotografía el equipo, el chofer se
+lleva la máquina y los datos del cliente llegan por la tarde. Para eso está la
+barra que hay arriba de **Despacho** y de **Recepción**:
+
+| Mando | Qué hace |
+|---|---|
+| **Nombre** | Cómo se llama el proyecto. Si se deja en blanco, la app propone uno con el equipo y el n° de acta |
+| **Guardar** | Guarda el acta como está, **con sus fotografías** |
+| **Guardar como** | Deja una copia aparte y sigue trabajando en ella |
+| **Abrir** | Lleva a la lista de lo guardado |
+| **Nuevo** | Empieza un acta en blanco. Avisa si hay cambios sin guardar |
+
+Al lado del nombre hay una etiqueta con el **estado**:
+
+`sin guardar` → `borrador` → `exportado`
+
+**Guardar no es exportar.** Guardar deja el acta lista para seguir mañana;
+exportar produce el Excel o el PDF que se firma. Después de exportar el
+proyecto **sigue abierto**: se le pueden añadir fotos, corregir datos y volver
+a exportar las veces que haga falta.
+
+### Dónde está lo guardado
+
+En **Inicio**, bajo *Proyectos guardados*. Cada uno muestra su estado, cuántas
+fotos lleva y cuándo se tocó por última vez, con tres botones: **Continuar**,
+**Duplicar** y **Eliminar**.
+
+Al continuar vuelve todo: los datos tecleados, las fotografías en sus casillas,
+los accesorios y, en la recepción, el acta de despacho con la que se compara.
+
+### Dónde se guarda
+
+En el propio teléfono, en el almacén del navegador (IndexedDB). **No sale de
+ahí**: ni al servidor ni a la nube. Las fotos son de varios MB y por eso no
+caben en el almacén de texto que usa el resto de la app.
+
+Eso tiene una consecuencia que conviene saber: si se borran los datos del
+navegador, o se desinstala la app, **los proyectos se van con ellos**. Un acta
+terminada se exporta; el proyecto es el cuaderno de trabajo, no el archivo.
+
+---
+
 ## 7. Cómo entran las fotos
 
 Seis vías, y la aplicación **sólo enseña las que el aparato admite**:

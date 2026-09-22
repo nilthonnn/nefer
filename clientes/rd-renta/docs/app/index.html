@@ -341,6 +341,30 @@
     .ed-bar { flex:0 0 auto; }
     .ed-bar button { min-width:9rem; }
   }
+  /* ---------- barra de proyecto ----------
+     «Guardar» y «Exportar» no son lo mismo y la barra lo dice sin explicarlo:
+     el nombre del acta en curso, su estado, y guardar para seguir mañana. */
+  .proy { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem;
+          padding:.5rem .6rem; margin-bottom:.9rem;
+          background:var(--card-2); border:1px solid var(--rule); border-radius:6px; }
+  .proy input[type="text"] { flex:1 1 9rem; min-width:0; min-height:40px;
+                             background:var(--card); border:1px solid var(--rule);
+                             border-radius:5px; padding:.35rem .5rem; color:inherit;
+                             font-family:inherit; font-size:.92rem; }
+  .proy button { min-height:40px; padding:.35rem .7rem; font-size:.85rem; }
+  .proy .estado { font-family:var(--mono); font-size:.62rem; letter-spacing:.09em;
+                  text-transform:uppercase; padding:.22rem .45rem; border-radius:99px;
+                  border:1px solid var(--rule); color:var(--ink-2); white-space:nowrap; }
+  .proy .estado.sucio { border-color:#C79A3A; color:#C79A3A; }
+  .proy .estado.exportado { border-color:#4E8B5A; color:#4E8B5A; }
+  .lista-proy { display:flex; flex-direction:column; gap:.5rem; margin:.8rem 0 0; }
+  .proy-fila { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+               padding:.55rem .65rem; border:1px solid var(--rule); border-radius:6px;
+               background:var(--card); }
+  .proy-fila .nom { flex:1 1 10rem; min-width:0; font-weight:600; }
+  .proy-fila .meta { font-family:var(--mono); font-size:.65rem; letter-spacing:.06em;
+                     color:var(--ink-3); display:block; font-weight:400; margin-top:.15rem; }
+  .proy-fila button { min-height:38px; padding:.3rem .6rem; font-size:.82rem; }
   .cam-aviso { position:absolute; left:1rem; right:1rem; top:50%; transform:translateY(-50%);
                background:var(--card); color:var(--ink); border:1px solid var(--rule);
                border-radius:7px; padding:.9rem 1rem; font-size:.9rem; }
@@ -715,6 +739,19 @@
         </button>
       </div>
 
+      <section class="seccion" id="proy-seccion" hidden>
+        <h2>Proyectos guardados</h2>
+        <p class="sub" style="margin:.2rem 0 0">
+          Un acta a medias se guarda con sus fotos y se retoma cuando vuelva el
+          equipo o lleguen los datos del cliente. Guardar no es exportar: el
+          proyecto sigue abierto a cambios.
+        </p>
+        <div class="lista-proy" id="proy-lista"></div>
+        <p class="sub" id="proy-vacio" style="margin:.6rem 0 0">
+          Todavía no hay ninguno guardado.
+        </p>
+      </section>
+
       <div class="aviso malo" id="aviso-contexto" hidden></div>
 
       <div class="instalar" id="pista-instalar">
@@ -752,6 +789,15 @@
 
     <!-- ================= DESPACHO ================= -->
     <section class="vista" id="v-despacho" role="tabpanel" aria-labelledby="tab-despacho">
+      <div class="proy" id="d-proy" hidden>
+        <input type="text" id="d-proy-nombre" placeholder="nombre del proyecto"
+               aria-label="Nombre del proyecto">
+        <span class="estado" id="d-proy-estado">borrador</span>
+        <button type="button" id="d-proy-guardar" class="primary">Guardar</button>
+        <button type="button" id="d-proy-guardar-como">Guardar como</button>
+        <button type="button" id="d-proy-abrir">Abrir</button>
+        <button type="button" id="d-proy-nuevo">Nuevo</button>
+      </div>
       <div class="encab">
         <p class="kicker">acta de salida</p>
         <h1>Despacho</h1>
@@ -876,6 +922,15 @@
 
     <!-- ================= RECEPCIÓN ================= -->
     <section class="vista" id="v-recepcion" role="tabpanel" aria-labelledby="tab-recepcion">
+      <div class="proy" id="r-proy" hidden>
+        <input type="text" id="r-proy-nombre" placeholder="nombre del proyecto"
+               aria-label="Nombre del proyecto">
+        <span class="estado" id="r-proy-estado">borrador</span>
+        <button type="button" id="r-proy-guardar" class="primary">Guardar</button>
+        <button type="button" id="r-proy-guardar-como">Guardar como</button>
+        <button type="button" id="r-proy-abrir">Abrir</button>
+        <button type="button" id="r-proy-nuevo">Nuevo</button>
+      </div>
       <div class="encab">
         <p class="kicker">acta de retorno</p>
         <h1>Recepción</h1>
@@ -1230,7 +1285,7 @@ var RDRENTA = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-22 · encuadre de la fotografía";
+  var VERSION = "2026-09-22 · encuadre y proyectos guardables";
 
   "use strict";
 
@@ -1945,6 +2000,206 @@ var RDRENTA = (function () {
              conectar: conectar };
   })();
 
+  /* ---------- proyectos guardados ----------
+     Un acta no se levanta de una sentada: se fotografia el equipo, el chofer
+     se lleva la maquina y los datos del cliente llegan por la tarde. Hasta
+     ahora la app guardaba lo tecleado en `localStorage` pero **no las fotos**,
+     asi que cerrar el navegador costaba la mañana entera.
+
+     Las fotos son binarios de varios MB: `localStorage` no los admite —solo
+     texto, y con un tope de unos 5 MB—, asi que van a IndexedDB, que guarda
+     Blobs tal cual y sin limite practico. Es lo unico que la plataforma ofrece
+     para esto sin traer una dependencia, y esta app no tiene ninguna. */
+  var almacen = (function () {
+    var NOMBRE = "rdrenta", VERSION = 1, TIENDA = "proyectos";
+    var bd = null;
+
+    function abrir() {
+      if (bd) return Promise.resolve(bd);
+      return new Promise(function (ok, mal) {
+        if (!window.indexedDB) { mal(new Error("este navegador no guarda proyectos")); return; }
+        var pet = indexedDB.open(NOMBRE, VERSION);
+        pet.onupgradeneeded = function () {
+          var d = pet.result;
+          if (!d.objectStoreNames.contains(TIENDA)) {
+            var tienda = d.createObjectStore(TIENDA, { keyPath: "id" });
+            tienda.createIndex("modificado", "modificado");
+          }
+        };
+        pet.onsuccess = function () { bd = pet.result; ok(bd); };
+        pet.onerror = function () { mal(pet.error || new Error("no se pudo abrir el almacen")); };
+      });
+    }
+
+    function operar(modo, fn) {
+      return abrir().then(function (d) {
+        return new Promise(function (ok, mal) {
+          var tx = d.transaction(TIENDA, modo);
+          var pet = fn(tx.objectStore(TIENDA));
+          tx.onabort = tx.onerror = function () { mal(tx.error || new Error("transaccion fallida")); };
+          tx.oncomplete = function () { ok(pet ? pet.result : undefined); };
+        });
+      });
+    }
+
+    return {
+      hay: function () { return !!window.indexedDB; },
+      listar: function () {
+        return operar("readonly", function (t) { return t.getAll(); }).then(function (l) {
+          return (l || []).sort(function (a, b) {
+            return (b.modificado || 0) - (a.modificado || 0);
+          });
+        });
+      },
+      leer: function (id) { return operar("readonly", function (t) { return t.get(id); }); },
+      guardar: function (p) { return operar("readwrite", function (t) { t.put(p); }).then(function () { return p; }); },
+      borrar: function (id) { return operar("readwrite", function (t) { t.delete(id); }); }
+    };
+  })();
+
+  /* ---------- el proyecto en curso ----------
+     «Guardar» y «Exportar» son cosas distintas y el pliego lo pide explicito:
+     guardar es para seguir mañana, exportar es el archivo que se firma. Un
+     proyecto guardado no se cierra: se vuelve a abrir tal como estaba. */
+  var ESTADOS = ["borrador", "en proceso", "completo", "exportado"];
+
+  var proyectos = (function () {
+    var vistas = {};                  // despacho / recepcion: como se copian
+    var actual = null;                // {id, nombre, estado, creado, modificado, vista}
+    var sucio = false;
+    var alCambiar = [];
+
+    function registrar(nombre, api) { vistas[nombre] = api; }
+    function avisar() { alCambiar.forEach(function (f) { f(actual, sucio); }); }
+    function alTocar(f) { alCambiar.push(f); }
+
+    function marcarSucio() {
+      if (sucio) return;
+      sucio = true;
+      avisar();
+    }
+
+    function nuevoId() {
+      return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    function nombrePorDefecto(vista, datos) {
+      var enc = (datos && datos.campos) || {};
+      var equipo = enc[vista === "recepcion" ? "r-codigo_equipo" : "d-equipo"] || "";
+      var acta = enc[vista === "recepcion" ? "r-acta" : "d-acta"] || "";
+      var partes = [vista === "recepcion" ? "Recepción" : "Despacho"];
+      if (equipo) partes.push(equipo);
+      if (acta) partes.push(acta);
+      if (partes.length === 1) partes.push(hoy());
+      return partes.join(" · ");
+    }
+
+    /* Se guarda lo tecleado, las fotos con sus bytes y a que casilla va cada
+       una. Las fotos se referencian por su posicion en la lista y no por el
+       identificador de memoria, que no sobrevive a cerrar la pestaña. */
+    function instantanea() {
+      var vista = actual && actual.vista;
+      var api = vistas[vista];
+      if (!api) return Promise.reject(new Error("no hay nada que guardar"));
+      return Promise.resolve(api.instantanea());
+    }
+
+    function guardar(opciones) {
+      opciones = opciones || {};
+      if (!actual) return Promise.reject(new Error("no hay proyecto abierto"));
+      return instantanea().then(function (datos) {
+        var p = {
+          id: opciones.comoNuevo ? nuevoId() : actual.id,
+          nombre: opciones.nombre || actual.nombre || nombrePorDefecto(actual.vista, datos),
+          vista: actual.vista,
+          estado: opciones.estado || actual.estado || "borrador",
+          creado: opciones.comoNuevo ? Date.now() : (actual.creado || Date.now()),
+          modificado: Date.now(),
+          datos: datos
+        };
+        return almacen.guardar(p).then(function () {
+          actual = { id: p.id, nombre: p.nombre, vista: p.vista,
+                     estado: p.estado, creado: p.creado, modificado: p.modificado };
+          sucio = false;
+          avisar();
+          return actual;
+        });
+      });
+    }
+
+    /* Lo que ya esta en pantalla pasa a ser un proyecto, sin tocarlo. Es lo
+       que hace falta al guardar por primera vez: `nuevo()` limpia la vista, y
+       llamarlo aqui borraba las fotos justo antes de copiarlas. */
+    function adoptar(vista) {
+      actual = { id: nuevoId(), nombre: "", vista: vista, estado: "borrador",
+                 creado: Date.now(), modificado: Date.now() };
+      avisar();
+      return actual;
+    }
+
+    function nuevo(vista) {
+      var api = vistas[vista];
+      if (api && api.limpiar) api.limpiar();
+      actual = { id: nuevoId(), nombre: "", vista: vista, estado: "borrador",
+                 creado: Date.now(), modificado: Date.now() };
+      sucio = false;
+      avisar();
+      return actual;
+    }
+
+    function abrir(id) {
+      return almacen.leer(id).then(function (p) {
+        if (!p) throw new Error("ese proyecto ya no existe");
+        var api = vistas[p.vista];
+        if (!api) throw new Error("no se reconoce el tipo de proyecto");
+        return Promise.resolve(api.restaurar(p.datos)).then(function () {
+          actual = { id: p.id, nombre: p.nombre, vista: p.vista, estado: p.estado,
+                     creado: p.creado, modificado: p.modificado };
+          sucio = false;
+          avisar();
+          return actual;
+        });
+      });
+    }
+
+    function duplicar(id) {
+      return almacen.leer(id).then(function (p) {
+        if (!p) throw new Error("ese proyecto ya no existe");
+        var copia = JSON.parse(JSON.stringify({ nombre: p.nombre, vista: p.vista,
+                                                estado: p.estado }));
+        copia.id = nuevoId();
+        copia.nombre = (p.nombre || "Proyecto") + " (copia)";
+        copia.estado = "borrador";
+        copia.creado = copia.modificado = Date.now();
+        copia.datos = p.datos;         // los Blobs se comparten sin copiarse
+        return almacen.guardar(copia);
+      });
+    }
+
+    function marcarExportado() {
+      if (!actual) return Promise.resolve(null);
+      return guardar({ estado: "exportado" });
+    }
+
+    return {
+      registrar: registrar, alTocar: alTocar, marcarSucio: marcarSucio,
+      ESTADOS: ESTADOS,
+      nuevo: nuevo, adoptar: adoptar, guardar: guardar, abrir: abrir,
+      duplicar: duplicar, marcarExportado: marcarExportado,
+      borrar: function (id) { return almacen.borrar(id); },
+      listar: function () { return almacen.listar(); },
+      hay: function () { return almacen.hay(); },
+      actual: function () { return actual; },
+      sucio: function () { return sucio; },
+      nombrePorDefecto: nombrePorDefecto,
+      renombrar: function (nombre) {
+        if (!actual) return;
+        actual.nombre = nombre;
+        marcarSucio();
+      }
+    };
+  })();
+
   /* ---------- editor de la fotografía ----------
      Una foto de telefono llega vertical y el hueco del acta es apaisado: al
      conservar la proporcion —que es obligatorio— la foto entra pequena y deja
@@ -2314,6 +2569,10 @@ var RDRENTA = (function () {
     : Promise.resolve(null);
 
   function entregar(blob, nombre, avisar) {
+    // Exportar no cierra el proyecto: lo deja marcado y abierto a cambios.
+    // Este es el unico embudo por el que salen PDF, Excel y ZIP, asi que el
+    // estado se pone aqui y en ningun otro sitio.
+    if (proyectos.actual()) proyectos.marcarExportado();
     var archivo = null;
     try { archivo = new File([blob], nombre, { type: "application/zip" }); } catch (e) { /* File viejo */ }
 
@@ -2523,6 +2782,7 @@ var RDRENTA = (function () {
     armarZip: armarZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
     selloFecha: selloFecha, sellarFecha: sellarFecha, editor: editor,
+    proyectos: proyectos,
     incrustada: incrustada,
     RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo, camara: camara,
     archivosArrastrados: archivosArrastrados, imagenesPegadas: imagenesPegadas,
@@ -3650,6 +3910,82 @@ var RDRENTA = (function () {
     return { acta: acta(), fotos: mapa };
   };
 
+  /* ---------- el despacho como proyecto guardable ----------
+     Se copia lo tecleado, los bytes de cada foto y a que casilla va cada una.
+     Las fotos se referencian por su posicion en la lista, no por el
+     identificador de memoria: ese no sobrevive a cerrar la pestaña. */
+  RDRENTA.proyectos.registrar("despacho", {
+    instantanea: function () {
+      var indice = {};
+      fotos.forEach(function (f, i) { indice[f.id] = i; });
+      function pos(id) {
+        return (id !== null && id !== undefined && indice[id] !== undefined) ? indice[id] : null;
+      }
+      var campos = {};
+      CAMPOS.forEach(function (id) { campos[id] = $("#" + id).value; });
+      return {
+        cat: $("#d-cat").value,
+        campos: campos,
+        extras: extras.slice(),
+        accesorios: accesorios.map(function (a) {
+          return { nombre: a.nombre, foto: pos(a.fotoId) };
+        }),
+        casillas: casillas.map(pos),
+        fotos: fotos.map(function (f) {
+          return { nombre: f.nombre, archivo: f.archivo,
+                   fecha: f.fecha, respaldo: f.respaldo };
+        })
+      };
+    },
+
+    limpiar: function () {
+      fotos.forEach(function (f) { URL.revokeObjectURL(f.url); });
+      fotos = []; accesorios = []; extras = []; elegida = null;
+      casillas = []; propuestas = [];
+      CAMPOS.forEach(function (id) { $("#" + id).value = ""; });
+      $("#d-fecha").value = RDRENTA.hoy();
+      pintar();
+      pintarSalida();
+    },
+
+    restaurar: function (d) {
+      fotos.forEach(function (f) { URL.revokeObjectURL(f.url); });
+      fotos = []; accesorios = []; extras = []; elegida = null;
+      if (!d) { casillas = []; propuestas = []; pintar(); pintarSalida(); return; }
+
+      if (d.cat && VISTAS[d.cat]) $("#d-cat").value = d.cat;
+      CAMPOS.forEach(function (id) {
+        $("#" + id).value = (d.campos && typeof d.campos[id] === "string") ? d.campos[id] : "";
+      });
+      extras = (d.extras || []).filter(function (x) { return typeof x === "string"; });
+
+      fotos = (d.fotos || []).filter(function (x) { return x && x.archivo; })
+        .map(function (x) {
+          return { id: siguienteId++, nombre: x.nombre || "foto.jpg",
+                   archivo: x.archivo, url: URL.createObjectURL(x.archivo),
+                   fecha: x.fecha || null, respaldo: x.respaldo || 0, sugerida: null };
+        });
+      function idDe(i) {
+        return (i !== null && i !== undefined && fotos[i]) ? fotos[i].id : null;
+      }
+      accesorios = (d.accesorios || []).map(function (a) {
+        return { nombre: a.nombre || "", fotoId: idDe(a.foto) };
+      });
+      casillas = (d.casillas || []).map(idDe);
+      propuestas = casillas.map(function () { return false; });
+      pintar();
+      pintarSalida();
+    }
+  });
+
+  // Cada cambio deja el proyecto sin guardar: el aviso es lo que separa
+  // «guardado» de «lo tengo en pantalla».
+  var guardarBorrador = guardar;
+  guardar = function () {
+    guardarBorrador();
+    RDRENTA.proyectos.marcarSucio();
+  };
+
   autoAsignar();
   pintar();
 })();
@@ -4619,6 +4955,98 @@ var RDRENTA = (function () {
       if (typeof v.campos[id] === "string") $("#" + id).value = v.campos[id];
     });
   });
+
+  /* ---------- la recepcion como proyecto guardable ----------
+     Guarda las fotos de retorno con sus bytes, los estados marcados y el
+     acta de despacho que sirve de comparacion. Sin esa comparacion la
+     recepcion no se puede continuar: es la mitad del documento. */
+  RDRENTA.proyectos.registrar("recepcion", {
+    instantanea: function () {
+      var indice = {};
+      retorno.forEach(function (f, i) { indice[f.id] = i; });
+      function pos(id) {
+        return (id !== null && id !== undefined && indice[id] !== undefined) ? indice[id] : null;
+      }
+      function copiar(lista) {
+        return lista.map(function (x) {
+          var c = {};
+          for (var k in x) if (Object.prototype.hasOwnProperty.call(x, k)) c[k] = x[k];
+          c.foto = pos(x.fotoId);
+          delete c.fotoId;
+          return c;
+        });
+      }
+      var campos = {};
+      CAMPOS.forEach(function (id) { campos[id] = $("#" + id).value; });
+      return {
+        campos: campos,
+        despacho: despacho,
+        vistas: copiar(vistas), cons: copiar(cons), insp: copiar(insp),
+        // Las fotos del despacho llegan por el ZIP y se guardan con el
+        // proyecto: sin ellas la columna de comparacion se queda muda.
+        antes: Object.keys(antes).map(function (n) {
+          return { nombre: n, archivo: antes[n].archivo };
+        }),
+        fotos: retorno.map(function (f) {
+          return { nombre: f.nombre, archivo: f.archivo };
+        })
+      };
+    },
+
+    limpiar: function () {
+      retorno.forEach(function (f) { URL.revokeObjectURL(f.url); });
+      Object.keys(antes).forEach(function (n) { URL.revokeObjectURL(antes[n].url); });
+      retorno = []; antes = {}; despacho = null;
+      vistas = []; cons = []; insp = []; elegida = null;
+      CAMPOS.forEach(function (id) { $("#" + id).value = ""; });
+      pintar();
+    },
+
+    restaurar: function (d) {
+      retorno.forEach(function (f) { URL.revokeObjectURL(f.url); });
+      Object.keys(antes).forEach(function (n) { URL.revokeObjectURL(antes[n].url); });
+      retorno = []; antes = {}; despacho = null;
+      vistas = []; cons = []; insp = []; elegida = null;
+      if (!d) { pintar(); return; }
+
+      CAMPOS.forEach(function (id) {
+        $("#" + id).value = (d.campos && typeof d.campos[id] === "string") ? d.campos[id] : "";
+      });
+      despacho = d.despacho || null;
+
+      (d.antes || []).forEach(function (a) {
+        if (a && a.archivo) antes[a.nombre] = { archivo: a.archivo,
+                                                url: URL.createObjectURL(a.archivo) };
+      });
+      retorno = (d.fotos || []).filter(function (x) { return x && x.archivo; })
+        .map(function (x) {
+          return { id: sig++, nombre: x.nombre || "foto.jpg", archivo: x.archivo,
+                   url: URL.createObjectURL(x.archivo) };
+        });
+      function idDe(i) {
+        return (i !== null && i !== undefined && retorno[i]) ? retorno[i].id : null;
+      }
+      function rehacer(lista) {
+        return (lista || []).map(function (x) {
+          var c = {};
+          for (var k in x) if (Object.prototype.hasOwnProperty.call(x, k)) c[k] = x[k];
+          c.fotoId = idDe(x.foto);
+          delete c.foto;
+          return c;
+        });
+      }
+      vistas = rehacer(d.vistas);
+      cons = rehacer(d.cons);
+      insp = rehacer(d.insp);
+      pintar();
+    }
+  });
+
+  var guardarBorrador = guardar;
+  guardar = function () {
+    guardarBorrador();
+    RDRENTA.proyectos.marcarSucio();
+  };
 })();
 
 /* ================================================================
@@ -4702,6 +5130,166 @@ var RDRENTA = (function () {
 })();
 
 RDRENTA.arrancar();
+</script>
+
+<script>
+/* ================================================================
+   PROYECTOS · la barra de guardar y la lista de lo guardado.
+   Guardar deja el acta a medias lista para seguir; exportar produce el
+   archivo que se firma. Son dos cosas distintas y la interfaz lo dice.
+   ================================================================ */
+(function () {
+  "use strict";
+  var $ = RDRENTA.$, esc = RDRENTA.esc;
+  var P = RDRENTA.proyectos;
+  var avisar = RDRENTA.avisador ? RDRENTA.avisador() : function () {};
+
+  // Sin IndexedDB no hay proyectos: la barra no aparece, en vez de ofrecer un
+  // boton que no guardaria nada.
+  if (!P.hay()) return;
+
+  function fecha(ms) {
+    if (!ms) return "";
+    var d = new Date(ms);
+    function dos(n) { return (n < 10 ? "0" : "") + n; }
+    return dos(d.getDate()) + "/" + dos(d.getMonth() + 1) + "/" + d.getFullYear() +
+           " " + dos(d.getHours()) + ":" + dos(d.getMinutes());
+  }
+
+  function pintarBarra(actual, sucio) {
+    ["d", "r"].forEach(function (pre) {
+      var caja = $("#" + pre + "-proy");
+      if (!caja) return;
+      caja.hidden = false;
+      var mio = actual && actual.vista === (pre === "r" ? "recepcion" : "despacho");
+      var nombre = $("#" + pre + "-proy-nombre");
+      var estado = $("#" + pre + "-proy-estado");
+      // Solo se pisa el campo cuando hay un proyecto de esta vista que
+      // mostrar: si el operador acaba de teclear un nombre para guardar, un
+      // repintado no puede borrarselo.
+      if (mio && document.activeElement !== nombre) nombre.value = actual.nombre || "";
+      estado.textContent = !mio ? "sin guardar"
+        : (sucio ? "sin guardar" : (actual.estado || "borrador"));
+      estado.className = "estado" + ((!mio || sucio) ? " sucio" : "") +
+        (mio && !sucio && actual.estado === "exportado" ? " exportado" : "");
+    });
+  }
+
+  function pintarLista() {
+    var caja = $("#proy-lista"), seccion = $("#proy-seccion");
+    if (!caja) return Promise.resolve();
+    return P.listar().then(function (lista) {
+      seccion.hidden = false;
+      caja.textContent = "";
+      $("#proy-vacio").hidden = lista.length > 0;
+      lista.forEach(function (p) {
+        var fila = document.createElement("div");
+        fila.className = "proy-fila";
+        var fotos = (p.datos && p.datos.fotos) ? p.datos.fotos.length : 0;
+        fila.innerHTML =
+          '<span class="nom">' + esc(p.nombre || "Sin nombre") +
+            '<span class="meta">' + esc(p.vista) + " · " + esc(p.estado || "borrador") +
+            " · " + fotos + (fotos === 1 ? " foto" : " fotos") +
+            " · " + fecha(p.modificado) + "</span></span>" +
+          '<button type="button" class="primary" data-abrir="' + esc(p.id) + '">Continuar</button>' +
+          '<button type="button" data-duplicar="' + esc(p.id) + '">Duplicar</button>' +
+          '<button type="button" class="ghost" data-borrar="' + esc(p.id) + '">Eliminar</button>';
+        caja.appendChild(fila);
+      });
+    }, function (err) {
+      seccion.hidden = false;
+      $("#proy-vacio").hidden = false;
+      $("#proy-vacio").textContent = "No se pudo leer el almacén: " + err.message;
+    });
+  }
+
+  function fallo(err) { avisar((err && err.message) || "no se pudo completar"); }
+
+  function guardar(vista, comoNuevo) {
+    var pre = vista === "recepcion" ? "r" : "d";
+    // Se lee antes de adoptar: adoptar repinta la barra, y el repintado
+    // escribe en ese mismo campo.
+    var nombre = $("#" + pre + "-proy-nombre").value.trim();
+    var actual = P.actual();
+    if (!actual || actual.vista !== vista) P.adoptar(vista);
+    return P.guardar({ comoNuevo: !!comoNuevo, nombre: nombre || undefined })
+      .then(function (p) {
+        avisar(comoNuevo ? "copia guardada" : "proyecto guardado");
+        return pintarLista();
+      }, fallo);
+  }
+
+  ["d", "r"].forEach(function (pre) {
+    var vista = pre === "r" ? "recepcion" : "despacho";
+    var g = $("#" + pre + "-proy-guardar");
+    if (!g) return;
+    g.addEventListener("click", function () { guardar(vista, false); });
+    $("#" + pre + "-proy-guardar-como").addEventListener("click", function () {
+      guardar(vista, true);
+    });
+    $("#" + pre + "-proy-abrir").addEventListener("click", function () {
+      pintarLista().then(function () {
+        RDRENTA.ir("inicio");
+        var s = $("#proy-seccion");
+        if (s) s.scrollIntoView({ block: "start" });
+      });
+    });
+    $("#" + pre + "-proy-nuevo").addEventListener("click", function () {
+      if (P.sucio() &&
+          !window.confirm("Hay cambios sin guardar. ¿Empezar un proyecto nuevo?")) return;
+      P.nuevo(vista);
+      $("#" + pre + "-proy-nombre").value = "";
+      avisar("proyecto nuevo");
+    });
+    $("#" + pre + "-proy-nombre").addEventListener("input", function () {
+      P.renombrar(this.value.trim());
+    });
+  });
+
+  $("#proy-lista").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-abrir],[data-duplicar],[data-borrar]");
+    if (!b) return;
+    var d = b.dataset;
+    if (d.abrir !== undefined) {
+      if (P.sucio() &&
+          !window.confirm("Hay cambios sin guardar. ¿Abrir el otro proyecto?")) return;
+      P.abrir(d.abrir).then(function (p) {
+        RDRENTA.ir(p.vista);
+        avisar("proyecto abierto");
+      }, fallo);
+      return;
+    }
+    if (d.duplicar !== undefined) {
+      P.duplicar(d.duplicar).then(function () {
+        avisar("proyecto duplicado");
+        pintarLista();
+      }, fallo);
+      return;
+    }
+    if (!window.confirm("Se elimina el proyecto y sus fotografías. ¿Seguro?")) return;
+    P.borrar(d.borrar).then(function () {
+      avisar("proyecto eliminado");
+      pintarLista();
+    }, fallo);
+  });
+
+  /* La lista solo se rehace cuando cambia algo que ella muestra: el proyecto
+     abierto o su estado. Repintarla en cada tecla seria trabajo inutil. */
+  var ultimo = { id: null, estado: null };
+  P.alTocar(function (actual, sucio) {
+    pintarBarra(actual, sucio);
+    var id = actual ? actual.id : null;
+    var estado = actual ? actual.estado : null;
+    if (id !== ultimo.id || estado !== ultimo.estado) {
+      ultimo = { id: id, estado: estado };
+      pintarLista();
+    }
+  });
+  pintarBarra(P.actual(), P.sucio());
+  pintarLista();
+
+  RDRENTA.proyectosUI = { refrescar: pintarLista };
+})();
 </script>
 
 <script>
