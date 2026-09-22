@@ -14,7 +14,6 @@ def manifiesto_minimo(**cambios):
             "categoria": "grupo_electrogeno",
         },
         "registro_fotografico": [{"foto_id": 1, "descripcion": "VISTA FRONTAL"}],
-        "resumen_ejecutivo": "Equipo operativo y completo, apto para despacho.",
     }
     base.update(cambios)
     return base
@@ -52,11 +51,6 @@ def test_estado_observado_exige_observacion():
     m = manifiesto_minimo(inspeccion_componentes=[
         {"item": "Breaker principal", "estado": "OBS", "observacion": ""}])
     assert any("observacion" in e for e in schema.validar(m))
-
-
-def test_resumen_limitado_a_veinte_palabras():
-    m = manifiesto_minimo(resumen_ejecutivo=" ".join(["palabra"] * 21))
-    assert any("resumen_ejecutivo" in e for e in schema.validar(m))
 
 
 def test_foto_id_duplicado_detectado():

@@ -293,6 +293,78 @@
                background:#fff !important; border:5px solid rgba(255,255,255,.45) !important;
                padding:0; flex:none; }
   .obturador:active { transform:scale(.94); }
+  /* ---------- editor de la fotografía ----------
+     Entre el disparo y el acta hay una decisión que sólo puede tomar quien
+     está delante del equipo: qué parte de la foto importa. El editor la pide
+     una vez, con el marco de la proporción a la vista, y lo que acepta es lo
+     que va al Excel: no se recorta dos veces ni se estira nunca. */
+  .editor { position:fixed; inset:0; z-index:70; background:#0B0D0E;
+            display:flex; flex-direction:column; }
+  .ed-lienzo { flex:1; position:relative; overflow:hidden; min-height:0;
+               touch-action:none; background:#0B0D0E; }
+  .ed-lienzo img { position:absolute; transform-origin:0 0; will-change:transform;
+                   user-select:none; -webkit-user-drag:none; pointer-events:none; }
+  /* El velo apaga lo que queda fuera del recorte sin tapar la foto: lo que se
+     ve claro es exactamente lo que entra en la casilla. */
+  .ed-marco { position:absolute; pointer-events:none;
+              border:2px solid rgba(255,255,255,.95); border-radius:2px;
+              box-shadow:0 0 0 100vmax rgba(8,10,11,.72); }
+  .ed-alto { position:absolute; top:0; left:0; right:0; z-index:2;
+             padding:calc(env(safe-area-inset-top) + .7rem) .9rem .8rem;
+             background:linear-gradient(rgba(0,0,0,.9), rgba(0,0,0,.5) 65%, transparent);
+             display:flex; align-items:flex-start; justify-content:space-between; gap:.8rem; }
+  .ed-rotulo { margin:0; color:#fff; font-family:var(--cond); font-size:1.2rem;
+               font-weight:700; text-transform:uppercase; letter-spacing:.02em; line-height:1.1; }
+  .ed-medida { display:block; font-family:var(--mono); font-size:.68rem; font-weight:400;
+               letter-spacing:.08em; color:#B9C6CC; text-transform:none; margin-top:.2rem; }
+  .ed-mandos { position:relative; z-index:2; display:flex; flex-direction:column; gap:.7rem;
+               padding:.8rem 1rem calc(.9rem + env(safe-area-inset-bottom));
+               background:#16191B; border-top:1px solid rgba(255,255,255,.12); }
+  .ed-props { display:flex; gap:.35rem; overflow-x:auto; padding-bottom:.15rem; }
+  .ed-props button { flex:0 0 auto; background:rgba(255,255,255,.07);
+                     border:1px solid rgba(255,255,255,.28); color:#B9C6CC;
+                     font-family:var(--cond); font-size:.8rem; font-weight:700;
+                     text-transform:uppercase; letter-spacing:.05em;
+                     min-height:42px; padding:.4rem .75rem; border-radius:5px; }
+  .ed-props button[aria-pressed="true"] { background:#fff; color:#16191B; border-color:#fff; }
+  .ed-zoom { display:flex; align-items:center; gap:.7rem; }
+  .ed-zoom label { font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+                   color:#B9C6CC; text-transform:uppercase; }
+  .ed-zoom input[type="range"] { flex:1; min-width:0; accent-color:#fff; height:34px; }
+  .ed-bar { display:flex; gap:.5rem; }
+  .ed-bar button { flex:1; min-height:48px; }
+  .ed-bar .primary { flex:1.4; }
+  @media (min-width: 760px) {
+    .ed-mandos { flex-direction:row; align-items:center; flex-wrap:wrap; }
+    .ed-props { flex:1 1 auto; }
+    .ed-zoom { flex:1 1 16rem; }
+    .ed-bar { flex:0 0 auto; }
+    .ed-bar button { min-width:9rem; }
+  }
+  /* ---------- barra de proyecto ----------
+     «Guardar» y «Exportar» no son lo mismo y la barra lo dice sin explicarlo:
+     el nombre del acta en curso, su estado, y guardar para seguir mañana. */
+  .proy { display:flex; flex-wrap:wrap; align-items:center; gap:.4rem;
+          padding:.5rem .6rem; margin-bottom:.9rem;
+          background:var(--card-2); border:1px solid var(--rule); border-radius:6px; }
+  .proy input[type="text"] { flex:1 1 9rem; min-width:0; min-height:40px;
+                             background:var(--card); border:1px solid var(--rule);
+                             border-radius:5px; padding:.35rem .5rem; color:inherit;
+                             font-family:inherit; font-size:.92rem; }
+  .proy button { min-height:40px; padding:.35rem .7rem; font-size:.85rem; }
+  .proy .estado { font-family:var(--mono); font-size:.62rem; letter-spacing:.09em;
+                  text-transform:uppercase; padding:.22rem .45rem; border-radius:99px;
+                  border:1px solid var(--rule); color:var(--ink-2); white-space:nowrap; }
+  .proy .estado.sucio { border-color:#C79A3A; color:#C79A3A; }
+  .proy .estado.exportado { border-color:#4E8B5A; color:#4E8B5A; }
+  .lista-proy { display:flex; flex-direction:column; gap:.5rem; margin:.8rem 0 0; }
+  .proy-fila { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+               padding:.55rem .65rem; border:1px solid var(--rule); border-radius:6px;
+               background:var(--card); }
+  .proy-fila .nom { flex:1 1 10rem; min-width:0; font-weight:600; }
+  .proy-fila .meta { font-family:var(--mono); font-size:.65rem; letter-spacing:.06em;
+                     color:var(--ink-3); display:block; font-weight:400; margin-top:.15rem; }
+  .proy-fila button { min-height:38px; padding:.3rem .6rem; font-size:.82rem; }
   .cam-aviso { position:absolute; left:1rem; right:1rem; top:50%; transform:translateY(-50%);
                background:var(--card); color:var(--ink); border:1px solid var(--rule);
                border-radius:7px; padding:.9rem 1rem; font-size:.9rem; }
@@ -379,16 +451,42 @@
           grid-template-columns:repeat(auto-fill,minmax(9rem,1fr)); }
   @media (min-width:56rem) { .grid { grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr)); } }
 
-  .slot { border:1px solid var(--rule); border-radius:5px; overflow:hidden;
+  .slot { position:relative; border:1px solid var(--rule); border-radius:5px; overflow:hidden;
           background:var(--card-2); display:flex; flex-direction:column;
           text-align:left; padding:0; cursor:pointer; width:100%;
           font-family:inherit; color:inherit; align-self:stretch; }
+  /* Las tres cosas que se le hacen a una foto ya tomada, a la vista y con
+     objetivo tactil propio: antes un toque en la casilla la borraba sin
+     preguntar, que es lo ultimo que uno quiere en el patio. */
+  /* Sobre la fotografia y arriba: abajo esta el rotulo de la vista, y en una
+     casilla estrecha —seis por fila en la computadora— los botones lo tapaban.
+     En un aparato tactil estan siempre a la vista, porque no hay puntero que
+     los despierte; con raton aparecen al pasar por encima y no estorban la
+     lectura de la rejilla. */
+  .slot .acciones { position:absolute; right:.2rem; top:.2rem; display:flex; gap:.15rem;
+                    z-index:2; opacity:.95; }
+  .slot .acciones button { min-height:30px; min-width:30px; padding:0; line-height:1;
+                           font-size:.82rem; border-radius:5px;
+                           background:rgba(12,14,16,.82); color:#fff;
+                           border:1px solid rgba(255,255,255,.38); }
+  .slot .acciones button:hover,
+  .slot .acciones button:focus-visible { background:#16191B; border-color:#fff; }
+  @media (hover: hover) and (pointer: fine) {
+    .slot .acciones { opacity:0; transition:opacity .12s; }
+    .slot:hover .acciones,
+    .slot:focus-within .acciones { opacity:1; }
+  }
   .slot .ph { aspect-ratio:4/3; display:grid; place-items:center; color:var(--ink-3);
               font-family:var(--mono); font-size:.6rem; text-align:center;
               white-space:pre-line; line-height:1.35; padding:.2rem;
               background:repeating-linear-gradient(45deg,transparent,transparent 7px,
                         var(--rule-2) 7px,var(--rule-2) 8px); }
-  .slot img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; }
+  /* `contain` y no `cover`: la casilla tiene que enseñar la foto entera, con
+     la forma con la que va a entrar en el acta. Con `cover` una foto 1:1 se
+     veía recortada aquí y completa en el Excel, y el operador descubría la
+     diferencia al abrir el archivo. */
+  .slot img { width:100%; aspect-ratio:4/3; object-fit:contain; display:block;
+              background:#0F1113; }
   .slot .cap { font-family:var(--sans); font-size:.64rem; font-weight:600;
                text-transform:uppercase; letter-spacing:.02em; line-height:1.25;
                padding:.26rem .35rem; background:var(--card-2);
@@ -652,6 +750,23 @@
         </button>
       </div>
 
+      <section class="seccion" id="proy-seccion" hidden>
+        <h2>Proyectos guardados</h2>
+        <p class="sub" style="margin:.2rem 0 0">
+          Un acta a medias se guarda con sus fotos y se retoma cuando vuelva el
+          equipo o lleguen los datos del cliente. Guardar no es exportar: el
+          proyecto sigue abierto a cambios.
+        </p>
+        <p style="margin:.7rem 0 0">
+          <input type="file" id="proy-archivo" accept=".nefer,.zip,application/zip" hidden>
+          <label class="boton" for="proy-archivo">Abrir desde archivo…</label>
+        </p>
+        <div class="lista-proy" id="proy-lista"></div>
+        <p class="sub" id="proy-vacio" style="margin:.6rem 0 0">
+          Todavía no hay ninguno guardado.
+        </p>
+      </section>
+
       <div class="aviso malo" id="aviso-contexto" hidden></div>
 
       <div class="instalar" id="pista-instalar">
@@ -689,6 +804,15 @@
 
     <!-- ================= DESPACHO ================= -->
     <section class="vista" id="v-despacho" role="tabpanel" aria-labelledby="tab-despacho">
+      <div class="proy" id="d-proy" hidden>
+        <input type="text" id="d-proy-nombre" placeholder="nombre del proyecto"
+               aria-label="Nombre del proyecto">
+        <span class="estado" id="d-proy-estado">borrador</span>
+        <button type="button" id="d-proy-guardar" class="primary">Guardar</button>
+        <button type="button" id="d-proy-guardar-como">Guardar como</button>
+        <button type="button" id="d-proy-abrir">Abrir</button>
+        <button type="button" id="d-proy-nuevo">Nuevo</button>
+      </div>
       <div class="encab">
         <p class="kicker">acta de salida</p>
         <h1>Despacho</h1>
@@ -797,10 +921,6 @@
 
       <section class="seccion">
         <h2>Resultado</h2>
-        <label class="campo" style="margin-bottom:.6rem">
-          <span class="lb">Resumen ejecutivo · máximo 20 palabras</span>
-          <input type="text" id="d-resumen"
-                 placeholder="Grupo electrógeno sale operativo, con extintor y tacos; sin observaciones."></label>
         <div class="aviso" id="d-estado"><b>Cargue las fotos</b> para empezar.</div>
         <div class="bar">
           <button class="primary" id="d-pdf" type="button">Descargar PDF</button>
@@ -817,6 +937,15 @@
 
     <!-- ================= RECEPCIÓN ================= -->
     <section class="vista" id="v-recepcion" role="tabpanel" aria-labelledby="tab-recepcion">
+      <div class="proy" id="r-proy" hidden>
+        <input type="text" id="r-proy-nombre" placeholder="nombre del proyecto"
+               aria-label="Nombre del proyecto">
+        <span class="estado" id="r-proy-estado">borrador</span>
+        <button type="button" id="r-proy-guardar" class="primary">Guardar</button>
+        <button type="button" id="r-proy-guardar-como">Guardar como</button>
+        <button type="button" id="r-proy-abrir">Abrir</button>
+        <button type="button" id="r-proy-nuevo">Nuevo</button>
+      </div>
       <div class="encab">
         <p class="kicker">acta de retorno</p>
         <h1>Recepción</h1>
@@ -952,10 +1081,6 @@
         <section class="seccion">
           <h2>Resultado</h2>
           <div class="aviso" id="r-estado-final"></div>
-          <label class="campo" style="margin-bottom:.6rem">
-            <span class="lb">Resumen ejecutivo · máximo 20 palabras</span>
-            <input type="text" id="r-resumen"
-                   placeholder="Grupo retorna operativo; junta de escape rota, se factura el cambio."></label>
           <div class="bar">
             <button class="primary" id="r-pdf" type="button">Descargar PDF</button>
             <button id="r-xlsx" type="button">Descargar Excel</button>
@@ -1105,6 +1230,42 @@ rdrenta construir acta.json -o ACTA.xlsx --pdf</textarea>
     </div>
   </div>
 
+  <div class="editor" id="editor" hidden aria-modal="true" role="dialog"
+       aria-label="Encuadre de la fotografía">
+    <div class="ed-lienzo" id="ed-lienzo">
+      <img id="ed-img" alt="">
+      <div class="ed-marco" id="ed-marco"></div>
+    </div>
+    <div class="ed-alto">
+      <p class="ed-rotulo"><span id="ed-rotulo">Fotografía</span>
+        <span class="ed-medida" id="ed-medida"></span></p>
+    </div>
+    <div class="ed-mandos">
+      <div class="ed-props" id="ed-props" role="group" aria-label="Proporción">
+        <button type="button" data-prop="original" aria-pressed="false">Original</button>
+        <button type="button" data-prop="1:1" aria-pressed="false">1:1</button>
+        <button type="button" data-prop="4:3" aria-pressed="true">4:3</button>
+        <button type="button" data-prop="16:9" aria-pressed="false">16:9</button>
+        <button type="button" data-prop="bloque" aria-pressed="false">Ajustar al acta</button>
+      </div>
+      <div class="ed-props" id="ed-giro" role="group" aria-label="Posición">
+        <button type="button" data-giro="horizontal" aria-pressed="true">Horizontal</button>
+        <button type="button" data-giro="vertical" aria-pressed="false">Vertical</button>
+      </div>
+      <div class="ed-zoom">
+        <label for="ed-zoom">Zoom</label>
+        <input type="range" id="ed-zoom" min="100" max="400" value="100" step="1"
+               aria-label="Acercar o alejar la fotografía">
+        <button type="button" id="ed-centrar">Centrar</button>
+      </div>
+      <div class="ed-bar">
+        <button type="button" id="ed-repetir">Repetir</button>
+        <button type="button" id="ed-cancelar">Cancelar</button>
+        <button type="button" class="primary" id="ed-usar">Usar foto</button>
+      </div>
+    </div>
+  </div>
+
   <nav class="tabs" role="tablist" aria-label="Secciones de la aplicación">
     <button type="button" id="tab-inicio" role="tab" aria-selected="true"
             aria-controls="v-inicio" data-ir="inicio">
@@ -1139,7 +1300,7 @@ var RDRENTA = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-10 · instalable";
+  var VERSION = "2026-09-22 · encuadre, proyectos y traslado a la PC";
 
   "use strict";
 
@@ -1398,6 +1559,59 @@ var RDRENTA = (function () {
       hora: (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1),
       dia: ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()
     };
+  }
+
+  /* ---------- leer un ZIP ----------
+     La app ya sabe escribirlos; para traerse un proyecto de otro aparato hay
+     que saber abrirlos. Se leen las cabeceras locales y se corta: los que
+     escribe esta app van almacenados, sin comprimir. Si viene comprimido
+     —porque alguien lo volvio a empaquetar en la PC— se usa el
+     descompresor del propio navegador, que es estandar desde 2022. */
+  function leerZip(blob) {
+    return blob.arrayBuffer().then(function (buf) {
+      var v = new DataView(buf), u8 = new Uint8Array(buf);
+      var fin = buf.byteLength, pos = 0, salida = [], pendientes = [];
+      var decod = new TextDecoder("utf-8");
+
+      while (pos + 30 <= fin && v.getUint32(pos, true) === 0x04034b50) {
+        var metodo = v.getUint16(pos + 8, true);
+        var comprimido = v.getUint32(pos + 18, true);
+        var crudo = v.getUint32(pos + 22, true);
+        var largoNombre = v.getUint16(pos + 26, true);
+        var largoExtra = v.getUint16(pos + 28, true);
+        var ini = pos + 30;
+        var nombre = decod.decode(u8.subarray(ini, ini + largoNombre));
+        var datos = ini + largoNombre + largoExtra;
+
+        // Descriptor de datos: el tamano no estaba al escribir la cabecera.
+        if (!comprimido && !crudo && (v.getUint16(pos + 6, true) & 0x08)) {
+          throw new Error("el archivo usa descriptores de datos y no se puede leer");
+        }
+        var trozo = u8.subarray(datos, datos + comprimido);
+        if (metodo === 0) {
+          salida.push({ nombre: nombre, datos: trozo });
+        } else if (metodo === 8 && window.DecompressionStream) {
+          pendientes.push(inflar(trozo).then(function (nom) {
+            return function (bytes) { salida.push({ nombre: nom, datos: bytes }); };
+          }(nombre)));
+        } else {
+          throw new Error("el archivo viene comprimido y este navegador no sabe abrirlo");
+        }
+        pos = datos + comprimido;
+      }
+      if (!salida.length && !pendientes.length) throw new Error("no parece un archivo .nefer");
+      return Promise.all(pendientes).then(function () {
+        var mapa = {};
+        salida.forEach(function (e) { mapa[e.nombre] = e.datos; });
+        return mapa;
+      });
+    });
+  }
+
+  function inflar(bytes) {
+    var ds = new DecompressionStream("deflate-raw");
+    var flujo = new Blob([bytes]).stream().pipeThrough(ds);
+    return new Response(flujo).arrayBuffer().then(function (b) { return new Uint8Array(b); });
   }
 
   function armarZip(entradas) {
@@ -1783,14 +1997,18 @@ var RDRENTA = (function () {
     function disparar() {
       var v = $("#cam-video");
       if (!flujo || !v.videoWidth) return;
-      var w = v.videoWidth, h = v.videoHeight, mayor = Math.max(w, h);
+      // Se guarda el cuadro entero: la forma la decide el editor, que es
+      // donde se ve lo que entra. Recortar aqui tambien seria decidir dos
+      // veces lo mismo en dos sitios distintos.
+      var r = { x: 0, y: 0, w: v.videoWidth, h: v.videoHeight };
+      var mayor = Math.max(r.w, r.h);
       var f = mayor > MAX_LADO ? MAX_LADO / mayor : 1;
       var c = document.createElement("canvas");
-      c.width = Math.round(w * f); c.height = Math.round(h * f);
-      c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
-      // El disparo se sella con la hora de este momento, antes de codificar:
-      // lo que se guarda ya lleva la fecha dentro de la imagen.
-      sellarFecha(c, new Date());
+      c.width = Math.round(r.w * f); c.height = Math.round(r.h * f);
+      c.getContext("2d").drawImage(v, r.x, r.y, r.w, r.h, 0, 0, c.width, c.height);
+      // El sello va despues del encuadre, no aqui: si se pusiera ahora, un
+      // recorte podria dejar la fecha fuera de la foto que se guarda.
+      var cuando = new Date();
 
       var destino = pendientes[puntero] || null;
       var sello = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
@@ -1804,10 +2022,22 @@ var RDRENTA = (function () {
         if (!b) return;
         var archivo;
         try { archivo = new File([b], base + ".jpg", { type: "image/jpeg" }); }
-        catch (e) { return; }
-        if (alTomar) alTomar(archivo, destino);
-        if (destino) { puntero++; pintarDestino(); }
+        catch (err) { return; }
         destello();
+
+        // La camara queda abierta detras: «Repetir» vuelve a ella sin haber
+        // gastado la casilla, y solo al aceptar avanza el recorrido.
+        function guardar(definitiva) {
+          if (alTomar) alTomar(definitiva, destino);
+          if (destino) { puntero++; pintarDestino(); }
+        }
+        editor.abrir({
+          archivo: archivo,
+          rotulo: destino ? destino.rotulo : "Fotografía",
+          sellar: true, fecha: cuando,
+          alAceptar: guardar,
+          alRepetir: function () { /* la camara sigue ahi: no hay nada que hacer */ }
+        });
       }, "image/jpeg", 0.85);
     }
 
@@ -1828,6 +2058,7 @@ var RDRENTA = (function () {
       if (sa) sa.addEventListener("click", function () {
         if (puntero < pendientes.length) { puntero++; pintarDestino(); }
       });
+
       document.addEventListener("keydown", function (e) {
         if (e.key === "Escape" && !$("#camara").hidden) cerrar();
       });
@@ -1835,6 +2066,637 @@ var RDRENTA = (function () {
 
     return { hay: hay, utilizable: utilizable, abrir: abrir, cerrar: cerrar,
              conectar: conectar };
+  })();
+
+  /* ---------- proyectos guardados ----------
+     Un acta no se levanta de una sentada: se fotografia el equipo, el chofer
+     se lleva la maquina y los datos del cliente llegan por la tarde. Hasta
+     ahora la app guardaba lo tecleado en `localStorage` pero **no las fotos**,
+     asi que cerrar el navegador costaba la mañana entera.
+
+     Las fotos son binarios de varios MB: `localStorage` no los admite —solo
+     texto, y con un tope de unos 5 MB—, asi que van a IndexedDB, que guarda
+     Blobs tal cual y sin limite practico. Es lo unico que la plataforma ofrece
+     para esto sin traer una dependencia, y esta app no tiene ninguna. */
+  var almacen = (function () {
+    var NOMBRE = "rdrenta", VERSION = 1, TIENDA = "proyectos";
+    var bd = null;
+
+    function abrir() {
+      if (bd) return Promise.resolve(bd);
+      return new Promise(function (ok, mal) {
+        if (!window.indexedDB) { mal(new Error("este navegador no guarda proyectos")); return; }
+        var pet = indexedDB.open(NOMBRE, VERSION);
+        pet.onupgradeneeded = function () {
+          var d = pet.result;
+          if (!d.objectStoreNames.contains(TIENDA)) {
+            var tienda = d.createObjectStore(TIENDA, { keyPath: "id" });
+            tienda.createIndex("modificado", "modificado");
+          }
+        };
+        pet.onsuccess = function () { bd = pet.result; ok(bd); };
+        pet.onerror = function () { mal(pet.error || new Error("no se pudo abrir el almacen")); };
+      });
+    }
+
+    function operar(modo, fn) {
+      return abrir().then(function (d) {
+        return new Promise(function (ok, mal) {
+          var tx = d.transaction(TIENDA, modo);
+          var pet = fn(tx.objectStore(TIENDA));
+          tx.onabort = tx.onerror = function () { mal(tx.error || new Error("transaccion fallida")); };
+          tx.oncomplete = function () { ok(pet ? pet.result : undefined); };
+        });
+      });
+    }
+
+    return {
+      hay: function () { return !!window.indexedDB; },
+      listar: function () {
+        return operar("readonly", function (t) { return t.getAll(); }).then(function (l) {
+          return (l || []).sort(function (a, b) {
+            return (b.modificado || 0) - (a.modificado || 0);
+          });
+        });
+      },
+      leer: function (id) { return operar("readonly", function (t) { return t.get(id); }); },
+      guardar: function (p) { return operar("readwrite", function (t) { t.put(p); }).then(function () { return p; }); },
+      borrar: function (id) { return operar("readwrite", function (t) { t.delete(id); }); }
+    };
+  })();
+
+  /* ---------- el proyecto en curso ----------
+     «Guardar» y «Exportar» son cosas distintas y el pliego lo pide explicito:
+     guardar es para seguir mañana, exportar es el archivo que se firma. Un
+     proyecto guardado no se cierra: se vuelve a abrir tal como estaba. */
+  var ESTADOS = ["borrador", "en proceso", "completo", "exportado"];
+
+  var proyectos = (function () {
+    var vistas = {};                  // despacho / recepcion: como se copian
+    var actual = null;                // {id, nombre, estado, creado, modificado, vista}
+    var sucio = false;
+    var alCambiar = [];
+
+    function registrar(nombre, api) { vistas[nombre] = api; }
+    function avisar() { alCambiar.forEach(function (f) { f(actual, sucio); }); }
+    function alTocar(f) { alCambiar.push(f); }
+
+    function marcarSucio() {
+      if (sucio) return;
+      sucio = true;
+      avisar();
+    }
+
+    function nuevoId() {
+      return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    function nombrePorDefecto(vista, datos) {
+      var enc = (datos && datos.campos) || {};
+      var equipo = enc[vista === "recepcion" ? "r-codigo_equipo" : "d-equipo"] || "";
+      var acta = enc[vista === "recepcion" ? "r-acta" : "d-acta"] || "";
+      var partes = [vista === "recepcion" ? "Recepción" : "Despacho"];
+      if (equipo) partes.push(equipo);
+      if (acta) partes.push(acta);
+      if (partes.length === 1) partes.push(hoy());
+      return partes.join(" · ");
+    }
+
+    /* Se guarda lo tecleado, las fotos con sus bytes y a que casilla va cada
+       una. Las fotos se referencian por su posicion en la lista y no por el
+       identificador de memoria, que no sobrevive a cerrar la pestaña. */
+    function instantanea() {
+      var vista = actual && actual.vista;
+      var api = vistas[vista];
+      if (!api) return Promise.reject(new Error("no hay nada que guardar"));
+      return Promise.resolve(api.instantanea());
+    }
+
+    function guardar(opciones) {
+      opciones = opciones || {};
+      if (!actual) return Promise.reject(new Error("no hay proyecto abierto"));
+      return instantanea().then(function (datos) {
+        var p = {
+          id: opciones.comoNuevo ? nuevoId() : actual.id,
+          nombre: opciones.nombre || actual.nombre || nombrePorDefecto(actual.vista, datos),
+          vista: actual.vista,
+          estado: opciones.estado || actual.estado || "borrador",
+          creado: opciones.comoNuevo ? Date.now() : (actual.creado || Date.now()),
+          modificado: Date.now(),
+          datos: datos
+        };
+        return almacen.guardar(p).then(function () {
+          actual = { id: p.id, nombre: p.nombre, vista: p.vista,
+                     estado: p.estado, creado: p.creado, modificado: p.modificado };
+          sucio = false;
+          avisar();
+          return actual;
+        });
+      });
+    }
+
+    /* Lo que ya esta en pantalla pasa a ser un proyecto, sin tocarlo. Es lo
+       que hace falta al guardar por primera vez: `nuevo()` limpia la vista, y
+       llamarlo aqui borraba las fotos justo antes de copiarlas. */
+    function adoptar(vista) {
+      actual = { id: nuevoId(), nombre: "", vista: vista, estado: "borrador",
+                 creado: Date.now(), modificado: Date.now() };
+      avisar();
+      return actual;
+    }
+
+    function nuevo(vista) {
+      var api = vistas[vista];
+      if (api && api.limpiar) api.limpiar();
+      actual = { id: nuevoId(), nombre: "", vista: vista, estado: "borrador",
+                 creado: Date.now(), modificado: Date.now() };
+      sucio = false;
+      avisar();
+      return actual;
+    }
+
+    function abrir(id) {
+      return almacen.leer(id).then(function (p) {
+        if (!p) throw new Error("ese proyecto ya no existe");
+        var api = vistas[p.vista];
+        if (!api) throw new Error("no se reconoce el tipo de proyecto");
+        return Promise.resolve(api.restaurar(p.datos)).then(function () {
+          actual = { id: p.id, nombre: p.nombre, vista: p.vista, estado: p.estado,
+                     creado: p.creado, modificado: p.modificado };
+          sucio = false;
+          avisar();
+          return actual;
+        });
+      });
+    }
+
+    function duplicar(id) {
+      return almacen.leer(id).then(function (p) {
+        if (!p) throw new Error("ese proyecto ya no existe");
+        var copia = JSON.parse(JSON.stringify({ nombre: p.nombre, vista: p.vista,
+                                                estado: p.estado }));
+        copia.id = nuevoId();
+        copia.nombre = (p.nombre || "Proyecto") + " (copia)";
+        copia.estado = "borrador";
+        copia.creado = copia.modificado = Date.now();
+        copia.datos = p.datos;         // los Blobs se comparten sin copiarse
+        return almacen.guardar(copia);
+      });
+    }
+
+    /* ---------- llevar un proyecto a otro aparato ----------
+       El acta empieza en el patio, con el telefono, y se termina en la
+       oficina, donde hay teclado y pantalla. El proyecto viaja en un archivo
+       `.nefer`: un ZIP con `proyecto.json` y las fotos. No hay servidor de por
+       medio, asi que el archivo es el unico vehiculo, y va en los dos
+       sentidos: del telefono a la PC y de vuelta. */
+    var FORMATO = "nefer-proyecto/1";
+
+    function nombreArchivo(p) {
+      var base = (p.nombre || "proyecto").toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      return (base || "proyecto") + ".nefer";
+    }
+
+    /* El JSON se queda con la estructura y las fotos salen aparte, como
+       archivos: asi el paquete se puede abrir con cualquier descompresor y
+       ver que hay dentro. */
+    function empaquetar(id) {
+      return almacen.leer(id).then(function (p) {
+        if (!p) throw new Error("ese proyecto ya no existe");
+        var entradas = [], copia = JSON.parse(JSON.stringify({
+          formato: FORMATO, nombre: p.nombre, vista: p.vista, estado: p.estado,
+          creado: p.creado, modificado: p.modificado
+        }));
+        var datos = p.datos || {};
+        var fotos = datos.fotos || [], antes = datos.antes || [];
+        var blobs = [];
+
+        function ruta(carpeta, i, nombre) {
+          var limpio = String(nombre || "foto.jpg").split(/[\\/]/).pop()
+            .replace(/[^\w.\- ]+/g, "_");
+          return carpeta + "/" + ("000" + (i + 1)).slice(-4) + "-" + limpio;
+        }
+        function sinBlobs(lista, carpeta) {
+          return lista.map(function (f, i) {
+            var r = ruta(carpeta, i, f.nombre);
+            if (f.archivo) blobs.push({ ruta: r, blob: f.archivo });
+            var c = {};
+            for (var k in f) if (Object.prototype.hasOwnProperty.call(f, k)) c[k] = f[k];
+            c.archivo = f.archivo ? r : null;
+            return c;
+          });
+        }
+        var fuera = {};
+        for (var k in datos) if (Object.prototype.hasOwnProperty.call(datos, k)) fuera[k] = datos[k];
+        fuera.fotos = sinBlobs(fotos, "fotos");
+        if (antes.length) fuera.antes = sinBlobs(antes, "despacho");
+        copia.datos = fuera;
+
+        entradas.push({ nombre: "proyecto.json",
+                        datos: new TextEncoder().encode(JSON.stringify(copia, null, 2)) });
+        return Promise.all(blobs.map(function (b) {
+          return b.blob.arrayBuffer().then(function (buf) {
+            entradas.push({ nombre: b.ruta, datos: new Uint8Array(buf) });
+          });
+        })).then(function () {
+          return { blob: armarZip(entradas), nombre: nombreArchivo(p) };
+        });
+      });
+    }
+
+    /* Al revés: se abre el archivo, se rehacen los Blobs y el proyecto entra
+       en el almacen de este aparato como uno mas. Se le da identidad nueva
+       para no pisar nada de lo que ya hubiera aqui. */
+    function importar(archivo) {
+      return leerZip(archivo).then(function (mapa) {
+        var crudo = mapa["proyecto.json"];
+        if (!crudo) throw new Error("el archivo no lleva un proyecto dentro");
+        var p;
+        try { p = JSON.parse(new TextDecoder().decode(crudo)); }
+        catch (e) { throw new Error("el proyecto viene dañado"); }
+        if (!p || !p.datos || !vistas[p.vista]) {
+          throw new Error("no se reconoce el tipo de proyecto");
+        }
+        function conBlobs(lista) {
+          return (lista || []).map(function (f) {
+            var c = {};
+            for (var k in f) if (Object.prototype.hasOwnProperty.call(f, k)) c[k] = f[k];
+            var bytes = f.archivo ? mapa[f.archivo] : null;
+            c.archivo = bytes ? new Blob([bytes], { type: "image/jpeg" }) : null;
+            return c;
+          }).filter(function (f) { return f.archivo; });
+        }
+        p.datos.fotos = conBlobs(p.datos.fotos);
+        if (p.datos.antes) p.datos.antes = conBlobs(p.datos.antes);
+
+        var guardado = {
+          id: nuevoId(),
+          nombre: p.nombre || "Proyecto importado",
+          vista: p.vista,
+          estado: p.estado || "borrador",
+          creado: p.creado || Date.now(),
+          modificado: Date.now(),
+          datos: p.datos
+        };
+        return almacen.guardar(guardado);
+      });
+    }
+
+    function marcarExportado() {
+      if (!actual) return Promise.resolve(null);
+      return guardar({ estado: "exportado" });
+    }
+
+    return {
+      registrar: registrar, alTocar: alTocar, marcarSucio: marcarSucio,
+      ESTADOS: ESTADOS,
+      nuevo: nuevo, adoptar: adoptar, guardar: guardar, abrir: abrir,
+      duplicar: duplicar, marcarExportado: marcarExportado,
+      empaquetar: empaquetar, importar: importar,
+      borrar: function (id) { return almacen.borrar(id); },
+      listar: function () { return almacen.listar(); },
+      hay: function () { return almacen.hay(); },
+      actual: function () { return actual; },
+      sucio: function () { return sucio; },
+      nombrePorDefecto: nombrePorDefecto,
+      renombrar: function (nombre) {
+        if (!actual) return;
+        actual.nombre = nombre;
+        marcarSucio();
+      }
+    };
+  })();
+
+  /* ---------- editor de la fotografía ----------
+     Una foto de telefono llega vertical y el hueco del acta es apaisado: al
+     conservar la proporcion —que es obligatorio— la foto entra pequena y deja
+     medio bloque vacio. La decision de que parte de la foto importa solo puede
+     tomarla quien esta delante del equipo, asi que se pide aqui, una vez, y lo
+     aceptado es lo que viaja: el recorte se hornea en el JPEG y ni el Excel ni
+     el PDF vuelven a tocar la forma. */
+  var editor = (function () {
+    var MARGEN = 14;                       // aire entre el marco y el borde
+    var e = null;                          // sesion de edicion en curso
+    // La proporcion se elige una vez y sirve para toda el acta: las diez
+    // vistas tienen que salir iguales o la rejilla queda despareja.
+    var PROP = "4:3";
+    // La posicion transpone la proporcion: 4:3 apaisado, 3:4 de pie. Es el
+    // mismo dato, no otro control: el equipo alto se encuadra de pie y el
+    // ancho tumbado, y el acta recibe la forma que se ve en el marco.
+    var VERTICAL = false;
+    try {
+      PROP = localStorage.getItem("rdrenta.foto.proporcion") || PROP;
+      VERTICAL = localStorage.getItem("rdrenta.foto.posicion") === "vertical";
+    } catch (err) { /* sin permiso: vale para esta sesion */ }
+
+    function nodo(id) { return document.getElementById(id); }
+
+    function proporcion(nombre) {
+      var a;
+      if (nombre === "1:1") a = 1;
+      else if (nombre === "4:3") a = 4 / 3;
+      else if (nombre === "16:9") a = 16 / 9;
+      else if (nombre === "bloque") {
+        // La del hueco del acta, tomada de las mismas cifras que dibujan el
+        // Excel: si el formato cambia, esto cambia con el.
+        var E = window.ENTREGABLE;
+        a = (E && E.ASPECTO_BLOQUE) || 4 / 3;
+      } else {
+        return e ? e.ancho / e.alto : 4 / 3;   // "original": la que trae
+      }
+      return e && e.vertical ? 1 / a : a;
+    }
+
+    /* El marco: el rectangulo de la proporcion elegida, lo mas grande que
+       quepa en el area visible. Es lo unico que define el recorte. */
+    function medirMarco() {
+      var caja = nodo("ed-lienzo").getBoundingClientRect();
+      var aw = caja.width - MARGEN * 2, ah = caja.height - MARGEN * 2;
+      var a = proporcion(e.prop);
+      var w = Math.min(aw, ah * a), h = w / a;
+      e.marco = { x: (caja.width - w) / 2, y: (caja.height - h) / 2, w: w, h: h };
+      e.caja = caja;
+    }
+
+    /* La imagen nunca puede dejar hueco dentro del marco: la escala minima es
+       la que lo cubre, y el arrastre se limita a los bordes de la propia foto.
+       De ahi que no haya forma de producir un acta con franjas en blanco. */
+    function cubrir() { return Math.max(e.marco.w / e.ancho, e.marco.h / e.alto); }
+
+    function limitar() {
+      var w = e.ancho * e.escala, h = e.alto * e.escala;
+      e.x = Math.min(e.marco.x, Math.max(e.marco.x + e.marco.w - w, e.x));
+      e.y = Math.min(e.marco.y, Math.max(e.marco.y + e.marco.h - h, e.y));
+    }
+
+    function centrar() {
+      e.x = e.marco.x + (e.marco.w - e.ancho * e.escala) / 2;
+      e.y = e.marco.y + (e.marco.h - e.alto * e.escala) / 2;
+      limitar();
+    }
+
+    function pintar() {
+      var img = nodo("ed-img"), marco = nodo("ed-marco");
+      img.style.width = e.ancho + "px";
+      img.style.height = e.alto + "px";
+      img.style.transform = "translate(" + e.x + "px," + e.y + "px) scale(" + e.escala + ")";
+      marco.style.left = e.marco.x + "px";
+      marco.style.top = e.marco.y + "px";
+      marco.style.width = e.marco.w + "px";
+      marco.style.height = e.marco.h + "px";
+      var r = recorte();
+      nodo("ed-medida").textContent =
+        e.ancho + "\u00d7" + e.alto + " \u2192 " + r.w + "\u00d7" + r.h +
+        " px \u00b7 " + (e.prop === "original" ? "original" : e.prop);
+    }
+
+    /* Del marco en pixeles de pantalla al rectangulo en pixeles de la foto. */
+    function recorte() {
+      var sx = (e.marco.x - e.x) / e.escala, sy = (e.marco.y - e.y) / e.escala;
+      var sw = e.marco.w / e.escala, sh = e.marco.h / e.escala;
+      sx = Math.max(0, Math.min(e.ancho - 1, sx));
+      sy = Math.max(0, Math.min(e.alto - 1, sy));
+      sw = Math.max(1, Math.min(e.ancho - sx, sw));
+      sh = Math.max(1, Math.min(e.alto - sy, sh));
+      var f = Math.min(1, MAX_LADO / Math.max(sw, sh));
+      var w = Math.max(1, Math.round(sw * f));
+      // El alto se deriva del ancho y de la proporcion pedida, no se redondea
+      // por separado: si 16:9 sale 1,7763 en vez de 1,7778, la foto ya no es
+      // la proporcion que el operador eligio.
+      var a = proporcion(e.prop);
+      var h = e.prop === "original" ? Math.max(1, Math.round(sh * f))
+                                    : Math.max(1, Math.round(w / a));
+      return { sx: sx, sy: sy, sw: sw, sh: sh, w: w, h: h };
+    }
+
+    function fijarPosicion(vertical) {
+      e.vertical = !!vertical;
+      VERTICAL = e.vertical;
+      try {
+        localStorage.setItem("rdrenta.foto.posicion", VERTICAL ? "vertical" : "horizontal");
+      } catch (err) { /* da igual */ }
+      var b = nodo("ed-giro").querySelectorAll("[data-giro]");
+      for (var i = 0; i < b.length; i++) {
+        b[i].setAttribute("aria-pressed",
+          (b[i].dataset.giro === "vertical") === e.vertical ? "true" : "false");
+      }
+      // «Original» no tiene posicion que elegir: es la de la propia foto.
+      nodo("ed-giro").hidden = e.prop === "original";
+      fijarProporcion(e.prop);
+    }
+
+    function fijarProporcion(nombre) {
+      e.prop = nombre;
+      PROP = nombre;
+      try { localStorage.setItem("rdrenta.foto.proporcion", nombre); }
+      catch (err) { /* da igual */ }
+      nodo("ed-giro").hidden = nombre === "original";
+      var botones = nodo("ed-props").querySelectorAll("[data-prop]");
+      for (var i = 0; i < botones.length; i++) {
+        botones[i].setAttribute("aria-pressed",
+          botones[i].dataset.prop === nombre ? "true" : "false");
+      }
+      medirMarco();
+      e.base = cubrir();
+      e.escala = e.base * (nodo("ed-zoom").value / 100);
+      centrar();
+      pintar();
+    }
+
+    function fijarZoom(porciento) {
+      var antes = e.escala;
+      e.escala = e.base * (porciento / 100);
+      // El zoom se hace sobre el centro del marco, que es lo que se mira.
+      var cx = e.marco.x + e.marco.w / 2, cy = e.marco.y + e.marco.h / 2;
+      e.x = cx - (cx - e.x) * (e.escala / antes);
+      e.y = cy - (cy - e.y) * (e.escala / antes);
+      limitar();
+      pintar();
+    }
+
+    /* ---------- horneado ----------
+       Se recorta de verdad: el archivo que sale ya tiene la forma elegida, y
+       por eso llena la casilla del Excel sin que nadie lo estire despues. */
+    function hornear() {
+      return new Promise(function (ok, mal) {
+        var r = recorte();
+        var c = document.createElement("canvas");
+        c.width = r.w; c.height = r.h;
+        var g = c.getContext("2d");
+        if (!g || !c.toBlob) { mal(new Error("el navegador no sabe recortar")); return; }
+        g.drawImage(nodo("ed-img"), r.sx, r.sy, r.sw, r.sh, 0, 0, r.w, r.h);
+        if (e.sellar) sellarFecha(c, e.fecha || new Date());
+        c.toBlob(function (b) {
+          if (!b) { mal(new Error("no se pudo guardar el recorte")); return; }
+          try {
+            ok(new File([b], nombreJpg(e.nombre), { type: "image/jpeg",
+                                                    lastModified: Date.now() }));
+          } catch (err) { mal(err); }
+        }, "image/jpeg", 0.86);
+      });
+    }
+
+    /* ---------- gestos ---------- */
+    var punteros = {}, arrastre = null, pellizco = null;
+
+    function conectar() {
+      var lienzo = nodo("ed-lienzo");
+      if (!lienzo) return;
+
+      lienzo.addEventListener("pointerdown", function (ev) {
+        if (!e) return;
+        lienzo.setPointerCapture(ev.pointerId);
+        punteros[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+        var ids = Object.keys(punteros);
+        if (ids.length === 1) {
+          arrastre = { x: ev.clientX, y: ev.clientY, ix: e.x, iy: e.y };
+        } else if (ids.length === 2) {
+          arrastre = null;
+          pellizco = { d: distancia(ids), zoom: +nodo("ed-zoom").value };
+        }
+      });
+
+      lienzo.addEventListener("pointermove", function (ev) {
+        if (!e || !punteros[ev.pointerId]) return;
+        punteros[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+        var ids = Object.keys(punteros);
+        if (pellizco && ids.length >= 2) {
+          var d = distancia(ids);
+          if (pellizco.d > 0) fijarZoomDesdeControl(pellizco.zoom * d / pellizco.d);
+        } else if (arrastre) {
+          e.x = arrastre.ix + (ev.clientX - arrastre.x);
+          e.y = arrastre.iy + (ev.clientY - arrastre.y);
+          limitar();
+          pintar();
+        }
+      });
+
+      function soltar(ev) {
+        delete punteros[ev.pointerId];
+        if (Object.keys(punteros).length < 2) pellizco = null;
+        if (!Object.keys(punteros).length) arrastre = null;
+      }
+      lienzo.addEventListener("pointerup", soltar);
+      lienzo.addEventListener("pointercancel", soltar);
+
+      // En la computadora se acerca con la rueda, que es lo que se espera.
+      lienzo.addEventListener("wheel", function (ev) {
+        if (!e) return;
+        ev.preventDefault();
+        fijarZoomDesdeControl(+nodo("ed-zoom").value * (ev.deltaY < 0 ? 1.12 : 0.89));
+      }, { passive: false });
+
+      nodo("ed-props").addEventListener("click", function (ev) {
+        var b = ev.target.closest("[data-prop]");
+        if (b && e) { nodo("ed-zoom").value = 100; fijarProporcion(b.dataset.prop); }
+      });
+      nodo("ed-giro").addEventListener("click", function (ev) {
+        var b = ev.target.closest("[data-giro]");
+        if (b && e) { nodo("ed-zoom").value = 100; fijarPosicion(b.dataset.giro === "vertical"); }
+      });
+      nodo("ed-zoom").addEventListener("input", function () {
+        if (e) fijarZoom(+this.value);
+      });
+      nodo("ed-centrar").addEventListener("click", function () {
+        if (e) { centrar(); pintar(); }
+      });
+      nodo("ed-usar").addEventListener("click", aceptar);
+      nodo("ed-cancelar").addEventListener("click", function () { cerrar("cancelar"); });
+      nodo("ed-repetir").addEventListener("click", function () { cerrar("repetir"); });
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape" && e) cerrar("cancelar");
+      });
+      window.addEventListener("resize", function () {
+        if (e) fijarProporcion(e.prop);
+      });
+    }
+
+    function distancia(ids) {
+      var a = punteros[ids[0]], b = punteros[ids[1]];
+      return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+    }
+
+    function fijarZoomDesdeControl(valor) {
+      var z = Math.max(100, Math.min(400, Math.round(valor)));
+      nodo("ed-zoom").value = z;
+      fijarZoom(z);
+    }
+
+    function aceptar() {
+      if (!e) return;
+      var sesion = e;
+      nodo("ed-usar").disabled = true;
+      hornear().then(function (archivo) {
+        nodo("ed-usar").disabled = false;
+        cerrar(null);
+        sesion.alAceptar(archivo, { proporcion: sesion.prop });
+      }, function (err) {
+        nodo("ed-usar").disabled = false;
+        // Si el recorte falla, la foto original es mejor que ninguna foto.
+        cerrar(null);
+        sesion.alAceptar(sesion.archivo, { proporcion: "original" });
+        if (window.console) console.warn("recorte:", err);
+      });
+    }
+
+    function cerrar(motivo) {
+      if (!e) return;
+      var sesion = e;
+      e = null;
+      nodo("editor").hidden = true;
+      nodo("ed-img").removeAttribute("src");
+      if (sesion.url) URL.revokeObjectURL(sesion.url);
+      punteros = {}; arrastre = null; pellizco = null;
+      if (motivo === "repetir" && sesion.alRepetir) sesion.alRepetir();
+      else if (motivo && sesion.alCancelar) sesion.alCancelar();
+    }
+
+    /* `opciones`: {archivo, rotulo, proporcion, sellar, fecha, alAceptar,
+       alRepetir, alCancelar}. Devuelve false si el archivo no se pudo abrir,
+       y entonces quien llama sigue con la foto tal cual. */
+    function abrir(opciones) {
+      var archivo = opciones.archivo;
+      if (!archivo) return false;
+      var url = URL.createObjectURL(archivo);
+      var img = nodo("ed-img");
+      img.onload = function () {
+        e = {
+          archivo: archivo, url: url, nombre: archivo.name || "foto.jpg",
+          ancho: img.naturalWidth, alto: img.naturalHeight,
+          prop: opciones.proporcion || PROP,
+          vertical: opciones.vertical === undefined ? VERTICAL : !!opciones.vertical,
+          escala: 1, base: 1, x: 0, y: 0,
+          sellar: !!opciones.sellar, fecha: opciones.fecha || null,
+          alAceptar: opciones.alAceptar || function () {},
+          alRepetir: opciones.alRepetir || null,
+          alCancelar: opciones.alCancelar || null
+        };
+        nodo("ed-rotulo").textContent = opciones.rotulo || "Fotografía";
+        nodo("editor").hidden = false;
+        nodo("ed-repetir").hidden = !opciones.alRepetir;
+        nodo("ed-zoom").value = 100;
+        fijarPosicion(e.vertical);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        if (opciones.alAceptar) opciones.alAceptar(archivo, { proporcion: "original" });
+      };
+      img.src = url;
+      return true;
+    }
+
+    return { abrir: abrir, conectar: conectar,
+             activo: function () { return !!e; },
+             // Para las pruebas: el recorte que se hornearia ahora mismo.
+             estado: function () {
+               if (!e) return null;
+               var r = recorte();
+               return { prop: e.prop, zoom: +nodo("ed-zoom").value,
+                        posicion: e.vertical ? "vertical" : "horizontal",
+                        ancho: r.w, alto: r.h, origen: e.ancho + "x" + e.alto };
+             } };
   })();
 
   /* ---------- nombres dentro del paquete ----------
@@ -1876,6 +2738,10 @@ var RDRENTA = (function () {
     : Promise.resolve(null);
 
   function entregar(blob, nombre, avisar) {
+    // Exportar no cierra el proyecto: lo deja marcado y abierto a cambios.
+    // Este es el unico embudo por el que salen PDF, Excel y ZIP, asi que el
+    // estado se pone aqui y en ningun otro sitio.
+    if (proyectos.actual()) proyectos.marcarExportado();
     var archivo = null;
     try { archivo = new File([blob], nombre, { type: "application/zip" }); } catch (e) { /* File viejo */ }
 
@@ -2022,6 +2888,7 @@ var RDRENTA = (function () {
 
   function arrancar() {
     camara.conectar();
+    editor.conectar();
     avisarContexto();
     ordenarCabecera();
     declararApp();
@@ -2081,9 +2948,10 @@ var RDRENTA = (function () {
 
   return {
     $: $, esc: esc, ir: ir, arrancar: arrancar, conFoco: conFoco, VERSION: VERSION,
-    armarZip: armarZip, leerBytes: leerBytes, entregar: entregar,
+    armarZip: armarZip, leerZip: leerZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
-    selloFecha: selloFecha, sellarFecha: sellarFecha,
+    selloFecha: selloFecha, sellarFecha: sellarFecha, editor: editor,
+    proyectos: proyectos,
     incrustada: incrustada,
     RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo, camara: camara,
     archivosArrastrados: archivosArrastrados, imagenesPegadas: imagenesPegadas,
@@ -2248,6 +3116,27 @@ var RDRENTA = (function () {
     opciones = opciones || {};
     var lista = Array.prototype.slice.call(archivos || []);
     if (!lista.length) { sinArchivos(opciones.origen); return; }
+
+    // Una foto sola pasa por el editor: da igual que venga de la camara
+    // integrada, de la del sistema o del selector, porque en los tres casos
+    // el operador esta poniendo *esa* foto y puede decir como la quiere. Una
+    // carga en tanda no: ahi esta metiendo diez de golpe, y cada una se
+    // encuadra despues desde su casilla con «Editar».
+    var casilla = (opciones.casilla !== undefined && opciones.casilla !== null)
+      ? opciones.casilla : null;
+    var accesorio = (opciones.accesorio !== undefined && opciones.accesorio !== null)
+      ? opciones.accesorio : null;
+    if (!opciones.encuadrada && lista.length === 1) {
+      var seguir = { origen: opciones.origen, encuadrada: true };
+      if (casilla !== null) seguir.casilla = casilla;
+      if (accesorio !== null) seguir.accesorio = accesorio;
+      var abierto = RDRENTA.editor.abrir({
+        archivo: lista[0],
+        rotulo: casilla !== null ? rotulos()[casilla] : "Observación",
+        alAceptar: function (archivo) { agregar([archivo], seguir); }
+      });
+      if (abierto) return;
+    }
 
     var antes = lista.reduce(function (a, f) { return a + (f.size || 0); }, 0);
     var barra = $("#d-progreso");
@@ -2428,10 +3317,14 @@ var RDRENTA = (function () {
       var id = casillas[i], f = id !== null ? porId(id) : null;
       var b;
       if (f) {
-        b = document.createElement("button");
-        b.type = "button";
+        // Div y no boton: dentro van los botones de accion, y un boton no
+        // puede contener otro.
+        b = document.createElement("div");
+        b.setAttribute("role", "button");
+        b.setAttribute("tabindex", "0");
         b.setAttribute("aria-label",
-          vista + ", ocupada" + (propuestas[i] ? ", propuesta" : ""));
+          vista + ", ocupada" + (propuestas[i] ? ", propuesta" : "") +
+          ", tocar para encuadrar");
       } else {
         // Vacía: es la etiqueta del selector de fotos. Si hay una foto elegida
         // en la bandeja, el manejador cancela esa apertura y la coloca aquí.
@@ -2444,7 +3337,18 @@ var RDRENTA = (function () {
       b.dataset.casilla = i;
       b.className = "slot" + (f ? " lleno" : "") + (f && propuestas[i] ? " propuesto" : "");
       var k = i - VISTAS[$("#d-cat").value].length;   // -1 si es del formato
-      b.innerHTML = (f ? '<img alt="" src="' + f.url + '">'
+      b.innerHTML = (f ? '<img alt="" src="' + f.url + '">' +
+                         '<span class="acciones">' +
+                           '<button type="button" data-foto-editar="' + i +
+                             '" title="Encuadrar" aria-label="Encuadrar la foto de ' +
+                             esc(vista) + '">\u270E</button>' +
+                           '<button type="button" data-foto-repetir="' + i +
+                             '" title="Repetir" aria-label="Repetir la foto de ' +
+                             esc(vista) + '">\u21BB</button>' +
+                           '<button type="button" data-foto-quitar="' + i +
+                             '" title="Quitar" aria-label="Quitar la foto de ' +
+                             esc(vista) + '">\u2715</button>' +
+                         '</span>'
                        : '<span class="ph">' + PISTA_VACIA + '</span>') +
         (k < 0 ? '<span class="cap"><span>' + esc(vista) + '</span>' +
                  '<span class="num">' + (i + 1) + '</span></span>' : "");
@@ -2584,8 +3488,7 @@ var RDRENTA = (function () {
       inspeccion_componentes: [],
       registro_fotografico: registro,
       consumibles: consumibles,
-      control_consumibles: [],
-      resumen_ejecutivo: $("#d-resumen").value.trim()
+      control_consumibles: []
     };
   }
 
@@ -2607,9 +3510,6 @@ var RDRENTA = (function () {
     var marca = $("#d-t-datos");
     marca.textContent = cabecera ? "faltan " + cabecera : "completo";
     marca.classList.toggle("ok", cabecera === 0);
-    var palabras = a.resumen_ejecutivo ? a.resumen_ejecutivo.split(/\s+/).length : 0;
-    if (!palabras) falta.push("el resumen ejecutivo");
-    else if (palabras > 20) falta.push("recortar el resumen a 20 palabras (tiene " + palabras + ")");
 
     var huecos = casillas.filter(function (x) { return x === null; }).length;
     var sueltas = fotos.length - Object.keys(asignadas()).length;
@@ -2671,6 +3571,23 @@ var RDRENTA = (function () {
   });
 
   $("#d-grid").addEventListener("click", function (e) {
+    var acc = e.target.closest("[data-foto-editar],[data-foto-repetir],[data-foto-quitar]");
+    if (acc) {
+      e.preventDefault();
+      e.stopPropagation();
+      var d = acc.dataset;
+      if (d.fotoEditar !== undefined) { encuadrar(+d.fotoEditar); return; }
+      if (d.fotoRepetir !== undefined) {
+        // Repetir descarta la que habia: se toma de nuevo para esa casilla.
+        var j = +d.fotoRepetir;
+        quitarDeCasilla(j, true);
+        if (RDRENTA.camara.hay()) abrirCamara(j);
+        else { casillaObjetivo = j; $("#d-slot").click(); }
+        return;
+      }
+      quitarDeCasilla(+d.fotoQuitar, false);
+      return;
+    }
     var t = e.target.closest("[data-casilla]");
     if (!t) return;
     var i = +t.dataset.casilla;
@@ -2679,7 +3596,9 @@ var RDRENTA = (function () {
       colocar(elegida, i);
       return;
     }
-    if (casillas[i] !== null) { casillas[i] = null; propuestas[i] = false; pintar(); return; }
+    // Ocupada: el toque abre el encuadre. Para vaciarla esta la ✕, que no se
+    // dispara sin querer al rozar la foto.
+    if (casillas[i] !== null) { e.preventDefault(); encuadrar(i); return; }
     if (RDRENTA.camara.hay()) {
       e.preventDefault();             // no abrir el selector: se usa la cámara
       casillaObjetivo = i;            // por si hay que caer al selector
@@ -2689,13 +3608,49 @@ var RDRENTA = (function () {
     casillaObjetivo = i;              // vacía: la foto que venga es para aquí
   });
 
-  // La etiqueta no responde al teclado por sí sola.
+  /* Vuelve a encuadrar la foto que ya esta en la casilla. El recorte se
+     aplica sobre el archivo actual, asi que encuadrar dos veces no acumula
+     perdida de forma: cada pase parte de lo que hay. */
+  function encuadrar(i) {
+    var f = casillas[i] !== null ? porId(casillas[i]) : null;
+    if (!f || !f.archivo) return;
+    RDRENTA.editor.abrir({
+      archivo: f.archivo,
+      rotulo: rotulos()[i] || f.nombre,
+      alAceptar: function (archivo) {
+        URL.revokeObjectURL(f.url);
+        f.archivo = archivo;
+        f.url = URL.createObjectURL(archivo);
+        pintar();
+      }
+    });
+  }
+
+  /* Quitar suelta la foto de la casilla y la devuelve a la bandeja; repetir
+     ademas la descarta, porque va a reemplazarse. */
+  function quitarDeCasilla(i, descartar) {
+    var id = casillas[i];
+    casillas[i] = null;
+    propuestas[i] = false;
+    if (descartar && id !== null) {
+      var f = porId(id);
+      if (f) {
+        URL.revokeObjectURL(f.url);
+        fotos = fotos.filter(function (x) { return x.id !== id; });
+      }
+    }
+    pintar();
+  }
+
+  // Ni la etiqueta ni el div responden al teclado por sí solos.
   $("#d-grid").addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
-    var t = e.target.closest("label[data-casilla]");
-    if (!t) return;
+    var t = e.target.closest("[data-casilla]");
+    if (!t || e.target.closest("[data-foto-editar],[data-foto-repetir],[data-foto-quitar]")) return;
     e.preventDefault();
-    casillaObjetivo = +t.dataset.casilla;
+    var i = +t.dataset.casilla;
+    if (casillas[i] !== null) { encuadrar(i); return; }
+    casillaObjetivo = i;
     $("#d-slot").click();
   });
 
@@ -2769,7 +3724,8 @@ var RDRENTA = (function () {
     var rotulo = (accesorios[i].nombre || "").trim().toUpperCase() || "OBSERVACIÓN";
     RDRENTA.camara.abrir({
       pendientes: [{ indice: i, rotulo: rotulo }],
-      tomar: function (archivo) { agregar([archivo], { accesorio: i }); },
+      // Ya pasó por el editor al disparar: no se vuelve a encuadrar.
+      tomar: function (archivo) { agregar([archivo], { accesorio: i, encuadrada: true }); },
       respaldo: function () { accesorioObjetivo = i; $("#d-slot").click(); }
     });
   }
@@ -2877,7 +3833,8 @@ var RDRENTA = (function () {
         ? [{ indice: soloEsta, rotulo: rotulos()[soloEsta] }]
         : casillasPendientes(),
       tomar: function (archivo, destino) {
-        agregar([archivo], { casilla: destino ? destino.indice : null });
+        agregar([archivo], { casilla: destino ? destino.indice : null,
+                             encuadrada: true });
       },
       // Si la cámara no se concede, el operador sale por la galería sin
       // haber perdido la casilla a la que apuntaba.
@@ -2944,7 +3901,7 @@ var RDRENTA = (function () {
   });
 
   ["d-cliente","d-obra","d-equipo","d-modelo","d-empresa","d-acta","d-guia",
-   "d-fecha","d-horometro","d-resumen"].forEach(function (id) {
+   "d-fecha","d-horometro"].forEach(function (id) {
     $("#" + id).addEventListener("input", pintarSalida);
   });
 
@@ -3070,9 +4027,6 @@ var RDRENTA = (function () {
       if (!$("#d-acta").value) $("#d-acta").value = "004-001155";
       if (!$("#d-guia").value) $("#d-guia").value = "T001-00020144";
       if (!$("#d-horometro").value) $("#d-horometro").value = "1548.7";
-      if (!$("#d-resumen").value) {
-        $("#d-resumen").value = "Grupo sale operativo con extintor; sin observaciones.";
-      }
       autoAsignar(); pintar();
       $("#d-estado").scrollIntoView({ block: "nearest" });
       avisar("ejemplo cargado");
@@ -3081,7 +4035,7 @@ var RDRENTA = (function () {
 
   /* ---------- memoria ---------- */
   var CAMPOS = ["d-cliente","d-obra","d-equipo","d-modelo","d-empresa","d-acta",
-                "d-guia","d-fecha","d-horometro","d-resumen"];
+                "d-guia","d-fecha","d-horometro"];
   guardar = RDRENTA.recordar("despacho.v1", function () {
     var v = { cat: $("#d-cat").value, campos: {}, extras: extras.slice(),
               accesorios: accesorios.map(function (a) { return a.nombre; }) };
@@ -3123,6 +4077,82 @@ var RDRENTA = (function () {
     var nombres = nombresDelPaquete(), mapa = {};
     fotos.forEach(function (f) { mapa[nombres[f.id]] = { url: f.url, archivo: f.archivo }; });
     return { acta: acta(), fotos: mapa };
+  };
+
+  /* ---------- el despacho como proyecto guardable ----------
+     Se copia lo tecleado, los bytes de cada foto y a que casilla va cada una.
+     Las fotos se referencian por su posicion en la lista, no por el
+     identificador de memoria: ese no sobrevive a cerrar la pestaña. */
+  RDRENTA.proyectos.registrar("despacho", {
+    instantanea: function () {
+      var indice = {};
+      fotos.forEach(function (f, i) { indice[f.id] = i; });
+      function pos(id) {
+        return (id !== null && id !== undefined && indice[id] !== undefined) ? indice[id] : null;
+      }
+      var campos = {};
+      CAMPOS.forEach(function (id) { campos[id] = $("#" + id).value; });
+      return {
+        cat: $("#d-cat").value,
+        campos: campos,
+        extras: extras.slice(),
+        accesorios: accesorios.map(function (a) {
+          return { nombre: a.nombre, foto: pos(a.fotoId) };
+        }),
+        casillas: casillas.map(pos),
+        fotos: fotos.map(function (f) {
+          return { nombre: f.nombre, archivo: f.archivo,
+                   fecha: f.fecha, respaldo: f.respaldo };
+        })
+      };
+    },
+
+    limpiar: function () {
+      fotos.forEach(function (f) { URL.revokeObjectURL(f.url); });
+      fotos = []; accesorios = []; extras = []; elegida = null;
+      casillas = []; propuestas = [];
+      CAMPOS.forEach(function (id) { $("#" + id).value = ""; });
+      $("#d-fecha").value = RDRENTA.hoy();
+      pintar();
+      pintarSalida();
+    },
+
+    restaurar: function (d) {
+      fotos.forEach(function (f) { URL.revokeObjectURL(f.url); });
+      fotos = []; accesorios = []; extras = []; elegida = null;
+      if (!d) { casillas = []; propuestas = []; pintar(); pintarSalida(); return; }
+
+      if (d.cat && VISTAS[d.cat]) $("#d-cat").value = d.cat;
+      CAMPOS.forEach(function (id) {
+        $("#" + id).value = (d.campos && typeof d.campos[id] === "string") ? d.campos[id] : "";
+      });
+      extras = (d.extras || []).filter(function (x) { return typeof x === "string"; });
+
+      fotos = (d.fotos || []).filter(function (x) { return x && x.archivo; })
+        .map(function (x) {
+          return { id: siguienteId++, nombre: x.nombre || "foto.jpg",
+                   archivo: x.archivo, url: URL.createObjectURL(x.archivo),
+                   fecha: x.fecha || null, respaldo: x.respaldo || 0, sugerida: null };
+        });
+      function idDe(i) {
+        return (i !== null && i !== undefined && fotos[i]) ? fotos[i].id : null;
+      }
+      accesorios = (d.accesorios || []).map(function (a) {
+        return { nombre: a.nombre || "", fotoId: idDe(a.foto) };
+      });
+      casillas = (d.casillas || []).map(idDe);
+      propuestas = casillas.map(function () { return false; });
+      pintar();
+      pintarSalida();
+    }
+  });
+
+  // Cada cambio deja el proyecto sin guardar: el aviso es lo que separa
+  // «guardado» de «lo tengo en pantalla».
+  var guardarBorrador = guardar;
+  guardar = function () {
+    guardarBorrador();
+    RDRENTA.proyectos.marcarSucio();
   };
 
   autoAsignar();
@@ -3842,8 +4872,7 @@ var RDRENTA = (function () {
 
     return { encabezado: enc, inspeccion_componentes: componentes,
              registro_fotografico: registro, consumibles: consumibles,
-             control_consumibles: (despacho || {}).control_consumibles || [],
-             resumen_ejecutivo: $("#r-resumen").value.trim() };
+             control_consumibles: (despacho || {}).control_consumibles || [] };
   }
 
   function pintarSalida() {
@@ -3866,9 +4895,6 @@ var RDRENTA = (function () {
       return (c.estado === "OBS" || c.estado === "D") && !c.observacion.trim();
     }).length;
     if (sinObs) falta.push(sinObs + " componente(s) dañado(s) sin observación escrita");
-    var palabras = a.resumen_ejecutivo ? a.resumen_ejecutivo.split(/\s+/).length : 0;
-    if (!palabras) falta.push("el resumen ejecutivo");
-    else if (palabras > 20) falta.push("recortar el resumen a 20 palabras (tiene " + palabras + ")");
 
     var caja = $("#r-estado-final");
     if (falta.length) {
@@ -3994,7 +5020,7 @@ var RDRENTA = (function () {
     if (tizq) { cons[+tizq.dataset.consTizq].texto_despacho = e.target.value; pintarSalida(); return; }
     var tder = e.target.closest("[data-cons-tder]");
     if (tder) { cons[+tder.dataset.consTder].texto_recepcion = e.target.value; pintarSalida(); return; }
-    if (["r-acta","r-guia","r-fecha","r-horometro","r-resumen","r-cliente","r-obra",
+    if (["r-acta","r-guia","r-fecha","r-horometro","r-cliente","r-obra",
          "r-codigo_equipo","r-modelo_equipo"].indexOf(e.target.id) !== -1) {
       pintarSalida();
     }
@@ -4087,7 +5113,7 @@ var RDRENTA = (function () {
   /* ---------- memoria ----------
      Sólo lo tecleado y los estados marcados. Las fotos viven en memoria y no
      sobreviven al cierre: hay que volver a cargarlas, y eso se avisa. */
-  var CAMPOS = ["r-acta","r-guia","r-fecha","r-horometro","r-resumen",
+  var CAMPOS = ["r-acta","r-guia","r-fecha","r-horometro",
                 "r-cliente","r-obra","r-codigo_equipo","r-modelo_equipo"];
   guardar = RDRENTA.recordar("recepcion.v1", function () {
     var v = { campos: {} };
@@ -4098,6 +5124,98 @@ var RDRENTA = (function () {
       if (typeof v.campos[id] === "string") $("#" + id).value = v.campos[id];
     });
   });
+
+  /* ---------- la recepcion como proyecto guardable ----------
+     Guarda las fotos de retorno con sus bytes, los estados marcados y el
+     acta de despacho que sirve de comparacion. Sin esa comparacion la
+     recepcion no se puede continuar: es la mitad del documento. */
+  RDRENTA.proyectos.registrar("recepcion", {
+    instantanea: function () {
+      var indice = {};
+      retorno.forEach(function (f, i) { indice[f.id] = i; });
+      function pos(id) {
+        return (id !== null && id !== undefined && indice[id] !== undefined) ? indice[id] : null;
+      }
+      function copiar(lista) {
+        return lista.map(function (x) {
+          var c = {};
+          for (var k in x) if (Object.prototype.hasOwnProperty.call(x, k)) c[k] = x[k];
+          c.foto = pos(x.fotoId);
+          delete c.fotoId;
+          return c;
+        });
+      }
+      var campos = {};
+      CAMPOS.forEach(function (id) { campos[id] = $("#" + id).value; });
+      return {
+        campos: campos,
+        despacho: despacho,
+        vistas: copiar(vistas), cons: copiar(cons), insp: copiar(insp),
+        // Las fotos del despacho llegan por el ZIP y se guardan con el
+        // proyecto: sin ellas la columna de comparacion se queda muda.
+        antes: Object.keys(antes).map(function (n) {
+          return { nombre: n, archivo: antes[n].archivo };
+        }),
+        fotos: retorno.map(function (f) {
+          return { nombre: f.nombre, archivo: f.archivo };
+        })
+      };
+    },
+
+    limpiar: function () {
+      retorno.forEach(function (f) { URL.revokeObjectURL(f.url); });
+      Object.keys(antes).forEach(function (n) { URL.revokeObjectURL(antes[n].url); });
+      retorno = []; antes = {}; despacho = null;
+      vistas = []; cons = []; insp = []; elegida = null;
+      CAMPOS.forEach(function (id) { $("#" + id).value = ""; });
+      pintar();
+    },
+
+    restaurar: function (d) {
+      retorno.forEach(function (f) { URL.revokeObjectURL(f.url); });
+      Object.keys(antes).forEach(function (n) { URL.revokeObjectURL(antes[n].url); });
+      retorno = []; antes = {}; despacho = null;
+      vistas = []; cons = []; insp = []; elegida = null;
+      if (!d) { pintar(); return; }
+
+      CAMPOS.forEach(function (id) {
+        $("#" + id).value = (d.campos && typeof d.campos[id] === "string") ? d.campos[id] : "";
+      });
+      despacho = d.despacho || null;
+
+      (d.antes || []).forEach(function (a) {
+        if (a && a.archivo) antes[a.nombre] = { archivo: a.archivo,
+                                                url: URL.createObjectURL(a.archivo) };
+      });
+      retorno = (d.fotos || []).filter(function (x) { return x && x.archivo; })
+        .map(function (x) {
+          return { id: sig++, nombre: x.nombre || "foto.jpg", archivo: x.archivo,
+                   url: URL.createObjectURL(x.archivo) };
+        });
+      function idDe(i) {
+        return (i !== null && i !== undefined && retorno[i]) ? retorno[i].id : null;
+      }
+      function rehacer(lista) {
+        return (lista || []).map(function (x) {
+          var c = {};
+          for (var k in x) if (Object.prototype.hasOwnProperty.call(x, k)) c[k] = x[k];
+          c.fotoId = idDe(x.foto);
+          delete c.foto;
+          return c;
+        });
+      }
+      vistas = rehacer(d.vistas);
+      cons = rehacer(d.cons);
+      insp = rehacer(d.insp);
+      pintar();
+    }
+  });
+
+  var guardarBorrador = guardar;
+  guardar = function () {
+    guardarBorrador();
+    RDRENTA.proyectos.marcarSucio();
+  };
 })();
 
 /* ================================================================
@@ -4181,6 +5299,187 @@ var RDRENTA = (function () {
 })();
 
 RDRENTA.arrancar();
+</script>
+
+<script>
+/* ================================================================
+   PROYECTOS · la barra de guardar y la lista de lo guardado.
+   Guardar deja el acta a medias lista para seguir; exportar produce el
+   archivo que se firma. Son dos cosas distintas y la interfaz lo dice.
+   ================================================================ */
+(function () {
+  "use strict";
+  var $ = RDRENTA.$, esc = RDRENTA.esc;
+  var P = RDRENTA.proyectos;
+  var avisar = RDRENTA.avisador ? RDRENTA.avisador() : function () {};
+
+  // Sin IndexedDB no hay proyectos: la barra no aparece, en vez de ofrecer un
+  // boton que no guardaria nada.
+  if (!P.hay()) return;
+
+  function fecha(ms) {
+    if (!ms) return "";
+    var d = new Date(ms);
+    function dos(n) { return (n < 10 ? "0" : "") + n; }
+    return dos(d.getDate()) + "/" + dos(d.getMonth() + 1) + "/" + d.getFullYear() +
+           " " + dos(d.getHours()) + ":" + dos(d.getMinutes());
+  }
+
+  function pintarBarra(actual, sucio) {
+    ["d", "r"].forEach(function (pre) {
+      var caja = $("#" + pre + "-proy");
+      if (!caja) return;
+      caja.hidden = false;
+      var mio = actual && actual.vista === (pre === "r" ? "recepcion" : "despacho");
+      var nombre = $("#" + pre + "-proy-nombre");
+      var estado = $("#" + pre + "-proy-estado");
+      // Solo se pisa el campo cuando hay un proyecto de esta vista que
+      // mostrar: si el operador acaba de teclear un nombre para guardar, un
+      // repintado no puede borrarselo.
+      if (mio && document.activeElement !== nombre) nombre.value = actual.nombre || "";
+      estado.textContent = !mio ? "sin guardar"
+        : (sucio ? "sin guardar" : (actual.estado || "borrador"));
+      estado.className = "estado" + ((!mio || sucio) ? " sucio" : "") +
+        (mio && !sucio && actual.estado === "exportado" ? " exportado" : "");
+    });
+  }
+
+  function pintarLista() {
+    var caja = $("#proy-lista"), seccion = $("#proy-seccion");
+    if (!caja) return Promise.resolve();
+    return P.listar().then(function (lista) {
+      seccion.hidden = false;
+      caja.textContent = "";
+      $("#proy-vacio").hidden = lista.length > 0;
+      lista.forEach(function (p) {
+        var fila = document.createElement("div");
+        fila.className = "proy-fila";
+        var fotos = (p.datos && p.datos.fotos) ? p.datos.fotos.length : 0;
+        fila.innerHTML =
+          '<span class="nom">' + esc(p.nombre || "Sin nombre") +
+            '<span class="meta">' + esc(p.vista) + " · " + esc(p.estado || "borrador") +
+            " · " + fotos + (fotos === 1 ? " foto" : " fotos") +
+            " · " + fecha(p.modificado) + "</span></span>" +
+          '<button type="button" class="primary" data-abrir="' + esc(p.id) + '">Continuar</button>' +
+          '<button type="button" data-enviar="' + esc(p.id) + '">Enviar</button>' +
+          '<button type="button" data-duplicar="' + esc(p.id) + '">Duplicar</button>' +
+          '<button type="button" class="ghost" data-borrar="' + esc(p.id) + '">Eliminar</button>';
+        caja.appendChild(fila);
+      });
+    }, function (err) {
+      seccion.hidden = false;
+      $("#proy-vacio").hidden = false;
+      $("#proy-vacio").textContent = "No se pudo leer el almacén: " + err.message;
+    });
+  }
+
+  function fallo(err) { avisar((err && err.message) || "no se pudo completar"); }
+
+  function guardar(vista, comoNuevo) {
+    var pre = vista === "recepcion" ? "r" : "d";
+    // Se lee antes de adoptar: adoptar repinta la barra, y el repintado
+    // escribe en ese mismo campo.
+    var nombre = $("#" + pre + "-proy-nombre").value.trim();
+    var actual = P.actual();
+    if (!actual || actual.vista !== vista) P.adoptar(vista);
+    return P.guardar({ comoNuevo: !!comoNuevo, nombre: nombre || undefined })
+      .then(function (p) {
+        avisar(comoNuevo ? "copia guardada" : "proyecto guardado");
+        return pintarLista();
+      }, fallo);
+  }
+
+  ["d", "r"].forEach(function (pre) {
+    var vista = pre === "r" ? "recepcion" : "despacho";
+    var g = $("#" + pre + "-proy-guardar");
+    if (!g) return;
+    g.addEventListener("click", function () { guardar(vista, false); });
+    $("#" + pre + "-proy-guardar-como").addEventListener("click", function () {
+      guardar(vista, true);
+    });
+    $("#" + pre + "-proy-abrir").addEventListener("click", function () {
+      pintarLista().then(function () {
+        RDRENTA.ir("inicio");
+        var s = $("#proy-seccion");
+        if (s) s.scrollIntoView({ block: "start" });
+      });
+    });
+    $("#" + pre + "-proy-nuevo").addEventListener("click", function () {
+      if (P.sucio() &&
+          !window.confirm("Hay cambios sin guardar. ¿Empezar un proyecto nuevo?")) return;
+      P.nuevo(vista);
+      $("#" + pre + "-proy-nombre").value = "";
+      avisar("proyecto nuevo");
+    });
+    $("#" + pre + "-proy-nombre").addEventListener("input", function () {
+      P.renombrar(this.value.trim());
+    });
+  });
+
+  $("#proy-lista").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-abrir],[data-enviar],[data-duplicar],[data-borrar]");
+    if (!b) return;
+    var d = b.dataset;
+    if (d.abrir !== undefined) {
+      if (P.sucio() &&
+          !window.confirm("Hay cambios sin guardar. ¿Abrir el otro proyecto?")) return;
+      P.abrir(d.abrir).then(function (p) {
+        RDRENTA.ir(p.vista);
+        avisar("proyecto abierto");
+      }, fallo);
+      return;
+    }
+    if (d.enviar !== undefined) {
+      // El acta empieza en el patio y se termina en la oficina: el proyecto
+      // viaja en un archivo, porque aqui no hay servidor de por medio.
+      P.empaquetar(d.enviar).then(function (r) {
+        RDRENTA.entregar(r.blob, r.nombre, avisar);
+      }, fallo);
+      return;
+    }
+    if (d.duplicar !== undefined) {
+      P.duplicar(d.duplicar).then(function () {
+        avisar("proyecto duplicado");
+        pintarLista();
+      }, fallo);
+      return;
+    }
+    if (!window.confirm("Se elimina el proyecto y sus fotografías. ¿Seguro?")) return;
+    P.borrar(d.borrar).then(function () {
+      avisar("proyecto eliminado");
+      pintarLista();
+    }, fallo);
+  });
+
+  /* La lista solo se rehace cuando cambia algo que ella muestra: el proyecto
+     abierto o su estado. Repintarla en cada tecla seria trabajo inutil. */
+  var ultimo = { id: null, estado: null };
+  $("#proy-archivo").addEventListener("change", function () {
+    var archivo = this.files && this.files[0];
+    this.value = "";
+    if (!archivo) return;
+    P.importar(archivo).then(function (p) {
+      avisar("proyecto importado");
+      return pintarLista().then(function () {
+        return P.abrir(p.id).then(function (a) { RDRENTA.ir(a.vista); });
+      });
+    }, fallo);
+  });
+
+  P.alTocar(function (actual, sucio) {
+    pintarBarra(actual, sucio);
+    var id = actual ? actual.id : null;
+    var estado = actual ? actual.estado : null;
+    if (id !== ultimo.id || estado !== ultimo.estado) {
+      ultimo = { id: id, estado: estado };
+      pintarLista();
+    }
+  });
+  pintarBarra(P.actual(), P.sucio());
+  pintarLista();
+
+  RDRENTA.proyectosUI = { refrescar: pintarLista };
+})();
 </script>
 
 <script>
@@ -4721,9 +6020,13 @@ var ENTREGABLE = (function () {
     var resto = w - etiqueta - valor;
     var f;
 
-    f = fila("N° ACTA:", enc.n_acta || "", 13);
-    L.caja(f.derechaX, y, resto, 13, "1 1 1", 0.5);
-    L.texto("Pág. " + pagina + " de " + paginas, f.derechaX + 4, y + 9, 7.5, false);
+    // La casilla del n° de acta ocupa de G a Z, como en la plantilla, y a su
+    // derecha no va nada. Antes se partia en dos para meter «Pag. 1 de 2»:
+    // informacion automatica en una celda que el formato del cliente deja
+    // entera, y que ademas no existe en su Excel. El numero de pagina sigue
+    // estando donde no estorba, en la franja de continuacion de las hojas
+    // siguientes.
+    fila("N° ACTA:", enc.n_acta || "", 13, valor + resto);
     y += 13;
 
     f = fila("N° GUÍA:", enc.n_guia || "", 13, valor + resto);
@@ -5013,13 +6316,6 @@ var ENTREGABLE = (function () {
           pieza.dibujar(L, M, y, imagenes);
           y += pieza.alto + E.HUECO;
         });
-        if (p === paginas.length - 1 && acta.resumen_ejecutivo) {
-          var pie = A4.h - M - 6;
-          L.caja(M, pie - 14, E.ANCHO, 16, "0.85 0.85 0.85", 0.5);
-          L.texto("RESUMEN:", M + 4, pie - 3, 7.5, true);
-          L.texto(E.recortar(acta.resumen_ejecutivo, 8, false, E.ANCHO - 60),
-                  M + 48, pie - 3, 8, false);
-        }
         return L;
       });
 
@@ -5052,7 +6348,7 @@ var ENTREGABLE = (function () {
   var FILA_INICIO_FOTOS = 11, ALTO_BLOQUE_FOTO = 15, FILAS_IMAGEN = 14;
   var ALTO_FILA_ESTANDAR = 15.0, ALTO_FILA_ROTULO = 16.5, ALTO_FILA_SEPARADOR = 10.5;
   // A 16,5 pt en la fila de la descripción solo cabe una línea; las
-  // descripciones largas se cortaban. 28,5 pt son dos líneas de Calibri 10.
+  // descripciones largas se cortaban. 28,5 pt son dos líneas de Cambria 8.
   var ALTO_FILA_TEXTO = 28.5;
   var EMU = 9525;                       // EMU por píxel
 
@@ -5071,6 +6367,14 @@ var ENTREGABLE = (function () {
     return Math.round((filas || FILAS_IMAGEN) * ALTO_FILA_ESTANDAR * 96 / 72);
   }
   function indiceColumna(col) { return col.charCodeAt(0) - 65; }
+
+  /* La forma del hueco donde cae cada foto. Los dos paneles del formato no
+     miden lo mismo —el derecho tiene 25 px mas— asi que se toma el estrecho:
+     con esa proporcion la foto llena su casilla en los dos lados y la rejilla
+     sale pareja, que es lo que se ve al abrir el acta. */
+  var ANCHO_FOTO_PX = Math.min(anchoPanelPx(PANEL_IZQ), anchoPanelPx(PANEL_DER));
+  var ALTO_FOTO_PX = altoBloquePx();
+  var ASPECTO_BLOQUE = ANCHO_FOTO_PX / ALTO_FOTO_PX;
 
   function xml(t) {
     return String(t == null ? "" : t)
@@ -5135,16 +6439,19 @@ var ENTREGABLE = (function () {
     function anclar(imagen, panel, fila) {
       if (!imagen) return;
       anclas.push({ imagen: imagen, col: indiceColumna(panel[0]), fila: fila - 1,
-                    anchoPanel: anchoPanelPx(panel), altoBloque: altoBloquePx() });
+                    anchoPanel: anchoPanelPx(panel), altoBloque: altoBloquePx(),
+                    caja: ANCHO_FOTO_PX, cajaAlto: ALTO_FOTO_PX });
     }
 
     // --- cabecera ---
-    fundir("A1:F3", "", 1);
+    // El hueco del logo va sin borde ni relleno: en la plantilla el logo flota
+    // sobre la celda limpia, y un recuadro gris alrededor se nota al imprimir.
+    fundir("A1:F3", "", 0);
     fundir("G1:R3", E.TITULO.join("\n"), 4);
     // El formato lleva etiqueta y valor en una sola celda de control.
-    fundir("S1:Z1", "CÓDIGO: " + (enc.codigo_formato || E.NUMEROS.CODIGO_FORMATO), 1);
-    fundir("S2:Z2", "VERSIÓN: " + (enc.version_formato || E.NUMEROS.VERSION_FORMATO), 1);
-    fundir("S3:Z3", "FECHA: " + (enc.fecha_formato || E.NUMEROS.FECHA_FORMATO), 1);
+    fundir("S1:Z1", "CÓDIGO: " + (enc.codigo_formato || E.NUMEROS.CODIGO_FORMATO), 9);
+    fundir("S2:Z2", "VERSIÓN: " + (enc.version_formato || E.NUMEROS.VERSION_FORMATO), 9);
+    fundir("S3:Z3", "FECHA: " + (enc.fecha_formato || E.NUMEROS.FECHA_FORMATO), 9);
 
     [[4, "N° ACTA:", enc.n_acta || ""], [5, "N° GUÍA:", enc.n_guia || ""],
      [7, "CLIENTE:", enc.cliente || ""], [8, "EQUIPO:", enc.modelo_equipo || ""]
@@ -5157,10 +6464,10 @@ var ENTREGABLE = (function () {
     var esDespacho = m.tipo !== "RECEPCION";
     fundir("A6:F6", "FECHA:", 1);
     fundir("G6:M6", enc.fecha || "", 2);
-    fundir("N6:R6", "DESPACHO", 1);
-    fundir("S6:T6", esDespacho ? "X" : "", 3);
-    fundir("U6:Y6", "RECEPCIÓN", 1);
-    celda("Z6", esDespacho ? "" : "X", 3);
+    fundir("N6:R6", "DESPACHO", 8);
+    fundir("S6:T6", esDespacho ? "X" : "", 8);
+    fundir("U6:Y6", "RECEPCIÓN", 8);
+    celda("Z6", esDespacho ? "" : "X", 8);
 
     // Fila 9: código interno + horómetro.
     fundir("A9:F9", "CÓDIGO:", 1);
@@ -5285,12 +6592,6 @@ var ENTREGABLE = (function () {
       }
     })();
 
-    if (acta.resumen_ejecutivo) {
-      fundir("A" + (fila + 2) + ":Z" + (fila + 2), "RESUMEN EJECUTIVO", 1);
-      fundir("A" + (fila + 3) + ":Z" + (fila + 3), acta.resumen_ejecutivo, 2);
-      fila += 3;
-    }
-
     // La misma advertencia que el PDF. Va al pie porque la cabecera ocupa A1 y
     // desplazar el formato entero para caber una fila sería peor remedio.
     var falta = E.faltantes(acta);
@@ -5301,7 +6602,7 @@ var ENTREGABLE = (function () {
       fila += 2;
     }
 
-    var ultimaFila = fila + (acta.resumen_ejecutivo ? 3 : 0);
+    var ultimaFila = fila;
     Object.keys(alturas).forEach(function (f) { ultimaFila = Math.max(ultimaFila, +f); });
 
     return { filas: filas, fusiones: fusiones, alturas: alturas, anclas: anclas,
@@ -5359,7 +6660,7 @@ var ENTREGABLE = (function () {
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
       'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
       '<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>' +
-      '<sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews>' +
+      '<sheetViews><sheetView workbookViewId="0"/></sheetViews>' +
       '<cols>' + cols + '</cols><sheetData>' + cuerpo + '</sheetData>' + fus +
       '<pageMargins left="0.24" right="0.24" top="0.4" bottom="0.4" ' +
       'header="0.2" footer="0.2"/>' +
@@ -5377,7 +6678,12 @@ var ENTREGABLE = (function () {
 
   function drawingXml(anclas) {
     var piezas = anclas.map(function (a, i) {
-      var escala = Math.min(a.anchoPanel / a.imagen.w, a.altoBloque / a.imagen.h);
+      // La foto se escala dentro de la caja comun —el panel estrecho— y se
+      // centra en el panel que le toca: asi sale del mismo tamano en los dos
+      // lados de la rejilla. Sin esto, la de la derecha salia un 6% mayor.
+      var cajaW = Math.min(a.anchoPanel, a.caja || a.anchoPanel);
+      var cajaH = Math.min(a.altoBloque, a.cajaAlto || a.altoBloque);
+      var escala = Math.min(cajaW / a.imagen.w, cajaH / a.imagen.h);
       var w = Math.round(a.imagen.w * escala), alto = Math.round(a.imagen.h * escala);
       var desX = Math.round((a.anchoPanel - w) / 2) * EMU;
       var desY = Math.round((a.altoBloque - alto) / 2) * EMU;
@@ -5404,16 +6710,20 @@ var ENTREGABLE = (function () {
 
   var ESTILOS = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-    '<fonts count="5">' +
-    '<font><sz val="11"/><name val="Calibri"/></font>' +
-    '<font><b/><sz val="10"/><name val="Calibri"/></font>' +
-    '<font><b/><sz val="12"/><name val="Calibri"/></font>' +
-    '<font><b/><sz val="10"/><color rgb="FF8B0000"/><name val="Calibri"/></font>' +
-    '<font><i/><sz val="9"/><color rgb="FF9AA3A8"/><name val="Calibri"/></font>' +
+    // Cambria y estos cuerpos salen del formato del cliente, medidos sobre su
+    // informe C375-40: cabecera a 11 pt, cuerpo a 8 pt. Con Calibri el acta
+    // abierta en la PC no se parecía a la plantilla que se llena a mano.
+    '<fonts count="6">' +
+    '<font><sz val="11"/><name val="Cambria"/></font>' +
+    '<font><b/><sz val="11"/><name val="Cambria"/></font>' +
+    '<font><b/><sz val="11"/><name val="Cambria"/></font>' +
+    '<font><b/><sz val="10"/><color rgb="FF8B0000"/><name val="Cambria"/></font>' +
+    '<font><i/><sz val="9"/><color rgb="FF9AA3A8"/><name val="Cambria"/></font>' +
+    '<font><b/><sz val="8"/><name val="Cambria"/></font>' +
     '</fonts>' +
     '<fills count="5"><fill><patternFill patternType="none"/></fill>' +
     '<fill><patternFill patternType="gray125"/></fill>' +
-    '<fill><patternFill patternType="solid"><fgColor rgb="FFD9D9D9"/>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFD8D8D8"/>' +
     '<bgColor indexed="64"/></patternFill></fill>' +
     '<fill><patternFill patternType="solid"><fgColor rgb="FFFFFF00"/>' +
     '<bgColor indexed="64"/></patternFill></fill>' +
@@ -5423,20 +6733,21 @@ var ENTREGABLE = (function () {
     '<border><left style="thin"/><right style="thin"/><top style="thin"/>' +
     '<bottom style="thin"/><diagonal/></border></borders>' +
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-    '<cellXfs count="8">' +
+    '<cellXfs count="10">' +
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
     '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
     'applyFill="1" applyBorder="1" applyAlignment="1">' +
-    '<alignment vertical="center" wrapText="1"/></xf>' +
+    '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" ' +
-    'applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>' +
-    '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
+    'applyAlignment="1">' +
+    '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
+    '<xf numFmtId="0" fontId="5" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
     'applyFill="1" applyBorder="1" applyAlignment="1">' +
     '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
-    '<xf numFmtId="0" fontId="2" fillId="0" borderId="1" xfId="0" applyFont="1" ' +
-    'applyBorder="1" applyAlignment="1">' +
+    '<xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" ' +
+    'applyFill="1" applyBorder="1" applyAlignment="1">' +
     '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
-    '<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" ' +
+    '<xf numFmtId="0" fontId="5" fillId="3" borderId="1" xfId="0" applyFont="1" ' +
     'applyFill="1" applyBorder="1" applyAlignment="1">' +
     '<alignment horizontal="center" vertical="center" wrapText="1"/></xf>' +
     // 6: aviso de borrador. 7: casilla sin fotografía.
@@ -5446,6 +6757,15 @@ var ENTREGABLE = (function () {
     '<xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" ' +
     'applyBorder="1" applyAlignment="1">' +
     '<alignment horizontal="center" vertical="center"/></xf>' +
+    // 8: casilla de tipo de documento. Va sin relleno, como la plantilla.
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" ' +
+    'applyBorder="1" applyAlignment="1">' +
+    '<alignment horizontal="center" vertical="center"/></xf>' +
+    // 9: control documental. Pegado a la izquierda y sin relleno, como en el
+    // formulario de papel: ahi el codigo se lee seguido de su etiqueta.
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" ' +
+    'applyBorder="1" applyAlignment="1">' +
+    '<alignment horizontal="left" vertical="center"/></xf>' +
     '</cellXfs>' +
     // Excel y openpyxl esperan un estilo normal declarado; sin el avisan.
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/>' +
@@ -5554,6 +6874,11 @@ var ENTREGABLE = (function () {
   }
 
   ENTREGABLE.xlsx = xlsx;
+  // El editor de fotos encuadra con esta proporcion cuando se pide «Ajustar
+  // al acta»: sale de las mismas cifras que dibujan la casilla.
+  ENTREGABLE.ASPECTO_BLOQUE = ASPECTO_BLOQUE;
+  ENTREGABLE.ANCHO_FOTO_PX = ANCHO_FOTO_PX;
+  ENTREGABLE.ALTO_FOTO_PX = ALTO_FOTO_PX;
 })();
 </script>
 

@@ -59,8 +59,7 @@ python -m rdrenta validar acta.json
       "estado": "OBS",
       "observacion": "Rellenar antes del próximo despacho."
     }
-  ],
-  "resumen_ejecutivo": "Equipo operativo; retorna sin barra de tierra, se genera recuperación."
+  ]
 }
 ```
 
@@ -199,7 +198,3 @@ que el operador la llene en campo.
 - `consumo`: si se omite y ambos valores son numéricos, se calcula solo.
 - `estado`, `observacion`.
 
-## `resumen_ejecutivo`
-
-Obligatorio, **máximo 20 palabras**. Es la frase que el cliente lee antes de
-firmar; el validador rechaza los textos más largos.
