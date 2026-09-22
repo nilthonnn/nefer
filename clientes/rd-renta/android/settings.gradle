@@ -1,0 +1,21 @@
+/* La app de Android no trae dependencias propias mas alla de androidx.webkit:
+   lo que se instala en el telefono es la MISMA app web que se publica, metida
+   en un contenedor nativo. Ver android/LEEME.md. */
+pluginManagement {
+  repositories {
+    google()
+    mavenCentral()
+    gradlePluginPortal()
+  }
+}
+
+dependencyResolutionManagement {
+  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+  repositories {
+    google()
+    mavenCentral()
+  }
+}
+
+rootProject.name = "actas-rd-rental"
+include ":app"

@@ -1,0 +1,216 @@
+name: aplicación de Android
+
+# El .apk se compila aquí, no en el portátil de nadie: el contenedor de Android
+# necesita el SDK entero, y una compilación a mano es una compilación que sólo
+# sabe hacer una persona. Cada empuje a `main` deja el .apk publicado en la
+# misma dirección, y esa es la que lleva el código QR impreso en el taller.
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "clientes/rd-renta/android/**"
+      - "clientes/rd-renta/docs/app/**"
+      - ".github/workflows/apk.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  # El nombre con el que se descarga. No cambia nunca: la dirección de descarga
+  # y el QR impreso dependen de él.
+  ARCHIVO: rd-rental-actas.apk
+  ETIQUETA: android
+
+jobs:
+  apk:
+    name: compilar, comprobar y publicar el .apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: clientes/rd-renta/android
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # La imagen del runner ya trae el SDK de Android. La accion
+      # `setup-android` no se usa porque intenta instalar el paquete `tools`,
+      # que Google retiro, y se cae antes de empezar.
+      - name: SDK de Android
+        run: |
+          set -euo pipefail
+          raiz="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$raiz" >> "$GITHUB_ENV"
+
+          # La carpeta de las herramientas cambia de nombre entre versiones de
+          # la imagen; se busca en vez de adivinarla.
+          gestor=$(ls "$raiz"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1)
+          [ -n "$gestor" ] || { echo "::error::no hay sdkmanager en $raiz"; exit 1; }
+
+          yes | "$gestor" --licenses > /dev/null 2>&1 || true
+          "$gestor" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+          echo "SDK: $raiz"
+          ls "$raiz/build-tools"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      # Sin llave propia el .apk sale firmado con una que se fabrica aquí, y
+      # entonces actualizar encima exige desinstalar primero. Con las cuatro
+      # claves puestas en el repositorio, el .apk se actualiza solo encima del
+      # anterior. Se crea con herramientas/crear-llave-android.sh
+      - name: Preparar la llave de firma
+        id: llave
+        env:
+          ALMACEN: ${{ secrets.ANDROID_ALMACEN_BASE64 }}
+          CLAVE_ALMACEN: ${{ secrets.ANDROID_CLAVE_ALMACEN }}
+          ALIAS: ${{ secrets.ANDROID_ALIAS }}
+          CLAVE_LLAVE: ${{ secrets.ANDROID_CLAVE_LLAVE }}
+        run: |
+          set -euo pipefail
+          ruta="$RUNNER_TEMP/firma.jks"
+          if [ -n "${ALMACEN:-}" ] && [ -n "${CLAVE_ALMACEN:-}" ] \
+             && [ -n "${ALIAS:-}" ] && [ -n "${CLAVE_LLAVE:-}" ]; then
+            printf '%s' "$ALMACEN" | base64 -d > "$ruta"
+            echo "propia=sí" >> "$GITHUB_OUTPUT"
+            echo "CLAVE_ALMACEN=$CLAVE_ALMACEN" >> "$GITHUB_ENV"
+            echo "ALIAS_LLAVE=$ALIAS" >> "$GITHUB_ENV"
+            echo "CLAVE_LLAVE=$CLAVE_LLAVE" >> "$GITHUB_ENV"
+            echo "Se firma con la llave del repositorio."
+          else
+            keytool -genkeypair -v -keystore "$ruta" \
+              -alias actas -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass provisional -keypass provisional \
+              -dname "CN=RD RENTAL Actas, OU=Campo, O=RD RENTAL, L=Lima, C=PE"
+            echo "propia=no" >> "$GITHUB_OUTPUT"
+            echo "CLAVE_ALMACEN=provisional" >> "$GITHUB_ENV"
+            echo "ALIAS_LLAVE=actas" >> "$GITHUB_ENV"
+            echo "CLAVE_LLAVE=provisional" >> "$GITHUB_ENV"
+            echo "::warning::sin llave propia: el .apk sale con una firma"\
+                 "provisional y actualizar encima exigirá desinstalar antes."
+          fi
+          echo "ALMACEN_LLAVES=$ruta" >> "$GITHUB_ENV"
+
+      - name: Compilar
+        run: |
+          gradle --no-daemon :app:assembleRelease \
+            -PcodigoVersion=${{ github.run_number }} \
+            -PnombreVersion=1.${{ github.run_number }} \
+            -PalmacenLlaves="$ALMACEN_LLAVES" \
+            -PclaveAlmacen="$CLAVE_ALMACEN" \
+            -PaliasLlave="$ALIAS_LLAVE" \
+            -PclaveLlave="$CLAVE_LLAVE"
+
+      # Un .apk que compila puede seguir estando vacío por dentro: si la tarea
+      # que trae la app web no hizo nada, lo que se instala es una pantalla en
+      # negro. Se comprueba lo que de verdad lleva dentro antes de publicarlo.
+      - name: Comprobar lo que lleva dentro
+        run: |
+          set -euo pipefail
+          apk=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          echo "::group::identidad"
+          herramientas=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$herramientas/aapt2" dump badging "$apk" | \
+            grep -E "^(package|application-label|launchable-activity|uses-permission|sdkVersion|targetSdkVersion)"
+          echo "::endgroup::"
+
+          echo "::group::firma"
+          "$herramientas/apksigner" verify --verbose --print-certs "$apk"
+          echo "::endgroup::"
+
+          echo "::group::la app web va dentro"
+          unzip -l "$apk" | grep -E "assets/" | head -30
+          python3 - "$apk" <<'PY'
+          import hashlib, pathlib, sys, zipfile
+
+          apk = zipfile.ZipFile(sys.argv[1])
+          dentro = {n[len("assets/"):]: apk.read(n)
+                    for n in apk.namelist() if n.startswith("assets/")}
+          web = pathlib.Path("../docs/app")
+          # sw.js se deja fuera a propósito: dentro del .apk no pinta nada.
+          fuera = {str(a.relative_to(web)): a.read_bytes()
+                   for a in web.rglob("*") if a.is_file() and a.name != "sw.js"}
+
+          faltan = sorted(set(fuera) - set(dentro))
+          sobran = sorted(set(dentro) - set(fuera))
+          distintos = sorted(n for n in fuera if n in dentro and fuera[n] != dentro[n])
+          for titulo, lista in (("faltan", faltan), ("sobran", sobran),
+                                ("distintos", distintos)):
+              if lista:
+                  print(f"::error::{titulo} en el .apk: {lista[:8]}")
+          if faltan or sobran or distintos:
+              sys.exit("el .apk no lleva la misma app que se publica")
+
+          indice = dentro["index.html"].decode("utf-8")
+          for senal in ("window.Anfitrion", "CONTEXTO.enAndroid", "guardarPorAndroid"):
+              if senal not in indice:
+                  sys.exit(f"la app de dentro no trae el puente: falta {senal}")
+          print(f"{len(dentro)} archivos, index.html "
+                f"{len(dentro['index.html'])} B, "
+                f"sha256 {hashlib.sha256(dentro['index.html']).hexdigest()[:16]}")
+          PY
+          echo "::endgroup::"
+
+          cp "$apk" "$RUNNER_TEMP/$ARCHIVO"
+          echo "APK=$RUNNER_TEMP/$ARCHIVO" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rd-rental-actas-apk
+          path: ${{ env.APK }}
+          if-no-files-found: error
+
+      # Publicar sólo desde `main`: la dirección de descarga es una sola y no
+      # puede quedarse apuntando a lo que se estaba probando en una rama.
+      - name: Publicar para descargar
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FIRMA_PROPIA: ${{ steps.llave.outputs.propia }}
+        run: |
+          set -euo pipefail
+          notas="$RUNNER_TEMP/notas.md"
+          {
+            echo "Aplicación de Android de las actas de campo de RD RENTAL."
+            echo
+            echo "- Versión **1.${{ github.run_number }}**"
+            echo "- Compilada de \`${{ github.sha }}\`"
+            echo
+            echo "## Cómo se instala"
+            echo
+            echo "1. Descargue **$ARCHIVO** desde el teléfono."
+            echo "2. Ábralo. Android pedirá permitir instalar desde esta fuente: acepte."
+            echo "3. La primera vez que toque una casilla, conceda la cámara."
+            echo
+            if [ "$FIRMA_PROPIA" != "sí" ]; then
+              echo "> **Firma provisional.** Para instalar una versión nueva hay que"
+              echo "> desinstalar antes la anterior. Se arregla poniendo una llave"
+              echo "> propia en el repositorio: ver \`herramientas/crear-llave-android.sh\`."
+            fi
+          } > "$notas"
+
+          if gh release view "$ETIQUETA" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release edit "$ETIQUETA" --repo "$GITHUB_REPOSITORY" \
+              --title "Aplicación de Android" --notes-file "$notas" --latest
+          else
+            gh release create "$ETIQUETA" --repo "$GITHUB_REPOSITORY" \
+              --title "Aplicación de Android" --notes-file "$notas" --latest
+          fi
+          # --clobber: la dirección de descarga es siempre la misma, y lo que
+          # cambia es el archivo que hay detrás.
+          gh release upload "$ETIQUETA" "$APK" --repo "$GITHUB_REPOSITORY" --clobber
+
+          echo "Descarga: https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIQUETA/$ARCHIVO" \
+            >> "$GITHUB_STEP_SUMMARY"

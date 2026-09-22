@@ -15,3 +15,12 @@ salidas/
 # Fotografías de cliente: no se versionan.
 ejemplos/fotos*/
 fotos/
+
+# Llave de firma del .apk de Android: nunca al repositorio.
+# Se crea con herramientas/crear-llave-android.sh y viaja en secretos.
+*.jks
+*.keystore
+
+# Compilacion de Android
+.gradle/
+local.properties

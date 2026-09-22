@@ -62,6 +62,13 @@
             font-size:.93rem; color:var(--tinta); }
   .aparte b { display:block; }
 
+  /* La descarga del .apk es la vía principal en Android: pesa más que las
+     otras dos y se ve antes. */
+  .cta.fuerte { border:2px solid var(--acento); border-left-width:6px;
+                background:var(--acento-suave); }
+  .cta.fuerte strong { font-size:1.25rem; }
+  .paso { display:flex; flex-direction:column; gap:.4rem; }
+
   table { border-collapse:collapse; width:100%; font-size:.92rem; }
   th, td { text-align:left; padding:.45rem .5rem; border-bottom:1px solid var(--regla);
            color:var(--tinta2); vertical-align:top; }
@@ -89,16 +96,57 @@
   </p>
 
   <section>
-    <h2>Instalarla en el teléfono</h2>
-    <p>Es la forma buena: queda con su icono, abre sin señal y es donde el
-       teléfono concede la cámara.</p>
+    <h2>Android: instalar la aplicación</h2>
+    <p>Es la vía buena en el patio. Se descarga un archivo, se toca, y queda
+       con su icono en la pantalla de inicio: abre sin señal, la cámara se
+       concede desde dentro y el PDF, el Excel y el paquete se guardan en
+       <strong>Descargas › RD RENTAL</strong>.</p>
+
+    <a class="cta fuerte" href="https://github.com/nilthonnn/nefer/releases/download/android/rd-rental-actas.apk">
+      <img src="app/icono-192.png" alt="">
+      <span>
+        <strong>Descargar para Android</strong>
+        <em>rd-rental-actas.apk · unos 700 KB · no necesita conexión después</em>
+      </span>
+    </a>
+
+    <div class="qr">
+      <img src="qr-apk.svg" alt="Código QR que descarga la aplicación de Android">
+      <div>
+        <b>O escanee este código con el teléfono</b>
+        <p>Imprímalo y péguelo en el taller: cada operario lo escanea y se la
+           instala solo, sin que nadie le pase nada por WhatsApp.</p>
+      </div>
+    </div>
+
+    <ol class="paso">
+      <li>Toque el archivo descargado. Android avisa de que la instalación
+          viene de fuera de la tienda: <strong>Ajustes → Permitir de esta
+          fuente</strong>, y atrás.</li>
+      <li><strong>Instalar</strong>. Play Protect puede preguntar: es normal en
+          una aplicación de empresa que no está en la tienda —
+          <strong>Instalar de todas formas</strong>.</li>
+      <li>Ábrala. La primera vez que toque una casilla de foto,
+          <strong>conceda la cámara</strong>. Queda concedida para siempre.</li>
+    </ol>
+
+    <div class="aparte">
+      <b>No pide permiso de internet</b>
+      La aplicación no puede salir a la red: no lo tiene concedido. Las fotos,
+      los datos del equipo y las actas no salen del teléfono.
+    </div>
+  </section>
+
+  <section>
+    <h2>iPhone, o Android sin instalar nada</h2>
+    <p>La misma app, abierta desde el navegador y añadida a la pantalla de
+       inicio. En iPhone es la única vía; en Android funciona igual de bien,
+       pero los archivos van a la carpeta de descargas del navegador.</p>
 
     <div class="qr">
       <img src="qr-app.svg" alt="Código QR que lleva a la app de campo">
       <div>
         <b>Escanee este código</b>
-        <p>Con la cámara del teléfono. Imprímalo y péguelo en el taller: cada
-           operario lo escanea y la instala solo.</p>
         <p class="dir">https://nilthonnn.github.io/nefer/rd-rental/app/</p>
       </div>
     </div>
@@ -112,12 +160,11 @@
     </a>
 
     <ol>
-      <li><strong>Android:</strong> al abrirla sale un botón <em>Instalar</em>.
-          Si no aparece, menú <strong>⋮</strong> → <em>Instalar aplicación</em>.</li>
       <li><strong>iPhone:</strong> <strong>Compartir</strong> (el cuadro con la
           flecha) → <em>Añadir a pantalla de inicio</em> → <em>Añadir</em>.</li>
-      <li>La primera vez que toque una casilla, conceda el permiso de cámara.
-          Queda concedido para siempre.</li>
+      <li><strong>Android:</strong> al abrirla sale un botón <em>Instalar</em>.
+          Si no aparece, menú <strong>⋮</strong> → <em>Instalar aplicación</em>.</li>
+      <li>La primera vez que toque una casilla, conceda el permiso de cámara.</li>
     </ol>
   </section>
 
@@ -147,14 +194,18 @@
 
     <table>
       <thead>
-        <tr><th>&nbsp;</th><th>Instalada</th><th>Archivo descargado</th></tr>
+        <tr><th>&nbsp;</th><th>App de Android</th><th>Desde el navegador</th>
+            <th>Archivo descargado</th></tr>
       </thead>
       <tbody>
-        <tr><td>Cámara dentro de la app</td><td>✅</td><td>❌</td></tr>
-        <tr><td>Cámara del sistema y galería</td><td>✅</td><td>✅</td></tr>
-        <tr><td>PDF, Excel y paquete .zip</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Abre sin señal</td><td>✅</td><td>✅</td></tr>
-        <tr><td>Se actualiza sola</td><td>✅</td><td>❌ hay que volver a bajarlo</td></tr>
+        <tr><td>Cámara dentro de la app</td><td>✅</td><td>✅</td><td>❌</td></tr>
+        <tr><td>Cámara del sistema y galería</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td>PDF, Excel y paquete .zip</td><td>✅ en Descargas › RD RENTAL</td>
+            <td>✅</td><td>✅</td></tr>
+        <tr><td>Abre sin señal</td><td>✅</td><td>✅ después de abrirla una vez</td><td>✅</td></tr>
+        <tr><td>Sobrevive a borrar los datos del navegador</td><td>✅</td><td>❌</td><td>—</td></tr>
+        <tr><td>Se actualiza</td><td>bajando el .apk nuevo</td><td>✅ sola</td>
+            <td>❌ hay que volver a bajarlo</td></tr>
       </tbody>
     </table>
   </section>
@@ -164,6 +215,8 @@
     <ul>
       <li><a href="MANUAL-APP.md">Manual de la aplicación</a> — pantalla por
           pantalla y botón por botón.</li>
+      <li><a href="MANUAL-ANDROID.md">La aplicación de Android</a> — cómo llega
+          al teléfono, qué permisos pide y cómo se publica una versión nueva.</li>
       <li><a href="GUIA-OPERADOR.md">Guía del operador</a> y
           <a href="GUIA-CLIENTE.md">guía del cliente</a>, las dos hojas que van
           dentro del acta.</li>

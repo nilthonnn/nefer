@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Las actas a medias viven en IndexedDB, dentro de los datos de la app. Que
+     entren en el respaldo del telefono significa que un cambio de equipo no se
+     lleva por delante el trabajo de la semana. -->
+<full-backup-content>
+  <include domain="database" path="." />
+  <include domain="file" path="app_webview" />
+  <exclude domain="file" path="app_webview/Default/GPUCache" />
+</full-backup-content>

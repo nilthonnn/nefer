@@ -1300,7 +1300,7 @@ var RDRENTA = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-22 · encuadre, proyectos y traslado a la PC";
+  var VERSION = "2026-09-22 · aplicación de Android";
 
   "use strict";
 
@@ -1338,10 +1338,19 @@ var RDRENTA = (function () {
     var servida = protocolo === "http:" || protocolo === "https:";
     var enMarco;
     try { enMarco = window.self !== window.top; } catch (e) { enMarco = true; }
+    // Dentro de la aplicación de Android la misma página va empaquetada en el
+    // .apk y el contenedor la sirve por https desde el propio teléfono: por eso
+    // ahí la cámara se concede igual que estando publicada. El contenedor se
+    // reconoce por el puente que deja puesto, no por el agente de usuario, que
+    // cualquiera puede escribir.
+    var enAndroid = !!(window.Anfitrion &&
+                       typeof window.Anfitrion.abrir === "function" &&
+                       typeof window.Anfitrion.trozo === "function");
     return {
       servida: servida,
       archivoLocal: !servida,
       enMarco: enMarco,
+      enAndroid: enAndroid,
       // La cámara sólo es posible en un documento servido y de primer nivel.
       camaraPosible: servida && !enMarco
     };
@@ -1369,7 +1378,10 @@ var RDRENTA = (function () {
       poner("icon", "icono-192.png", { type: "image/png", sizes: "192x192" });
       poner("apple-touch-icon", "apple-touch-icon.png", { sizes: "180x180" });
       poner("manifest", "manifest.webmanifest");
-      if ("serviceWorker" in navigator) {
+      // Dentro del .apk los archivos ya están en el teléfono: un trabajador
+      // de servicio sólo pondría una caché por encima de otra, y con ella la
+      // posibilidad de servir una versión vieja después de actualizar la app.
+      if ("serviceWorker" in navigator && !CONTEXTO.enAndroid) {
         navigator.serviceWorker.register("sw.js").catch(function () {
           /* sin él la app sigue funcionando; sólo deja de abrir sin señal */
         });
@@ -1474,6 +1486,19 @@ var RDRENTA = (function () {
   function instalacion() {
     var pendiente = null;
     var caja = $("#pista-instalar"), boton = $("#btn-instalar");
+
+    // Dentro de la aplicación de Android ya no hay nada que instalar, y el
+    // recuadro sólo confundiría al operario que la acaba de instalar.
+    if (CONTEXTO.enAndroid) {
+      if (boton) boton.hidden = true;
+      if (caja) {
+        caja.className = "aviso ok";
+        caja.innerHTML = "<b>Instalada como aplicación de Android.</b> Abre sin " +
+          "señal, la cámara se concede desde aquí, y el PDF, el Excel y el " +
+          "paquete quedan en <b>Descargas › RD RENTAL</b>.";
+      }
+      return;
+    }
 
     // Android y escritorio avisan de que se puede instalar, y ese aviso hay que
     // guardarlo: el navegador solo lo ofrece una vez y sin él el boton no tiene
@@ -2728,14 +2753,81 @@ var RDRENTA = (function () {
     try { return window.self !== window.top; } catch (e) { return true; }
   })();
 
-  // Publicada como página, el visor no deja que la página descargue por su
-  // cuenta: hay que pedirle al anfitrión que guarde el archivo. Abierta desde
-  // el teléfono como aplicación no existe ese anfitrión y se descarga directo.
-  var guardadoAnfitrion = (window.claude && typeof window.claude.use === "function")
-    ? Promise.resolve(window.claude.use("downloads")).then(
+  /* ---------- guardar por el anfitrión ----------
+     Hay dos sitios donde la página no puede descargar por su cuenta y tiene
+     que pedírselo a quien la aloja:
+
+       · publicada dentro de un visor, que no le cede la descarga;
+       · dentro de la aplicación de Android, donde el contenedor nunca llega a
+         ver un archivo que la propia página acaba de armar en memoria.
+
+     Los dos hablan el mismo idioma desde aquí: un objeto con `save`. */
+
+  // Medio mega por viaje. Un acta de veinte fotos pasa de los diez megas, y
+  // una cadena de ese tamaño cruzando el puente de Android de una sola vez es
+  // lo que tumba un teléfono de gama baja; a trozos, no hace falta tener el
+  // archivo entero dos veces en memoria.
+  var TROZO_ANFITRION = 512 * 1024;
+
+  function guardarPorAndroid(peticion) {
+    var blob = peticion.data, nombre = peticion.filename;
+    return new Promise(function (listo, falla) {
+      function rendirse(mensaje) { falla({ code: "anfitrion", message: mensaje }); }
+
+      var vale;
+      try {
+        vale = window.Anfitrion.abrir(nombre, blob.type || "application/octet-stream");
+      } catch (e) { rendirse(String(e && e.message || e)); return; }
+      if (!vale || vale.indexOf("ERROR:") === 0) {
+        rendirse(vale ? vale.slice(6) : "el teléfono no contestó");
+        return;
+      }
+
+      function cancelar() { try { window.Anfitrion.cancelar(vale); } catch (e) { /* ya da igual */ } }
+
+      var desde = 0;
+      function siguiente() {
+        if (desde >= blob.size) {
+          var fin;
+          try { fin = window.Anfitrion.cerrar(vale); } catch (e) { rendirse(String(e)); return; }
+          if (fin && fin.indexOf("OK:") === 0) { listo({ status: "guardado", ruta: fin.slice(3) }); }
+          else { rendirse(fin ? fin.replace("ERROR:", "") : "no se pudo cerrar el archivo"); }
+          return;
+        }
+        var lector = new FileReader();
+        lector.onerror = function () { cancelar(); rendirse("no se pudo leer el archivo"); };
+        lector.onload = function () {
+          // readAsDataURL devuelve «data:...;base64,XXXX»: sólo viaja el XXXX.
+          var dato = String(lector.result), coma = dato.indexOf(",");
+          var respuesta;
+          try { respuesta = window.Anfitrion.trozo(vale, coma < 0 ? dato : dato.slice(coma + 1)); }
+          catch (e) { cancelar(); rendirse(String(e)); return; }
+          if (respuesta && respuesta.indexOf("ERROR:") === 0) {
+            rendirse(respuesta.slice(6));
+            return;
+          }
+          desde += TROZO_ANFITRION;
+          siguiente();
+        };
+        lector.readAsDataURL(blob.slice(desde, desde + TROZO_ANFITRION));
+      }
+      siguiente();
+    });
+  }
+
+  var guardadoAnfitrion = (function () {
+    if (CONTEXTO.enAndroid) {
+      return Promise.resolve({ save: guardarPorAndroid });
+    }
+    if (window.claude && typeof window.claude.use === "function") {
+      return Promise.resolve(window.claude.use("downloads")).then(
         function (d) { return d && typeof d.save === "function" ? d : null; },
-        function () { return null; })
-    : Promise.resolve(null);
+        function () { return null; });
+    }
+    // Abierta desde el teléfono como aplicación web no hay anfitrión ninguno y
+    // se descarga directo, por el enlace de siempre.
+    return Promise.resolve(null);
+  })();
 
   function entregar(blob, nombre, avisar) {
     // Exportar no cierra el proyecto: lo deja marcado y abierto a cambios.
@@ -2762,7 +2854,10 @@ var RDRENTA = (function () {
     guardadoAnfitrion.then(function (guardar) {
       if (!guardar) { porEnlace(blob, nombre, avisar); return; }
       guardar.save({ filename: nombre, data: blob }).then(
-        function (r) { avisar(r && r.status === "delivered" ? "entregado" : "guardado: " + nombre); },
+        function (r) {
+          if (r && r.ruta) { avisar("guardado en " + r.ruta); return; }
+          avisar(r && r.status === "delivered" ? "entregado" : "guardado: " + nombre);
+        },
         function (err) {
           var codigo = err && err.code;
           if (codigo === "declined") { avisar(""); return; }
@@ -2952,7 +3047,7 @@ var RDRENTA = (function () {
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
     selloFecha: selloFecha, sellarFecha: sellarFecha, editor: editor,
     proyectos: proyectos,
-    incrustada: incrustada,
+    incrustada: incrustada, CONTEXTO: CONTEXTO,
     RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo, camara: camara,
     archivosArrastrados: archivosArrastrados, imagenesPegadas: imagenesPegadas,
     pesoLegible: pesoLegible, MAX_LADO: MAX_LADO, nombresUnicos: nombresUnicos
@@ -5231,6 +5326,10 @@ var RDRENTA = (function () {
     l.push("versión de la app: " + RDRENTA.VERSION);
     l.push("navegador: " + navigator.userAgent);
     l.push("dentro de otra página (marco): " + (RDRENTA.incrustada ? "sí" : "no"));
+    l.push("contenedor: " + (RDRENTA.CONTEXTO.enAndroid
+      ? "aplicación de Android" + (window.Anfitrion && window.Anfitrion.version
+          ? " " + window.Anfitrion.version() : "")
+      : "navegador"));
     l.push("origen: " + location.protocol + " " + (location.host || "(archivo local)"));
     l.push("contexto seguro: " + (window.isSecureContext ? "sí" : "no"));
     l.push("la cámara puede concederse aquí: " + (RDRENTA.camara.hay() ? "sí" : "no"));
