@@ -313,26 +313,50 @@ casilla.
 Si el aparato no concede la cámara —el caso del archivo descargado—, en lugar
 de fallar en silencio muestra el motivo y un botón para usar la galería.
 
-### 6.1 El ángulo: vertical u horizontal
+### 6.1 El encuadre: lo que entra en el acta
 
-Arriba a la derecha, dentro de la cámara, hay dos botones: **Vertical** y
-**Horizontal**. Eligen la forma de la fotografía sin tener que girar el
-teléfono, que en el patio suele hacerse con una sola mano libre.
+Cada fotografía —la disparada con la cámara, la de la cámara del sistema y la
+elegida de una en una en la galería— pasa por el **editor** antes de ocupar su
+casilla. Ahí se decide qué parte de la foto importa, que es algo que sólo sabe
+quien está delante del equipo.
 
-| Ángulo | Para qué | Qué hace |
-|---|---|---|
-| **Vertical** | Grupo electrógeno, torre de iluminación, un equipo más alto que ancho | Guarda la foto tal como la da la cámara sostenida en vertical: no recorta nada |
-| **Horizontal** | Plataforma, compresor, un motor visto de lado | Saca la franja central apaisada, en proporción 4:3 |
+| Mando | Qué hace |
+|---|---|
+| **Original** | La foto entera, tal como llegó |
+| **1:1 · 4:3 · 16:9** | Las proporciones de siempre |
+| **Ajustar al acta** | La proporción exacta del hueco del formato: la foto lo llena sin bordes |
+| **Horizontal / Vertical** | Gira la proporción: 4:3 tumbado, 3:4 de pie. Para el equipo alto, vertical |
+| **Zoom** | Barra, rueda del ratón o pellizco con dos dedos |
+| **Arrastrar** | Mueve la foto dentro del marco |
+| **Centrar** | Devuelve la foto al medio |
+| **Repetir** | Descarta y vuelve a disparar, sin gastar la casilla |
+| **Usar foto** | Acepta el encuadre y la mete en la casilla |
 
-Sólo se recorta cuando hace falta cambiar el ángulo. Si el encuadre ya viene
-en la forma pedida, la foto se guarda entera y a resolución completa. Cuando
-va a recortar, un **marco a rayas** marca en la pantalla lo que entra, así que
-se ve antes de disparar.
+Lo que se ve claro dentro del marco es **exactamente** lo que se guarda: el
+recorte se aplica al archivo, así que llega igual al Excel y al PDF. La foto
+**nunca se estira**; si sobra imagen se recorta, y la parte que se recorta la
+elige usted.
 
-La elección se recuerda: la próxima vez que se abra la cámara sigue en el
-ángulo que se dejó.
+La proporción y la posición se recuerdan: las diez vistas del acta salen
+iguales sin tener que repetir la elección en cada foto.
 
-### 6.2 El sello de fecha y hora
+Una carga en **tanda** —diez fotos de golpe desde la galería— no abre el
+editor: entran directas y se encuadran después, una por una, desde su casilla.
+
+### 6.2 Qué se le puede hacer a una foto ya puesta
+
+Sobre cada casilla ocupada hay tres botones:
+
+| | |
+|---|---|
+| **✎** | Vuelve a abrir el encuadre |
+| **↻** | Repite la foto: descarta la que había y abre la cámara para esa vista |
+| **✕** | Quita la foto de la casilla y la devuelve a la bandeja |
+
+Tocar la foto abre el encuadre. Antes un toque la borraba sin preguntar, que
+en el patio es lo último que uno quiere.
+
+### 6.3 El sello de fecha y hora
 
 Cada disparo sale con la **fecha y la hora quemadas en la imagen**, abajo a la
 derecha y en ámbar, como las que estampa la cámara del teléfono:

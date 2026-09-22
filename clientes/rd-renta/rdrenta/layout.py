@@ -377,3 +377,16 @@ def ancho_panel_px(panel) -> int:
 def alto_bloque_px(filas: int = FILAS_IMAGEN) -> int:
     """Alto en pixeles de un bloque de imagen de `filas` filas estandar."""
     return round(filas * ALTO_FILA_ESTANDAR * 96 / 72)
+
+
+def caja_foto_px() -> tuple[int, int]:
+    """La caja en la que se dibuja toda fotografia del acta.
+
+    Los dos paneles del formato no miden lo mismo: el derecho tiene 25 px mas
+    que el izquierdo. Dibujando cada foto al ancho de su panel, la misma
+    fotografia salia un 6% mas grande a la derecha y la rejilla se veia
+    despareja. Se usa el panel estrecho para las dos y cada imagen se centra en
+    el suyo: mismo tamano en toda la hoja, sin tocar ni una columna.
+    """
+    return (min(ancho_panel_px(PANEL_IZQ), ancho_panel_px(PANEL_DER)),
+            alto_bloque_px())

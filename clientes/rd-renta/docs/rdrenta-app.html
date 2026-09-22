@@ -277,22 +277,6 @@
   .cam-cuenta { display:block; font-family:var(--mono); font-size:.7rem;
                 font-weight:400; letter-spacing:.1em; color:#B9C6CC;
                 text-transform:none; margin-top:.15rem; }
-  /* El angulo se elige antes de disparar y se ve donde va a cortar: sobre una
-     maquina alta el operario encuadra en vertical, sobre una plataforma o un
-     compresor en horizontal, y el acta recibe la foto ya en esa forma. */
-  .cam-giro { position:absolute; right:.9rem; z-index:2; display:flex; gap:2px;
-              top:calc(env(safe-area-inset-top) + .7rem);
-              border:1px solid rgba(255,255,255,.45); border-radius:6px;
-              overflow:hidden; background:rgba(12,14,16,.85); }
-  .cam-giro button { background:transparent; border:0; color:#B9C6CC;
-                     font-family:var(--cond); font-size:.78rem; font-weight:700;
-                     text-transform:uppercase; letter-spacing:.06em;
-                     min-height:40px; padding:.35rem .7rem; }
-  .cam-giro button[aria-pressed="true"] { background:#fff; color:#16191B; }
-  .cam-marco { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%);
-               border:2px dashed rgba(255,255,255,.85); border-radius:4px;
-               pointer-events:none; z-index:1;
-               box-shadow:0 0 0 100vmax rgba(0,0,0,.34); }
   .cam-mandos { position:absolute; left:0; right:0; bottom:0;
                 display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
                 gap:.6rem; padding:1rem 1rem calc(1rem + env(safe-area-inset-bottom));
@@ -314,6 +298,54 @@
                background:#fff !important; border:5px solid rgba(255,255,255,.45) !important;
                padding:0; flex:none; }
   .obturador:active { transform:scale(.94); }
+  /* ---------- editor de la fotografía ----------
+     Entre el disparo y el acta hay una decisión que sólo puede tomar quien
+     está delante del equipo: qué parte de la foto importa. El editor la pide
+     una vez, con el marco de la proporción a la vista, y lo que acepta es lo
+     que va al Excel: no se recorta dos veces ni se estira nunca. */
+  .editor { position:fixed; inset:0; z-index:70; background:#0B0D0E;
+            display:flex; flex-direction:column; }
+  .ed-lienzo { flex:1; position:relative; overflow:hidden; min-height:0;
+               touch-action:none; background:#0B0D0E; }
+  .ed-lienzo img { position:absolute; transform-origin:0 0; will-change:transform;
+                   user-select:none; -webkit-user-drag:none; pointer-events:none; }
+  /* El velo apaga lo que queda fuera del recorte sin tapar la foto: lo que se
+     ve claro es exactamente lo que entra en la casilla. */
+  .ed-marco { position:absolute; pointer-events:none;
+              border:2px solid rgba(255,255,255,.95); border-radius:2px;
+              box-shadow:0 0 0 100vmax rgba(8,10,11,.72); }
+  .ed-alto { position:absolute; top:0; left:0; right:0; z-index:2;
+             padding:calc(env(safe-area-inset-top) + .7rem) .9rem .8rem;
+             background:linear-gradient(rgba(0,0,0,.9), rgba(0,0,0,.5) 65%, transparent);
+             display:flex; align-items:flex-start; justify-content:space-between; gap:.8rem; }
+  .ed-rotulo { margin:0; color:#fff; font-family:var(--cond); font-size:1.2rem;
+               font-weight:700; text-transform:uppercase; letter-spacing:.02em; line-height:1.1; }
+  .ed-medida { display:block; font-family:var(--mono); font-size:.68rem; font-weight:400;
+               letter-spacing:.08em; color:#B9C6CC; text-transform:none; margin-top:.2rem; }
+  .ed-mandos { position:relative; z-index:2; display:flex; flex-direction:column; gap:.7rem;
+               padding:.8rem 1rem calc(.9rem + env(safe-area-inset-bottom));
+               background:#16191B; border-top:1px solid rgba(255,255,255,.12); }
+  .ed-props { display:flex; gap:.35rem; overflow-x:auto; padding-bottom:.15rem; }
+  .ed-props button { flex:0 0 auto; background:rgba(255,255,255,.07);
+                     border:1px solid rgba(255,255,255,.28); color:#B9C6CC;
+                     font-family:var(--cond); font-size:.8rem; font-weight:700;
+                     text-transform:uppercase; letter-spacing:.05em;
+                     min-height:42px; padding:.4rem .75rem; border-radius:5px; }
+  .ed-props button[aria-pressed="true"] { background:#fff; color:#16191B; border-color:#fff; }
+  .ed-zoom { display:flex; align-items:center; gap:.7rem; }
+  .ed-zoom label { font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+                   color:#B9C6CC; text-transform:uppercase; }
+  .ed-zoom input[type="range"] { flex:1; min-width:0; accent-color:#fff; height:34px; }
+  .ed-bar { display:flex; gap:.5rem; }
+  .ed-bar button { flex:1; min-height:48px; }
+  .ed-bar .primary { flex:1.4; }
+  @media (min-width: 760px) {
+    .ed-mandos { flex-direction:row; align-items:center; flex-wrap:wrap; }
+    .ed-props { flex:1 1 auto; }
+    .ed-zoom { flex:1 1 16rem; }
+    .ed-bar { flex:0 0 auto; }
+    .ed-bar button { min-width:9rem; }
+  }
   .cam-aviso { position:absolute; left:1rem; right:1rem; top:50%; transform:translateY(-50%);
                background:var(--card); color:var(--ink); border:1px solid var(--rule);
                border-radius:7px; padding:.9rem 1rem; font-size:.9rem; }
@@ -400,16 +432,31 @@
           grid-template-columns:repeat(auto-fill,minmax(9rem,1fr)); }
   @media (min-width:56rem) { .grid { grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr)); } }
 
-  .slot { border:1px solid var(--rule); border-radius:5px; overflow:hidden;
+  .slot { position:relative; border:1px solid var(--rule); border-radius:5px; overflow:hidden;
           background:var(--card-2); display:flex; flex-direction:column;
           text-align:left; padding:0; cursor:pointer; width:100%;
           font-family:inherit; color:inherit; align-self:stretch; }
+  /* Las tres cosas que se le hacen a una foto ya tomada, a la vista y con
+     objetivo tactil propio: antes un toque en la casilla la borraba sin
+     preguntar, que es lo ultimo que uno quiere en el patio. */
+  .slot .acciones { position:absolute; right:.25rem; bottom:.25rem; display:flex; gap:.2rem;
+                    z-index:2; opacity:.96; }
+  .slot .acciones button { min-height:34px; min-width:34px; padding:0; line-height:1;
+                           font-size:.95rem; border-radius:5px;
+                           background:rgba(12,14,16,.86); color:#fff;
+                           border:1px solid rgba(255,255,255,.4); }
+  .slot .acciones button:hover { background:#16191B; border-color:#fff; }
   .slot .ph { aspect-ratio:4/3; display:grid; place-items:center; color:var(--ink-3);
               font-family:var(--mono); font-size:.6rem; text-align:center;
               white-space:pre-line; line-height:1.35; padding:.2rem;
               background:repeating-linear-gradient(45deg,transparent,transparent 7px,
                         var(--rule-2) 7px,var(--rule-2) 8px); }
-  .slot img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; }
+  /* `contain` y no `cover`: la casilla tiene que enseñar la foto entera, con
+     la forma con la que va a entrar en el acta. Con `cover` una foto 1:1 se
+     veía recortada aquí y completa en el Excel, y el operador descubría la
+     diferencia al abrir el archivo. */
+  .slot img { width:100%; aspect-ratio:4/3; object-fit:contain; display:block;
+              background:#0F1113; }
   .slot .cap { font-family:var(--sans); font-size:.64rem; font-weight:600;
                text-transform:uppercase; letter-spacing:.02em; line-height:1.25;
                padding:.26rem .35rem; background:var(--card-2);
@@ -1099,11 +1146,6 @@ rdrenta construir acta.json -o ACTA.xlsx --pdf</textarea>
   <div class="camara" id="camara" hidden aria-modal="true" role="dialog"
        aria-label="Cámara">
     <video id="cam-video" playsinline autoplay muted></video>
-    <div class="cam-marco" id="cam-marco" hidden></div>
-    <div class="cam-giro" id="cam-giro" role="group" aria-label="Ángulo de la fotografía">
-      <button type="button" id="cam-vertical" aria-pressed="true">Vertical</button>
-      <button type="button" id="cam-horizontal" aria-pressed="false">Horizontal</button>
-    </div>
     <div class="cam-aviso" id="cam-aviso" hidden></div>
     <div class="cam-alto">
       <p class="cam-destino"><span id="cam-rotulo">Foto libre</span>
@@ -1119,6 +1161,42 @@ rdrenta construir acta.json -o ACTA.xlsx --pdf</textarea>
               aria-label="Tomar la fotografía"></button>
       <div class="cam-lado der">
         <button type="button" id="cam-cerrar">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="editor" id="editor" hidden aria-modal="true" role="dialog"
+       aria-label="Encuadre de la fotografía">
+    <div class="ed-lienzo" id="ed-lienzo">
+      <img id="ed-img" alt="">
+      <div class="ed-marco" id="ed-marco"></div>
+    </div>
+    <div class="ed-alto">
+      <p class="ed-rotulo"><span id="ed-rotulo">Fotografía</span>
+        <span class="ed-medida" id="ed-medida"></span></p>
+    </div>
+    <div class="ed-mandos">
+      <div class="ed-props" id="ed-props" role="group" aria-label="Proporción">
+        <button type="button" data-prop="original" aria-pressed="false">Original</button>
+        <button type="button" data-prop="1:1" aria-pressed="false">1:1</button>
+        <button type="button" data-prop="4:3" aria-pressed="true">4:3</button>
+        <button type="button" data-prop="16:9" aria-pressed="false">16:9</button>
+        <button type="button" data-prop="bloque" aria-pressed="false">Ajustar al acta</button>
+      </div>
+      <div class="ed-props" id="ed-giro" role="group" aria-label="Posición">
+        <button type="button" data-giro="horizontal" aria-pressed="true">Horizontal</button>
+        <button type="button" data-giro="vertical" aria-pressed="false">Vertical</button>
+      </div>
+      <div class="ed-zoom">
+        <label for="ed-zoom">Zoom</label>
+        <input type="range" id="ed-zoom" min="100" max="400" value="100" step="1"
+               aria-label="Acercar o alejar la fotografía">
+        <button type="button" id="ed-centrar">Centrar</button>
+      </div>
+      <div class="ed-bar">
+        <button type="button" id="ed-repetir">Repetir</button>
+        <button type="button" id="ed-cancelar">Cancelar</button>
+        <button type="button" class="primary" id="ed-usar">Usar foto</button>
       </div>
     </div>
   </div>
@@ -1157,7 +1235,7 @@ var RDRENTA = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-15 · ángulo de cámara y formato de la plantilla";
+  var VERSION = "2026-09-22 · encuadre de la fotografía";
 
   "use strict";
 
@@ -1691,57 +1769,6 @@ var RDRENTA = (function () {
      ================================================================ */
   var camara = (function () {
     var flujo = null, pendientes = [], puntero = 0, alTomar = null, alFallar = null;
-
-    /* Angulo de la toma. El telefono se sostiene en vertical y esa es la forma
-       que da el sensor, asi que «Vertical» no recorta nada: es lo que ya salia.
-       «Horizontal» recorta la franja central apaisada, para la maquina que es
-       mas ancha que alta —plataformas, compresores, un motor de lado— sin
-       obligar a girar el telefono con una mano ocupada. Solo se recorta cuando
-       hace falta cambiar el angulo; si el encuadre ya viene en el pedido, la
-       foto se guarda entera y a resolucion completa. */
-    var VERTICAL = true;
-    try {
-      VERTICAL = localStorage.getItem("rdrenta.camara.angulo") !== "horizontal";
-    } catch (e) { /* sin permiso: se queda en vertical */ }
-
-    function recorte(w, h) {
-      if ((h >= w) === VERTICAL) return null;          // ya viene en ese angulo
-      var a = VERTICAL ? 3 / 4 : 4 / 3;                // ancho / alto del destino
-      var rw = Math.min(w, Math.round(h * a));
-      var rh = Math.min(h, Math.round(rw / a));
-      return { x: Math.round((w - rw) / 2), y: Math.round((h - rh) / 2), w: rw, h: rh };
-    }
-
-    /* El marco dibuja sobre el video lo que va a entrar. El video se pinta con
-       `object-fit: cover`, asi que primero hay que saber a que escala se ve. */
-    function pintarMarco() {
-      var v = $("#cam-video"), marco = $("#cam-marco");
-      if (!marco) return;
-      var vw = v.videoWidth, vh = v.videoHeight;
-      var ew = v.clientWidth, eh = v.clientHeight;
-      var r = (vw && vh) ? recorte(vw, vh) : null;
-      if (!r || !ew || !eh) { marco.hidden = true; return; }
-      var escala = Math.max(ew / vw, eh / vh);
-      var mw = Math.min(ew, Math.round(r.w * escala));
-      var mh = Math.min(eh, Math.round(r.h * escala));
-      // Si el recorte llena la pantalla no hay nada que encuadrar, y un marco
-      // que abarca todo solo estorba la vista.
-      if (mw >= ew && mh >= eh) { marco.hidden = true; return; }
-      marco.style.width = mw + "px";
-      marco.style.height = mh + "px";
-      marco.hidden = false;
-    }
-
-    function fijarAngulo(vertical) {
-      VERTICAL = !!vertical;
-      try {
-        localStorage.setItem("rdrenta.camara.angulo", VERTICAL ? "vertical" : "horizontal");
-      } catch (e) { /* da igual: vale para esta sesion */ }
-      var v = $("#cam-vertical"), h = $("#cam-horizontal");
-      if (v) v.setAttribute("aria-pressed", VERTICAL ? "true" : "false");
-      if (h) h.setAttribute("aria-pressed", VERTICAL ? "false" : "true");
-      pintarMarco();
-    }
     // null = no se ha probado. Una vez que falla, no se vuelve a interponer
     // entre el operador y el selector de archivos.
     var sirve = null;
@@ -1800,7 +1827,6 @@ var RDRENTA = (function () {
     function cerrar() {
       if (flujo) { flujo.getTracks().forEach(function (t) { t.stop(); }); flujo = null; }
       $("#cam-video").srcObject = null;
-      $("#cam-marco").hidden = true;
       $("#camara").hidden = true;
       alTomar = null;
       alFallar = null;
@@ -1816,7 +1842,6 @@ var RDRENTA = (function () {
       $("#cam-aviso").hidden = true;
       $("#camara").hidden = false;
       pintarDestino();
-      fijarAngulo(VERTICAL);
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         sirve = false;
@@ -1854,16 +1879,18 @@ var RDRENTA = (function () {
     function disparar() {
       var v = $("#cam-video");
       if (!flujo || !v.videoWidth) return;
-      var r = recorte(v.videoWidth, v.videoHeight) ||
-              { x: 0, y: 0, w: v.videoWidth, h: v.videoHeight };
+      // Se guarda el cuadro entero: la forma la decide el editor, que es
+      // donde se ve lo que entra. Recortar aqui tambien seria decidir dos
+      // veces lo mismo en dos sitios distintos.
+      var r = { x: 0, y: 0, w: v.videoWidth, h: v.videoHeight };
       var mayor = Math.max(r.w, r.h);
       var f = mayor > MAX_LADO ? MAX_LADO / mayor : 1;
       var c = document.createElement("canvas");
       c.width = Math.round(r.w * f); c.height = Math.round(r.h * f);
       c.getContext("2d").drawImage(v, r.x, r.y, r.w, r.h, 0, 0, c.width, c.height);
-      // El disparo se sella con la hora de este momento, antes de codificar:
-      // lo que se guarda ya lleva la fecha dentro de la imagen.
-      sellarFecha(c, new Date());
+      // El sello va despues del encuadre, no aqui: si se pusiera ahora, un
+      // recorte podria dejar la fecha fuera de la foto que se guarda.
+      var cuando = new Date();
 
       var destino = pendientes[puntero] || null;
       var sello = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
@@ -1877,10 +1904,22 @@ var RDRENTA = (function () {
         if (!b) return;
         var archivo;
         try { archivo = new File([b], base + ".jpg", { type: "image/jpeg" }); }
-        catch (e) { return; }
-        if (alTomar) alTomar(archivo, destino);
-        if (destino) { puntero++; pintarDestino(); }
+        catch (err) { return; }
         destello();
+
+        // La camara queda abierta detras: «Repetir» vuelve a ella sin haber
+        // gastado la casilla, y solo al aceptar avanza el recorrido.
+        function guardar(definitiva) {
+          if (alTomar) alTomar(definitiva, destino);
+          if (destino) { puntero++; pintarDestino(); }
+        }
+        editor.abrir({
+          archivo: archivo,
+          rotulo: destino ? destino.rotulo : "Fotografía",
+          sellar: true, fecha: cuando,
+          alAceptar: guardar,
+          alRepetir: function () { /* la camara sigue ahi: no hay nada que hacer */ }
+        });
       }, "image/jpeg", 0.85);
     }
 
@@ -1901,23 +1940,344 @@ var RDRENTA = (function () {
       if (sa) sa.addEventListener("click", function () {
         if (puntero < pendientes.length) { puntero++; pintarDestino(); }
       });
-      var cv = $("#cam-vertical"), ch = $("#cam-horizontal");
-      if (cv) cv.addEventListener("click", function () { fijarAngulo(true); });
-      if (ch) ch.addEventListener("click", function () { fijarAngulo(false); });
-      // El video tarda en dar sus medidas, y girar el telefono las cambia.
-      var vid = $("#cam-video");
-      if (vid) vid.addEventListener("loadedmetadata", pintarMarco);
-      window.addEventListener("resize", function () {
-        if (!$("#camara").hidden) pintarMarco();
-      });
+
       document.addEventListener("keydown", function (e) {
         if (e.key === "Escape" && !$("#camara").hidden) cerrar();
       });
     }
 
     return { hay: hay, utilizable: utilizable, abrir: abrir, cerrar: cerrar,
-             conectar: conectar, recorte: recorte,
-             angulo: function () { return VERTICAL ? "vertical" : "horizontal"; } };
+             conectar: conectar };
+  })();
+
+  /* ---------- editor de la fotografía ----------
+     Una foto de telefono llega vertical y el hueco del acta es apaisado: al
+     conservar la proporcion —que es obligatorio— la foto entra pequena y deja
+     medio bloque vacio. La decision de que parte de la foto importa solo puede
+     tomarla quien esta delante del equipo, asi que se pide aqui, una vez, y lo
+     aceptado es lo que viaja: el recorte se hornea en el JPEG y ni el Excel ni
+     el PDF vuelven a tocar la forma. */
+  var editor = (function () {
+    var MARGEN = 14;                       // aire entre el marco y el borde
+    var e = null;                          // sesion de edicion en curso
+    // La proporcion se elige una vez y sirve para toda el acta: las diez
+    // vistas tienen que salir iguales o la rejilla queda despareja.
+    var PROP = "4:3";
+    // La posicion transpone la proporcion: 4:3 apaisado, 3:4 de pie. Es el
+    // mismo dato, no otro control: el equipo alto se encuadra de pie y el
+    // ancho tumbado, y el acta recibe la forma que se ve en el marco.
+    var VERTICAL = false;
+    try {
+      PROP = localStorage.getItem("rdrenta.foto.proporcion") || PROP;
+      VERTICAL = localStorage.getItem("rdrenta.foto.posicion") === "vertical";
+    } catch (err) { /* sin permiso: vale para esta sesion */ }
+
+    function nodo(id) { return document.getElementById(id); }
+
+    function proporcion(nombre) {
+      var a;
+      if (nombre === "1:1") a = 1;
+      else if (nombre === "4:3") a = 4 / 3;
+      else if (nombre === "16:9") a = 16 / 9;
+      else if (nombre === "bloque") {
+        // La del hueco del acta, tomada de las mismas cifras que dibujan el
+        // Excel: si el formato cambia, esto cambia con el.
+        var E = window.ENTREGABLE;
+        a = (E && E.ASPECTO_BLOQUE) || 4 / 3;
+      } else {
+        return e ? e.ancho / e.alto : 4 / 3;   // "original": la que trae
+      }
+      return e && e.vertical ? 1 / a : a;
+    }
+
+    /* El marco: el rectangulo de la proporcion elegida, lo mas grande que
+       quepa en el area visible. Es lo unico que define el recorte. */
+    function medirMarco() {
+      var caja = nodo("ed-lienzo").getBoundingClientRect();
+      var aw = caja.width - MARGEN * 2, ah = caja.height - MARGEN * 2;
+      var a = proporcion(e.prop);
+      var w = Math.min(aw, ah * a), h = w / a;
+      e.marco = { x: (caja.width - w) / 2, y: (caja.height - h) / 2, w: w, h: h };
+      e.caja = caja;
+    }
+
+    /* La imagen nunca puede dejar hueco dentro del marco: la escala minima es
+       la que lo cubre, y el arrastre se limita a los bordes de la propia foto.
+       De ahi que no haya forma de producir un acta con franjas en blanco. */
+    function cubrir() { return Math.max(e.marco.w / e.ancho, e.marco.h / e.alto); }
+
+    function limitar() {
+      var w = e.ancho * e.escala, h = e.alto * e.escala;
+      e.x = Math.min(e.marco.x, Math.max(e.marco.x + e.marco.w - w, e.x));
+      e.y = Math.min(e.marco.y, Math.max(e.marco.y + e.marco.h - h, e.y));
+    }
+
+    function centrar() {
+      e.x = e.marco.x + (e.marco.w - e.ancho * e.escala) / 2;
+      e.y = e.marco.y + (e.marco.h - e.alto * e.escala) / 2;
+      limitar();
+    }
+
+    function pintar() {
+      var img = nodo("ed-img"), marco = nodo("ed-marco");
+      img.style.width = e.ancho + "px";
+      img.style.height = e.alto + "px";
+      img.style.transform = "translate(" + e.x + "px," + e.y + "px) scale(" + e.escala + ")";
+      marco.style.left = e.marco.x + "px";
+      marco.style.top = e.marco.y + "px";
+      marco.style.width = e.marco.w + "px";
+      marco.style.height = e.marco.h + "px";
+      var r = recorte();
+      nodo("ed-medida").textContent =
+        e.ancho + "\u00d7" + e.alto + " \u2192 " + r.w + "\u00d7" + r.h +
+        " px \u00b7 " + (e.prop === "original" ? "original" : e.prop);
+    }
+
+    /* Del marco en pixeles de pantalla al rectangulo en pixeles de la foto. */
+    function recorte() {
+      var sx = (e.marco.x - e.x) / e.escala, sy = (e.marco.y - e.y) / e.escala;
+      var sw = e.marco.w / e.escala, sh = e.marco.h / e.escala;
+      sx = Math.max(0, Math.min(e.ancho - 1, sx));
+      sy = Math.max(0, Math.min(e.alto - 1, sy));
+      sw = Math.max(1, Math.min(e.ancho - sx, sw));
+      sh = Math.max(1, Math.min(e.alto - sy, sh));
+      var f = Math.min(1, MAX_LADO / Math.max(sw, sh));
+      var w = Math.max(1, Math.round(sw * f));
+      // El alto se deriva del ancho y de la proporcion pedida, no se redondea
+      // por separado: si 16:9 sale 1,7763 en vez de 1,7778, la foto ya no es
+      // la proporcion que el operador eligio.
+      var a = proporcion(e.prop);
+      var h = e.prop === "original" ? Math.max(1, Math.round(sh * f))
+                                    : Math.max(1, Math.round(w / a));
+      return { sx: sx, sy: sy, sw: sw, sh: sh, w: w, h: h };
+    }
+
+    function fijarPosicion(vertical) {
+      e.vertical = !!vertical;
+      VERTICAL = e.vertical;
+      try {
+        localStorage.setItem("rdrenta.foto.posicion", VERTICAL ? "vertical" : "horizontal");
+      } catch (err) { /* da igual */ }
+      var b = nodo("ed-giro").querySelectorAll("[data-giro]");
+      for (var i = 0; i < b.length; i++) {
+        b[i].setAttribute("aria-pressed",
+          (b[i].dataset.giro === "vertical") === e.vertical ? "true" : "false");
+      }
+      // «Original» no tiene posicion que elegir: es la de la propia foto.
+      nodo("ed-giro").hidden = e.prop === "original";
+      fijarProporcion(e.prop);
+    }
+
+    function fijarProporcion(nombre) {
+      e.prop = nombre;
+      PROP = nombre;
+      try { localStorage.setItem("rdrenta.foto.proporcion", nombre); }
+      catch (err) { /* da igual */ }
+      nodo("ed-giro").hidden = nombre === "original";
+      var botones = nodo("ed-props").querySelectorAll("[data-prop]");
+      for (var i = 0; i < botones.length; i++) {
+        botones[i].setAttribute("aria-pressed",
+          botones[i].dataset.prop === nombre ? "true" : "false");
+      }
+      medirMarco();
+      e.base = cubrir();
+      e.escala = e.base * (nodo("ed-zoom").value / 100);
+      centrar();
+      pintar();
+    }
+
+    function fijarZoom(porciento) {
+      var antes = e.escala;
+      e.escala = e.base * (porciento / 100);
+      // El zoom se hace sobre el centro del marco, que es lo que se mira.
+      var cx = e.marco.x + e.marco.w / 2, cy = e.marco.y + e.marco.h / 2;
+      e.x = cx - (cx - e.x) * (e.escala / antes);
+      e.y = cy - (cy - e.y) * (e.escala / antes);
+      limitar();
+      pintar();
+    }
+
+    /* ---------- horneado ----------
+       Se recorta de verdad: el archivo que sale ya tiene la forma elegida, y
+       por eso llena la casilla del Excel sin que nadie lo estire despues. */
+    function hornear() {
+      return new Promise(function (ok, mal) {
+        var r = recorte();
+        var c = document.createElement("canvas");
+        c.width = r.w; c.height = r.h;
+        var g = c.getContext("2d");
+        if (!g || !c.toBlob) { mal(new Error("el navegador no sabe recortar")); return; }
+        g.drawImage(nodo("ed-img"), r.sx, r.sy, r.sw, r.sh, 0, 0, r.w, r.h);
+        if (e.sellar) sellarFecha(c, e.fecha || new Date());
+        c.toBlob(function (b) {
+          if (!b) { mal(new Error("no se pudo guardar el recorte")); return; }
+          try {
+            ok(new File([b], nombreJpg(e.nombre), { type: "image/jpeg",
+                                                    lastModified: Date.now() }));
+          } catch (err) { mal(err); }
+        }, "image/jpeg", 0.86);
+      });
+    }
+
+    /* ---------- gestos ---------- */
+    var punteros = {}, arrastre = null, pellizco = null;
+
+    function conectar() {
+      var lienzo = nodo("ed-lienzo");
+      if (!lienzo) return;
+
+      lienzo.addEventListener("pointerdown", function (ev) {
+        if (!e) return;
+        lienzo.setPointerCapture(ev.pointerId);
+        punteros[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+        var ids = Object.keys(punteros);
+        if (ids.length === 1) {
+          arrastre = { x: ev.clientX, y: ev.clientY, ix: e.x, iy: e.y };
+        } else if (ids.length === 2) {
+          arrastre = null;
+          pellizco = { d: distancia(ids), zoom: +nodo("ed-zoom").value };
+        }
+      });
+
+      lienzo.addEventListener("pointermove", function (ev) {
+        if (!e || !punteros[ev.pointerId]) return;
+        punteros[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
+        var ids = Object.keys(punteros);
+        if (pellizco && ids.length >= 2) {
+          var d = distancia(ids);
+          if (pellizco.d > 0) fijarZoomDesdeControl(pellizco.zoom * d / pellizco.d);
+        } else if (arrastre) {
+          e.x = arrastre.ix + (ev.clientX - arrastre.x);
+          e.y = arrastre.iy + (ev.clientY - arrastre.y);
+          limitar();
+          pintar();
+        }
+      });
+
+      function soltar(ev) {
+        delete punteros[ev.pointerId];
+        if (Object.keys(punteros).length < 2) pellizco = null;
+        if (!Object.keys(punteros).length) arrastre = null;
+      }
+      lienzo.addEventListener("pointerup", soltar);
+      lienzo.addEventListener("pointercancel", soltar);
+
+      // En la computadora se acerca con la rueda, que es lo que se espera.
+      lienzo.addEventListener("wheel", function (ev) {
+        if (!e) return;
+        ev.preventDefault();
+        fijarZoomDesdeControl(+nodo("ed-zoom").value * (ev.deltaY < 0 ? 1.12 : 0.89));
+      }, { passive: false });
+
+      nodo("ed-props").addEventListener("click", function (ev) {
+        var b = ev.target.closest("[data-prop]");
+        if (b && e) { nodo("ed-zoom").value = 100; fijarProporcion(b.dataset.prop); }
+      });
+      nodo("ed-giro").addEventListener("click", function (ev) {
+        var b = ev.target.closest("[data-giro]");
+        if (b && e) { nodo("ed-zoom").value = 100; fijarPosicion(b.dataset.giro === "vertical"); }
+      });
+      nodo("ed-zoom").addEventListener("input", function () {
+        if (e) fijarZoom(+this.value);
+      });
+      nodo("ed-centrar").addEventListener("click", function () {
+        if (e) { centrar(); pintar(); }
+      });
+      nodo("ed-usar").addEventListener("click", aceptar);
+      nodo("ed-cancelar").addEventListener("click", function () { cerrar("cancelar"); });
+      nodo("ed-repetir").addEventListener("click", function () { cerrar("repetir"); });
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape" && e) cerrar("cancelar");
+      });
+      window.addEventListener("resize", function () {
+        if (e) fijarProporcion(e.prop);
+      });
+    }
+
+    function distancia(ids) {
+      var a = punteros[ids[0]], b = punteros[ids[1]];
+      return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+    }
+
+    function fijarZoomDesdeControl(valor) {
+      var z = Math.max(100, Math.min(400, Math.round(valor)));
+      nodo("ed-zoom").value = z;
+      fijarZoom(z);
+    }
+
+    function aceptar() {
+      if (!e) return;
+      var sesion = e;
+      nodo("ed-usar").disabled = true;
+      hornear().then(function (archivo) {
+        nodo("ed-usar").disabled = false;
+        cerrar(null);
+        sesion.alAceptar(archivo, { proporcion: sesion.prop });
+      }, function (err) {
+        nodo("ed-usar").disabled = false;
+        // Si el recorte falla, la foto original es mejor que ninguna foto.
+        cerrar(null);
+        sesion.alAceptar(sesion.archivo, { proporcion: "original" });
+        if (window.console) console.warn("recorte:", err);
+      });
+    }
+
+    function cerrar(motivo) {
+      if (!e) return;
+      var sesion = e;
+      e = null;
+      nodo("editor").hidden = true;
+      nodo("ed-img").removeAttribute("src");
+      if (sesion.url) URL.revokeObjectURL(sesion.url);
+      punteros = {}; arrastre = null; pellizco = null;
+      if (motivo === "repetir" && sesion.alRepetir) sesion.alRepetir();
+      else if (motivo && sesion.alCancelar) sesion.alCancelar();
+    }
+
+    /* `opciones`: {archivo, rotulo, proporcion, sellar, fecha, alAceptar,
+       alRepetir, alCancelar}. Devuelve false si el archivo no se pudo abrir,
+       y entonces quien llama sigue con la foto tal cual. */
+    function abrir(opciones) {
+      var archivo = opciones.archivo;
+      if (!archivo) return false;
+      var url = URL.createObjectURL(archivo);
+      var img = nodo("ed-img");
+      img.onload = function () {
+        e = {
+          archivo: archivo, url: url, nombre: archivo.name || "foto.jpg",
+          ancho: img.naturalWidth, alto: img.naturalHeight,
+          prop: opciones.proporcion || PROP,
+          vertical: opciones.vertical === undefined ? VERTICAL : !!opciones.vertical,
+          escala: 1, base: 1, x: 0, y: 0,
+          sellar: !!opciones.sellar, fecha: opciones.fecha || null,
+          alAceptar: opciones.alAceptar || function () {},
+          alRepetir: opciones.alRepetir || null,
+          alCancelar: opciones.alCancelar || null
+        };
+        nodo("ed-rotulo").textContent = opciones.rotulo || "Fotografía";
+        nodo("editor").hidden = false;
+        nodo("ed-repetir").hidden = !opciones.alRepetir;
+        nodo("ed-zoom").value = 100;
+        fijarPosicion(e.vertical);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        if (opciones.alAceptar) opciones.alAceptar(archivo, { proporcion: "original" });
+      };
+      img.src = url;
+      return true;
+    }
+
+    return { abrir: abrir, conectar: conectar,
+             activo: function () { return !!e; },
+             // Para las pruebas: el recorte que se hornearia ahora mismo.
+             estado: function () {
+               if (!e) return null;
+               var r = recorte();
+               return { prop: e.prop, zoom: +nodo("ed-zoom").value,
+                        posicion: e.vertical ? "vertical" : "horizontal",
+                        ancho: r.w, alto: r.h, origen: e.ancho + "x" + e.alto };
+             } };
   })();
 
   /* ---------- nombres dentro del paquete ----------
@@ -2105,6 +2465,7 @@ var RDRENTA = (function () {
 
   function arrancar() {
     camara.conectar();
+    editor.conectar();
     avisarContexto();
     ordenarCabecera();
     declararApp();
@@ -2166,7 +2527,7 @@ var RDRENTA = (function () {
     $: $, esc: esc, ir: ir, arrancar: arrancar, conFoco: conFoco, VERSION: VERSION,
     armarZip: armarZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
-    selloFecha: selloFecha, sellarFecha: sellarFecha,
+    selloFecha: selloFecha, sellarFecha: sellarFecha, editor: editor,
     incrustada: incrustada,
     RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo, camara: camara,
     archivosArrastrados: archivosArrastrados, imagenesPegadas: imagenesPegadas,
@@ -2331,6 +2692,27 @@ var RDRENTA = (function () {
     opciones = opciones || {};
     var lista = Array.prototype.slice.call(archivos || []);
     if (!lista.length) { sinArchivos(opciones.origen); return; }
+
+    // Una foto sola pasa por el editor: da igual que venga de la camara
+    // integrada, de la del sistema o del selector, porque en los tres casos
+    // el operador esta poniendo *esa* foto y puede decir como la quiere. Una
+    // carga en tanda no: ahi esta metiendo diez de golpe, y cada una se
+    // encuadra despues desde su casilla con «Editar».
+    var casilla = (opciones.casilla !== undefined && opciones.casilla !== null)
+      ? opciones.casilla : null;
+    var accesorio = (opciones.accesorio !== undefined && opciones.accesorio !== null)
+      ? opciones.accesorio : null;
+    if (!opciones.encuadrada && lista.length === 1) {
+      var seguir = { origen: opciones.origen, encuadrada: true };
+      if (casilla !== null) seguir.casilla = casilla;
+      if (accesorio !== null) seguir.accesorio = accesorio;
+      var abierto = RDRENTA.editor.abrir({
+        archivo: lista[0],
+        rotulo: casilla !== null ? rotulos()[casilla] : "Observación",
+        alAceptar: function (archivo) { agregar([archivo], seguir); }
+      });
+      if (abierto) return;
+    }
 
     var antes = lista.reduce(function (a, f) { return a + (f.size || 0); }, 0);
     var barra = $("#d-progreso");
@@ -2511,10 +2893,14 @@ var RDRENTA = (function () {
       var id = casillas[i], f = id !== null ? porId(id) : null;
       var b;
       if (f) {
-        b = document.createElement("button");
-        b.type = "button";
+        // Div y no boton: dentro van los botones de accion, y un boton no
+        // puede contener otro.
+        b = document.createElement("div");
+        b.setAttribute("role", "button");
+        b.setAttribute("tabindex", "0");
         b.setAttribute("aria-label",
-          vista + ", ocupada" + (propuestas[i] ? ", propuesta" : ""));
+          vista + ", ocupada" + (propuestas[i] ? ", propuesta" : "") +
+          ", tocar para encuadrar");
       } else {
         // Vacía: es la etiqueta del selector de fotos. Si hay una foto elegida
         // en la bandeja, el manejador cancela esa apertura y la coloca aquí.
@@ -2527,7 +2913,18 @@ var RDRENTA = (function () {
       b.dataset.casilla = i;
       b.className = "slot" + (f ? " lleno" : "") + (f && propuestas[i] ? " propuesto" : "");
       var k = i - VISTAS[$("#d-cat").value].length;   // -1 si es del formato
-      b.innerHTML = (f ? '<img alt="" src="' + f.url + '">'
+      b.innerHTML = (f ? '<img alt="" src="' + f.url + '">' +
+                         '<span class="acciones">' +
+                           '<button type="button" data-foto-editar="' + i +
+                             '" title="Encuadrar" aria-label="Encuadrar la foto de ' +
+                             esc(vista) + '">\u270E</button>' +
+                           '<button type="button" data-foto-repetir="' + i +
+                             '" title="Repetir" aria-label="Repetir la foto de ' +
+                             esc(vista) + '">\u21BB</button>' +
+                           '<button type="button" data-foto-quitar="' + i +
+                             '" title="Quitar" aria-label="Quitar la foto de ' +
+                             esc(vista) + '">\u2715</button>' +
+                         '</span>'
                        : '<span class="ph">' + PISTA_VACIA + '</span>') +
         (k < 0 ? '<span class="cap"><span>' + esc(vista) + '</span>' +
                  '<span class="num">' + (i + 1) + '</span></span>' : "");
@@ -2750,6 +3147,23 @@ var RDRENTA = (function () {
   });
 
   $("#d-grid").addEventListener("click", function (e) {
+    var acc = e.target.closest("[data-foto-editar],[data-foto-repetir],[data-foto-quitar]");
+    if (acc) {
+      e.preventDefault();
+      e.stopPropagation();
+      var d = acc.dataset;
+      if (d.fotoEditar !== undefined) { encuadrar(+d.fotoEditar); return; }
+      if (d.fotoRepetir !== undefined) {
+        // Repetir descarta la que habia: se toma de nuevo para esa casilla.
+        var j = +d.fotoRepetir;
+        quitarDeCasilla(j, true);
+        if (RDRENTA.camara.hay()) abrirCamara(j);
+        else { casillaObjetivo = j; $("#d-slot").click(); }
+        return;
+      }
+      quitarDeCasilla(+d.fotoQuitar, false);
+      return;
+    }
     var t = e.target.closest("[data-casilla]");
     if (!t) return;
     var i = +t.dataset.casilla;
@@ -2758,7 +3172,9 @@ var RDRENTA = (function () {
       colocar(elegida, i);
       return;
     }
-    if (casillas[i] !== null) { casillas[i] = null; propuestas[i] = false; pintar(); return; }
+    // Ocupada: el toque abre el encuadre. Para vaciarla esta la ✕, que no se
+    // dispara sin querer al rozar la foto.
+    if (casillas[i] !== null) { e.preventDefault(); encuadrar(i); return; }
     if (RDRENTA.camara.hay()) {
       e.preventDefault();             // no abrir el selector: se usa la cámara
       casillaObjetivo = i;            // por si hay que caer al selector
@@ -2768,13 +3184,49 @@ var RDRENTA = (function () {
     casillaObjetivo = i;              // vacía: la foto que venga es para aquí
   });
 
-  // La etiqueta no responde al teclado por sí sola.
+  /* Vuelve a encuadrar la foto que ya esta en la casilla. El recorte se
+     aplica sobre el archivo actual, asi que encuadrar dos veces no acumula
+     perdida de forma: cada pase parte de lo que hay. */
+  function encuadrar(i) {
+    var f = casillas[i] !== null ? porId(casillas[i]) : null;
+    if (!f || !f.archivo) return;
+    RDRENTA.editor.abrir({
+      archivo: f.archivo,
+      rotulo: rotulos()[i] || f.nombre,
+      alAceptar: function (archivo) {
+        URL.revokeObjectURL(f.url);
+        f.archivo = archivo;
+        f.url = URL.createObjectURL(archivo);
+        pintar();
+      }
+    });
+  }
+
+  /* Quitar suelta la foto de la casilla y la devuelve a la bandeja; repetir
+     ademas la descarta, porque va a reemplazarse. */
+  function quitarDeCasilla(i, descartar) {
+    var id = casillas[i];
+    casillas[i] = null;
+    propuestas[i] = false;
+    if (descartar && id !== null) {
+      var f = porId(id);
+      if (f) {
+        URL.revokeObjectURL(f.url);
+        fotos = fotos.filter(function (x) { return x.id !== id; });
+      }
+    }
+    pintar();
+  }
+
+  // Ni la etiqueta ni el div responden al teclado por sí solos.
   $("#d-grid").addEventListener("keydown", function (e) {
     if (e.key !== "Enter" && e.key !== " ") return;
-    var t = e.target.closest("label[data-casilla]");
-    if (!t) return;
+    var t = e.target.closest("[data-casilla]");
+    if (!t || e.target.closest("[data-foto-editar],[data-foto-repetir],[data-foto-quitar]")) return;
     e.preventDefault();
-    casillaObjetivo = +t.dataset.casilla;
+    var i = +t.dataset.casilla;
+    if (casillas[i] !== null) { encuadrar(i); return; }
+    casillaObjetivo = i;
     $("#d-slot").click();
   });
 
@@ -2848,7 +3300,8 @@ var RDRENTA = (function () {
     var rotulo = (accesorios[i].nombre || "").trim().toUpperCase() || "OBSERVACIÓN";
     RDRENTA.camara.abrir({
       pendientes: [{ indice: i, rotulo: rotulo }],
-      tomar: function (archivo) { agregar([archivo], { accesorio: i }); },
+      // Ya pasó por el editor al disparar: no se vuelve a encuadrar.
+      tomar: function (archivo) { agregar([archivo], { accesorio: i, encuadrada: true }); },
       respaldo: function () { accesorioObjetivo = i; $("#d-slot").click(); }
     });
   }
@@ -2956,7 +3409,8 @@ var RDRENTA = (function () {
         ? [{ indice: soloEsta, rotulo: rotulos()[soloEsta] }]
         : casillasPendientes(),
       tomar: function (archivo, destino) {
-        agregar([archivo], { casilla: destino ? destino.indice : null });
+        agregar([archivo], { casilla: destino ? destino.indice : null,
+                             encuadrada: true });
       },
       // Si la cámara no se concede, el operador sale por la galería sin
       // haber perdido la casilla a la que apuntaba.
@@ -5137,6 +5591,14 @@ var ENTREGABLE = (function () {
   }
   function indiceColumna(col) { return col.charCodeAt(0) - 65; }
 
+  /* La forma del hueco donde cae cada foto. Los dos paneles del formato no
+     miden lo mismo —el derecho tiene 25 px mas— asi que se toma el estrecho:
+     con esa proporcion la foto llena su casilla en los dos lados y la rejilla
+     sale pareja, que es lo que se ve al abrir el acta. */
+  var ANCHO_FOTO_PX = Math.min(anchoPanelPx(PANEL_IZQ), anchoPanelPx(PANEL_DER));
+  var ALTO_FOTO_PX = altoBloquePx();
+  var ASPECTO_BLOQUE = ANCHO_FOTO_PX / ALTO_FOTO_PX;
+
   function xml(t) {
     return String(t == null ? "" : t)
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -5200,7 +5662,8 @@ var ENTREGABLE = (function () {
     function anclar(imagen, panel, fila) {
       if (!imagen) return;
       anclas.push({ imagen: imagen, col: indiceColumna(panel[0]), fila: fila - 1,
-                    anchoPanel: anchoPanelPx(panel), altoBloque: altoBloquePx() });
+                    anchoPanel: anchoPanelPx(panel), altoBloque: altoBloquePx(),
+                    caja: ANCHO_FOTO_PX, cajaAlto: ALTO_FOTO_PX });
     }
 
     // --- cabecera ---
@@ -5438,7 +5901,12 @@ var ENTREGABLE = (function () {
 
   function drawingXml(anclas) {
     var piezas = anclas.map(function (a, i) {
-      var escala = Math.min(a.anchoPanel / a.imagen.w, a.altoBloque / a.imagen.h);
+      // La foto se escala dentro de la caja comun —el panel estrecho— y se
+      // centra en el panel que le toca: asi sale del mismo tamano en los dos
+      // lados de la rejilla. Sin esto, la de la derecha salia un 6% mayor.
+      var cajaW = Math.min(a.anchoPanel, a.caja || a.anchoPanel);
+      var cajaH = Math.min(a.altoBloque, a.cajaAlto || a.altoBloque);
+      var escala = Math.min(cajaW / a.imagen.w, cajaH / a.imagen.h);
       var w = Math.round(a.imagen.w * escala), alto = Math.round(a.imagen.h * escala);
       var desX = Math.round((a.anchoPanel - w) / 2) * EMU;
       var desY = Math.round((a.altoBloque - alto) / 2) * EMU;
@@ -5629,6 +6097,11 @@ var ENTREGABLE = (function () {
   }
 
   ENTREGABLE.xlsx = xlsx;
+  // El editor de fotos encuadra con esta proporcion cuando se pide «Ajustar
+  // al acta»: sale de las mismas cifras que dibujan la casilla.
+  ENTREGABLE.ASPECTO_BLOQUE = ASPECTO_BLOQUE;
+  ENTREGABLE.ANCHO_FOTO_PX = ANCHO_FOTO_PX;
+  ENTREGABLE.ALTO_FOTO_PX = ALTO_FOTO_PX;
 })();
 </script>
 

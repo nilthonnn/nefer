@@ -31,8 +31,12 @@ def _medir(ruta: Path) -> tuple[int, int]:
 
 
 def insertar_imagen(ws, ruta: Path, columna: str, fila: int,
-                    ancho_px: int, alto_px: int) -> bool:
+                    ancho_px: int, alto_px: int, caja=None) -> bool:
     """Coloca la imagen centrada dentro del bloque, respetando su relacion de aspecto.
+
+    `ancho_px`/`alto_px` son el hueco de celdas donde se centra; `caja` es el
+    tamano maximo al que se dibuja. Se separan porque los dos paneles del
+    formato tienen anchos distintos y la foto debe salir igual en los dos.
 
     Devuelve False si el archivo no es un formato que Excel sepa incrustar.
     """
@@ -45,8 +49,9 @@ def insertar_imagen(ws, ruta: Path, columna: str, fila: int,
     if origen_w <= 0 or origen_h <= 0:
         return False
 
-    disponible_w = ancho_px - 2 * MARGEN_IMAGEN_PX
-    disponible_h = alto_px - 2 * MARGEN_IMAGEN_PX
+    caja_w, caja_h = caja if caja else (ancho_px, alto_px)
+    disponible_w = min(ancho_px, caja_w) - 2 * MARGEN_IMAGEN_PX
+    disponible_h = min(alto_px, caja_h) - 2 * MARGEN_IMAGEN_PX
     escala = min(disponible_w / origen_w, disponible_h / origen_h)
     destino_w = max(1, int(origen_w * escala))
     destino_h = max(1, int(origen_h * escala))
@@ -181,7 +186,8 @@ def _rejilla_fotografica(ws, fotos: list[dict], raiz: Path, avisos: list[str],
 
         if foto and foto.get("archivo"):
             ruta = raiz / foto["archivo"]
-            if not insertar_imagen(ws, ruta, col_ini, r0, ancho[col_ini], alto):
+            if not insertar_imagen(ws, ruta, col_ini, r0, ancho[col_ini], alto,
+                                   caja=layout.caja_foto_px()):
                 avisos.append(
                     f"foto_id {foto.get('foto_id')}: no se pudo incrustar {ruta.name} "
                     "(formato no soportado por Excel); el bloque queda en blanco."
@@ -232,7 +238,7 @@ def _bloques_consumibles(ws, consumibles: list[dict], n_bloques_foto: int,
             if cons.get(clave_foto):
                 ruta = raiz / cons[clave_foto]
                 if not insertar_imagen(ws, ruta, c0, b["fila_imagen_inicio"],
-                                       ancho[c0], alto):
+                                       ancho[c0], alto, caja=layout.caja_foto_px()):
                     avisos.append(
                         f"consumible {j + 1} ({titulo}): no se pudo incrustar {ruta.name}."
                     )
@@ -344,7 +350,7 @@ def _seccion_pareada(ws, titulo: str | None, fila_titulo: int, entradas: list[di
             if archivo:
                 ruta = raiz / archivo
                 if not insertar_imagen(ws, ruta, c0, b["fila_imagen_inicio"],
-                                       ancho[c0], alto):
+                                       ancho[c0], alto, caja=layout.caja_foto_px()):
                     avisos.append(
                         f"{titulo.lower()}: no se pudo incrustar {ruta.name}.")
 
