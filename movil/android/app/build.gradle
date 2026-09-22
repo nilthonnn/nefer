@@ -1,0 +1,69 @@
+plugins {
+    id 'com.android.application'
+}
+
+// La app web es la fuente y el APK sólo la transporta. Se copia a los assets
+// antes de compilar para que un APK no pueda salir con una versión vieja
+// dentro: el día que eso pase, nadie lo va a notar hasta el camal.
+def appWeb = rootProject.file("../../docs/camal")
+
+android {
+    namespace 'pe.camal.pesaje'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'pe.camal.pesaje'
+        minSdk 24          // Android 7, de 2016: cubre prácticamente todo lo que hay en uso
+        targetSdk 34
+        versionCode 30
+        versionName '3.0'
+    }
+
+    buildTypes {
+        debug {
+            // Se firma con la clave de depuración que genera el propio plugin:
+            // es lo que hace que el APK se pueda instalar de costado.
+            applicationIdSuffix ''
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // El nombre del archivo dice qué es y qué versión, para no acabar con
+    // cinco «app-debug.apk» en la carpeta de descargas.
+    applicationVariants.configureEach { variante ->
+        variante.outputs.configureEach {
+            outputFileName = "camal-pesaje-${variante.versionName}-${variante.buildType.name}.apk"
+        }
+    }
+}
+
+dependencies {
+    // Para servir los assets por https en vez de file://, que es lo que hace
+    // que localStorage sea estable. Nada más.
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
+
+tasks.register('copiarAppWeb', Copy) {
+    description = 'Trae la app web desde docs/camal a los assets del APK.'
+    from(appWeb) {
+        exclude 'qr.svg'          // el QR es de la página, no de la app
+    }
+    into layout.projectDirectory.dir('src/main/assets/www')
+    doFirst {
+        if (!appWeb.exists()) {
+            throw new GradleException("No está ${appWeb}: corre antes python3 demos/camal/construir.py")
+        }
+    }
+}
+
+tasks.named('preBuild') {
+    dependsOn 'copiarAppWeb'
+}

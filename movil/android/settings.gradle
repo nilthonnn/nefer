@@ -1,0 +1,20 @@
+// Los dos repositorios de siempre: Google publica el plugin de Android y
+// androidx; Maven Central, lo demás. No hay más dependencias que esas.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "camal-pesaje"
+include ":app"

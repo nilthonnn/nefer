@@ -1,0 +1,8 @@
+# Generados por la compilación
+build/
+.gradle/
+local.properties
+
+# La app web se copia aquí desde docs/camal en cada compilación: versionar la
+# copia sería tener dos veces el mismo archivo y que se separen.
+app/src/main/assets/

@@ -1636,10 +1636,31 @@ const enMarco = (() => { try { return window.self !== window.top; } catch (e) { 
 
 let entregador = null;   // lo pone el visor, si puede; puede quedarse en null
 
+// Dentro del APK hay un puente nativo. Hace falta porque en un WebView una
+// descarga `blob:` no llega a ningún lado —ni siquiera dispara el escuchador
+// de descargas de Android—: el botón parecería funcionar y no guardaría nada.
+// Con el puente, los bytes se entregan y los escribe Android en Descargas.
+const puente = (typeof window.PuenteCamal !== "undefined" && window.PuenteCamal) || null;
+
+// El puente habla en base64, que es lo único que cruza limpio la frontera
+// entre JavaScript y Java. Se trocea para no reventar la pila con un archivo
+// grande: `apply` con medio millón de argumentos la tumba.
+function aBase64(datos) {
+  const bytes = (typeof datos === "string")
+    ? new TextEncoder().encode(datos)
+    : new Uint8Array(datos);
+  let binario = "";
+  const trozo = 0x8000;
+  for (let i = 0; i < bytes.length; i += trozo) {
+    binario += String.fromCharCode.apply(null, bytes.subarray(i, i + trozo));
+  }
+  return btoa(binario);
+}
+
 if (enMarco && window.claude && typeof window.claude.use === "function") {
   window.claude.use("downloads").then((d) => {
     entregador = d;
-    if (vista.pantalla === "exportar") pintar();
+    pintar();   // hay botones que solo existen si el visor sabe entregar archivos
   }).catch(() => { /* sin descarga: queda copiar */ });
 }
 
@@ -1653,6 +1674,17 @@ function avisarExportacion(texto) {
 function entregar(nombre, datos, mime, etiqueta) {
   anotar("EXPORTACIÓN", nombre, "", etiqueta, "");
   guardar();
+
+  if (puente) {
+    let fallo;
+    try {
+      fallo = puente.guardar(nombre, aBase64(datos), mime);
+    } catch (e) {
+      fallo = "El teléfono no aceptó el archivo.";
+    }
+    avisarExportacion(fallo ? fallo : `${nombre} guardado en Descargas.`);
+    return;
+  }
 
   const blob = new Blob([datos], { type: mime });
   if (entregador) {
@@ -1673,6 +1705,27 @@ function entregar(nombre, datos, mime, etiqueta) {
   enlace.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   avisarExportacion(`${nombre} descargado.`);
+}
+
+// Llevarse la app entera. Junto a esta página se publica una copia del archivo
+// autónomo; bajarla deja la app en el teléfono, y desde ahí abre sin señal y
+// sin depender de este enlace.
+function descargarApp() {
+  const nota = document.getElementById("notaApp");
+  nota.textContent = "Preparando el archivo…";
+  fetch("app-camal.html")
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+    .then((blob) => entregador.save({ filename: "app-camal.html", data: blob }))
+    .then(() => {
+      anotar("DESCARGA DE LA APLICACIÓN", "app-camal.html", "", FORMATO.app, "");
+      guardar();
+      nota.textContent = "Guardado. Ábrelo desde Archivos o Descargas: ahí funciona sin señal.";
+    })
+    .catch((e) => {
+      nota.textContent = (e && e.code === "declined")
+        ? "No se guardó nada. Vuelve a tocar el botón cuando quieras la copia."
+        : "No se pudo bajar la copia desde aquí. Pídeme el archivo por el chat.";
+    });
 }
 
 function exportarExcel() {
@@ -1800,6 +1853,13 @@ function pantallaJornada() {
 
     <button class="btn btn-gris" onclick="ir('exportar')">Exportar: Excel, PDF y bitácora</button>
     <button class="btn btn-sec btn-chico" onclick="ir('bitacora')">Ver la bitácora (${jornada.bitacora.length} apuntes)</button>
+
+    ${enMarco && entregador ? `<div class="tarjeta" style="margin-top:12px">
+      <div class="rotulo">Llevarte la app al teléfono</div>
+      <p class="nota" style="margin-top:0">Baja el archivo y ábrelo desde Archivos o Descargas. Es la app entera —pesaje, Excel y PDF— dentro de un solo archivo: una vez guardado funciona sin señal y sin este enlace.</p>
+      <button class="btn btn-azul" onclick="descargarApp()">Descargar la app (app-camal.html)</button>
+      <p class="nota" id="notaApp">Pesa unos 85 KB. La jornada que ya tengas aquí no viaja con el archivo: se queda en este navegador.</p>
+    </div>` : ""}
     ${jornada.demo ? '<button class="btn btn-sec btn-chico" onclick="vaciarJornada()">Cerrar la demostración y abrir la jornada real</button>' : ""}
   `;
 }
@@ -2114,6 +2174,20 @@ function pintar() {
 
   const peso = document.getElementById("pesoActual");
   if (peso) peso.focus();
+}
+
+// El botón de atrás del teléfono, cuando la app corre dentro del APK. Devuelve
+// cierto si había a dónde volver; con falso, Android decide si cierra.
+function atras() {
+  if (document.getElementById("gaveta").innerHTML !== "") {
+    cerrarGaveta();
+    return true;
+  }
+  if (vista.pantalla !== "jornada") {
+    ir("jornada");
+    return true;
+  }
+  return false;
 }
 
 jornada = cargar();

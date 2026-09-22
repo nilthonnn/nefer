@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El mismo gris de la app web: el arranque no debe dar un destello blanco
+         antes de que cargue el WebView. -->
+    <color name="fondo">#FF1A1E25</color>
+</resources>
