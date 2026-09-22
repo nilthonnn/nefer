@@ -409,6 +409,26 @@ fotos lleva y cuándo se tocó por última vez, con tres botones: **Continuar**,
 Al continuar vuelve todo: los datos tecleados, las fotografías en sus casillas,
 los accesorios y, en la recepción, el acta de despacho con la que se compara.
 
+### Llevar el acta a la computadora, y traerla de vuelta
+
+El acta empieza en el patio, con el teléfono, y muchas veces se termina en la
+oficina, donde hay teclado y pantalla grande. Como aquí no hay servidor de por
+medio, el proyecto viaja en un **archivo**:
+
+1. En el teléfono: *Inicio → Proyectos guardados → **Enviar***. Sale un archivo
+   `.nefer` que se manda por WhatsApp, correo o cable.
+2. En la computadora: se abre la misma dirección en Chrome, Edge o Firefox y se
+   pulsa ***Abrir desde archivo…***. El proyecto entra con **sus fotografías** y
+   se abre listo para seguir.
+3. Al terminar en la computadora se vuelve a *Enviar*, y el teléfono lo abre
+   igual. Funciona en los dos sentidos, las veces que haga falta.
+
+Un `.nefer` es un ZIP corriente: dentro están `proyecto.json` y la carpeta
+`fotos/`. Se puede abrir con cualquier descompresor para ver qué lleva.
+
+Al importar, el proyecto entra **como uno nuevo** en ese aparato: no pisa nada
+de lo que ya hubiera guardado ahí.
+
 ### Dónde se guarda
 
 En el propio teléfono, en el almacén del navegador (IndexedDB). **No sale de

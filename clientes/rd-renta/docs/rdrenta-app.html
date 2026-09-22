@@ -463,13 +463,24 @@
   /* Las tres cosas que se le hacen a una foto ya tomada, a la vista y con
      objetivo tactil propio: antes un toque en la casilla la borraba sin
      preguntar, que es lo ultimo que uno quiere en el patio. */
-  .slot .acciones { position:absolute; right:.25rem; bottom:.25rem; display:flex; gap:.2rem;
-                    z-index:2; opacity:.96; }
-  .slot .acciones button { min-height:34px; min-width:34px; padding:0; line-height:1;
-                           font-size:.95rem; border-radius:5px;
-                           background:rgba(12,14,16,.86); color:#fff;
-                           border:1px solid rgba(255,255,255,.4); }
-  .slot .acciones button:hover { background:#16191B; border-color:#fff; }
+  /* Sobre la fotografia y arriba: abajo esta el rotulo de la vista, y en una
+     casilla estrecha —seis por fila en la computadora— los botones lo tapaban.
+     En un aparato tactil estan siempre a la vista, porque no hay puntero que
+     los despierte; con raton aparecen al pasar por encima y no estorban la
+     lectura de la rejilla. */
+  .slot .acciones { position:absolute; right:.2rem; top:.2rem; display:flex; gap:.15rem;
+                    z-index:2; opacity:.95; }
+  .slot .acciones button { min-height:30px; min-width:30px; padding:0; line-height:1;
+                           font-size:.82rem; border-radius:5px;
+                           background:rgba(12,14,16,.82); color:#fff;
+                           border:1px solid rgba(255,255,255,.38); }
+  .slot .acciones button:hover,
+  .slot .acciones button:focus-visible { background:#16191B; border-color:#fff; }
+  @media (hover: hover) and (pointer: fine) {
+    .slot .acciones { opacity:0; transition:opacity .12s; }
+    .slot:hover .acciones,
+    .slot:focus-within .acciones { opacity:1; }
+  }
   .slot .ph { aspect-ratio:4/3; display:grid; place-items:center; color:var(--ink-3);
               font-family:var(--mono); font-size:.6rem; text-align:center;
               white-space:pre-line; line-height:1.35; padding:.2rem;
@@ -750,6 +761,10 @@
           Un acta a medias se guarda con sus fotos y se retoma cuando vuelva el
           equipo o lleguen los datos del cliente. Guardar no es exportar: el
           proyecto sigue abierto a cambios.
+        </p>
+        <p style="margin:.7rem 0 0">
+          <input type="file" id="proy-archivo" accept=".nefer,.zip,application/zip" hidden>
+          <label class="boton" for="proy-archivo">Abrir desde archivo…</label>
         </p>
         <div class="lista-proy" id="proy-lista"></div>
         <p class="sub" id="proy-vacio" style="margin:.6rem 0 0">
@@ -1290,7 +1305,7 @@ var RDRENTA = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-22 · encuadre y proyectos guardables";
+  var VERSION = "2026-09-22 · encuadre, proyectos y traslado a la PC";
 
   "use strict";
 
@@ -1549,6 +1564,59 @@ var RDRENTA = (function () {
       hora: (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1),
       dia: ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()
     };
+  }
+
+  /* ---------- leer un ZIP ----------
+     La app ya sabe escribirlos; para traerse un proyecto de otro aparato hay
+     que saber abrirlos. Se leen las cabeceras locales y se corta: los que
+     escribe esta app van almacenados, sin comprimir. Si viene comprimido
+     —porque alguien lo volvio a empaquetar en la PC— se usa el
+     descompresor del propio navegador, que es estandar desde 2022. */
+  function leerZip(blob) {
+    return blob.arrayBuffer().then(function (buf) {
+      var v = new DataView(buf), u8 = new Uint8Array(buf);
+      var fin = buf.byteLength, pos = 0, salida = [], pendientes = [];
+      var decod = new TextDecoder("utf-8");
+
+      while (pos + 30 <= fin && v.getUint32(pos, true) === 0x04034b50) {
+        var metodo = v.getUint16(pos + 8, true);
+        var comprimido = v.getUint32(pos + 18, true);
+        var crudo = v.getUint32(pos + 22, true);
+        var largoNombre = v.getUint16(pos + 26, true);
+        var largoExtra = v.getUint16(pos + 28, true);
+        var ini = pos + 30;
+        var nombre = decod.decode(u8.subarray(ini, ini + largoNombre));
+        var datos = ini + largoNombre + largoExtra;
+
+        // Descriptor de datos: el tamano no estaba al escribir la cabecera.
+        if (!comprimido && !crudo && (v.getUint16(pos + 6, true) & 0x08)) {
+          throw new Error("el archivo usa descriptores de datos y no se puede leer");
+        }
+        var trozo = u8.subarray(datos, datos + comprimido);
+        if (metodo === 0) {
+          salida.push({ nombre: nombre, datos: trozo });
+        } else if (metodo === 8 && window.DecompressionStream) {
+          pendientes.push(inflar(trozo).then(function (nom) {
+            return function (bytes) { salida.push({ nombre: nom, datos: bytes }); };
+          }(nombre)));
+        } else {
+          throw new Error("el archivo viene comprimido y este navegador no sabe abrirlo");
+        }
+        pos = datos + comprimido;
+      }
+      if (!salida.length && !pendientes.length) throw new Error("no parece un archivo .nefer");
+      return Promise.all(pendientes).then(function () {
+        var mapa = {};
+        salida.forEach(function (e) { mapa[e.nombre] = e.datos; });
+        return mapa;
+      });
+    });
+  }
+
+  function inflar(bytes) {
+    var ds = new DecompressionStream("deflate-raw");
+    var flujo = new Blob([bytes]).stream().pipeThrough(ds);
+    return new Response(flujo).arrayBuffer().then(function (b) { return new Uint8Array(b); });
   }
 
   function armarZip(entradas) {
@@ -2181,6 +2249,106 @@ var RDRENTA = (function () {
       });
     }
 
+    /* ---------- llevar un proyecto a otro aparato ----------
+       El acta empieza en el patio, con el telefono, y se termina en la
+       oficina, donde hay teclado y pantalla. El proyecto viaja en un archivo
+       `.nefer`: un ZIP con `proyecto.json` y las fotos. No hay servidor de por
+       medio, asi que el archivo es el unico vehiculo, y va en los dos
+       sentidos: del telefono a la PC y de vuelta. */
+    var FORMATO = "nefer-proyecto/1";
+
+    function nombreArchivo(p) {
+      var base = (p.nombre || "proyecto").toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      return (base || "proyecto") + ".nefer";
+    }
+
+    /* El JSON se queda con la estructura y las fotos salen aparte, como
+       archivos: asi el paquete se puede abrir con cualquier descompresor y
+       ver que hay dentro. */
+    function empaquetar(id) {
+      return almacen.leer(id).then(function (p) {
+        if (!p) throw new Error("ese proyecto ya no existe");
+        var entradas = [], copia = JSON.parse(JSON.stringify({
+          formato: FORMATO, nombre: p.nombre, vista: p.vista, estado: p.estado,
+          creado: p.creado, modificado: p.modificado
+        }));
+        var datos = p.datos || {};
+        var fotos = datos.fotos || [], antes = datos.antes || [];
+        var blobs = [];
+
+        function ruta(carpeta, i, nombre) {
+          var limpio = String(nombre || "foto.jpg").split(/[\\/]/).pop()
+            .replace(/[^\w.\- ]+/g, "_");
+          return carpeta + "/" + ("000" + (i + 1)).slice(-4) + "-" + limpio;
+        }
+        function sinBlobs(lista, carpeta) {
+          return lista.map(function (f, i) {
+            var r = ruta(carpeta, i, f.nombre);
+            if (f.archivo) blobs.push({ ruta: r, blob: f.archivo });
+            var c = {};
+            for (var k in f) if (Object.prototype.hasOwnProperty.call(f, k)) c[k] = f[k];
+            c.archivo = f.archivo ? r : null;
+            return c;
+          });
+        }
+        var fuera = {};
+        for (var k in datos) if (Object.prototype.hasOwnProperty.call(datos, k)) fuera[k] = datos[k];
+        fuera.fotos = sinBlobs(fotos, "fotos");
+        if (antes.length) fuera.antes = sinBlobs(antes, "despacho");
+        copia.datos = fuera;
+
+        entradas.push({ nombre: "proyecto.json",
+                        datos: new TextEncoder().encode(JSON.stringify(copia, null, 2)) });
+        return Promise.all(blobs.map(function (b) {
+          return b.blob.arrayBuffer().then(function (buf) {
+            entradas.push({ nombre: b.ruta, datos: new Uint8Array(buf) });
+          });
+        })).then(function () {
+          return { blob: armarZip(entradas), nombre: nombreArchivo(p) };
+        });
+      });
+    }
+
+    /* Al revés: se abre el archivo, se rehacen los Blobs y el proyecto entra
+       en el almacen de este aparato como uno mas. Se le da identidad nueva
+       para no pisar nada de lo que ya hubiera aqui. */
+    function importar(archivo) {
+      return leerZip(archivo).then(function (mapa) {
+        var crudo = mapa["proyecto.json"];
+        if (!crudo) throw new Error("el archivo no lleva un proyecto dentro");
+        var p;
+        try { p = JSON.parse(new TextDecoder().decode(crudo)); }
+        catch (e) { throw new Error("el proyecto viene dañado"); }
+        if (!p || !p.datos || !vistas[p.vista]) {
+          throw new Error("no se reconoce el tipo de proyecto");
+        }
+        function conBlobs(lista) {
+          return (lista || []).map(function (f) {
+            var c = {};
+            for (var k in f) if (Object.prototype.hasOwnProperty.call(f, k)) c[k] = f[k];
+            var bytes = f.archivo ? mapa[f.archivo] : null;
+            c.archivo = bytes ? new Blob([bytes], { type: "image/jpeg" }) : null;
+            return c;
+          }).filter(function (f) { return f.archivo; });
+        }
+        p.datos.fotos = conBlobs(p.datos.fotos);
+        if (p.datos.antes) p.datos.antes = conBlobs(p.datos.antes);
+
+        var guardado = {
+          id: nuevoId(),
+          nombre: p.nombre || "Proyecto importado",
+          vista: p.vista,
+          estado: p.estado || "borrador",
+          creado: p.creado || Date.now(),
+          modificado: Date.now(),
+          datos: p.datos
+        };
+        return almacen.guardar(guardado);
+      });
+    }
+
     function marcarExportado() {
       if (!actual) return Promise.resolve(null);
       return guardar({ estado: "exportado" });
@@ -2191,6 +2359,7 @@ var RDRENTA = (function () {
       ESTADOS: ESTADOS,
       nuevo: nuevo, adoptar: adoptar, guardar: guardar, abrir: abrir,
       duplicar: duplicar, marcarExportado: marcarExportado,
+      empaquetar: empaquetar, importar: importar,
       borrar: function (id) { return almacen.borrar(id); },
       listar: function () { return almacen.listar(); },
       hay: function () { return almacen.hay(); },
@@ -2784,7 +2953,7 @@ var RDRENTA = (function () {
 
   return {
     $: $, esc: esc, ir: ir, arrancar: arrancar, conFoco: conFoco, VERSION: VERSION,
-    armarZip: armarZip, leerBytes: leerBytes, entregar: entregar,
+    armarZip: armarZip, leerZip: leerZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
     selloFecha: selloFecha, sellarFecha: sellarFecha, editor: editor,
     proyectos: proyectos,
@@ -5197,6 +5366,7 @@ RDRENTA.arrancar();
             " · " + fotos + (fotos === 1 ? " foto" : " fotos") +
             " · " + fecha(p.modificado) + "</span></span>" +
           '<button type="button" class="primary" data-abrir="' + esc(p.id) + '">Continuar</button>' +
+          '<button type="button" data-enviar="' + esc(p.id) + '">Enviar</button>' +
           '<button type="button" data-duplicar="' + esc(p.id) + '">Duplicar</button>' +
           '<button type="button" class="ghost" data-borrar="' + esc(p.id) + '">Eliminar</button>';
         caja.appendChild(fila);
@@ -5252,7 +5422,7 @@ RDRENTA.arrancar();
   });
 
   $("#proy-lista").addEventListener("click", function (e) {
-    var b = e.target.closest("[data-abrir],[data-duplicar],[data-borrar]");
+    var b = e.target.closest("[data-abrir],[data-enviar],[data-duplicar],[data-borrar]");
     if (!b) return;
     var d = b.dataset;
     if (d.abrir !== undefined) {
@@ -5261,6 +5431,14 @@ RDRENTA.arrancar();
       P.abrir(d.abrir).then(function (p) {
         RDRENTA.ir(p.vista);
         avisar("proyecto abierto");
+      }, fallo);
+      return;
+    }
+    if (d.enviar !== undefined) {
+      // El acta empieza en el patio y se termina en la oficina: el proyecto
+      // viaja en un archivo, porque aqui no hay servidor de por medio.
+      P.empaquetar(d.enviar).then(function (r) {
+        RDRENTA.entregar(r.blob, r.nombre, avisar);
       }, fallo);
       return;
     }
@@ -5281,6 +5459,18 @@ RDRENTA.arrancar();
   /* La lista solo se rehace cuando cambia algo que ella muestra: el proyecto
      abierto o su estado. Repintarla en cada tecla seria trabajo inutil. */
   var ultimo = { id: null, estado: null };
+  $("#proy-archivo").addEventListener("change", function () {
+    var archivo = this.files && this.files[0];
+    this.value = "";
+    if (!archivo) return;
+    P.importar(archivo).then(function (p) {
+      avisar("proyecto importado");
+      return pintarLista().then(function () {
+        return P.abrir(p.id).then(function (a) { RDRENTA.ir(a.vista); });
+      });
+    }, fallo);
+  });
+
   P.alTocar(function (actual, sucio) {
     pintarBarra(actual, sucio);
     var id = actual ? actual.id : null;

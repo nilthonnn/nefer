@@ -574,6 +574,78 @@ def test_un_acta_a_medias_se_guarda_y_se_retoma_con_sus_fotos(servidor, fotos):
         nav.close()
 
 
+def test_un_proyecto_viaja_del_telefono_a_la_pc_y_vuelve(servidor, fotos, tmp_path):
+    """El acta empieza en el patio y se termina en la oficina.
+
+    Aqui no hay servidor de por medio, asi que el vehiculo es un archivo
+    `.nefer`: un ZIP con el proyecto y sus fotografias. Se comprueban los dos
+    sentidos, con dos contextos de navegador distintos, que es lo mas parecido
+    a dos aparatos: cada uno con su propio almacen.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+
+        # --- el telefono ---
+        tel = _contexto(nav, movil=True, descargas=True)
+        pg = tel.new_page()
+        pg.on("dialog", lambda d: d.accept())
+        pg.goto(servidor)
+        app = App(pg).despacho()
+        app.cargar_por_galeria([fotos["frontal"], fotos["posterior"]])
+        pg.click("#d-datos summary")
+        pg.fill("#d-cliente", "CONSTRUCTORA DEL SUR S.A.C.")
+        pg.fill("#d-proy-nombre", "Acta del patio")
+        pg.click("#d-proy-guardar")
+        pg.wait_for_timeout(900)
+        pg.click("[data-ir='inicio']")
+        pg.wait_for_timeout(500)
+
+        with pg.expect_download(timeout=60000) as bajada:
+            pg.click("#proy-lista [data-enviar]")
+        archivo = tmp_path / "acta-del-patio.nefer"
+        bajada.value.save_as(str(archivo))
+        assert bajada.value.suggested_filename.endswith(".nefer")
+        assert archivo.stat().st_size > 1000
+
+        # --- la computadora: otro contexto, otro almacen ---
+        pc = nav.new_context(viewport={"width": 1440, "height": 900},
+                             accept_downloads=True)
+        oficina = pc.new_page()
+        oficina.on("dialog", lambda d: d.accept())
+        oficina.goto(servidor)
+        oficina.wait_for_timeout(700)
+        assert oficina.eval_on_selector_all("#proy-lista .proy-fila", "n => n.length") == 0
+
+        oficina.set_input_files("#proy-archivo", str(archivo))
+        oficina.wait_for_timeout(2500)
+        oficina.click("#d-datos summary")
+        assert oficina.input_value("#d-cliente") == "CONSTRUCTORA DEL SUR S.A.C."
+        assert oficina.input_value("#d-proy-nombre") == "Acta del patio"
+        assert oficina.eval_on_selector_all("#d-grid .slot.lleno", "n => n.length") == 2, \
+            "las fotografias tienen que viajar dentro del archivo"
+
+        # --- y de vuelta al telefono ---
+        oficina.fill("#d-obra", "PLANTA NORTE")
+        oficina.click("#d-proy-guardar")
+        oficina.wait_for_timeout(900)
+        oficina.click("[data-ir='inicio']")
+        oficina.wait_for_timeout(500)
+        with oficina.expect_download(timeout=60000) as vuelta:
+            oficina.click("#proy-lista [data-enviar]")
+        regreso = tmp_path / "acta-vuelta.nefer"
+        vuelta.value.save_as(str(regreso))
+
+        pg.click("[data-ir='inicio']")
+        pg.wait_for_timeout(400)
+        pg.set_input_files("#proy-archivo", str(regreso))
+        pg.wait_for_timeout(2500)
+        pg.click("#d-datos summary")
+        assert pg.input_value("#d-obra") == "PLANTA NORTE"
+        assert app.llenas == 2
+        assert app.errores == []
+        nav.close()
+
+
 def test_exportar_no_cierra_el_proyecto_lo_deja_marcado(servidor, fotos):
     """Guardar y exportar no son lo mismo.
 
