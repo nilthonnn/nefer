@@ -44,7 +44,24 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - uses: android-actions/setup-android@v3
+      # La imagen del runner ya trae el SDK de Android. La accion
+      # `setup-android` no se usa porque intenta instalar el paquete `tools`,
+      # que Google retiro, y se cae antes de empezar.
+      - name: SDK de Android
+        run: |
+          set -euo pipefail
+          raiz="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$raiz" >> "$GITHUB_ENV"
+
+          # La carpeta de las herramientas cambia de nombre entre versiones de
+          # la imagen; se busca en vez de adivinarla.
+          gestor=$(ls "$raiz"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1)
+          [ -n "$gestor" ] || { echo "::error::no hay sdkmanager en $raiz"; exit 1; }
+
+          yes | "$gestor" --licenses > /dev/null 2>&1 || true
+          "$gestor" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+          echo "SDK: $raiz"
+          ls "$raiz/build-tools"
 
       - uses: gradle/actions/setup-gradle@v4
         with:
