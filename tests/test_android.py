@@ -173,9 +173,8 @@ def test_la_direccion_de_descarga_es_la_misma_en_los_tres_sitios():
     """
     flujo = _texto(FLUJO)
     archivo = re.search(r"^  ARCHIVO: (\S+)$", flujo, re.M).group(1)
-    etiqueta = re.search(r"^  ETIQUETA: (\S+)$", flujo, re.M).group(1)
-    esperada = ("https://github.com/nilthonnn/nefer/releases/download/"
-                f"{etiqueta}/{archivo}")
+    esperada = ("https://github.com/nilthonnn/nefer/releases/latest/download/"
+                f"{archivo}")
 
     portada = _texto(CLON / "docs" / "index.html")
     assert f'href="{esperada}"' in portada, f"la portada no ofrece {esperada}"
@@ -186,6 +185,31 @@ def test_la_direccion_de_descarga_es_la_misma_en_los_tres_sitios():
 
     manual = _texto(CLON / "docs" / "MANUAL-ANDROID.md")
     assert esperada in manual
+
+
+def test_cada_compilacion_publica_su_propia_version_con_el_apk_dentro():
+    """Aqui las publicaciones nacen inmutables.
+
+    Una vez publicada no admite que se le cuelgue nada despues, asi que
+    reescribir una etiqueta fija deja una publicacion vacia y una direccion de
+    descarga que da 404. El .apk tiene que ir en la propia creacion, y la
+    direccion estable la da `latest/download`, no la etiqueta.
+    """
+    flujo = _texto(FLUJO)
+    publicar = flujo[flujo.index("- name: Publicar para descargar"):]
+
+    assert "gh release upload" not in publicar, (
+        "subir el .apk despues de crear la publicacion no funciona: "
+        "las publicaciones son inmutables")
+    assert 'etiqueta="android-v${{ github.run_number }}"' in publicar, \
+        "la etiqueta tiene que ser distinta en cada compilacion"
+    assert 'gh release create "$etiqueta" "$APK"' in publicar, \
+        "el .apk tiene que ir dentro de la creacion"
+    assert "--latest" in publicar, \
+        "sin esto `latest/download` apuntaria a otra publicacion"
+
+    # Y que se compruebe que de verdad quedo dentro.
+    assert "salió sin el .apk" in publicar
 
 
 def test_el_apk_se_publica_solo_desde_main():

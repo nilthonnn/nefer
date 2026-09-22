@@ -80,11 +80,16 @@ El `.apk` **no se compila a mano**. Lo compila
 publicado siempre en la misma dirección:
 
 ```
-https://github.com/nilthonnn/nefer/releases/download/android/rd-rental-actas.apk
+https://github.com/nilthonnn/nefer/releases/latest/download/rd-rental-actas.apk
 ```
 
 Esa dirección es la del botón de la página y la del código QR impreso. No
-cambia nunca; lo que cambia es el archivo que hay detrás.
+cambia nunca; lo que cambia es la publicación que hay detrás.
+
+Cada compilación publica la suya —`android-v1`, `android-v2`…— con el `.apk`
+dentro desde el primer momento, y `latest/download` apunta siempre a la
+última. No se reescribe una publicación anterior porque aquí **nacen
+inmutables**: una vez publicada no admite que se le cuelgue nada después.
 
 Antes de publicar, la compilación comprueba tres cosas que un `.apk` que
 compila puede seguir incumpliendo:
