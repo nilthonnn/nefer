@@ -197,6 +197,32 @@ def test_el_logo_del_formato_va_en_los_dos_entregables(entregables):
     assert f"/Width {ancho_logo} /Height {alto_logo}".encode() in datos
 
 
+def test_la_cabecera_del_pdf_no_anade_nada_que_la_plantilla_no_tenga(entregables):
+    """La plantilla manda, y en ella la casilla del n° de acta va entera.
+
+    El PDF la partia en dos para meter «Pag. 1 de 2»: informacion automatica en
+    una celda que el formato del cliente deja de G a Z, y que en su Excel no
+    existe. El numero de pagina sigue estando en la franja de continuacion, que
+    es de la app y no del formato.
+    """
+    import shutil
+    import subprocess
+    if not shutil.which("pdftotext"):
+        pytest.skip("pdftotext no esta disponible")
+
+    def texto(pagina):
+        return subprocess.run(
+            ["pdftotext", "-f", str(pagina), "-l", str(pagina), str(entregables["pdf"]), "-"],
+            capture_output=True, text=True).stdout
+
+    primera = texto(1)
+    assert "REPORTE FOTOGRÁFICO" in primera, primera[:200]
+    assert "Pág." not in primera, "la primera hoja lleva la cabecera del formato, y nada mas"
+
+    # En las hojas siguientes la franja corta si dice por donde va el acta.
+    assert "Pág. 2" in texto(2)
+
+
 def _texto_de_pdf(ruta: Path):
     import shutil
     import subprocess

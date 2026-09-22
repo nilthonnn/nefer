@@ -6025,9 +6025,13 @@ var ENTREGABLE = (function () {
     var resto = w - etiqueta - valor;
     var f;
 
-    f = fila("N° ACTA:", enc.n_acta || "", 13);
-    L.caja(f.derechaX, y, resto, 13, "1 1 1", 0.5);
-    L.texto("Pág. " + pagina + " de " + paginas, f.derechaX + 4, y + 9, 7.5, false);
+    // La casilla del n° de acta ocupa de G a Z, como en la plantilla, y a su
+    // derecha no va nada. Antes se partia en dos para meter «Pag. 1 de 2»:
+    // informacion automatica en una celda que el formato del cliente deja
+    // entera, y que ademas no existe en su Excel. El numero de pagina sigue
+    // estando donde no estorba, en la franja de continuacion de las hojas
+    // siguientes.
+    fila("N° ACTA:", enc.n_acta || "", 13, valor + resto);
     y += 13;
 
     f = fila("N° GUÍA:", enc.n_guia || "", 13, valor + resto);
