@@ -7,6 +7,16 @@ plugins {
 // dentro: el día que eso pase, nadie lo va a notar hasta el camal.
 def appWeb = rootProject.file("../../docs/camal")
 
+// La versión la pone quien compila: en CI, el número de ejecución, para que
+// dos APK distintos nunca digan ser el mismo.
+def codigo = (project.findProperty('codigoVersion') ?: '30') as Integer
+def nombre = project.findProperty('nombreVersion') ?: '3.0'
+
+// La llave llega por propiedades, nunca versionada. Sin ella se compila igual
+// —Gradle firma con la de depuración— pero entonces una versión nueva no se
+// puede instalar encima de la anterior sin desinstalarla antes.
+def almacen = project.findProperty('almacenLlaves')
+
 android {
     namespace 'pe.camal.pesaje'
     compileSdk 34
@@ -15,19 +25,28 @@ android {
         applicationId 'pe.camal.pesaje'
         minSdk 24          // Android 7, de 2016: cubre prácticamente todo lo que hay en uso
         targetSdk 34
-        versionCode 30
-        versionName '3.0'
+        versionCode codigo
+        versionName nombre
+    }
+
+    if (almacen) {
+        signingConfigs {
+            propia {
+                storeFile file(almacen)
+                storePassword project.findProperty('claveAlmacen')
+                keyAlias project.findProperty('aliasLlave')
+                keyPassword project.findProperty('claveLlave')
+            }
+        }
     }
 
     buildTypes {
-        debug {
-            // Se firma con la clave de depuración que genera el propio plugin:
-            // es lo que hace que el APK se pueda instalar de costado.
-            applicationIdSuffix ''
-        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (almacen) {
+                signingConfig signingConfigs.propia
+            }
         }
     }
 

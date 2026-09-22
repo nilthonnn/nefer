@@ -47,16 +47,37 @@ Todo viaja dentro del APK y la jornada se queda en el teléfono.
 
 ### Lo normal: que lo compile GitHub
 
-Cada vez que cambia la app o el proyecto Android, el flujo `.github/workflows/apk.yml`
-compila el APK y lo deja para descargar.
+Cada vez que cambia la app o el proyecto Android, el flujo
+`.github/workflows/apk-camal.yml` compila el APK, comprueba lo que lleva
+dentro y lo publica.
 
-1. **Actions** → flujo **apk** → la última ejecución.
-2. Abajo, en **Artifacts**, está `camal-pesaje-apk`. Se descarga como zip con
-   el `.apk` dentro.
-3. El resumen de la ejecución dice el tamaño y el SHA-256, para comprobar que
-   lo que se instala es lo que salió de ahí.
+Salen dos formas de descargarlo:
 
-También se puede lanzar a mano desde **Actions → apk → Run workflow**.
+- **Una publicación**, con dirección directa:
+  `https://github.com/nilthonnn/nefer/releases/download/camal-v<N>/camal-pesaje.apk`,
+  donde `<N>` es el número de la compilación. Esa dirección se abre desde el
+  teléfono sin más. El resumen de la ejecución la escribe entera.
+- **Un artifact** `camal-pesaje-apk` en la propia ejecución, por si se prefiere
+  bajarlo desde Actions.
+
+También se puede lanzar a mano desde **Actions → apk del camal → Run workflow**.
+
+### Por qué la publicación no se marca como «latest»
+
+`/releases/latest/download/…` es una sola dirección por repositorio, y aquí ya
+la usa el APK de las actas de RD RENTAL, con su QR impreso en un taller.
+Marcar esta como «latest» rompería aquella. Por eso cada compilación publica
+con su etiqueta propia —`camal-v12`— y la dirección lleva esa etiqueta.
+
+### Qué se comprueba antes de publicar
+
+Un APK que compila puede estar vacío por dentro: si la tarea que copia la app
+web no hizo nada, lo que se instala es una pantalla en negro que nadie ve
+hasta tenerla en la mano. Así que el flujo, antes de publicar, abre el APK
+como zip y compara archivo por archivo lo que lleva dentro contra
+`docs/camal/`; si falta uno, sobra uno o alguno difiere, falla. Comprueba
+también que el `index.html` de dentro traiga el puente y las pantallas, lista
+los permisos declarados y verifica la firma.
 
 ### En tu propia máquina
 
@@ -84,8 +105,15 @@ firmarla con una clave propia.
 
 ## Firmar para repartirla de verdad
 
-El APK sale firmado con la clave de depuración, que sirve para instalar de
-costado pero no para Play y no identifica al autor. Para una clave propia:
+Sin llave propia, cada compilación firma con una **provisional** que se
+fabrica en el momento. El APK se instala igual, pero como la llave cambia en
+cada compilación, una versión nueva no se puede instalar encima de la
+anterior: hay que desinstalar primero. Para arreglarlo se pone una llave
+propia en los *secrets* del repositorio —`ANDROID_ALMACEN_BASE64`,
+`ANDROID_CLAVE_ALMACEN`, `ANDROID_ALIAS`, `ANDROID_CLAVE_LLAVE`—, las mismas
+que ya usa el APK de las actas.
+
+Para crearla:
 
 ```bash
 keytool -genkeypair -v -keystore camal.jks -keyalg RSA -keysize 2048 \
