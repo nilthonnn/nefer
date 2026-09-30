@@ -85,6 +85,10 @@ tasks.register('copiarAppWeb', Copy) {
         // por el cargador de assets, intentaría salir a una red que la app no
         // tiene permiso de usar: registrarlo fallaría en cada arranque.
         exclude 'sw.js'
+        // La página de instalar es la puerta del sitio, no parte de la app, y
+        // pregunta a GitHub por la última versión: dentro del APK, sin
+        // permiso de Internet, sólo sabría fallar.
+        exclude 'instalar.html'
     }
     into layout.projectDirectory.dir('src/main/assets/www')
     doFirst {

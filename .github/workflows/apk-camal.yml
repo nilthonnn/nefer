@@ -152,9 +152,10 @@ jobs:
           dentro = {n[len("assets/www/"):]: apk.read(n)
                     for n in apk.namelist() if n.startswith("assets/www/")}
           web = pathlib.Path("docs/camal")
-          # Dos que se excluyen al copiar: el QR es de la página publicada, y
-          # el trabajador de servicio no pinta nada dentro del APK.
-          aparte = {"qr.svg", "sw.js"}
+          # Tres que se excluyen al copiar: el QR y la página de instalar son
+          # del sitio publicado, y el trabajador de servicio no pinta nada
+          # dentro del APK.
+          aparte = {"qr.svg", "sw.js", "instalar.html"}
           fuera = {str(a.relative_to(web)): a.read_bytes()
                    for a in web.rglob("*") if a.is_file() and a.name not in aparte}
 

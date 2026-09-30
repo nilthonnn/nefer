@@ -1835,6 +1835,120 @@ function avisoError() {
   return vista.error ? `<div class="aviso">${esc(vista.error)}</div>` : "";
 }
 
+// ===========================================================================
+// Instalar como aplicación.
+//
+// Es la vía que no se atasca. Un APK fuera de Play tiene que pasar tres
+// barreras de Android —el aviso de Chrome, el permiso de fuentes
+// desconocidas y Play Protect— y, mientras no haya llave de firma propia,
+// una cuarta: cada compilación sale con una llave distinta y Android se niega
+// a instalar una encima de otra. Instalada desde el navegador, la app queda
+// con su icono, abre sin barra y funciona sin señal, y nada de eso aplica.
+// ===========================================================================
+let eventoInstalar = null;
+let instalacionHecha = false;
+
+const agente = navigator.userAgent || "";
+const esAndroid = /Android/i.test(agente);
+const esIOS = /iPhone|iPad|iPod/i.test(agente);
+// Los navegadores de dentro de WhatsApp, Facebook, Instagram y compañía no
+// instalan nada ni descargan casi nada, y no lo dicen: el botón simplemente no
+// hace nada. `; wv)` es la marca que Android pone a cualquier WebView.
+const enNavegadorInterno = /FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|Snapchat|TikTok|; wv\)/i.test(agente);
+const servida = location.protocol === "https:"
+  || location.hostname === "127.0.0.1" || location.hostname === "localhost";
+
+const yaInstalada = () =>
+  (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
+  || navigator.standalone === true;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  // Chrome ofrece instalar con una barrita que se va sola. Se guarda el
+  // evento para ofrecerlo con un botón que se quede a la vista.
+  e.preventDefault();
+  eventoInstalar = e;
+  if (vista.pantalla === "jornada") pintar();
+});
+
+window.addEventListener("appinstalled", () => {
+  eventoInstalar = null;
+  instalacionHecha = true;
+  if (vista.pantalla === "jornada") pintar();
+});
+
+function instalarApp() {
+  if (!eventoInstalar) return;
+  const evento = eventoInstalar;
+  eventoInstalar = null;
+  evento.prompt();
+  evento.userChoice.then((eleccion) => {
+    if (eleccion && eleccion.outcome === "accepted") instalacionHecha = true;
+    pintar();
+  }).catch(() => pintar());
+}
+
+function noOfrecerInstalar() {
+  try { localStorage.setItem("camal.no-ofrecer-instalar", "1"); } catch (e) { /* ídem */ }
+  pintar();
+}
+
+// Abre esta misma dirección en Chrome desde un navegador interno. Es la única
+// salida que Android deja: el `intent://` salta del WebView a Chrome.
+function enlaceAChrome() {
+  return `intent://${location.host}${location.pathname}#Intent;scheme=https;package=com.android.chrome;end`;
+}
+
+function tarjetaInstalar() {
+  // Donde no tiene sentido ofrecerlo: dentro del APK ya es una app; dentro
+  // del visor de artefactos no se puede instalar; como archivo suelto no hay
+  // dirección que instalar; y si ya está instalada, sobra.
+  if (enMarco || puente || !servida || yaInstalada()) return "";
+
+  if (instalacionHecha) {
+    return `<div class="tarjeta"><div class="rotulo">Instalada</div>
+      <p class="nota" style="margin-top:0">Ya está en tu pantalla de inicio, con el icono de la balanza. Ábrela desde ahí: funciona sin señal.</p></div>`;
+  }
+
+  if (enNavegadorInterno && esAndroid) {
+    return `<div class="tarjeta" style="border:1px solid var(--naranja)">
+      <div class="rotulo" style="color:var(--naranja)">Está dentro de otra app</div>
+      <p class="nota" style="margin-top:0">Este navegador —el de WhatsApp, Facebook o similar— no deja instalar ni descargar. Ábrela en Chrome y ahí sí.</p>
+      <a class="btn" href="${enlaceAChrome()}" style="text-align:center;text-decoration:none">Abrir en Chrome</a>
+    </div>`;
+  }
+
+  let rechazada = false;
+  try { rechazada = localStorage.getItem("camal.no-ofrecer-instalar") === "1"; } catch (e) { /* ídem */ }
+  if (rechazada) return "";
+
+  if (eventoInstalar) {
+    return `<div class="tarjeta" style="border:1px solid var(--verde)">
+      <div class="rotulo">Instalar como aplicación</div>
+      <p class="nota" style="margin-top:0">Queda con su icono en la pantalla de inicio, abre sin barra de navegador y funciona sin señal. Sin APK, sin permisos de fuentes desconocidas.</p>
+      <button class="btn" onclick="instalarApp()">Instalar la app</button>
+      <button class="btn btn-sec btn-chico" onclick="noOfrecerInstalar()">Ahora no</button>
+    </div>`;
+  }
+
+  if (esIOS) {
+    return `<div class="tarjeta">
+      <div class="rotulo">Instalar como aplicación</div>
+      <p class="nota" style="margin-top:0">En Safari: toca <b>Compartir</b> (el cuadrado con la flecha) y luego <b>Añadir a pantalla de inicio</b>.</p>
+      <button class="btn btn-sec btn-chico" onclick="noOfrecerInstalar()">Entendido</button>
+    </div>`;
+  }
+
+  if (esAndroid) {
+    return `<div class="tarjeta">
+      <div class="rotulo">Instalar como aplicación</div>
+      <p class="nota" style="margin-top:0">En Chrome: toca el menú <b>⋮</b> arriba a la derecha y luego <b>Instalar aplicación</b> (o <b>Agregar a la pantalla principal</b>).</p>
+      <a class="btn btn-sec btn-chico" href="instalar.html" style="text-align:center;text-decoration:none">Otras formas de instalarla, APK incluido</a>
+    </div>`;
+  }
+
+  return "";
+}
+
 function pantallaJornada() {
   const t = totalesJornada();
   const lotes = jornada.lotes.slice().reverse().map((lote) => {
@@ -1855,7 +1969,7 @@ function pantallaJornada() {
     </button>`;
   }).join("");
 
-  return encabezado("Jornada del camal", `${jornada.fecha} · ${jornada.id}`) + `
+  return encabezado("Jornada del camal", `${jornada.fecha} · ${jornada.id}`) + tarjetaInstalar() + `
     <div class="tarjeta">
       <div class="rotulo">Consolidado del día</div>
       <div class="tiras">
