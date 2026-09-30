@@ -12,6 +12,7 @@ import io
 import json
 import os
 import re
+import xml.dom.minidom
 import sys
 import zipfile
 from pathlib import Path
@@ -648,7 +649,20 @@ def test_el_archivo_descargable_es_la_misma_app_que_esta_publicada(tmp_path):
 
 def test_el_qr_apunta_a_la_direccion_publicada():
     """El QR del sitio es lo que se imprime y se pega en el taller."""
-    qr = (APP.parent.parent / "qr-app.svg").read_text(encoding="utf-8")
+    ruta = APP.parent.parent / "qr-app.svg"
+
+    # Se parsea antes de mirar el texto. Un SVG mal formado no lo dibuja
+    # ningún navegador, y buscando el título con una expresión regular eso no
+    # se ve: el título sigue ahí aunque el archivo esté roto. Pasó —los
+    # atributos acabaron dentro de la declaración XML— y esta prueba lo dejó
+    # pasar.
+    arbol = xml.dom.minidom.parse(str(ruta))
+    assert arbol.documentElement.tagName == "svg", \
+        "el QR tiene que ser un SVG, con <svg> de raíz"
+    titulos = arbol.documentElement.getElementsByTagName("title")
+    assert titulos, "el QR tiene que decir a dónde apunta, dentro del <svg>"
+
+    qr = ruta.read_text(encoding="utf-8")
     dentro = re.search(r"<title>([^<]+)</title>", qr)
     assert dentro, "el QR tiene que decir a dónde apunta"
 

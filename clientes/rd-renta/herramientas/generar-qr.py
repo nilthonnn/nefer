@@ -19,6 +19,7 @@ prueba `test_el_qr_apunta_a_la_direccion_publicada` avisa si se olvida.
 from __future__ import annotations
 
 import sys
+import xml.dom.minidom
 from pathlib import Path
 
 DIRECCION = "https://nilthonnn.github.io/nefer/rd-rental/app/"
@@ -38,19 +39,28 @@ def main() -> int:
 
     # El SVG lleva dentro, en texto, a donde apunta: asi se puede comprobar sin
     # tener que descodificar la imagen, y un lector de pantalla lo anuncia.
+    #
+    # El corte se hace sobre la etiqueta `<svg>`, no sobre el primer `>` del
+    # archivo: el primero es el de la declaracion XML, y escribir ahi deja un
+    # archivo que ningun navegador dibuja. Asi estuvo, y el QR impreso no se
+    # veia; la prueba no lo cazo porque buscaba el titulo con una expresion
+    # regular, y en un archivo mal formado el titulo sigue estando.
     svg = SALIDA.read_text(encoding="utf-8")
-    abre = '<svg xmlns="http://www.w3.org/2000/svg"'
-    cierra = svg.index(">", svg.index(abre)) + 1
-    cabecera = svg[:cierra].replace(
-        ">",
-        ' role="img" aria-label="Código QR de la app de campo">'
+    abre = svg.index("<svg")
+    cierra = svg.index(">", abre) + 1
+    etiqueta = svg[abre:cierra].replace(
+        ">", ' role="img" aria-label="Código QR de la app de campo">', 1)
+    dentro = (
         f"<title>{DIRECCION}</title>"
         "<desc>Apunta a la app de campo publicada. Se regenera con "
         "herramientas/generar-qr.py</desc>"
-        '<rect width="100%" height="100%" fill="#FFFFFF"/>',
-        1,
+        '<rect width="100%" height="100%" fill="#FFFFFF"/>'
     )
-    SALIDA.write_text(cabecera + svg[cierra:], encoding="utf-8")
+    SALIDA.write_text(svg[:abre] + etiqueta + dentro + svg[cierra:], encoding="utf-8")
+
+    # Un SVG mal formado no se dibuja. Se comprueba aqui para que el fallo
+    # salga al rehacerlo, y no cuando alguien escanee el papel de la pared.
+    xml.dom.minidom.parse(str(SALIDA))
     print(f"{SALIDA}  ·  {DIRECCION}")
     return 0
 
