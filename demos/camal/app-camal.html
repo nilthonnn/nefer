@@ -389,25 +389,34 @@ const FORMATO = {
 };
 
 // ---------------------------------------------------------------------------
-// Catálogo. Los precios son referenciales: se editan en cada lote y quedan
-// guardados con el lote, no aquí.
+// Catálogo. Sólo nombres: aquí no hay precios, y no es un descuido.
+//
+// El precio del degollado se acuerda lote por lote —cambia con el comprador,
+// con el día y con lo que salga de la playa—, así que no existe una tarifa que
+// poner. Una cifra de catálogo sería una respuesta inventada a una pregunta
+// que sólo sabe contestar quien está cerrando el trato, y la app la ofrecería
+// con la misma cara que ofrece un peso medido.
+//
+// Lo que sí se recuerda es lo que se cobró la última vez por esa categoría:
+// eso es un dato suyo, no una suposición mía.
 // ---------------------------------------------------------------------------
 const CATEGORIAS_PESO = [
-  { id: "Alpaca degollada",           precio: 14.00 },
-  { id: "Alpaca observada degollada", precio: 12.00 },
-  { id: "Alpaca vieja degollada",     precio: 11.00 },
-  { id: "Llama degollada",            precio: 13.00 },
-  { id: "Cordero degollado",          precio: 16.00 },
-  { id: "Cuero de alpaca",            precio: 18.00 },
-  { id: "Cuero de cordero",           precio: 15.00 }
+  "Alpaca degollada",
+  "Alpaca observada degollada",
+  "Alpaca vieja degollada",
+  "Llama degollada",
+  "Cordero degollado",
+  "Cuero de alpaca",
+  "Cuero de cordero"
 ];
 
 const CATEGORIAS_UNIDAD = [
-  { id: "Menudencia de alpaca",  precio: 25.00 },
-  { id: "Menudencia de cordero", precio: 18.00 }
+  "Menudencia de alpaca",
+  "Menudencia de cordero"
 ];
 
 const CLAVE = "camal.jornada.v3";
+const CLAVE_PRECIOS = "camal.ultimos-precios";
 const CLAVE_VIEJA = "camal.jornada.v2";
 
 // ===========================================================================
@@ -544,6 +553,30 @@ function guardar() {
   try { localStorage.setItem(CLAVE, JSON.stringify(jornada)); } catch (e) { /* ídem */ }
 }
 
+// Lo último que se cobró por cada categoría, y cuándo. Sobrevive a la jornada
+// —el precio de ayer es la mejor referencia que hay para el de hoy—, pero no
+// se aplica solo: se ofrece, y lo pone quien cierra el trato.
+let ultimosPrecios = {};
+
+function cargarPrecios() {
+  try {
+    const crudo = localStorage.getItem(CLAVE_PRECIOS);
+    if (crudo) {
+      const guardados = JSON.parse(crudo);
+      if (guardados && typeof guardados === "object") return guardados;
+    }
+  } catch (e) { /* sin almacenamiento */ }
+  return {};
+}
+
+function recordarPrecio(categoria, precio) {
+  if (precio === null || precio === undefined) return;
+  ultimosPrecios[categoria] = { precio: precio, fecha: jornada.fecha, hora: hora() };
+  try { localStorage.setItem(CLAVE_PRECIOS, JSON.stringify(ultimosPrecios)); } catch (e) { /* ídem */ }
+}
+
+const precioRecordado = (categoria) => ultimosPrecios[categoria] || null;
+
 // ---------------------------------------------------------------------------
 // Números: "38,5" es como se escribe el peso en el Perú.
 // ---------------------------------------------------------------------------
@@ -624,7 +657,7 @@ function fijarOperador(valor) {
 function nuevoLote(tipo) {
   vista.nuevo = {
     tipo: tipo,
-    categoria: (tipo === "peso" ? CATEGORIAS_PESO : CATEGORIAS_UNIDAD)[0].id,
+    categoria: (tipo === "peso" ? CATEGORIAS_PESO : CATEGORIAS_UNIDAD)[0],
     cantidad: tipo === "peso" ? 40 : 1
   };
   ir(tipo === "peso" ? "nuevo-peso" : "nuevo-unidad");
@@ -714,10 +747,8 @@ function terminarLote() {
   lote.estado = "culminado";
   lote.fin = hora();
   if (lote.tipo === "peso") lote.cantidad = vigentes(lote).length;
-  if (lote.precio === null) {
-    const cat = CATEGORIAS_PESO.concat(CATEGORIAS_UNIDAD).find((c) => c.id === lote.categoria);
-    lote.precio = cat ? cat.precio : null;
-  }
+  // El precio no se rellena solo: se acuerda, y hasta que alguien lo escriba
+  // el lote vale «pendiente», que es lo que de verdad es.
   anotar("CIERRE DE LOTE", codigoLote(lote), "",
          lote.tipo === "peso" ? `${kg(pesoLote(lote))} kg en ${cantidadLote(lote)} cabezas`
                               : `${lote.cantidad} unidades`, "");
@@ -746,6 +777,7 @@ function fijarPrecio(valor) {
     anotar("PRECIO DEL LOTE", codigoLote(lote),
            antes === null ? "" : soles(antes),
            lote.precio === null ? "" : soles(lote.precio), "");
+    recordarPrecio(lote.categoria, lote.precio);
   }
   guardar();
   pintar();
@@ -1883,7 +1915,7 @@ function pantallaNuevoPeso() {
   // devolvía el desplegable a la primera categoría, y el lote se abría con la
   // que no era y con su precio. Callado, que es lo peor.
   const opciones = CATEGORIAS_PESO.map((c) =>
-    `<option value="${esc(c.id)}"${c.id === vista.nuevo.categoria ? " selected" : ""}>${esc(c.id)} — referencia S/ ${soles(c.precio)} por kg</option>`).join("");
+    `<option value="${esc(c)}"${c === vista.nuevo.categoria ? " selected" : ""}>${esc(c)}</option>`).join("");
   return encabezado("Nuevo lote de pesaje", "Cuántas cabezas entran al lote", "jornada") + `
     <div class="tarjeta">
       <div class="campo-grupo">
@@ -1907,7 +1939,7 @@ function pantallaNuevoPeso() {
 
 function pantallaNuevoUnidad() {
   const opciones = CATEGORIAS_UNIDAD.map((c) =>
-    `<option value="${esc(c.id)}"${c.id === vista.nuevo.categoria ? " selected" : ""}>${esc(c.id)} — referencia S/ ${soles(c.precio)} por unidad</option>`).join("");
+    `<option value="${esc(c)}"${c === vista.nuevo.categoria ? " selected" : ""}>${esc(c)}</option>`).join("");
   return encabezado("Nuevo lote de menudencias", "Se cuenta por unidad, no se pesa", "jornada") + `
     <div class="tarjeta">
       <div class="campo-grupo">
@@ -2027,6 +2059,7 @@ function pantallaUnidad() {
           <input type="text" inputmode="decimal" id="precioUnidad" class="grande"
                  value="${lote.precio === null ? "" : soles(lote.precio)}"
                  placeholder="0.00" onchange="fijarPrecio(this.value)">
+          ${sugerenciaDePrecio(lote)}
         </div>
       </div>
       ${avisoError()}
@@ -2043,6 +2076,27 @@ function pantallaUnidad() {
 
     <div class="barra-accion"><button class="btn btn-turquesa" onclick="terminarLote()">Cerrar el lote</button></div>
   `;
+}
+
+// Lo último que se cobró por esta categoría. No se rellena solo —el precio lo
+// acuerda quien está cerrando el trato— pero tenerlo a un toque evita teclear
+// la misma cifra veinte veces en una mañana.
+function sugerenciaDePrecio(lote) {
+  const antes = precioRecordado(lote.categoria);
+  if (!antes) {
+    return `<p class="nota">El precio de ${esc(lote.categoria.toLowerCase())} se acuerda en cada lote: aquí no hay tarifa fija. Lo que escribas queda guardado y te lo ofreceré la próxima vez.</p>`;
+  }
+  if (lote.precio !== null && lote.precio === antes.precio) {
+    return `<p class="nota">Es lo mismo que cobraste el ${esc(antes.fecha)} a las ${esc(antes.hora.slice(0, 5))}.</p>`;
+  }
+  return `<button class="btn btn-sec btn-chico" style="margin-top:8px"
+            onclick="usarPrecioRecordado()">Usar S/ ${soles(antes.precio)}, lo último del ${esc(antes.fecha)}</button>`;
+}
+
+function usarPrecioRecordado() {
+  const lote = loteActual();
+  const antes = precioRecordado(lote.categoria);
+  if (antes) fijarPrecio(soles(antes.precio));
 }
 
 function pantallaCulminado() {
@@ -2085,6 +2139,7 @@ function pantallaCulminado() {
           <input type="text" inputmode="decimal" id="precioLote" class="grande"
                  value="${lote.precio === null ? "" : soles(lote.precio)}"
                  placeholder="0.00" onchange="fijarPrecio(this.value)">
+          ${sugerenciaDePrecio(lote)}
         </div>
       </div>
       ${avisoError()}
@@ -2208,6 +2263,7 @@ function atras() {
 }
 
 jornada = cargar();
+ultimosPrecios = cargarPrecios();
 if (jornada.migrada) {
   delete jornada.migrada;
   guardar();

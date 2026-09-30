@@ -23,6 +23,10 @@ SALIDA.mkdir(parents=True, exist_ok=True)
 errores, fallos = [], []
 
 
+def totalLote_es_pendiente(p):
+    return p.evaluate("totalLote(loteActual())") is None
+
+
 def exigir(condicion, dicho):
     print(("  ok  " if condicion else "FALLA ") + dicho)
     if not condicion:
@@ -123,7 +127,16 @@ with sync_playwright() as pw:
     p.click("text=Terminar lote")
     exigir("Lote culminado" in p.inner_text("h1"), "el lote queda culminado")
     exigir("80.80 kg" in p.inner_text(".paso-cierre"), "el paso 1 da el peso total: 80.80 kg")
-    exigir(p.input_value("#precioLote") == "14.00", "propone el precio de referencia")
+    # El precio del degollado se acuerda por lote y no hay tarifa: la app no
+    # puede proponer una cifra inventada, porque la ofrecería con la misma cara
+    # con la que ofrece un peso medido.
+    exigir(p.input_value("#precioLote") == "",
+           "no propone ningún precio: el campo arranca vacío")
+    # Ojo con el selector: `.paso-cierre` casa tres veces y `inner_text` coge
+    # el primero, que es el del peso. La nota vive en el segundo.
+    exigir("no hay tarifa fija" in p.locator(".paso-cierre").nth(1).inner_text(),
+           "y lo dice, en vez de dejar el hueco sin explicar")
+    exigir(totalLote_es_pendiente(p), "sin precio, el total del lote es «—», no S/ 0.00")
     p.fill("#precioLote", "15,50")
     p.dispatch_event("#precioLote", "change")
     exigir("S/ 1252.40" in p.inner_text("body"), "80.80 kg × S/ 15.50 = S/ 1252.40")
@@ -174,7 +187,26 @@ with sync_playwright() as pw:
     exigir(acta.suffix == ".pdf" and acta.stat().st_size > 2000, f"baja {acta.name}")
     p.screenshot(path=SALIDA / "8-exportar.png", full_page=True)
 
-    print("\n[12] Una jornada del formato viejo se migra una sola vez")
+    print("\n[12] El precio que se usó queda ofrecido para la próxima vez")
+    # Se viene de la pantalla de exportar, que sale con la flecha de atrás.
+    p.click("button[aria-label='Volver']")
+    p.click("text=Nuevo lote de pesaje")
+    p.select_option("#categoriaLote", "Alpaca degollada")
+    p.fill("#cantidadLote", "1")
+    p.click("text=Empezar a pesar")
+    p.fill("#pesoActual", "40")
+    p.click("text=/^Registrar N°/")
+    p.click("text=Terminar el lote")
+    exigir(p.input_value("#precioLote") == "",
+           "el lote nuevo tampoco trae precio puesto")
+    ofrecido = p.locator("text=/Usar S\\/ 15\\.50/")
+    exigir(ofrecido.count() == 1,
+           "pero ofrece los S/ 15.50 que se cobraron hace un rato")
+    ofrecido.click()
+    exigir(p.evaluate("loteActual().precio") == 15.5, "y al tocarlo, lo pone")
+    exigir("S/ 620.00" in p.inner_text("body"), "40.00 kg × S/ 15.50 = S/ 620.00")
+
+    print("\n[13] Una jornada del formato viejo se migra una sola vez")
     p.evaluate("""() => {
       localStorage.clear();
       localStorage.setItem("camal.jornada.v2", JSON.stringify({
@@ -201,7 +233,7 @@ with sync_playwright() as pw:
 # ---------------------------------------------------------------------------
 # Auditoría de los archivos, ya fuera del navegador.
 # ---------------------------------------------------------------------------
-print("\n[13] El Excel, abierto con openpyxl")
+print("\n[14] El Excel, abierto con openpyxl")
 from openpyxl import load_workbook
 
 wb = load_workbook(libro)                      # con las fórmulas tal cual
@@ -279,7 +311,7 @@ total_frio = resv.cell(row=resv.max_row, column=9).value
 exigir(abs(total_frio - 6385.70) < 0.01,
        f"el total en frío cuadra con la pantalla: S/ {total_frio}")
 
-print("\n[14] El PDF, abierto con pypdf")
+print("\n[15] El PDF, abierto con pypdf")
 from pypdf import PdfReader
 
 lector = PdfReader(str(acta))

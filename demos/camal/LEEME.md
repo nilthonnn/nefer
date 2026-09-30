@@ -165,8 +165,19 @@ Las tres van con fila de cabecera congelada y autofiltro puesto. Desde la
 pantalla de exportación, cualquiera de las tres se puede ver y copiar suelta en
 CSV, para pegarla en Google Sheets.
 
-Los precios que trae el catálogo son referenciales y están para confirmarse:
-no son los del camal.
+### El precio no está en el catálogo
+
+Porque no existe: el degollado se acuerda lote por lote, y cambia con el
+comprador, con el día y con lo que salga de la playa. Una tarifa de catálogo
+sería una respuesta inventada a una pregunta que sólo sabe contestar quien está
+cerrando el trato, y la app la ofrecería con la misma cara con la que ofrece un
+peso medido.
+
+Así que el campo del precio arranca **vacío** y el lote vale «pendiente» hasta
+que alguien lo escriba. Lo que sí hace la app es recordar **lo que se cobró la
+última vez** por esa categoría —con su fecha— y ofrecerlo a un toque. Eso es un
+dato suyo, no una suposición mía, y sobrevive de una jornada a la siguiente:
+el precio de ayer es la mejor referencia que hay para el de hoy.
 
 ### El cierre del lote, en tres pasos
 
