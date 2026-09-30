@@ -507,6 +507,11 @@ function migrar(vieja) {
     antes: "formato 2.0", despues: `formato ${FORMATO.version}`,
     motivo: "actualización de la aplicación", responsable: "(sin declarar)"
   });
+  // Hay que guardarla en el acto. Si no, la siguiente recarga vuelve a migrar
+  // desde la versión vieja: otro identificador de jornada al azar y otro
+  // apunte de migración, con lo que el identificador —que es la columna
+  // vertebral de la trazabilidad— cambiaría solo.
+  j.migrada = true;
   return j;
 }
 
@@ -624,6 +629,7 @@ function crearLote() {
   const categoria = document.getElementById("categoriaLote").value;
   const tipo = vista.nuevo.tipo;
 
+  vista.nuevo.categoria = categoria;
   if (cantidad === null || cantidad < 1 || cantidad % 1 !== 0) {
     vista.error = "La cantidad del lote es un número entero de cabezas, desde 1.";
     return pintar();
@@ -1168,7 +1174,8 @@ function libroExcel() {
       esPeso ? F(`SUMIFS(DETALLE!$H:$H,DETALLE!$D:$D,$A${r},DETALLE!$L:$L,"VIGENTE")`, Number(kg(f.peso)), 3)
              : T("", 3),
       f.precio === null ? T("") : T(Number(soles(f.precio)), 4),
-      F(`ROUND(IF($F${r}="kg",$G${r},$E${r})*$H${r},2)`, f.total === null ? 0 : f.total, 4),
+      F(`IF($H${r}="","",ROUND(IF($F${r}="kg",$G${r},$E${r})*$H${r},2))`,
+        f.total === null ? "" : f.total, 4),
       T(f.estado), T(f.inicio), T(f.fin)
     ]));
   });
@@ -1866,13 +1873,16 @@ function pantallaJornada() {
 }
 
 function pantallaNuevoPeso() {
+  // Sin `selected`, un repintado —el de un aviso de cantidad, por ejemplo—
+  // devolvía el desplegable a la primera categoría, y el lote se abría con la
+  // que no era y con su precio. Callado, que es lo peor.
   const opciones = CATEGORIAS_PESO.map((c) =>
-    `<option value="${esc(c.id)}">${esc(c.id)} — referencia S/ ${soles(c.precio)} por kg</option>`).join("");
+    `<option value="${esc(c.id)}"${c.id === vista.nuevo.categoria ? " selected" : ""}>${esc(c.id)} — referencia S/ ${soles(c.precio)} por kg</option>`).join("");
   return encabezado("Nuevo lote de pesaje", "Cuántas cabezas entran al lote", "jornada") + `
     <div class="tarjeta">
       <div class="campo-grupo">
         <label for="categoriaLote">Categoría del lote</label>
-        <select id="categoriaLote">${opciones}</select>
+        <select id="categoriaLote" onchange="vista.nuevo.categoria = this.value">${opciones}</select>
       </div>
       <div class="campo-grupo">
         <label for="cantidadLote">Cantidad a pesar</label>
@@ -1891,12 +1901,12 @@ function pantallaNuevoPeso() {
 
 function pantallaNuevoUnidad() {
   const opciones = CATEGORIAS_UNIDAD.map((c) =>
-    `<option value="${esc(c.id)}">${esc(c.id)} — referencia S/ ${soles(c.precio)} por unidad</option>`).join("");
+    `<option value="${esc(c.id)}"${c.id === vista.nuevo.categoria ? " selected" : ""}>${esc(c.id)} — referencia S/ ${soles(c.precio)} por unidad</option>`).join("");
   return encabezado("Nuevo lote de menudencias", "Se cuenta por unidad, no se pesa", "jornada") + `
     <div class="tarjeta">
       <div class="campo-grupo">
         <label for="categoriaLote">Menudencia de</label>
-        <select id="categoriaLote">${opciones}</select>
+        <select id="categoriaLote" onchange="vista.nuevo.categoria = this.value">${opciones}</select>
       </div>
       <div class="campo-grupo">
         <label for="cantidadLote">Cantidad de unidades</label>
@@ -2192,5 +2202,9 @@ function atras() {
 }
 
 jornada = cargar();
+if (jornada.migrada) {
+  delete jornada.migrada;
+  guardar();
+}
 pintar();
 </script>

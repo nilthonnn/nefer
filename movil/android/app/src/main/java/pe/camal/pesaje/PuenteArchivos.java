@@ -1,7 +1,9 @@
 package pe.camal.pesaje;
 
+import android.Manifest;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -107,8 +109,13 @@ public class PuenteArchivos {
         return "";
     }
 
-    /** Android 9 y anteriores: carpeta pública de Descargas. */
+    /** Android 9 y anteriores: carpeta pública de Descargas, con permiso. */
     private String enCarpetaPublica(String nombre, byte[] datos) throws Exception {
+        if (contexto.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            return "Falta el permiso para escribir en Descargas: concédelo en "
+                    + "Ajustes › Aplicaciones › Camal › Permisos.";
+        }
         File carpeta = Environment.getExternalStoragePublicDirectory(
                 Environment.DIRECTORY_DOWNLOADS);
         if (carpeta == null || (!carpeta.exists() && !carpeta.mkdirs())) {

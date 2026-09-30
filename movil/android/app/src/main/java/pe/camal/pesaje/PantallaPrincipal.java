@@ -1,6 +1,8 @@
 package pe.camal.pesaje;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -88,11 +90,31 @@ public class PantallaPrincipal extends Activity {
 
         setContentView(vista);
 
-        if (estado != null) {
-            vista.restoreState(estado);
-        } else {
+        // `restoreState` devuelve null cuando el Bundle no traía estado del
+        // WebView —lo hay: Android puede recrear la actividad con un Bundle
+        // que no lo incluya—, y entonces la pantalla se queda en blanco.
+        if (estado == null || vista.restoreState(estado) == null) {
             vista.loadUrl(INICIO);
         }
+
+        pedirPermisoDeEscrituraSiHaceFalta();
+    }
+
+    /**
+     * Desde Android 10 se escribe por MediaStore y no hace falta permiso.
+     * Antes sí, y declararlo en el manifiesto no basta desde Android 6: hay
+     * que pedirlo en caliente. Sin esto, exportar el Excel fallaba con EACCES
+     * en todo teléfono de Android 7 a 9.
+     *
+     * <p>Se pide al arrancar y no al exportar porque el puente contesta al
+     * instante y un diálogo de permiso no: pedirlo entonces obligaría a tocar
+     * el botón dos veces sin explicar por qué.
+     */
+    private void pedirPermisoDeEscrituraSiHaceFalta() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) return;
+        if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED) return;
+        requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
     }
 
     @Override

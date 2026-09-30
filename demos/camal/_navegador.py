@@ -22,8 +22,14 @@ def ruta_del_navegador() -> str | None:
     explicita = os.environ.get("CHROMIUM")
     if explicita:
         return explicita
-    almacen = Path(os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "")) or None
-    if almacen is None or not almacen.is_dir():
+    # `Path("")` es `PosixPath('.')`, que es cierto: escrito con `or None`
+    # esta rama nunca se tomaba y se rastreaba el directorio de trabajo
+    # buscando navegadores.
+    declarado = os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "").strip()
+    if not declarado:
+        return None
+    almacen = Path(declarado)
+    if not almacen.is_dir():
         return None
     for forma in FORMAS:
         for candidato in sorted(almacen.glob(forma), reverse=True):

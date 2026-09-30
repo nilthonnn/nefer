@@ -52,7 +52,20 @@ with sync_playwright() as pw:
     p.click("text=Nuevo lote de pesaje")
     p.select_option("#categoriaLote", "Alpaca degollada")
     exigir(p.input_value("#cantidadLote") == "40", "la cantidad propuesta es 40")
+
+    # Una cantidad que no vale repinta la pantalla, y el repintado no puede
+    # llevarse por delante la categoría elegida: el lote se abriría con la
+    # primera de la lista y con su precio, sin que nadie lo note.
+    p.fill("#cantidadLote", "medio")
     p.click("text=Empezar a pesar")
+    exigir(p.locator(".aviso").count() == 1, "avisa de que la cantidad no vale")
+    exigir(p.input_value("#categoriaLote") == "Alpaca degollada",
+           "y respeta la categoría elegida al repintar")
+
+    p.fill("#cantidadLote", "40")
+    p.click("text=Empezar a pesar")
+    exigir(p.evaluate("loteActual().categoria") == "Alpaca degollada",
+           "el lote se abre con la categoría que se ve en pantalla")
     exigir("de 40" in p.inner_text(".correlativo"), "arranca en el correlativo 1 de 40")
     exigir(p.evaluate("codigoLote(loteActual())").endswith("-L004"),
            "el lote lleva código correlativo de tres cifras")
@@ -161,13 +174,34 @@ with sync_playwright() as pw:
     exigir(acta.suffix == ".pdf" and acta.stat().st_size > 2000, f"baja {acta.name}")
     p.screenshot(path=SALIDA / "8-exportar.png", full_page=True)
 
+    print("\n[12] Una jornada del formato viejo se migra una sola vez")
+    p.evaluate("""() => {
+      localStorage.clear();
+      localStorage.setItem("camal.jornada.v2", JSON.stringify({
+        fecha: "2026-09-01", demo: false, correlativoLote: 1,
+        lotes: [{ id: 1, tipo: "peso", categoria: "Alpaca degollada",
+                  cantidad: 2, pesos: [40.5, 38.2], precio: 14,
+                  estado: "culminado", inicio: "06:10:00", fin: "06:20:00" }]
+      }));
+    }""")
+    p.reload()
+    primera = p.evaluate("jornada.id")
+    exigir(p.evaluate("jornada.version") == 3, "la jornada vieja sube de formato")
+    exigir(p.evaluate("pesoLote(jornada.lotes[0])") == 78.7, "con sus pesadas intactas")
+    p.reload()
+    exigir(p.evaluate("jornada.id") == primera,
+           "y al recargar conserva su identificador, no se vuelve a migrar")
+    exigir(len([a for a in p.evaluate("jornada.bitacora")
+                if a["accion"] == "MIGRACIÓN DE FORMATO"]) == 1,
+           "con un solo apunte de migración")
+
     ctx.close()
     nav.close()
 
 # ---------------------------------------------------------------------------
 # Auditoría de los archivos, ya fuera del navegador.
 # ---------------------------------------------------------------------------
-print("\n[12] El Excel, abierto con openpyxl")
+print("\n[13] El Excel, abierto con openpyxl")
 from openpyxl import load_workbook
 
 wb = load_workbook(libro)                      # con las fórmulas tal cual
@@ -224,6 +258,15 @@ exigir(any(str(res.cell(row=r, column=5).value).startswith("=COUNTIFS(DETALLE!")
            for r in range(2, res.max_row)),
        "y la cantidad también")
 
+# Las cinco hojas tienen que contar lo mismo del lote sin precio: en blanco,
+# nunca en cero. Un «S/ 0.00» en una hoja y «pendiente» en otra es lo que hace
+# que alguien cobre por una que todavía no se tasó.
+resv = load_workbook(libro, data_only=True)["RESUMEN"]
+sin_precio = next(r for r in range(2, res.max_row)
+                  if str(res.cell(row=r, column=1).value or "").endswith("-L003"))
+exigir(resv.cell(row=sin_precio, column=9).value is None,
+       "en el RESUMEN, un lote sin precio deja el total en blanco")
+
 con = wb["CONTROL"]
 textos = [str(c.value) for fila in con.iter_rows() for c in fila if c.value is not None]
 exigir("REG-CAM-001" in textos and "Nilthon Chit" in textos,
@@ -232,13 +275,11 @@ exigir(any(str(t).startswith('=COUNTIF(DETALLE!L:L,"ANULADO")') for t in textos)
        "y cuenta los anulados con fórmula")
 
 # Y con los valores en frío, que es como lo lee un visor de teléfono.
-wbv = load_workbook(libro, data_only=True)
-resv = wbv["RESUMEN"]
 total_frio = resv.cell(row=resv.max_row, column=9).value
 exigir(abs(total_frio - 6385.70) < 0.01,
        f"el total en frío cuadra con la pantalla: S/ {total_frio}")
 
-print("\n[13] El PDF, abierto con pypdf")
+print("\n[14] El PDF, abierto con pypdf")
 from pypdf import PdfReader
 
 lector = PdfReader(str(acta))

@@ -75,6 +75,13 @@ with sync_playwright() as pw:
     libro = next((r for r in recibido if r["nombre"].endswith(".xlsx")), None)
     acta = next((r for r in recibido if r["nombre"].endswith(".pdf")), None)
     exigir(libro is not None and acta is not None, "uno es el libro y el otro el acta")
+    if libro is None or acta is None:
+        # Sin los dos no hay nada que comprobar después, y seguir sólo
+        # cambiaría un informe de fallos por un error de la propia prueba.
+        print("\n--- errores de página:", errores or "ninguno")
+        print("--- fallos:", fallos)
+        ctx.close(); nav.close()
+        sys.exit(1)
     exigir(libro["mime"].endswith("spreadsheetml.sheet"),
            f"el libro va con su tipo: {libro['mime']}")
     exigir(acta["mime"] == "application/pdf", "y el acta con el suyo")

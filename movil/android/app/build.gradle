@@ -80,6 +80,11 @@ tasks.register('copiarAppWeb', Copy) {
     description = 'Trae la app web desde docs/camal a los assets del APK.'
     from(appWeb) {
         exclude 'qr.svg'          // el QR es de la página, no de la app
+        // Dentro del APK los archivos ya son locales, así que el trabajador de
+        // servicio no tiene nada que guardar. Y como sus peticiones no pasan
+        // por el cargador de assets, intentaría salir a una red que la app no
+        // tiene permiso de usar: registrarlo fallaría en cada arranque.
+        exclude 'sw.js'
     }
     into layout.projectDirectory.dir('src/main/assets/www')
     doFirst {
