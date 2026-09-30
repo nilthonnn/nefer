@@ -57,6 +57,17 @@ jobs:
             exit 1
           fi
 
+      # El puente es lo que el APK aporta sobre la app web, y es donde un
+      # byte mal codificado rompería el Excel sin que nadie lo note. Se
+      # comprueba antes de compilar: un APK que no se puede creer no vale la
+      # pena compilarlo.
+      - name: El puente, antes de envolverlo
+        run: |
+          pip install playwright openpyxl pypdf
+          python -m playwright install --with-deps chromium
+          python3 demos/camal/construir.py
+          python3 demos/camal/probar_puente.py "$RUNNER_TEMP/puente"
+
       # La imagen del runner ya trae el SDK. La acción `setup-android` no se usa
       # porque intenta instalar el paquete `tools`, que Google retiró, y se cae
       # antes de empezar. La carpeta de las herramientas cambia de nombre entre
