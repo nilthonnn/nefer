@@ -37,7 +37,6 @@ PLANTILLA_MANIFIESTO = {
     "registro_fotografico": [],
     "consumibles": [],
     "control_consumibles": [],
-    "resumen_ejecutivo": "",
 }
 
 
@@ -272,14 +271,6 @@ def validar(manifiesto, raiz: Path | None = None) -> list[str]:
     tipo = encabezado.get("tipo_documento") if isinstance(encabezado, dict) else None
     _validar_consumibles(manifiesto.get("consumibles", []), errores, raiz, tipo)
     _validar_control_consumibles(manifiesto.get("control_consumibles", []), errores)
-
-    resumen = manifiesto.get("resumen_ejecutivo", "")
-    if not _es_texto(resumen):
-        errores.append("resumen_ejecutivo: obligatorio (lo firma el cliente).")
-    elif len(resumen.split()) > 20:
-        errores.append(
-            f"resumen_ejecutivo: maximo 20 palabras, tiene {len(resumen.split())}."
-        )
     return errores
 
 

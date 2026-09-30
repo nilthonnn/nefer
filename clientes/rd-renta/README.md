@@ -114,7 +114,6 @@ Documentado en **[docs/ESQUEMA-JSON.md](docs/ESQUEMA-JSON.md)**. En resumen:
   "registro_fotografico":   [ { "foto_id": 1, "descripcion": "VISTA FRONTAL", "archivo": "fotos/1.jpg" } ],
   "consumibles":            [ { "descripcion": "EXTINTOR DE 6 KG", "estado_recepcion": "NO_RETORNA" } ],
   "control_consumibles":    [ { "consumible": "Combustible diésel", "despacho": 100, "recepcion": 35 } ],
-  "resumen_ejecutivo":      "Máximo 20 palabras."
 }
 ```
 

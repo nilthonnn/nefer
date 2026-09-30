@@ -1,0 +1,105 @@
+plugins {
+  id "com.android.application"
+}
+
+/* La app web no se copia a mano dentro del proyecto de Android.
+   `docs/app/` es la unica copia que existe: la que se publica en Pages y la
+   que se empaqueta en el .apk. Se toma de ahi en cada compilacion, asi que el
+   .apk no puede quedarse atras respecto de lo publicado, y nadie tiene que
+   acordarse de sincronizar dos carpetas. */
+def carpetaWeb = rootProject.file("../docs/app")
+def webEnsamblada = new File(project.layout.buildDirectory.get().asFile, "web")
+
+tasks.register("copiarWeb", Copy) {
+  description = "Trae docs/app/ a los assets del .apk"
+  from(carpetaWeb)
+  // Queda en la raiz de assets/. WebViewAssetLoader la sirve bajo
+  // https://actas.rdrental.local/app/, que es lo que carga MainActivity.
+  into(webEnsamblada)
+  // Dentro del .apk el trabajador de servicio no pinta nada: los archivos ya
+  // son locales. Se queda fuera para no tener una cache por encima de otra.
+  exclude("sw.js")
+}
+
+tasks.register("comprobarWeb") {
+  description = "Falla si docs/app/ no esta donde el .apk la busca"
+  doFirst {
+    def indice = new File(carpetaWeb, "index.html")
+    if (!indice.isFile()) {
+      throw new GradleException(
+        "no esta la app web en ${carpetaWeb}: el .apk saldria vacio")
+    }
+  }
+}
+tasks.named("copiarWeb") { dependsOn("comprobarWeb") }
+
+android {
+  namespace "pe.rdrental.actas"
+  compileSdk 34
+
+  defaultConfig {
+    applicationId "pe.rdrental.actas"
+    minSdk 24
+    targetSdk 34
+    // Los pone la compilacion (-PcodigoVersion=.. -PnombreVersion=..); el
+    // valor de aqui es solo para compilar a mano.
+    versionCode Integer.parseInt(project.findProperty("codigoVersion") ?: "1")
+    versionName project.findProperty("nombreVersion") ?: "1.0"
+    resourceConfigurations += ["es"]
+  }
+
+  buildFeatures {
+    // MainActivity y el puente anuncian la version que trae el .apk.
+    buildConfig true
+  }
+
+  sourceSets {
+    main {
+      assets.srcDirs += webEnsamblada
+    }
+  }
+
+  signingConfigs {
+    // Solo se usa si la compilacion recibe una llave. Sin llave propia, el
+    // .apk sale firmado con una temporal que hace la propia compilacion, y
+    // entonces actualizar encima exige desinstalar antes.
+    llave {
+      if (project.hasProperty("almacenLlaves")) {
+        storeFile file(project.property("almacenLlaves"))
+        storePassword project.property("claveAlmacen")
+        keyAlias project.property("aliasLlave")
+        keyPassword project.property("claveLlave")
+      }
+    }
+  }
+
+  buildTypes {
+    release {
+      // Sin ofuscacion: no hay nada que ofuscar (una Activity y un puente) y
+      // una regla mal puesta rompe el puente de JavaScript en silencio.
+      minifyEnabled false
+      shrinkResources false
+      if (project.hasProperty("almacenLlaves")) {
+        signingConfig signingConfigs.llave
+      }
+    }
+    debug {
+      applicationIdSuffix ".pruebas"
+      versionNameSuffix "-pruebas"
+    }
+  }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+dependencies {
+  // Lo unico que hace falta: servir los assets como https, que es lo que
+  // convierte la carpeta local en un origen seguro y deja pasar la camara.
+  implementation "androidx.webkit:webkit:1.11.0"
+  implementation "androidx.annotation:annotation:1.8.2"
+}
+
+tasks.named("preBuild") { dependsOn("copiarWeb") }

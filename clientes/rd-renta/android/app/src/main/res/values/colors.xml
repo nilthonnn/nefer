@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- El mismo fondo que declara manifest.webmanifest: al abrir, la ventana
+       ya esta de ese color y no hay un fogonazo blanco antes de la app. -->
+  <color name="fondo">#16191B</color>
+</resources>

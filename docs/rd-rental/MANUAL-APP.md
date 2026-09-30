@@ -313,7 +313,50 @@ casilla.
 Si el aparato no concede la cámara —el caso del archivo descargado—, en lugar
 de fallar en silencio muestra el motivo y un botón para usar la galería.
 
-### 6.1 El sello de fecha y hora
+### 6.1 El encuadre: lo que entra en el acta
+
+Cada fotografía —la disparada con la cámara, la de la cámara del sistema y la
+elegida de una en una en la galería— pasa por el **editor** antes de ocupar su
+casilla. Ahí se decide qué parte de la foto importa, que es algo que sólo sabe
+quien está delante del equipo.
+
+| Mando | Qué hace |
+|---|---|
+| **Original** | La foto entera, tal como llegó |
+| **1:1 · 4:3 · 16:9** | Las proporciones de siempre |
+| **Ajustar al acta** | La proporción exacta del hueco del formato: la foto lo llena sin bordes |
+| **Horizontal / Vertical** | Gira la proporción: 4:3 tumbado, 3:4 de pie. Para el equipo alto, vertical |
+| **Zoom** | Barra, rueda del ratón o pellizco con dos dedos |
+| **Arrastrar** | Mueve la foto dentro del marco |
+| **Centrar** | Devuelve la foto al medio |
+| **Repetir** | Descarta y vuelve a disparar, sin gastar la casilla |
+| **Usar foto** | Acepta el encuadre y la mete en la casilla |
+
+Lo que se ve claro dentro del marco es **exactamente** lo que se guarda: el
+recorte se aplica al archivo, así que llega igual al Excel y al PDF. La foto
+**nunca se estira**; si sobra imagen se recorta, y la parte que se recorta la
+elige usted.
+
+La proporción y la posición se recuerdan: las diez vistas del acta salen
+iguales sin tener que repetir la elección en cada foto.
+
+Una carga en **tanda** —diez fotos de golpe desde la galería— no abre el
+editor: entran directas y se encuadran después, una por una, desde su casilla.
+
+### 6.2 Qué se le puede hacer a una foto ya puesta
+
+Sobre cada casilla ocupada hay tres botones:
+
+| | |
+|---|---|
+| **✎** | Vuelve a abrir el encuadre |
+| **↻** | Repite la foto: descarta la que había y abre la cámara para esa vista |
+| **✕** | Quita la foto de la casilla y la devuelve a la bandeja |
+
+Tocar la foto abre el encuadre. Antes un toque la borraba sin preguntar, que
+en el patio es lo último que uno quiere.
+
+### 6.3 El sello de fecha y hora
 
 Cada disparo sale con la **fecha y la hora quemadas en la imagen**, abajo a la
 derecha y en ámbar, como las que estampa la cámara del teléfono:
@@ -331,6 +374,70 @@ Sólo lo llevan las fotos **disparadas dentro de la app**. Las que entran por
 galería o por la cámara del sistema se guardan tal como llegan: si esa cámara
 estampa su propia fecha, se ve la suya; si no, no se les añade ninguna, porque
 la app no puede saber cuándo se tomaron más que por lo que diga su EXIF.
+
+---
+
+## 6 bis. Proyectos: guardar un acta a medias
+
+Un acta no se levanta de una sentada. Se fotografía el equipo, el chofer se
+lleva la máquina y los datos del cliente llegan por la tarde. Para eso está la
+barra que hay arriba de **Despacho** y de **Recepción**:
+
+| Mando | Qué hace |
+|---|---|
+| **Nombre** | Cómo se llama el proyecto. Si se deja en blanco, la app propone uno con el equipo y el n° de acta |
+| **Guardar** | Guarda el acta como está, **con sus fotografías** |
+| **Guardar como** | Deja una copia aparte y sigue trabajando en ella |
+| **Abrir** | Lleva a la lista de lo guardado |
+| **Nuevo** | Empieza un acta en blanco. Avisa si hay cambios sin guardar |
+
+Al lado del nombre hay una etiqueta con el **estado**:
+
+`sin guardar` → `borrador` → `exportado`
+
+**Guardar no es exportar.** Guardar deja el acta lista para seguir mañana;
+exportar produce el Excel o el PDF que se firma. Después de exportar el
+proyecto **sigue abierto**: se le pueden añadir fotos, corregir datos y volver
+a exportar las veces que haga falta.
+
+### Dónde está lo guardado
+
+En **Inicio**, bajo *Proyectos guardados*. Cada uno muestra su estado, cuántas
+fotos lleva y cuándo se tocó por última vez, con tres botones: **Continuar**,
+**Duplicar** y **Eliminar**.
+
+Al continuar vuelve todo: los datos tecleados, las fotografías en sus casillas,
+los accesorios y, en la recepción, el acta de despacho con la que se compara.
+
+### Llevar el acta a la computadora, y traerla de vuelta
+
+El acta empieza en el patio, con el teléfono, y muchas veces se termina en la
+oficina, donde hay teclado y pantalla grande. Como aquí no hay servidor de por
+medio, el proyecto viaja en un **archivo**:
+
+1. En el teléfono: *Inicio → Proyectos guardados → **Enviar***. Sale un archivo
+   `.nefer` que se manda por WhatsApp, correo o cable.
+2. En la computadora: se abre la misma dirección en Chrome, Edge o Firefox y se
+   pulsa ***Abrir desde archivo…***. El proyecto entra con **sus fotografías** y
+   se abre listo para seguir.
+3. Al terminar en la computadora se vuelve a *Enviar*, y el teléfono lo abre
+   igual. Funciona en los dos sentidos, las veces que haga falta.
+
+Un `.nefer` es un ZIP corriente: dentro están `proyecto.json` y la carpeta
+`fotos/`. Se puede abrir con cualquier descompresor para ver qué lleva.
+
+Al importar, el proyecto entra **como uno nuevo** en ese aparato: no pisa nada
+de lo que ya hubiera guardado ahí.
+
+### Dónde se guarda
+
+En el propio teléfono, en el almacén del navegador (IndexedDB). **No sale de
+ahí**: ni al servidor ni a la nube. Las fotos son de varios MB y por eso no
+caben en el almacén de texto que usa el resto de la app.
+
+Eso tiene una consecuencia que conviene saber: si se borran los datos del
+navegador, o se desinstala la app, **los proyectos se van con ellos**. Un acta
+terminada se exporta; el proyecto es el cuaderno de trabajo, no el archivo.
 
 ---
 

@@ -152,7 +152,6 @@ def cmd_acta(args) -> int:
     for campo in ("n_acta", "n_guia"):
         if not enc.get(campo):
             print(f"  {campo:<16} de la guía de remisión")
-    print("  resumen_ejecutivo  máximo 20 palabras")
     return 0
 
 

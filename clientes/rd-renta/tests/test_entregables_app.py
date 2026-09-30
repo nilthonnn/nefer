@@ -66,6 +66,27 @@ def test_geometria_compartida_con_layout():
     assert float(_var_js("CAJA_IMPRESION_PT")) == layout.CAJA_IMPRESION_PT
 
 
+def test_los_estilos_de_la_app_son_los_del_formato():
+    """La app escribe su Excel a mano, con su propia tabla de estilos.
+
+    Si esa tabla se separa de `layout.py`, el acta del telefono y la de la
+    computadora salen con distinta tipografia, y en la PC se nota al lado de
+    la plantilla que el cliente llena a mano: fue exactamente lo que paso
+    cuando la app quedo en Calibri y el motor en Cambria.
+    """
+    fuentes = re.findall(r"<font>.*?</font>", FUENTE)
+    assert fuentes, "no se encontro la tabla de fuentes de la app"
+    for f in fuentes:
+        assert f'<name val="{layout.FUENTE}"/>' in f, f
+
+    # Cabecera y cuerpo, los dos cuerpos que distingue el formato.
+    assert f'<b/><sz val="{layout.PT_ETIQUETA}"/><name val="{layout.FUENTE}"/>' in FUENTE
+    assert f'<b/><sz val="{layout.PT_ROTULO}"/><name val="{layout.FUENTE}"/>' in FUENTE
+
+    assert f'fgColor rgb="{layout.GRIS_CABECERA}"' in FUENTE
+    assert f'fgColor rgb="{layout.AMARILLO_RECUPERACION}"' in FUENTE
+
+
 def test_anchos_de_columna_compartidos():
     bloque = re.search(r"var ANCHOS_COLUMNA = \{(.*?)\};", FUENTE, re.S)
     assert bloque, "no se encontro la tabla de anchos en la app"
@@ -174,6 +195,32 @@ def test_el_logo_del_formato_va_en_los_dos_entregables(entregables):
     # --- el PDF: el logo es un objeto imagen con sus propias medidas ---
     datos = entregables["pdf"].read_bytes()
     assert f"/Width {ancho_logo} /Height {alto_logo}".encode() in datos
+
+
+def test_la_cabecera_del_pdf_no_anade_nada_que_la_plantilla_no_tenga(entregables):
+    """La plantilla manda, y en ella la casilla del n° de acta va entera.
+
+    El PDF la partia en dos para meter «Pag. 1 de 2»: informacion automatica en
+    una celda que el formato del cliente deja de G a Z, y que en su Excel no
+    existe. El numero de pagina sigue estando en la franja de continuacion, que
+    es de la app y no del formato.
+    """
+    import shutil
+    import subprocess
+    if not shutil.which("pdftotext"):
+        pytest.skip("pdftotext no esta disponible")
+
+    def texto(pagina):
+        return subprocess.run(
+            ["pdftotext", "-f", str(pagina), "-l", str(pagina), str(entregables["pdf"]), "-"],
+            capture_output=True, text=True).stdout
+
+    primera = texto(1)
+    assert "REPORTE FOTOGRÁFICO" in primera, primera[:200]
+    assert "Pág." not in primera, "la primera hoja lleva la cabecera del formato, y nada mas"
+
+    # En las hojas siguientes la franja corta si dice por donde va el acta.
+    assert "Pág. 2" in texto(2)
 
 
 def _texto_de_pdf(ruta: Path):
@@ -321,7 +368,6 @@ def recepcion(tmp_path_factory):
 
         pg.fill("#r-acta", "004-001156")
         pg.fill("#r-horometro", "1731.2")
-        pg.fill("#r-resumen", "Retorna operativo; junta rota y extintor no retornado.")
         pg.wait_for_timeout(500)
 
         for boton, clave in (("#r-pdf", "pdf"), ("#r-xlsx", "xlsx"), ("#r-zip", "zip")):
@@ -618,7 +664,6 @@ def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
 
         pg.fill("#r-acta", "004-001157")
         pg.fill("#r-horometro", "1731.2")
-        pg.fill("#r-resumen", "Retorna operativo; faltan cuatro vistas.")
         pg.wait_for_timeout(400)
         acta = json.loads(pg.input_value("#r-salida"))
 
@@ -829,7 +874,7 @@ def test_la_recepcion_arranca_sin_acta_de_despacho(tmp_path):
                              ("#r-cliente", "CLIENTE DE PRUEBA S.A.C."),
                              ("#r-codigo_equipo", "C000-00"),
                              ("#r-modelo_equipo", "COMPRESOR TRANSPORTABLE DE 375 CFM"),
-                             ("#r-resumen", "Retorna operativo; faltan los conos.")):
+                             ("#r-modelo_equipo", "GRUPO ELECTRÓGENO")):
             pg.fill(campo, valor)
         pg.wait_for_timeout(400)
 
@@ -977,7 +1022,7 @@ def parcial(tmp_path_factory):
                              ("#r-cliente", "CLIENTE DE PRUEBA S.A.C."),
                              ("#r-codigo_equipo", "C000-00"),
                              ("#r-modelo_equipo", "COMPRESOR TRANSPORTABLE DE 375 CFM"),
-                             ("#r-resumen", "Vuelve un gancho de los dos.")):
+                             ("#r-modelo_equipo", "GRUPO ELECTRÓGENO")):
             pg.fill(campo, valor)
         pg.wait_for_timeout(400)
 

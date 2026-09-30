@@ -198,7 +198,6 @@ Acta creada: acta.json
 Falta por llenar a mano:
   horometro        léalo de la foto; si no se lee con certeza, escriba
                    REVISIÓN MANUAL REQUERIDA
-  resumen_ejecutivo  máximo 20 palabras
 ```
 
 Esta copia ya trae un `catalogo.json` en la raíz con la identidad de RD RENTAL
@@ -380,8 +379,7 @@ izquierda, y así. No hay que calcular celdas.
   ],
   "control_consumibles": [
     { "consumible": "Combustible diésel", "unidad": "%", "despacho": 100 }
-  ],
-  "resumen_ejecutivo": "Torre operativa y completa; estabilizador posterior derecho observado."
+  ]
 }
 ```
 
@@ -609,7 +607,6 @@ vacíos: el formato en papel no los tenía.
 | `descripcion` de cada foto | Nombre de archivo + orden EXIF | Alta, se revisa |
 | `n_acta`, `n_guia` | A mano, de la guía de remisión | — |
 | `horometro` | **A mano, leyendo la foto** | — |
-| `resumen_ejecutivo` | A mano | — |
 
 ### Por qué el horómetro no se lee automáticamente
 
@@ -662,7 +659,7 @@ que confirmarla igual, y en patio muchas veces no hay señal.
 ### Campos obligatorios
 
 `cliente`, `codigo_equipo`, `modelo_equipo`, `fecha`, `horometro`,
-`tipo_documento`, al menos una fotografía y `resumen_ejecutivo`.
+`tipo_documento` y al menos una fotografía.
 
 ### Reglas que rechazan el acta
 
@@ -674,9 +671,8 @@ Estas tres son errores, no advertencias, porque de ellas depende una firma:
 | Un componente `OBS` o `D` exige observación escrita | Un daño sin describir no es reclamable |
 | Un `DESPACHO` no admite datos de recepción | El equipo no ha vuelto: no se puede afirmar que volvió |
 
-Además: `fecha` en formato `YYYY-MM-DD`, `foto_id` sin duplicados,
-`resumen_ejecutivo` de 20 palabras como máximo, y todo archivo declarado —
-fotos y logo — debe existir.
+Además: `fecha` en formato `YYYY-MM-DD`, `foto_id` sin duplicados, y todo
+archivo declarado —fotos y logo— debe existir.
 
 ### Estados
 
@@ -717,7 +713,6 @@ Todo opcional, en `encabezado`:
 | `no existe fotos/x.jpg` | La ruta del JSON no coincide con el disco | Revise el nombre; las rutas son relativas al `acta.json` |
 | `un acta de DESPACHO no puede declarar datos de recepcion` | Hay `estado_recepcion`, `texto_recepcion` o `foto_recepcion` en un despacho | Bórrelos, o cambie `tipo_documento` a `RECEPCION` |
 | `el archivo no es JSON valido` | Falta una coma o una comilla | El mensaje da línea y columna |
-| `resumen_ejecutivo: maximo 20 palabras` | El resumen es muy largo | Es lo que lee el cliente antes de firmar; recórtelo |
 | `observacion: obligatoria cuando el estado es OBS o D` | Marcó un daño sin describirlo | Escriba qué tiene |
 | `No se encontro LibreOffice` | Falta Calc | Instálelo, o genere solo el Excel sin `--pdf` |
 | `LibreOffice no respondio en 300 s` | Acta muy pesada | Reduzca el tamaño de las fotos |
