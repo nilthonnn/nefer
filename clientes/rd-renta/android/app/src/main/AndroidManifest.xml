@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lo que la app pide y por que:
+
+     CAMERA                  la camara integrada, que es como se toman las
+                             fotos del acta con el equipo delante.
+     WRITE_EXTERNAL_STORAGE  solo hasta Android 9. De Android 10 en adelante
+                             se escribe en Descargas por MediaStore, que no
+                             pide permiso ninguno.
+
+     No pide INTERNET. La app no sale a la red: no puede, aunque quisiera. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+
+  <uses-permission android:name="android.permission.CAMERA" />
+  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+                   android:maxSdkVersion="28" />
+
+  <!-- Sin camara tampoco se cae: quedan la galeria y la camara del sistema. -->
+  <uses-feature android:name="android.hardware.camera" android:required="false" />
+  <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+
+  <application
+      android:allowBackup="true"
+      android:fullBackupContent="@xml/respaldo"
+      android:dataExtractionRules="@xml/extraccion_de_datos"
+      android:icon="@mipmap/ic_launcher"
+      android:label="@string/app_name"
+      android:supportsRtl="false"
+      android:usesCleartextTraffic="false"
+      android:hardwareAccelerated="true"
+      android:theme="@style/TemaActas">
+
+    <activity
+        android:name=".MainActivity"
+        android:exported="true"
+        android:label="@string/app_name"
+        android:launchMode="singleTask"
+        android:screenOrientation="portrait"
+        android:windowSoftInputMode="adjustResize"
+        android:theme="@style/TemaActas"
+        tools:ignore="LockedOrientationActivity"
+        android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|uiMode|density|fontScale|locale|navigation">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+
+  </application>
+</manifest>

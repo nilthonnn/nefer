@@ -101,6 +101,19 @@ def fotos(tmp_path_factory) -> dict[str, Path]:
 # utilidades de navegador
 # --------------------------------------------------------------------------
 
+def aceptar_encuadre(pg, espera=10000):
+    """El disparo abre el editor; la foto entra al acta al aceptar el encuadre.
+
+    Antes el obturador escribia directo en la casilla. Ahora hay un paso en
+    medio —lo pidio el formato: la foto del telefono llega vertical y el hueco
+    del acta es apaisado— y las pruebas lo recorren como el operador.
+    """
+    pg.wait_for_function("() => RDRENTA.editor.activo()", timeout=espera)
+    pg.click("#ed-usar")
+    pg.wait_for_function("() => !RDRENTA.editor.activo()", timeout=espera)
+    pg.wait_for_timeout(250)
+
+
 class App:
     """La aplicacion abierta en una pagina, con lo justo para conducirla."""
 
@@ -119,6 +132,9 @@ class App:
         with self.pg.expect_file_chooser(timeout=10000) as fc:
             self.pg.click(selector)
         fc.value.set_files([str(r) for r in rutas])
+        # Una foto sola pasa por el encuadre; una tanda entra directa.
+        if len(rutas) == 1:
+            aceptar_encuadre(self.pg)
         self._esperar_carga(len(rutas))
         return self
 
@@ -232,7 +248,7 @@ def test_cargar_mas_fotos_no_deshace_lo_ya_colocado(fotos):
         assert app.llenas == 2, app.mensaje
 
         # Se saca la frontal de su casilla y se lleva a mano a PANEL DE CONTROL.
-        pg.click("#d-grid .slot:nth-child(1)")           # vaciar: vuelve a la bandeja
+        pg.click("#d-grid [data-casilla='0'] [data-foto-quitar]")   # vuelve a la bandeja
         pg.wait_for_timeout(250)
         pg.click("#d-tray .tile")                        # elegirla
         pg.wait_for_timeout(200)
@@ -414,7 +430,7 @@ def test_camara_recorre_las_casillas_y_cada_foto_cae_en_la_suya(servidor):
         for _ in range(4):
             esperados.append(pg.inner_text("#cam-rotulo"))
             pg.click("#cam-disparar")
-            pg.wait_for_timeout(1200)
+            aceptar_encuadre(pg)
 
         assert esperados == ["VISTA FRONTAL", "VISTA POSTERIOR",
                              "VISTA LATERAL IZQUIERDA", "VISTA LATERAL DERECHA"]
@@ -464,6 +480,375 @@ PIXELES_DEL_SELLO = """
 """
 
 
+MEDIDA_ULTIMA_FOTO = """
+(sel) => new Promise((ok) => {
+  const todas = document.querySelectorAll(sel);
+  const el = todas[todas.length - 1];
+  const i = new Image();
+  i.onload = () => ok({ ancho: i.naturalWidth, alto: i.naturalHeight });
+  i.onerror = () => ok(null);
+  i.src = el.src;
+})
+"""
+
+
+def test_un_acta_a_medias_se_guarda_y_se_retoma_con_sus_fotos(servidor, fotos):
+    """El acta no se levanta de una sentada.
+
+    Se fotografia el equipo, el chofer se lleva la maquina y los datos del
+    cliente llegan por la tarde. Hasta ahora lo tecleado sobrevivia en
+    `localStorage` pero las fotos no, asi que cerrar el navegador costaba la
+    mañana entera. Aqui se recorre el camino entero: guardar a medias, cerrar
+    la pestaña, volver a abrir y seguir.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        ctx = _contexto(nav, movil=True)          # el almacen vive en el contexto
+        pg = ctx.new_page()
+        pg.on("dialog", lambda d: d.accept())
+        pg.goto(servidor)
+        app = App(pg).despacho()
+        assert pg.evaluate("() => RDRENTA.proyectos.hay()") is True
+
+        app.cargar_por_galeria([fotos["frontal"], fotos["posterior"]])
+        assert app.llenas == 2
+        pg.click("#d-datos summary")
+        pg.fill("#d-cliente", "MINERA DE PRUEBA S.A.C.")
+        pg.fill("#d-proy-nombre", "Acta a medias")
+        pg.wait_for_timeout(300)
+
+        # Sin guardar, la barra lo dice.
+        assert "sin guardar" in pg.inner_text("#d-proy-estado").lower()
+        pg.click("#d-proy-guardar")
+        pg.wait_for_timeout(900)
+        assert "borrador" in pg.inner_text("#d-proy-estado").lower()
+
+        # Se cierra la pestaña: es la prueba de verdad.
+        pg.close()
+        pg = ctx.new_page()
+        pg.on("dialog", lambda d: d.accept())
+        pg.goto(servidor)
+        pg.wait_for_timeout(900)
+        app = App(pg)
+
+        # Al volver, la app abre por donde se quedo: se va a la lista por el
+        # mismo boton que usaria el operador.
+        pg.click("#d-proy-abrir")
+        pg.wait_for_timeout(600)
+        filas = pg.eval_on_selector_all("#proy-lista .proy-fila .nom",
+                                        "n => n.map(x => x.textContent)")
+        assert len(filas) == 1 and filas[0].startswith("Acta a medias"), filas
+        assert "2 fotos" in filas[0], filas
+
+        pg.click("#proy-lista [data-abrir]")
+        pg.wait_for_timeout(1500)
+        pg.click("#d-datos summary")
+        assert pg.input_value("#d-cliente") == "MINERA DE PRUEBA S.A.C."
+        assert pg.input_value("#d-proy-nombre") == "Acta a medias"
+        assert app.llenas == 2, "las fotografias tienen que volver con el proyecto"
+
+        # Se sigue trabajando: una foto mas y a guardar otra vez.
+        app.despacho().cargar_por_galeria([fotos["horometro"]])
+        pg.click("#d-proy-guardar")
+        pg.wait_for_timeout(900)
+        pg.click("[data-ir='inicio']")
+        pg.wait_for_timeout(500)
+        filas = pg.eval_on_selector_all("#proy-lista .proy-fila .nom",
+                                        "n => n.map(x => x.textContent)")
+        assert len(filas) == 1, "guardar sobre el mismo proyecto no crea otro"
+        assert "3 fotos" in filas[0], filas
+
+        # Duplicar deja dos, y el duplicado nace como borrador.
+        pg.click("#proy-lista [data-duplicar]")
+        pg.wait_for_timeout(800)
+        filas = pg.eval_on_selector_all("#proy-lista .proy-fila .nom",
+                                        "n => n.map(x => x.textContent)")
+        assert len(filas) == 2, filas
+        assert any("(copia)" in f for f in filas), filas
+
+        # Eliminar uno deja el otro.
+        pg.click("#proy-lista .proy-fila:first-child [data-borrar]")
+        pg.wait_for_timeout(800)
+        assert pg.eval_on_selector_all("#proy-lista .proy-fila", "n => n.length") == 1
+        assert app.errores == []
+        nav.close()
+
+
+def test_un_proyecto_viaja_del_telefono_a_la_pc_y_vuelve(servidor, fotos, tmp_path):
+    """El acta empieza en el patio y se termina en la oficina.
+
+    Aqui no hay servidor de por medio, asi que el vehiculo es un archivo
+    `.nefer`: un ZIP con el proyecto y sus fotografias. Se comprueban los dos
+    sentidos, con dos contextos de navegador distintos, que es lo mas parecido
+    a dos aparatos: cada uno con su propio almacen.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+
+        # --- el telefono ---
+        tel = _contexto(nav, movil=True, descargas=True)
+        pg = tel.new_page()
+        pg.on("dialog", lambda d: d.accept())
+        pg.goto(servidor)
+        app = App(pg).despacho()
+        app.cargar_por_galeria([fotos["frontal"], fotos["posterior"]])
+        pg.click("#d-datos summary")
+        pg.fill("#d-cliente", "CONSTRUCTORA DEL SUR S.A.C.")
+        pg.fill("#d-proy-nombre", "Acta del patio")
+        pg.click("#d-proy-guardar")
+        pg.wait_for_timeout(900)
+        pg.click("[data-ir='inicio']")
+        pg.wait_for_timeout(500)
+
+        with pg.expect_download(timeout=60000) as bajada:
+            pg.click("#proy-lista [data-enviar]")
+        archivo = tmp_path / "acta-del-patio.nefer"
+        bajada.value.save_as(str(archivo))
+        assert bajada.value.suggested_filename.endswith(".nefer")
+        assert archivo.stat().st_size > 1000
+
+        # --- la computadora: otro contexto, otro almacen ---
+        pc = nav.new_context(viewport={"width": 1440, "height": 900},
+                             accept_downloads=True)
+        oficina = pc.new_page()
+        oficina.on("dialog", lambda d: d.accept())
+        oficina.goto(servidor)
+        oficina.wait_for_timeout(700)
+        assert oficina.eval_on_selector_all("#proy-lista .proy-fila", "n => n.length") == 0
+
+        oficina.set_input_files("#proy-archivo", str(archivo))
+        oficina.wait_for_timeout(2500)
+        oficina.click("#d-datos summary")
+        assert oficina.input_value("#d-cliente") == "CONSTRUCTORA DEL SUR S.A.C."
+        assert oficina.input_value("#d-proy-nombre") == "Acta del patio"
+        assert oficina.eval_on_selector_all("#d-grid .slot.lleno", "n => n.length") == 2, \
+            "las fotografias tienen que viajar dentro del archivo"
+
+        # --- y de vuelta al telefono ---
+        oficina.fill("#d-obra", "PLANTA NORTE")
+        oficina.click("#d-proy-guardar")
+        oficina.wait_for_timeout(900)
+        oficina.click("[data-ir='inicio']")
+        oficina.wait_for_timeout(500)
+        with oficina.expect_download(timeout=60000) as vuelta:
+            oficina.click("#proy-lista [data-enviar]")
+        regreso = tmp_path / "acta-vuelta.nefer"
+        vuelta.value.save_as(str(regreso))
+
+        pg.click("[data-ir='inicio']")
+        pg.wait_for_timeout(400)
+        pg.set_input_files("#proy-archivo", str(regreso))
+        pg.wait_for_timeout(2500)
+        pg.click("#d-datos summary")
+        assert pg.input_value("#d-obra") == "PLANTA NORTE"
+        assert app.llenas == 2
+        assert app.errores == []
+        nav.close()
+
+
+def test_exportar_no_cierra_el_proyecto_lo_deja_marcado(servidor, fotos):
+    """Guardar y exportar no son lo mismo.
+
+    Guardar es para seguir mañana; exportar produce el archivo que se firma.
+    Despues de exportar, el proyecto sigue abierto a cambios y solo cambia de
+    estado, que es lo que distingue un acta entregada de una a medias.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        ctx = _contexto(nav, movil=True, descargas=True)
+        pg = ctx.new_page()
+        pg.on("dialog", lambda d: d.accept())
+        pg.goto(servidor)
+        app = App(pg).despacho()
+
+        app.cargar_por_galeria([fotos["frontal"]])
+        pg.fill("#d-proy-nombre", "Acta para exportar")
+        pg.click("#d-proy-guardar")
+        pg.wait_for_timeout(900)
+        assert "borrador" in pg.inner_text("#d-proy-estado").lower()
+
+        with pg.expect_download(timeout=60000) as esperado:
+            pg.click("#d-xlsx")
+        esperado.value
+        pg.wait_for_timeout(1200)
+
+        assert "exportado" in pg.inner_text("#d-proy-estado").lower()
+        assert app.llenas == 1, "exportar no puede vaciar lo que hay en pantalla"
+
+        pg.click("[data-ir='inicio']")
+        pg.wait_for_timeout(600)
+        meta = pg.eval_on_selector_all("#proy-lista .proy-fila .meta",
+                                       "n => n.map(x => x.textContent)")
+        assert meta and "exportado" in meta[0], meta
+        assert app.errores == []
+        nav.close()
+
+
+def test_el_editor_encuadra_la_foto_antes_de_que_entre_al_acta(servidor):
+    """Entre el disparo y la casilla hay una decision que toma el operario.
+
+    Una foto de telefono llega vertical y el hueco del acta es apaisado: al
+    conservar la proporcion —que es obligatorio— entraba pequena y dejaba
+    medio bloque vacio. El editor pide el encuadre una vez y hornea el
+    recorte, de modo que lo que viaja al Excel ya tiene la forma correcta.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        app = App(pg).despacho()
+
+        pg.click("#d-camara-app")
+        pg.wait_for_function(
+            "() => { const v = document.querySelector('#cam-video');"
+            "        return v && v.videoWidth > 0; }", timeout=15000)
+        pg.click("#cam-disparar")
+        pg.wait_for_timeout(900)
+
+        # El disparo no entra solo: primero se encuadra.
+        assert pg.evaluate("() => RDRENTA.editor.activo()") is True
+        assert app.llenas == 0, "la casilla no se ocupa hasta aceptar el encuadre"
+
+        esperado = {"1:1": 1.0, "4:3": 4 / 3, "16:9": 16 / 9}
+        for prop, aspecto in esperado.items():
+            pg.click(f'#ed-props [data-prop="{prop}"]')
+            pg.wait_for_timeout(200)
+            e = pg.evaluate("() => RDRENTA.editor.estado()")
+            assert abs(e["ancho"] / e["alto"] - aspecto) / aspecto < 0.002, (prop, e)
+
+        # «Ajustar al acta» toma la proporcion del hueco, de las mismas cifras
+        # con las que se dibuja el Excel.
+        pg.click('#ed-props [data-prop="bloque"]')
+        pg.wait_for_timeout(200)
+        bloque = pg.evaluate("() => ENTREGABLE.ASPECTO_BLOQUE")
+        e = pg.evaluate("() => RDRENTA.editor.estado()")
+        assert abs(e["ancho"] / e["alto"] - bloque) / bloque < 0.002, e
+
+        # El zoom recorta mas: la region tomada de la foto se hace menor.
+        antes = pg.evaluate("() => RDRENTA.editor.estado()")["ancho"]
+        pg.fill("#ed-zoom", "250")
+        pg.dispatch_event("#ed-zoom", "input")
+        pg.wait_for_timeout(200)
+        assert pg.evaluate("() => RDRENTA.editor.estado()")["ancho"] < antes
+
+        pg.click('#ed-props [data-prop="4:3"]')
+        pg.wait_for_timeout(200)
+        pg.click("#ed-usar")
+        pg.wait_for_timeout(1200)
+
+        assert pg.evaluate("() => RDRENTA.editor.activo()") is False
+        assert app.llenas == 1
+        medida = pg.evaluate("""
+            () => new Promise((ok) => {
+              const t = document.querySelectorAll("#d-grid .slot.lleno img");
+              const i = new Image();
+              i.onload = () => ok({ w: i.naturalWidth, h: i.naturalHeight });
+              i.onerror = () => ok(null);
+              i.src = t[t.length - 1].src;
+            })""")
+        assert medida and abs(medida["w"] / medida["h"] - 4 / 3) < 0.005, medida
+        assert app.errores == []
+        nav.close()
+
+
+def test_la_casilla_ocupada_ofrece_encuadrar_repetir_y_quitar(servidor, fotos):
+    """Antes, un toque en la casilla borraba la foto sin preguntar.
+
+    En el patio eso es lo ultimo que uno quiere: la foto ya tomada se pierde
+    de un roce. Ahora el toque abre el encuadre y cada accion tiene su boton.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw)
+        pg = _contexto(nav, movil=True).new_page()
+        pg.goto(servidor)
+        _sin_camara(pg)
+        app = App(pg).despacho()
+        # Tres de golpe: una carga en tanda no pasa por el editor, se encuadra
+        # despues desde la casilla.
+        app.cargar_por_galeria([fotos["frontal"], fotos["posterior"], fotos["horometro"]])
+        assert pg.evaluate("() => RDRENTA.editor.activo()") is False
+
+        casilla = "#d-grid [data-casilla='0']"
+        assert pg.is_visible(casilla + " [data-foto-editar]")
+        assert pg.is_visible(casilla + " [data-foto-repetir]")
+        assert pg.is_visible(casilla + " [data-foto-quitar]")
+
+        # Tocar la foto abre el encuadre; no la borra.
+        pg.click(casilla + " img")
+        pg.wait_for_timeout(500)
+        assert pg.evaluate("() => RDRENTA.editor.activo()") is True
+        pg.click("#ed-cancelar")
+        pg.wait_for_timeout(300)
+        assert app.llenas == 3, "cancelar el encuadre no puede perder la foto"
+
+        # Quitar la suelta de la casilla y la devuelve a la bandeja.
+        pg.click(casilla + " [data-foto-quitar]")
+        pg.wait_for_timeout(400)
+        assert app.llenas == 2, "solo se vacia la casilla que se toco"
+        assert pg.eval_on_selector_all("#d-tray .tile", "n => n.length") == 1
+        assert app.errores == []
+        nav.close()
+
+
+def test_el_editor_ofrece_las_dos_posiciones_y_transpone_la_proporcion(servidor):
+    """Vertical para la maquina alta, horizontal para la que es mas ancha.
+
+    La posicion y la proporcion son el mismo dato: 4:3 tumbado y 3:4 de pie.
+    Antes esto se decidia dos veces —un mando en la camara y otro en el
+    editor— y ganaba el ultimo; ahora hay un solo sitio donde se elige, con el
+    marco delante para ver lo que entra.
+    """
+    with sync_playwright() as pw:
+        nav = _lanzar(pw, camara=True)
+        pg = _contexto(nav, movil=True, camara=True).new_page()
+        pg.goto(servidor)
+        app = App(pg).despacho()
+
+        pg.click("#d-camara-app")
+        pg.wait_for_function(
+            "() => { const v = document.querySelector('#cam-video');"
+            "        return v && v.videoWidth > 0; }", timeout=15000)
+        pg.click("#cam-disparar")
+        pg.wait_for_timeout(900)
+
+        pg.click('#ed-props [data-prop="4:3"]')
+        pg.click('#ed-giro [data-giro="horizontal"]')
+        pg.wait_for_timeout(200)
+        e = pg.evaluate("() => RDRENTA.editor.estado()")
+        assert e["posicion"] == "horizontal"
+        assert abs(e["ancho"] / e["alto"] - 4 / 3) < 0.005, e
+
+        pg.click('#ed-giro [data-giro="vertical"]')
+        pg.wait_for_timeout(200)
+        e = pg.evaluate("() => RDRENTA.editor.estado()")
+        assert e["posicion"] == "vertical"
+        assert abs(e["ancho"] / e["alto"] - 3 / 4) < 0.005, e
+
+        # «Original» no tiene posicion que elegir: es la de la propia foto.
+        pg.click('#ed-props [data-prop="original"]')
+        pg.wait_for_timeout(200)
+        assert pg.is_hidden("#ed-giro")
+
+        pg.click('#ed-props [data-prop="4:3"]')
+        pg.click('#ed-giro [data-giro="vertical"]')
+        pg.wait_for_timeout(200)
+        pg.click("#ed-usar")
+        pg.wait_for_timeout(1200)
+
+        medida = pg.evaluate("""
+            () => new Promise((ok) => {
+              const t = document.querySelectorAll("#d-grid .slot.lleno img");
+              const i = new Image();
+              i.onload = () => ok({ w: i.naturalWidth, h: i.naturalHeight });
+              i.onerror = () => ok(null);
+              i.src = t[t.length - 1].src;
+            })""")
+        assert medida and medida["h"] > medida["w"], medida
+        assert abs(medida["w"] / medida["h"] - 3 / 4) < 0.005, medida
+        assert app.llenas == 1
+        assert app.errores == []
+        nav.close()
+
 def test_la_foto_de_la_camara_sale_con_la_fecha_y_la_hora_quemadas(servidor):
     """Como la camara del telefono: el sello va dentro de la imagen.
 
@@ -487,7 +872,7 @@ def test_la_foto_de_la_camara_sale_con_la_fecha_y_la_hora_quemadas(servidor):
             "() => { const v = document.querySelector('#cam-video');"
             "        return v && v.videoWidth > 0; }", timeout=15000)
         pg.click("#cam-disparar")
-        pg.wait_for_timeout(1500)
+        aceptar_encuadre(pg)
         pg.click("#cam-cerrar")
         pg.wait_for_timeout(300)
 
@@ -596,7 +981,7 @@ def test_el_despacho_admite_vistas_ademas_de_las_del_formato(servidor):
                              timeout=15000)
         assert pg.inner_text("#cam-rotulo") == "ENGANCHE TRASERO"
         pg.click("#cam-disparar")
-        pg.wait_for_timeout(1500)
+        aceptar_encuadre(pg)
         pg.click("#cam-cerrar")
         pg.wait_for_timeout(500)
 
@@ -641,7 +1026,7 @@ def test_la_camara_de_la_recepcion_pinta_la_foto_que_toma(servidor):
                              timeout=15000)
         rotulo = pg.inner_text("#cam-rotulo")
         pg.click("#cam-disparar")
-        pg.wait_for_timeout(1500)
+        aceptar_encuadre(pg)
         pg.click("#cam-cerrar")
         pg.wait_for_timeout(500)
 
@@ -668,7 +1053,8 @@ def test_camara_saltar_deja_la_casilla_vacia(servidor):
         assert pg.inner_text("#cam-rotulo") == "VISTA POSTERIOR"
 
         pg.click("#cam-disparar")
-        pg.wait_for_timeout(1200)
+
+        aceptar_encuadre(pg)
         pg.click("#cam-cerrar")
         pg.wait_for_timeout(300)
 
@@ -696,7 +1082,8 @@ def test_camara_desde_una_casilla_concreta(servidor):
         assert "quedan 1" in pg.inner_text("#cam-cuenta")
 
         pg.click("#cam-disparar")
-        pg.wait_for_timeout(1200)
+
+        aceptar_encuadre(pg)
         pg.click("#cam-cerrar")
         pg.wait_for_timeout(400)
 
@@ -731,6 +1118,7 @@ def test_camara_denegada_ofrece_la_galeria_sin_perder_la_casilla(fotos, servidor
         with pg.expect_file_chooser(timeout=10000) as fc:
             pg.click("#cam-galeria")
         fc.value.set_files([str(fotos["frontal"])])
+        aceptar_encuadre(pg)
         pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
                              timeout=30000)
         pg.wait_for_timeout(500)
@@ -826,6 +1214,7 @@ def test_la_camara_ofrece_la_galeria_sin_que_haga_falta_que_falle(fotos, servido
         with pg.expect_file_chooser(timeout=10000) as fc:
             pg.click("#cam-galeria")
         fc.value.set_files([str(fotos["frontal"])])
+        aceptar_encuadre(pg)
         pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
                              timeout=30000)
         pg.wait_for_timeout(500)
@@ -857,6 +1246,7 @@ def test_la_observacion_se_fotografia_por_camara_o_por_galeria(fotos, servidor):
         with pg.expect_file_chooser(timeout=10000) as fc:
             pg.click("#cam-galeria")
         fc.value.set_files([str(fotos["frontal"])])
+        aceptar_encuadre(pg)
         pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
                              timeout=30000)
         pg.wait_for_timeout(500)
@@ -885,6 +1275,7 @@ def test_sin_camara_la_casilla_vacia_abre_el_selector(fotos):
         with pg.expect_file_chooser(timeout=10000) as fc:
             objetivo.click()
         fc.value.set_files([str(fotos["frontal"])])
+        aceptar_encuadre(pg)
         pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
                              timeout=30000)
         pg.wait_for_timeout(400)
@@ -918,6 +1309,9 @@ def test_camara_en_marco_con_sandbox_no_deja_al_operador_sin_salida(fotos, tmp_p
         with pg.expect_file_chooser(timeout=10000) as fc:
             dentro.locator("label[for='d-file']").click()
         fc.value.set_files([str(fotos["frontal"])])
+        # Tambien dentro del marco la foto pasa por el encuadre.
+        dentro.locator("#ed-usar").click()
+        pg.wait_for_timeout(800)
         pg.wait_for_timeout(3000)
         assert dentro.locator("#d-grid .slot.lleno").count() == 1
         assert errores == []
@@ -1100,6 +1494,7 @@ def test_desde_archivo_local_la_camara_del_sistema_sigue_disponible(fotos):
         with pg.expect_file_chooser(timeout=10000) as fc:
             boton.click()
         fc.value.set_files([str(fotos["frontal"])])
+        aceptar_encuadre(pg)
         pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
                              timeout=30000)
         pg.wait_for_timeout(400)
@@ -1129,6 +1524,7 @@ def test_desde_archivo_local_la_casilla_vacia_lleva_a_la_camara_del_telefono(fot
         with pg.expect_file_chooser(timeout=10000) as fc:
             objetivo.click()
         fc.value.set_files([str(fotos["frontal"])])
+        aceptar_encuadre(pg)
         pg.wait_for_function("() => document.querySelector('#d-progreso').hidden",
                              timeout=30000)
         pg.wait_for_timeout(400)
@@ -1213,7 +1609,7 @@ def _guardar_paquete(pg, destino: Path) -> Path:
     for campo, valor in (("#d-cliente", "MINERA EJEMPLO S.A.C."),
                          ("#d-equipo", "GE-0142"), ("#d-modelo", "C90D5 / 90 kVA"),
                          ("#d-horometro", "1548.7"),
-                         ("#d-resumen", "Equipo sale operativo; sin observaciones.")):
+                         ("#d-modelo", "C90D5 / 90 kVA")):
         pg.fill(campo, valor)
     pg.wait_for_timeout(300)
     with pg.expect_download() as espera:
@@ -1239,7 +1635,7 @@ def test_de_la_camara_al_acta_valida(tmp_path, servidor):
                              timeout=15000)
         for _ in range(3):
             pg.click("#cam-disparar")
-            pg.wait_for_timeout(1200)
+            aceptar_encuadre(pg)
         pg.click("#cam-cerrar")
         pg.wait_for_timeout(400)
         assert app.llenas == 3
@@ -1326,7 +1722,8 @@ def test_en_recepcion_el_recuadro_vacio_abre_la_camara_de_esa_vista(servidor):
         assert pg.inner_text("#cam-rotulo") == rotulo
 
         pg.click("#cam-disparar")
-        pg.wait_for_timeout(1500)
+
+        aceptar_encuadre(pg)
         pg.click("#cam-cerrar")
         pg.wait_for_timeout(500)
 
@@ -1401,7 +1798,7 @@ def test_la_casilla_llena_de_recepcion_se_vacia_al_tocarla(servidor):
         pg.wait_for_function(
             "() => document.querySelector('#cam-video').videoWidth > 0", timeout=15000)
         pg.click("#cam-disparar")
-        pg.wait_for_timeout(1300)
+        aceptar_encuadre(pg)
         pg.click("#cam-cerrar")
         pg.wait_for_timeout(500)
         assert pg.eval_on_selector_all("#r-vistas .slot.lleno", "n => n.length") == 1
@@ -1487,7 +1884,7 @@ def test_las_dos_celdas_de_observaciones_cargan_foto(servidor, tmp_path):
             pg.wait_for_function(
                 "() => document.querySelector('#cam-video').videoWidth > 0", timeout=15000)
             pg.click("#cam-disparar")
-            pg.wait_for_timeout(1300)
+            aceptar_encuadre(pg)
             pg.click("#cam-cerrar")
             pg.wait_for_timeout(600)
 
@@ -1502,7 +1899,7 @@ def test_las_dos_celdas_de_observaciones_cargan_foto(servidor, tmp_path):
                              ("#r-cliente", "CLIENTE DE PRUEBA S.A.C."),
                              ("#r-codigo_equipo", "C000-00"),
                              ("#r-modelo_equipo", "COMPRESOR DE PRUEBA"),
-                             ("#r-resumen", "Barra de tierra dañada.")):
+                             ("#r-modelo_equipo", "GRUPO ELECTRÓGENO")):
             pg.fill(campo, valor)
         pg.wait_for_timeout(400)
         with pg.expect_download(timeout=90000) as espera:

@@ -72,12 +72,15 @@ FILAS_BASE_CONSUMIBLE = 16
 ALTO_BLOQUE_CONSUMIBLE = FILAS_BASE_CONSUMIBLE + 1   # la forma corriente: una franja
 
 # --- Estilo ------------------------------------------------------------------
+# Medido sobre el formato del cliente (informe C375-40, hecho a mano en Excel):
+# cabecera a 11 pt y cuerpo a 8 pt, todo en Cambria y centrado. El acta
+# generada tiene que abrirse en la PC sin que se note de cual salio.
 FUENTE = "Cambria"
-PT_ETIQUETA = 10
+PT_ETIQUETA = 11
 PT_VALOR = 11
 PT_ROTULO = 8
-PT_TITULO = 10
-GRIS_CABECERA = "FFD9D9D9"    # tema 0 con tinte -0.15 en los originales
+PT_TITULO = 11
+GRIS_CABECERA = "FFD8D8D8"    # el gris exacto de la plantilla del cliente
 AMARILLO_RECUPERACION = "FFFFFF00"
 BLANCO = "FFFFFFFF"
 
@@ -374,3 +377,16 @@ def ancho_panel_px(panel) -> int:
 def alto_bloque_px(filas: int = FILAS_IMAGEN) -> int:
     """Alto en pixeles de un bloque de imagen de `filas` filas estandar."""
     return round(filas * ALTO_FILA_ESTANDAR * 96 / 72)
+
+
+def caja_foto_px() -> tuple[int, int]:
+    """La caja en la que se dibuja toda fotografia del acta.
+
+    Los dos paneles del formato no miden lo mismo: el derecho tiene 25 px mas
+    que el izquierdo. Dibujando cada foto al ancho de su panel, la misma
+    fotografia salia un 6% mas grande a la derecha y la rejilla se veia
+    despareja. Se usa el panel estrecho para las dos y cada imagen se centra en
+    el suyo: mismo tamano en toda la hoja, sin tocar ni una columna.
+    """
+    return (min(ancho_panel_px(PANEL_IZQ), ancho_panel_px(PANEL_DER)),
+            alto_bloque_px())

@@ -358,7 +358,6 @@ def extraer(xlsx: str | Path, dir_fotos: str | Path | None = None) -> dict:
         "registro_fotografico": fotos,
         "consumibles": consumibles,
         "control_consumibles": [],
-        "resumen_ejecutivo": "",
     }
 
     if dir_fotos is not None:

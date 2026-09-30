@@ -104,6 +104,5 @@
       "recuperacion": "RECUPERACIÓN 2: 02 CONOS DE 28\""
     }
   ],
-  "control_consumibles": [],
-  "resumen_ejecutivo": "Plataforma operativa; retorna con daño en pintura y sin dos conos, se genera recuperacion."
+  "control_consumibles": []
 }

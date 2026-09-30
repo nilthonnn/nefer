@@ -32,16 +32,18 @@ jobs:
       - name: Probar
         run: |
           python -m pytest -q \
+            tests/test_android.py \
             tests/test_build_extract.py \
+            tests/test_codigos_qr.py \
             tests/test_layout.py \
             tests/test_publicacion_clon.py \
             tests/test_schema.py \
             tests/test_textos.py
 
   clon-rd-renta:
-    name: núcleo de la copia de RD RENTA
+    name: la copia de RD RENTA (motor y app)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: clientes/rd-renta
@@ -55,17 +57,34 @@ jobs:
           cache-dependency-path: clientes/rd-renta/pyproject.toml
 
       - name: Instalar
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[navegador]"
 
-      # La copia arrastra el mismo motor: si se toca aqui y alli no, esto lo
-      # dice. Las pruebas de navegador no se repiten; la app es la misma.
+      - name: Navegador
+        run: python -m playwright install --with-deps chromium
+
+      # La app de la copia ya no es la del proyecto de origen: lleva el
+      # encuadre, los proyectos guardados y el puente del contenedor de
+      # Android, y es la que va dentro del .apk que se instala en el telefono.
+      # Si aqui no se conduce, nada la prueba antes de que llegue al patio.
       - name: Probar
         run: |
-          python -m pytest -q \
+          set -o pipefail
+          python -m pytest -q -rs \
+            tests/test_app_navegador.py \
             tests/test_build_extract.py \
             tests/test_layout.py \
             tests/test_schema.py \
-            tests/test_textos.py
+            tests/test_textos.py | tee salida.txt
+
+      # Si el navegador no apareciera, la suite se saltaria sola y esto saldria
+      # verde sin haber conducido nada.
+      - name: Ninguna prueba se saltó
+        run: |
+          if grep -qE '[0-9]+ skipped' salida.txt; then
+            echo "::error::alguna prueba se saltó; aquí eso cuenta como fallo"
+            grep -E '^SKIPPED' salida.txt || true
+            exit 1
+          fi
 
   entregables:
     name: entregables (navegador, Excel y PDF de verdad)
@@ -164,7 +183,8 @@ jobs:
           set -o pipefail
           python -m pytest -q -rs \
             tests/test_app_navegador.py \
-            tests/test_entregables_app.py | tee salida.txt
+            tests/test_entregables_app.py \
+            tests/test_puente_android.py | tee salida.txt
 
       # Una prueba saltada aqui no es una prueba: deja pasar un fallo real sin
       # que nadie lo note. Con las herramientas ya comprobadas, un salto solo

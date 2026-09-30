@@ -56,7 +56,6 @@ def manifiesto(tmp_path):
             {"consumible": "Combustible diésel", "unidad": "%",
              "despacho": 100, "recepcion": 45},
         ],
-        "resumen_ejecutivo": "Equipo operativo; retorna sin extintor, se genera recuperacion.",
     }
 
 
@@ -650,3 +649,60 @@ def test_un_despacho_no_puede_declarar_cuantas_volvieron(manifiesto, tmp_path):
                            "cantidad_retorna": 1}]
     errores = schema.validar(man, tmp_path)
     assert any("cantidad_retorna" in e for e in errores), errores
+
+def test_la_misma_foto_sale_igual_en_los_dos_paneles(tmp_path):
+    """Los dos paneles del formato no miden lo mismo: el derecho tiene 25 px mas.
+
+    Dibujando cada foto al ancho de su panel, la misma fotografia salia un 6%
+    mas grande a la derecha y la rejilla se veia despareja. Se comprueba con
+    una foto mas ancha que el hueco, que es cuando el ancho manda.
+    """
+    from openpyxl import Workbook
+    from PIL import Image
+
+    ruta = tmp_path / "ancha.png"
+    Image.new("RGB", (1600, 400), "white").save(ruta)      # 4:1, mas ancha que el hueco
+
+    ws = Workbook().active
+    caja = layout.caja_foto_px()
+    anchos = {
+        layout.PANEL_IZQ[0]: layout.ancho_panel_px(layout.PANEL_IZQ),
+        layout.PANEL_DER[0]: layout.ancho_panel_px(layout.PANEL_DER),
+    }
+    assert anchos[layout.PANEL_IZQ[0]] != anchos[layout.PANEL_DER[0]], \
+        "si los paneles midieran igual, esta prueba no probaria nada"
+
+    for col, ancho in anchos.items():
+        assert build.insertar_imagen(ws, ruta, col, 11, ancho,
+                                     layout.alto_bloque_px(), caja=caja)
+    izq, der = ws._images
+    assert (izq.anchor.ext.cx, izq.anchor.ext.cy) == (der.anchor.ext.cx, der.anchor.ext.cy)
+
+    # Y cada una centrada en su propio panel, no en la caja comun.
+    dibujada = izq.anchor.ext.cx / 9525
+    for im, col in zip(ws._images, anchos):
+        esperado = round((anchos[col] - dibujada) / 2)
+        assert abs(im.anchor._from.colOff / 9525 - esperado) <= 1
+
+
+def test_la_foto_nunca_se_estira_para_llenar_el_hueco(tmp_path):
+    """Regla del formato: contener, jamas deformar.
+
+    Se prueban las tres formas que salen del editor —vertical, cuadrada y
+    apaisada— y ninguna puede cambiar de proporcion al entrar en el acta.
+    """
+    from openpyxl import Workbook
+    from PIL import Image
+
+    caja = layout.caja_foto_px()
+    for ancho_px, alto_px in ((1200, 1600), (1000, 1000), (1464, 1000)):
+        ruta = tmp_path / f"f{ancho_px}x{alto_px}.png"
+        Image.new("RGB", (ancho_px, alto_px), "white").save(ruta)
+        ws = Workbook().active
+        assert build.insertar_imagen(ws, ruta, layout.PANEL_IZQ[0], 11,
+                                     layout.ancho_panel_px(layout.PANEL_IZQ),
+                                     layout.alto_bloque_px(), caja=caja)
+        im = ws._images[0]
+        w, h = im.anchor.ext.cx / 9525, im.anchor.ext.cy / 9525
+        assert abs(w / h - ancho_px / alto_px) / (ancho_px / alto_px) < 0.01, (ancho_px, alto_px, w, h)
+        assert w <= caja[0] and h <= caja[1]
