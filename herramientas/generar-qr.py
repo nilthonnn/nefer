@@ -31,6 +31,9 @@ CODIGOS = [
     ("https://nilthonnn.github.io/nefer/app/",
      "docs/qr-app.svg",
      "la app de campo publicada"),
+    ("https://nilthonnn.github.io/nefer/camal/",
+     "docs/camal/qr.svg",
+     "la app de pesaje por lotes del camal"),
 ]
 
 

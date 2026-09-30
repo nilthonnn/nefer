@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  No se pide permiso de INTERNET, y no es un olvido: la app no habla con nadie.
+  Todo lo que necesita viaja dentro del APK y la jornada se queda en el
+  teléfono. Un registro de faenamiento que no puede salir a la red es una cosa
+  menos que explicarle a un auditor.
+
+  El permiso de escritura sólo existe para Android 9 y anteriores: desde
+  Android 10 se guarda en Descargas por MediaStore, que no pide permiso.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <application
+        android:allowBackup="true"
+        android:fullBackupContent="true"
+        android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/nombre_app"
+        android:supportsRtl="false"
+        android:theme="@style/Tema">
+
+        <activity
+            android:name=".PantallaPrincipal"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

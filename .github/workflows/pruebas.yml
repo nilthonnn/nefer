@@ -196,3 +196,44 @@ jobs:
             grep -E '^SKIPPED' salida.txt || true
             exit 1
           fi
+
+  camal:
+    name: la app del camal (navegador, Excel, PDF y puente)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # pypdf no es del paquete: sólo lo usan estas pruebas, para abrir el acta
+      # con una librería ajena a la app y comprobar que dice lo mismo.
+      - name: Instalar
+        run: pip install -e ".[navegador]" pypdf
+
+      - name: Navegador
+        run: python -m playwright install --with-deps chromium
+
+      # Las tres formas de la app salen de un solo original. Si alguien editó
+      # una a mano, aquí se ve: en el camal se vería tres semanas después.
+      - name: Lo generado está al día
+        run: |
+          python3 demos/camal/construir.py
+          if ! git diff --quiet -- docs/camal demos/camal; then
+            echo "::error::hay salidas editadas a mano. Corre python3 demos/camal/construir.py y vuelve a subir."
+            git --no-pager diff --stat -- docs/camal demos/camal
+            exit 1
+          fi
+
+      - name: La jornada, de punta a punta
+        run: python3 demos/camal/probar_lotes.py salidas/
+
+      - name: Como app instalable, y sin señal
+        run: python3 demos/camal/probar_android.py salidas/
+
+      - name: El puente con Android
+        run: python3 demos/camal/probar_puente.py salidas/
