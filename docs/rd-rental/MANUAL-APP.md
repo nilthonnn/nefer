@@ -383,10 +383,33 @@ Un acta no se levanta de una sentada. Se fotografía el equipo, el chofer se
 lleva la máquina y los datos del cliente llegan por la tarde. Para eso está la
 barra que hay arriba de **Despacho** y de **Recepción**:
 
+### No hace falta acordarse de guardar
+
+**El acta se guarda sola.** Es lo primero que conviene saber, porque cambia
+cómo se trabaja: se puede salir de la aplicación en mitad de una toma, atender
+una llamada, irse a almorzar, y al volver el acta está donde se dejó **con sus
+fotografías**.
+
+Se guarda sola en tres momentos:
+
+| Cuándo | Cuánto tarda |
+|---|---|
+| Entra, sale o se reencuadra una fotografía | menos de un segundo |
+| Se teclea un dato | a los doce segundos de parar |
+| La aplicación se va al fondo (otra app, pantalla apagada, llamada) | al instante |
+
+Al volver a abrirla, si había un acta a medias sale sola y un aviso verde lo
+dice: *«Se recuperó el acta que quedó a medias»*. Si lo que quería era empezar
+de cero, ese mismo aviso trae el botón **Empezar una nueva** — y la recuperada
+no se pierde: queda en la lista de proyectos.
+
+Los mandos de la barra siguen sirviendo, para lo que el autoguardado no hace:
+ponerle nombre al acta, sacar una copia o abrir otra.
+
 | Mando | Qué hace |
 |---|---|
 | **Nombre** | Cómo se llama el proyecto. Si se deja en blanco, la app propone uno con el equipo y el n° de acta |
-| **Guardar** | Guarda el acta como está, **con sus fotografías** |
+| **Guardar** | Guarda ahora mismo, sin esperar. Ya no es obligatorio: es el botón para quedarse tranquilo |
 | **Guardar como** | Deja una copia aparte y sigue trabajando en ella |
 | **Abrir** | Lleva a la lista de lo guardado |
 | **Nuevo** | Empieza un acta en blanco. Avisa si hay cambios sin guardar |
@@ -560,18 +583,21 @@ con el equipo delante.
 | Fotos que salen del teléfono | **ninguna**, salvo las que usted descargue |
 | Se necesita cuenta o contraseña | no |
 | Se conservan los datos escritos al cerrar | sí, en el propio teléfono |
-| Se conservan las fotografías al cerrar | **no** |
+| Se conservan las fotografías al cerrar | **sí**, desde el autoguardado |
 
-Lo que la aplicación recuerda entre sesiones es sólo lo que usted teclea
-—familia, cliente, obra, código, modelo, empresa, N° de acta, N° de guía,
-fecha, horómetro y los nombres de los accesorios— y lo guarda **en el propio
-teléfono**, en el almacenamiento del navegador. No viaja a ninguna parte.
+Todo se guarda **en el propio teléfono** y no viaja a ninguna parte. Son dos
+almacenes distintos, por lo que ocupa cada cosa:
 
-Las fotografías no se conservan: son demasiado grandes para ese almacén y
-llenarlo dejaría la aplicación inservible. Comprobado: tras recargar, los
-campos siguen escritos y la rejilla vuelve vacía.
+- **Lo tecleado** —familia, cliente, obra, código, modelo, empresa, N° de acta,
+  N° de guía, fecha, horómetro y los nombres de los accesorios— va al
+  almacenamiento sencillo del navegador, que sólo admite texto.
+- **Las fotografías**, que son megas, van al almacén de proyectos, y con ellas
+  la colocación de cada casilla. Ahí es donde el autoguardado deja el acta a
+  medias (§6 bis).
 
-De ahí la regla: **lo que se guarda de verdad es lo que usted descarga**.
+Aun así la regla de siempre no cambia: **el acta que vale es la que usted
+exporta**. El teléfono se pierde, se rompe o se formatea, y con él se va todo
+lo guardado dentro.
 
 ---
 

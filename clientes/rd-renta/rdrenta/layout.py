@@ -144,6 +144,38 @@ VISTAS_POR_CATEGORIA = {
         "CUCHARÓN / HOJA", "SISTEMA HIDRÁULICO",
         "TREN DE RODAJE / LLANTAS", "MOTOR",
     ],
+    # Rodillo vibrante liso. Copiadas del acta RL19-04-01-010 de RD RENTAL
+    # (rodillo de 19 000 kg, cliente Rovella Carranza). No se parece a la
+    # rejilla generica de maquinaria amarilla: aqui no hay cucharon ni tren de
+    # rodaje, y si timon, rola y palanca de control. Los rotulos van tal como
+    # los escribe el cliente —incluido «VISTO LATERAL DE LA ROLA»—: el acta
+    # que sale tiene que poder compararse con su plantilla sin diferencias.
+    "rodillo": [
+        "VISTA FRONTAL", "VISTA POSTERIOR",
+        "VISTA IZQUIERDA", "VISTA DERECHA",
+        "HORÓMETRO", "TIMÓN",
+        "PALANCA DE CONTROL", "VISTO LATERAL DE LA ROLA",
+        "VISTA IZQUIERDA DE MOTOR", "VISTA DERECHA DE MOTOR",
+        "NEUMÁTICO IZQUIERDO", "NEUMÁTICO DERECHO",
+        "LLAVE DE CONTACTO", "PICO Y LAMPA",
+        "TACOS DE MADERA", "ACCESORIOS",
+    ],
+    # Motoniveladora. Copiadas del acta MN15T-14-01-12 de RD RENTAL (cliente
+    # SACEEM). Los seis neumaticos se fotografian por eje y por lado, y las
+    # cuchillas y los desgarradores van CON SUS MEDICIONES: son las piezas de
+    # desgaste que se cobran, y la foto sin la cinta metrica no prueba nada.
+    "motoniveladora": [
+        "VISTA FRONTAL", "VISTA POSTERIOR",
+        "VISTA IZQUIERDA", "VISTA DERECHA",
+        "HORÓMETRO", "PALA Y PICO + LLAVE DE CONTACTO",
+        "ASIENTO DE OPERADOR", "MANDOS DE CONTROL",
+        "NEUMÁTICO DELANTERO DERECHO", "NEUMÁTICO DELANTERO IZQUIERDO",
+        "NEUMÁTICO POSTERIOR Y CENTRO DERECHO", "NEUMÁTICO POSTERIOR Y CENTRO IZQUIERDA",
+        "VISTA SUPERIOR DE MOTOR", "VISTA FRONTAL DE MOTOR",
+        "CUCHILLAS CON SUS MEDICIONES", "DESGARRADORES CON SUS MEDICIONES",
+        "BATERÍAS", "MANDO Y BOTONES DE CONTROL",
+        "TACOS", "ACCESORIOS",
+    ],
     "generico": [
         "VISTA FRONTAL", "VISTA POSTERIOR",
         "VISTA LATERAL IZQUIERDA", "VISTA LATERAL DERECHA",
@@ -179,7 +211,45 @@ PISTAS_NOMBRE = [
     ("SISTEMA HIDRÁULICO", ("hidraulico", "hidraulica", "manguera", "hydraulic")),
     ("TREN DE RODAJE / LLANTAS", ("rodaje", "llanta", "oruga", "neumatico", "track")),
     ("MOTOR", ("motor", "engine")),
+    # Rodillo y motoniveladora: vistas que ninguna otra familia tiene.
+    ("TIMÓN", ("timon", "volante")),
+    ("PALANCA DE CONTROL", ("palanca",)),
+    ("VISTO LATERAL DE LA ROLA", ("rola", "tambor", "drum")),
+    ("PICO Y LAMPA", ("picoylampa", "picolampa", "lampa")),
+    ("TACOS DE MADERA", ("tacosdemadera", "tacomadera")),
+    ("ASIENTO DE OPERADOR", ("asiento", "seat")),
+    ("MANDOS DE CONTROL", ("mandos",)),
+    ("CUCHILLAS CON SUS MEDICIONES", ("cuchilla", "cuchillas", "blade")),
+    ("DESGARRADORES CON SUS MEDICIONES", ("desgarrador", "desgarradores", "escarificador", "ripper")),
+    ("NEUMÁTICO DELANTERO DERECHO", ("neumaticodelanteroderecho", "llantadelanteraderecha")),
+    ("NEUMÁTICO DELANTERO IZQUIERDO", ("neumaticodelanteroizquierdo", "llantadelanteraizquierda")),
+    ("ACCESORIOS", ("accesorio", "accesorios")),
 ]
+
+# Una misma vista no se llama igual en todas las familias: el acta del rodillo
+# dice «VISTA IZQUIERDA» donde la del grupo electrogeno dice «VISTA LATERAL
+# IZQUIERDA». Sin esto, una foto llamada `izquierda.jpg` se colocaba sola en
+# unas familias y caia al reparto por hora de captura en las otras, sin que el
+# operador entendiera por que.
+SINONIMOS_VISTA = {
+    "VISTA LATERAL IZQUIERDA": ("VISTA IZQUIERDA",),
+    "VISTA LATERAL DERECHA": ("VISTA DERECHA",),
+    "VISTA IZQUIERDA": ("VISTA LATERAL IZQUIERDA",),
+    "VISTA DERECHA": ("VISTA LATERAL DERECHA",),
+    "VISTA LATERAL IZQUIERDA DE MOTOR": ("VISTA IZQUIERDA DE MOTOR",),
+    "VISTA LATERAL DERECHA DE MOTOR": ("VISTA DERECHA DE MOTOR",),
+    "TREN DE RODAJE / LLANTAS": ("NEUMÁTICO IZQUIERDO", "NEUMÁTICO DERECHO"),
+    "MANDO DE CONTROL": ("MANDOS DE CONTROL", "MANDO Y BOTONES DE CONTROL",
+                         "PALANCA DE CONTROL"),
+    "TACOS": ("TACOS DE MADERA",),
+    "TACOS DE MADERA": ("TACOS",),
+    "BATERÍA": ("BATERÍAS",),
+}
+
+
+def equivalentes(vista: str) -> tuple[str, ...]:
+    """La vista pedida y las que significan lo mismo en otra familia."""
+    return (vista,) + tuple(SINONIMOS_VISTA.get(vista, ()))
 
 
 def vista_sugerida(nombre: str) -> str | None:
@@ -195,7 +265,8 @@ def vista_sugerida(nombre: str) -> str | None:
 
 # Equipos que llevan hoja de consumibles (equipos moviles / autopropulsados).
 CATEGORIAS_MOVILES = {"plataforma_elevacion", "maquinaria_amarilla",
-                      "torre_iluminacion", "compresor"}
+                      "torre_iluminacion", "compresor",
+                      "rodillo", "motoniveladora"}
 
 
 def bloque_foto(indice: int) -> dict:

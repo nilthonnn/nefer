@@ -221,6 +221,7 @@ jobs:
           set -o pipefail
           python -m pytest -q -rs \
             tests/test_app_navegador.py \
+            tests/test_autoguardado.py \
             tests/test_entregables_app.py \
             tests/test_fixmate_app_navegador.py \
             tests/test_puente_android.py | tee salida.txt

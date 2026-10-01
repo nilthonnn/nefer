@@ -47,6 +47,35 @@ CONTROL_BASE = {
         ("Filtros (aire / combustible)", "OK/OBS"),
         ("Estado de baterías", "OK/OBS"),
     ],
+    # Rodillo vibrante: ademas de los fluidos del motor, los dos puntos que
+    # se discuten al devolverlo. El agua de riego se olvida —el equipo vuelve
+    # con el tanque seco y la rola rayada— y los rascadores son la pieza que
+    # evita que el asfalto se pegue al tambor.
+    "rodillo": [
+        ("Combustible diésel", "%"),
+        ("Aceite de motor", "%"),
+        ("Refrigerante", "%"),
+        ("Aceite hidráulico", "%"),
+        ("Agua del sistema de riego", "%"),
+        ("Rascadores de rola", "OK/OBS"),
+        ("Estado de neumáticos", "OK/OBS"),
+        ("Filtros (aire / combustible)", "OK/OBS"),
+    ],
+    # Motoniveladora: las piezas de desgaste se miden, no se describen. La
+    # plantilla del cliente ya pide la foto «CON SUS MEDICIONES»; aqui va el
+    # numero que esa foto respalda, que es lo que se cobra al liquidar.
+    "motoniveladora": [
+        ("Combustible diésel", "%"),
+        ("Aceite de motor", "%"),
+        ("Refrigerante", "%"),
+        ("Aceite hidráulico", "%"),
+        ("Aceite de transmisión", "%"),
+        ("Aceite de tándem / mandos finales", "%"),
+        ("Cuchillas: alto remanente", "mm"),
+        ("Desgarradores: puntas completas", "und"),
+        ("Estado de neumáticos (6)", "OK/OBS"),
+        ("Filtros (aire / combustible)", "OK/OBS"),
+    ],
     "generico": [
         ("Combustible", "%"),
         ("Aceite de motor", "%"),

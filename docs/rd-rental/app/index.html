@@ -833,6 +833,8 @@
           <option value="compresor">Compresor transportable</option>
           <option value="plataforma_elevacion">Plataforma de elevación</option>
           <option value="maquinaria_amarilla">Maquinaria amarilla</option>
+          <option value="rodillo">Rodillo vibrante</option>
+          <option value="motoniveladora">Motoniveladora</option>
           <option value="generico">Genérico</option>
         </select>
         <button type="button" class="primary ruta" id="d-camara-app" hidden>Cámara</button>
@@ -965,6 +967,8 @@
             <option value="compresor">Compresor transportable</option>
             <option value="plataforma_elevacion">Plataforma de elevación</option>
             <option value="maquinaria_amarilla">Maquinaria amarilla</option>
+            <option value="rodillo">Rodillo vibrante</option>
+            <option value="motoniveladora">Motoniveladora</option>
             <option value="generico">Genérico</option>
           </select>
           <button class="primary" id="r-empezar" type="button">Empezar recepción</button>
@@ -1300,7 +1304,7 @@ var RDRENTA = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-22 · aplicación de Android";
+  var VERSION = "2026-10-01 · rodillo y motoniveladora";
 
   "use strict";
 
@@ -2166,7 +2170,9 @@ var RDRENTA = (function () {
     function avisar() { alCambiar.forEach(function (f) { f(actual, sucio); }); }
     function alTocar(f) { alCambiar.push(f); }
 
-    function marcarSucio() {
+    function marcarSucio(vista) {
+      if (vista) ultimaVista = vista;
+      programar();
       if (sucio) return;
       sucio = true;
       avisar();
@@ -2236,6 +2242,12 @@ var RDRENTA = (function () {
       actual = { id: nuevoId(), nombre: "", vista: vista, estado: "borrador",
                  creado: Date.now(), modificado: Date.now() };
       sucio = false;
+      ultimaVista = vista;
+      // Todavía no hay nada guardado bajo este identificador: hasta que lo
+      // haya, recuperar la sesión anterior sería devolver un acta que el
+      // operario acaba de dejar atrás a propósito.
+      firmaGuardada = null;
+      apuntarSesion(null);
       avisar();
       return actual;
     }
@@ -2249,6 +2261,9 @@ var RDRENTA = (function () {
           actual = { id: p.id, nombre: p.nombre, vista: p.vista, estado: p.estado,
                      creado: p.creado, modificado: p.modificado };
           sucio = false;
+          ultimaVista = p.vista;
+          firmaGuardada = firmaDeFotos();
+          apuntarSesion(actual);
           avisar();
           return actual;
         });
@@ -2374,6 +2389,125 @@ var RDRENTA = (function () {
       return guardar({ estado: "exportado" });
     }
 
+    /* ---------- autoguardado ----------
+       El operario fotografía el equipo, entra una llamada o se va a almorzar,
+       y al volver Android ya descartó la app: quince fotos y media mañana por
+       delante. Lo tecleado sí volvía —va a localStorage—, pero las fotos sólo
+       bajaban a IndexedDB cuando alguien tocaba «Guardar», y en mitad de una
+       toma nadie toca «Guardar».
+
+       Ahora el acta se guarda sola, a dos ritmos, porque las dos cosas no
+       cuestan lo mismo:
+
+         · entra o sale una foto  →  a los 800 ms. Es lo caro de perder.
+         · sólo se teclea         →  a los 12 s de quietud. Cada escritura
+                                     reescribe los megas de TODAS las fotos,
+                                     y hacerlo a cada letra calienta un
+                                     teléfono de gama baja sin ganar nada:
+                                     lo tecleado ya está en localStorage.
+
+       Y siempre al esconderse la app, que es justo el instante anterior a que
+       el sistema se la lleve por delante. */
+    var AUTO_FOTO = 800, AUTO_TEXTO = 12000;
+    var CLAVE_SESION = "rdrenta.sesion";
+    var reloj = null, enVuelo = false, repetir = false;
+    var firmaGuardada = null, ultimaVista = null;
+    var alFallarAuto = null;
+
+    /* Manda la hoja que se está tocando, no la del proyecto abierto: si el
+       operario deja un despacho guardado y se pasa a recepción, lo que hay en
+       pantalla es otra acta y no puede escribirse encima de la anterior. */
+    function vistaEnCurso() { return ultimaVista || (actual && actual.vista); }
+
+    function firmaDeFotos() {
+      var api = vistas[vistaEnCurso()];
+      if (!api || !api.firmaFotos) return null;
+      try { return api.firmaFotos(); } catch (e) { return null; }
+    }
+
+    /* Sin esto, abrir la app y no hacer nada dejaría un proyecto vacío en la
+       lista cada vez. Lo decide la vista: sólo ella sabe que la fecha viene
+       puesta de fábrica y no cuenta como trabajo. */
+    function hayTrabajo() {
+      var api = vistas[vistaEnCurso()];
+      if (!api || !api.vacia) return false;
+      try { return !api.vacia(); } catch (e) { return false; }
+    }
+
+    function apuntarSesion(p) {
+      try {
+        if (p) localStorage.setItem(CLAVE_SESION,
+                                    JSON.stringify({ id: p.id, vista: p.vista }));
+        else localStorage.removeItem(CLAVE_SESION);
+      } catch (e) { /* sin permiso: se pierde la recuperación, no el acta */ }
+    }
+
+    function programar() {
+      if (!almacen.hay() || !vistas[vistaEnCurso()]) return;
+      // Una foto nueva no espera los doce segundos del texto.
+      var firma = firmaDeFotos();
+      var espera = (firma !== null && firma !== firmaGuardada) ? AUTO_FOTO : AUTO_TEXTO;
+      if (reloj) clearTimeout(reloj);
+      reloj = setTimeout(function () { reloj = null; volcar(); }, espera);
+    }
+
+    function volcar() {
+      if (reloj) { clearTimeout(reloj); reloj = null; }
+      // Guardar el acta entera tarda; si llega otro cambio mientras tanto se
+      // anota y se repite al terminar, en vez de solaparse dos escrituras.
+      if (enVuelo) { repetir = true; return Promise.resolve(null); }
+
+      var vista = vistaEnCurso();
+      if (!almacen.hay() || !vistas[vista]) return Promise.resolve(null);
+      if (!actual || actual.vista !== vista) {
+        // O no hay proyecto abierto, o el que hay es de la otra hoja: en los
+        // dos casos lo de la pantalla es un acta distinta y necesita el suyo.
+        if (!hayTrabajo()) return Promise.resolve(null);
+        adoptar(vista);
+      }
+
+      enVuelo = true;
+      return guardar({}).then(function (p) {
+        enVuelo = false;
+        firmaGuardada = firmaDeFotos();
+        apuntarSesion(p);
+        if (repetir) { repetir = false; programar(); }
+        return p;
+      }, function (err) {
+        enVuelo = false;
+        repetir = false;
+        // Sin espacio, o en una ventana privada. Callarlo dejaría al operario
+        // creyendo que está a salvo justo cuando no lo está.
+        if (alFallarAuto) alFallarAuto(err);
+        return null;
+      });
+    }
+
+    /* Al volver a abrir la app: si la sesión anterior quedó a medias, se
+       recupera sola. Es lo que la app ya hacía con lo tecleado; lo raro era
+       que las fotos no volvieran con ello. */
+    function recuperarSesion() {
+      var apunte = null;
+      try { apunte = JSON.parse(localStorage.getItem(CLAVE_SESION) || "null"); }
+      catch (e) { apunte = null; }
+      if (!apunte || !apunte.id || !almacen.hay()) return Promise.resolve(null);
+      if (actual) return Promise.resolve(null);      // ya hay algo abierto
+      return abrir(apunte.id).then(function (p) {
+        firmaGuardada = firmaDeFotos();
+        return p;
+      }, function () {
+        // El proyecto ya no está: se borró, o se limpió el almacén.
+        apuntarSesion(null);
+        return null;
+      });
+    }
+
+    // El momento en que el sistema está a punto de descartar la app.
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") volcar();
+    });
+    window.addEventListener("pagehide", function () { volcar(); });
+
     return {
       registrar: registrar, alTocar: alTocar, marcarSucio: marcarSucio,
       ESTADOS: ESTADOS,
@@ -2386,6 +2520,9 @@ var RDRENTA = (function () {
       actual: function () { return actual; },
       sucio: function () { return sucio; },
       nombrePorDefecto: nombrePorDefecto,
+      volcar: volcar, recuperarSesion: recuperarSesion,
+      olvidarSesion: function () { apuntarSesion(null); },
+      alFallarAuto: function (f) { alFallarAuto = f; },
       renombrar: function (nombre) {
         if (!actual) return;
         actual.nombre = nombre;
@@ -3081,6 +3218,22 @@ var RDRENTA = (function () {
     maquinaria_amarilla: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
       "VISTA LATERAL DERECHA","HORÓMETRO","CABINA","CUCHARÓN / HOJA","SISTEMA HIDRÁULICO",
       "TREN DE RODAJE / LLANTAS","MOTOR"],
+    // Copiadas de rdrenta/layout.py, que a su vez las copió de las actas
+    // RL19-04-01-010 y MN15T-14-01-12 del cliente. Hay una prueba que compara
+    // las dos listas: si cambian allí y aquí no, falla.
+    rodillo: [
+      "VISTA FRONTAL","VISTA POSTERIOR","VISTA IZQUIERDA","VISTA DERECHA","HORÓMETRO",
+      "TIMÓN","PALANCA DE CONTROL","VISTO LATERAL DE LA ROLA","VISTA IZQUIERDA DE MOTOR",
+      "VISTA DERECHA DE MOTOR","NEUMÁTICO IZQUIERDO","NEUMÁTICO DERECHO",
+      "LLAVE DE CONTACTO","PICO Y LAMPA","TACOS DE MADERA","ACCESORIOS"],
+    motoniveladora: [
+      "VISTA FRONTAL","VISTA POSTERIOR","VISTA IZQUIERDA","VISTA DERECHA","HORÓMETRO",
+      "PALA Y PICO + LLAVE DE CONTACTO","ASIENTO DE OPERADOR","MANDOS DE CONTROL",
+      "NEUMÁTICO DELANTERO DERECHO","NEUMÁTICO DELANTERO IZQUIERDO",
+      "NEUMÁTICO POSTERIOR Y CENTRO DERECHO","NEUMÁTICO POSTERIOR Y CENTRO IZQUIERDA",
+      "VISTA SUPERIOR DE MOTOR","VISTA FRONTAL DE MOTOR","CUCHILLAS CON SUS MEDICIONES",
+      "DESGARRADORES CON SUS MEDICIONES","BATERÍAS","MANDO Y BOTONES DE CONTROL","TACOS",
+      "ACCESORIOS"],
     generico: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
       "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL"]
   };
@@ -3111,8 +3264,54 @@ var RDRENTA = (function () {
     ["CUCHARÓN / HOJA",         ["cucharon","cuchara","hoja","balde","bucket"]],
     ["SISTEMA HIDRÁULICO",      ["hidraulico","hidraulica","manguera","hydraulic"]],
     ["TREN DE RODAJE / LLANTAS",["rodaje","llanta","oruga","neumatico","track"]],
-    ["MOTOR",                   ["motor","engine"]]
+    ["MOTOR",                   ["motor","engine"]],
+    ["TIMÓN",                   ["timon","volante"]],
+    ["PALANCA DE CONTROL",      ["palanca"]],
+    ["VISTO LATERAL DE LA ROLA",["rola","tambor","drum"]],
+    ["PICO Y LAMPA",            ["picoylampa","picolampa","lampa"]],
+    ["TACOS DE MADERA",         ["tacosdemadera","tacomadera"]],
+    ["ASIENTO DE OPERADOR",     ["asiento","seat"]],
+    ["MANDOS DE CONTROL",       ["mandos"]],
+    ["CUCHILLAS CON SUS MEDICIONES", ["cuchilla","cuchillas","blade"]],
+    ["DESGARRADORES CON SUS MEDICIONES",
+      ["desgarrador","desgarradores","escarificador","ripper"]],
+    ["NEUMÁTICO DELANTERO DERECHO",   ["neumaticodelanteroderecho","llantadelanteraderecha"]],
+    ["NEUMÁTICO DELANTERO IZQUIERDO", ["neumaticodelanteroizquierdo","llantadelanteraizquierda"]],
+    ["ACCESORIOS",              ["accesorio","accesorios"]]
   ];
+
+  /* Una misma vista no se llama igual en todas las familias: el acta del
+     rodillo dice «VISTA IZQUIERDA» donde la del grupo electrógeno dice «VISTA
+     LATERAL IZQUIERDA». Sin esto, una foto llamada `izquierda.jpg` se colocaba
+     sola en unas familias y caía al reparto por hora de captura en las otras,
+     sin que el operador entendiera por qué. Copiado de layout.SINONIMOS_VISTA. */
+  var SINONIMOS = {
+    "VISTA LATERAL IZQUIERDA": ["VISTA IZQUIERDA"],
+    "VISTA LATERAL DERECHA": ["VISTA DERECHA"],
+    "VISTA IZQUIERDA": ["VISTA LATERAL IZQUIERDA"],
+    "VISTA DERECHA": ["VISTA LATERAL DERECHA"],
+    "VISTA LATERAL IZQUIERDA DE MOTOR": ["VISTA IZQUIERDA DE MOTOR"],
+    "VISTA LATERAL DERECHA DE MOTOR": ["VISTA DERECHA DE MOTOR"],
+    "TREN DE RODAJE / LLANTAS": ["NEUMÁTICO IZQUIERDO", "NEUMÁTICO DERECHO"],
+    "MANDO DE CONTROL": ["MANDOS DE CONTROL", "MANDO Y BOTONES DE CONTROL",
+                         "PALANCA DE CONTROL"],
+    "TACOS": ["TACOS DE MADERA"],
+    "TACOS DE MADERA": ["TACOS"],
+    "BATERÍA": ["BATERÍAS"]
+  };
+
+  // El hueco que le toca a una foto: el de su rótulo, o el del rótulo que
+  // significa lo mismo en esta familia.
+  function huecoDe(vistas, sugerida) {
+    var i = vistas.indexOf(sugerida);
+    if (i !== -1) return i;
+    var otros = SINONIMOS[sugerida] || [];
+    for (var k = 0; k < otros.length; k++) {
+      i = vistas.indexOf(otros[k]);
+      if (i !== -1) return i;
+    }
+    return -1;
+  }
 
   // Accesorios que aparecen en las actas de recepción reales. Es una lista de
   // sugerencias, no una jaula: el campo sigue admitiendo cualquier texto.
@@ -3349,7 +3548,7 @@ var RDRENTA = (function () {
     // Primero lo que el nombre del archivo delata.
     libres = libres.filter(function (f) {
       if (!f.sugerida) return true;
-      var i = vistas.indexOf(f.sugerida);
+      var i = huecoDe(vistas, f.sugerida);
       if (i === -1 || casillas[i] !== null) return true;
       casillas[i] = f.id; propuestas[i] = true;
       return false;
@@ -4179,6 +4378,28 @@ var RDRENTA = (function () {
      Las fotos se referencian por su posicion en la lista, no por el
      identificador de memoria: ese no sobrevive a cerrar la pestaña. */
   RDRENTA.proyectos.registrar("despacho", {
+    /* Para el autoguardado: qué juego de fotos hay ahora mismo. Cambia sólo
+       cuando entra, sale o se reencuadra una —que es lo urgente de guardar—,
+       y no cuando alguien teclea el nombre del cliente. */
+    firmaFotos: function () {
+      return fotos.length + "·" + fotos.map(function (f) {
+        return f.id + "x" + (f.archivo ? f.archivo.size : 0);
+      }).join(",");
+    },
+
+    /* Sin esto, abrir la app y no hacer nada dejaría un proyecto vacío en la
+       lista cada vez. Lo que viene puesto de fábrica no es trabajo de nadie:
+       `defaultValue` es lo que trae el HTML —la empresa, por ejemplo—, y la
+       fecha la pone la propia app al abrir, así que se nombra aparte. */
+    vacia: function () {
+      if (fotos.length || accesorios.length || extras.length) return false;
+      return CAMPOS.every(function (id) {
+        var n = $("#" + id);
+        if (!n || id === "d-fecha") return true;
+        return !n.value.trim() || n.value === n.defaultValue;
+      });
+    },
+
     instantanea: function () {
       var indice = {};
       fotos.forEach(function (f, i) { indice[f.id] = i; });
@@ -4247,7 +4468,7 @@ var RDRENTA = (function () {
   var guardarBorrador = guardar;
   guardar = function () {
     guardarBorrador();
-    RDRENTA.proyectos.marcarSucio();
+    RDRENTA.proyectos.marcarSucio("despacho");
   };
 
   autoAsignar();
@@ -5225,6 +5446,23 @@ var RDRENTA = (function () {
      acta de despacho que sirve de comparacion. Sin esa comparacion la
      recepcion no se puede continuar: es la mitad del documento. */
   RDRENTA.proyectos.registrar("recepcion", {
+    // Ver el comentario del mismo par en despacho.
+    firmaFotos: function () {
+      return retorno.length + "·" + retorno.map(function (f) {
+        return f.id + "x" + (f.archivo ? f.archivo.size : 0);
+      }).join(",") + "|" + Object.keys(antes).length;
+    },
+
+    vacia: function () {
+      if (retorno.length || Object.keys(antes).length || despacho) return false;
+      if (vistas.length || cons.length || insp.length) return false;
+      return CAMPOS.every(function (id) {
+        var n = $("#" + id);
+        if (!n || id === "r-fecha") return true;
+        return !n.value.trim() || n.value === n.defaultValue;
+      });
+    },
+
     instantanea: function () {
       var indice = {};
       retorno.forEach(function (f, i) { indice[f.id] = i; });
@@ -5309,7 +5547,7 @@ var RDRENTA = (function () {
   var guardarBorrador = guardar;
   guardar = function () {
     guardarBorrador();
-    RDRENTA.proyectos.marcarSucio();
+    RDRENTA.proyectos.marcarSucio("recepcion");
   };
 })();
 
@@ -5576,6 +5814,68 @@ RDRENTA.arrancar();
   });
   pintarBarra(P.actual(), P.sucio());
   pintarLista();
+
+  /* ---------- recuperar lo que quedó a medias ----------
+     El autoguardado sirve de poco si al volver hay que ir a buscar el acta a
+     la lista: el operario que se fue a almorzar espera encontrarla puesta,
+     igual que encuentra lo que había tecleado. Se recupera sola, y se dice
+     —con la salida a la vista, porque a veces uno quiere empezar de cero. */
+  function bandera(p) {
+    var pre = p.vista === "recepcion" ? "r" : "d";
+    var barra = $("#" + pre + "-proy");
+    if (!barra) return;
+
+    var caja = document.createElement("div");
+    caja.className = "aviso ok";
+    caja.id = "proy-recuperado";
+    var texto = document.createElement("span");
+    texto.innerHTML = "<b>Se recuperó el acta que quedó a medias.</b> " +
+      esc(p.nombre || "Sin nombre") + " · guardada el " + esc(fecha(p.modificado)) + ".";
+    var salir = document.createElement("button");
+    salir.type = "button";
+    salir.className = "ghost";
+    salir.style.marginLeft = ".6rem";
+    salir.textContent = "Empezar una nueva";
+    salir.addEventListener("click", function () {
+      if (!window.confirm("Se descarta el acta recuperada y se empieza una en " +
+                          "blanco. Seguirá guardada en la lista de proyectos.")) return;
+      P.nuevo(p.vista);
+      $("#" + pre + "-proy-nombre").value = "";
+      caja.remove();
+      avisar("acta nueva");
+    });
+    var cerrar = document.createElement("button");
+    cerrar.type = "button";
+    cerrar.className = "ghost";
+    cerrar.setAttribute("aria-label", "Cerrar el aviso");
+    cerrar.style.marginLeft = ".4rem";
+    cerrar.textContent = "×";
+    cerrar.addEventListener("click", function () { caja.remove(); });
+
+    caja.appendChild(texto);
+    caja.appendChild(salir);
+    caja.appendChild(cerrar);
+    barra.parentNode.insertBefore(caja, barra.nextSibling);
+
+    // Se va solo al rato. No al primer toque: el aviso lleva un botón dentro,
+    // y quitarlo en cuanto el dedo baja se lo comía antes de que llegara.
+    setTimeout(function () { if (caja.parentNode) caja.remove(); }, 25000);
+  }
+
+  // Si el almacén se queda sin sitio, el operario tiene que enterarse: creerse
+  // a salvo cuando no se está es peor que no tener autoguardado.
+  P.alFallarAuto(function (err) {
+    avisar("no se pudo guardar solo: " + ((err && err.message) || "almacén lleno"));
+  });
+
+  P.recuperarSesion().then(function (p) {
+    if (!p) return;
+    // A la hoja del acta recuperada: es lo que el operario estaba haciendo, y
+    // dejarla puesta en otra pestaña sería recuperarla para nada.
+    if (RDRENTA.ir) RDRENTA.ir(p.vista);
+    pintarLista();
+    bandera(p);
+  }, function () { /* no se pudo: se empieza limpio, que es lo de antes */ });
 
   RDRENTA.proyectosUI = { refrescar: pintarLista };
 })();

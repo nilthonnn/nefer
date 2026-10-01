@@ -97,9 +97,15 @@ def _categoria(modelo: str) -> str:
         return "plataforma_elevacion"
     if "COMPRESOR" in m:
         return "compresor"
+    # Antes del cajon de sastre: estas dos tienen rejilla propia, copiada de
+    # las actas del cliente, y caer en «maquinaria amarilla» les daba una
+    # rejilla que no se parece a la suya.
+    if "RODILLO" in m or "COMPACTADOR" in m or "VIBRATORIO" in m:
+        return "rodillo"
+    if "MOTONIVELADORA" in m or "NIVELADORA" in m:
+        return "motoniveladora"
     if any(p in m for p in ("EXCAVADORA", "CARGADOR", "RETROEXCAVADORA",
-                            "MINICARGADOR", "TRACTOR", "MOTONIVELADORA",
-                            "RODILLO", "MONTACARGA")):
+                            "MINICARGADOR", "TRACTOR", "MONTACARGA")):
         return "maquinaria_amarilla"
     return "generico"
 
