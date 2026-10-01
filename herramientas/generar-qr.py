@@ -34,6 +34,11 @@ CODIGOS = [
     ("https://nilthonnn.github.io/nefer/camal/instalar.html",
      "docs/camal/qr.svg",
      "la página para instalar la app de pesaje del camal"),
+    # Este no se imprime: va en la propia página de FixMate, para pasar de la
+    # laptop al teléfono de quien la está mirando.
+    ("https://nilthonnn.github.io/nefer/fixmate/",
+     "docs/fixmate/qr-fixmate.svg",
+     "la demo de FixMate publicada"),
 ]
 
 

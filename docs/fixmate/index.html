@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>FixMate en el taller · nefer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#16191B">
+<meta name="description" content="Una corrida real de FixMate sobre el historial,
+      los manuales y las actas de un taller de maquinaria pesada.">
+<link rel="icon" type="image/png" sizes="192x192" href="../app/icono-192.png">
+<link rel="apple-touch-icon" href="../app/apple-touch-icon.png">
+<style>
+  :root { color-scheme: light dark;
+          --papel:#F3F4F2; --tinta:#16191B; --tinta2:#4E5860; --tinta3:#7C878E;
+          --regla:#D6DCDA; --acento:#1E4B6B; --acento-suave:#E3ECF3;
+          --tarjeta:#FFFFFF; --alerta:#9A3B1B; --consola:#14181A;
+          --consola-tinta:#DCE3E1; --consola-tenue:#8A959B; --consola-regla:#2A3338; }
+  @media (prefers-color-scheme: dark) {
+    :root { --papel:#14181A; --tinta:#E7ECEB; --tinta2:#A3AFB4; --tinta3:#7E8B92;
+            --regla:#2F383D; --acento:#6FA8CE; --acento-suave:#1E2B35;
+            --tarjeta:#1C2225; --alerta:#E0906C; --consola:#0E1113;
+            --consola-regla:#242C30; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--papel); color:var(--tinta);
+         font:16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+         padding-block:2.5rem 4rem; padding-left:1.2rem; padding-right:1.2rem; }
+  main { max-width:40rem; margin:0 auto; display:flex; flex-direction:column; gap:1.6rem; }
+  h1 { font-size:clamp(1.8rem,1.4rem+2vw,2.6rem); line-height:1.05; margin:0;
+       text-transform:uppercase; letter-spacing:.01em; text-wrap:balance; }
+  h2 { font-size:1.15rem; text-transform:uppercase; letter-spacing:.02em;
+       margin:0; padding-top:1.1rem; border-top:2px solid var(--tinta);
+       display:flex; align-items:baseline; gap:.7rem; text-wrap:balance; }
+  h2 .n { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.85rem;
+          color:var(--acento); flex:none; }
+  h3 { font-size:.95rem; text-transform:uppercase; letter-spacing:.06em; margin:0; }
+  p { color:var(--tinta2); margin:0; }
+  section { display:flex; flex-direction:column; gap:.8rem; }
+  strong { color:var(--tinta); }
+  a { color:var(--acento); }
+  a:focus-visible, .cta:focus-visible { outline:2px solid var(--acento); outline-offset:3px; }
+  .kicker { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.7rem;
+            letter-spacing:.16em; text-transform:uppercase; color:var(--tinta3); }
+  .entrada { font-size:1.05rem; }
+
+  .ficha { display:flex; flex-wrap:wrap; gap:.4rem 1.5rem; margin:0;
+           border-top:2px solid var(--tinta); border-bottom:1px solid var(--regla);
+           padding-block:.7rem; }
+  .ficha div { display:flex; gap:.4rem; align-items:baseline; }
+  .ficha dt { font-size:.68rem; text-transform:uppercase; letter-spacing:.09em;
+              color:var(--tinta3); font-family:ui-monospace, Menlo, monospace; }
+  .ficha dd { margin:0; font-weight:600; font-variant-numeric:tabular-nums; }
+
+  .insumos { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
+  .insumos li { display:grid; grid-template-columns:auto 1fr; gap:.15rem .8rem;
+                padding-block:.6rem; border-bottom:1px solid var(--regla); }
+  .insumos li:first-child { border-top:1px solid var(--regla); }
+  .insumos span.f { font-family:ui-monospace, Menlo, Consolas, monospace;
+                    font-size:.66rem; letter-spacing:.06em; text-transform:uppercase;
+                    color:var(--acento); border:1px solid currentColor; border-radius:2px;
+                    padding:.05rem .32rem; align-self:start; margin-top:.3rem; }
+  .insumos b { color:var(--tinta); }
+  .insumos span.q { grid-column:2; color:var(--tinta2); font-size:.93rem; }
+
+  .consola { background:var(--consola); color:var(--consola-tinta);
+             border:1px solid var(--consola-regla); border-radius:6px;
+             overflow-x:auto; padding:.9rem 1rem; white-space:pre; tab-size:2;
+             font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+             font-size:.76rem; line-height:1.7; }
+  .consola b { color:#8FC4E8; font-weight:500; }
+  .consola i { color:var(--consola-tenue); font-style:normal; }
+  .consola u { color:#F0A883; text-decoration:none; }
+  .consola em { color:#8FD0AB; font-style:normal; }
+
+  .nota { border-left:3px solid var(--acento); padding:.1rem 0 .1rem .85rem;
+          font-size:.95rem; }
+  .destacado { background:var(--acento-suave); border-radius:6px; padding:.9rem 1rem;
+               display:flex; flex-direction:column; gap:.5rem; }
+  .destacado h3 { color:var(--acento); }
+  .destacado p { color:var(--tinta); font-size:.95rem; }
+
+  ul.limites { list-style:none; margin:0; padding:0; display:flex;
+               flex-direction:column; gap:.6rem; }
+  ul.limites li { padding-left:1.1rem; position:relative; color:var(--tinta2);
+                  font-size:.95rem; }
+  ul.limites li::before { content:"—"; position:absolute; left:0; color:var(--alerta); }
+
+  .cta { display:flex; align-items:center; gap:.9rem; text-decoration:none;
+         background:var(--tarjeta); border:1px solid var(--regla);
+         border-left:4px solid var(--acento); border-radius:0 8px 8px 0;
+         padding:.9rem 1rem; color:inherit; }
+  .cta strong { display:block; font-size:1.05rem; }
+  .cta em { font-style:normal; color:var(--tinta2); font-size:.88rem; }
+  .qr { display:flex; gap:1.1rem; align-items:center; flex-wrap:wrap;
+        background:var(--tarjeta); border:1px solid var(--regla);
+        border-radius:8px; padding:1rem; }
+  .qr img { width:132px; height:132px; flex:none; background:#fff;
+            border-radius:6px; padding:.3rem; }
+  .qr > div { flex:1 1 12rem; min-width:0; }
+  .qr .dir { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.78rem;
+             word-break:break-all; color:var(--acento); }
+  code { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.88em; }
+  footer { padding-top:1rem; border-top:1px solid var(--regla);
+           font-size:.85rem; color:var(--tinta2);
+           display:flex; flex-direction:column; gap:.6rem; }
+</style>
+</head>
+<body>
+<main>
+
+  <header>
+    <p class="kicker">demo corrida de punta a punta · datos ficticios</p>
+    <h1>FixMate en el taller</h1>
+  </header>
+
+  <p class="entrada">El historial de fallas de la flota, los manuales del
+  fabricante y las actas de despacho, buscables desde el patio. Lo que sigue es
+  una corrida real: cada bloque negro es la salida del comando que tiene
+  encima, sin retocar.</p>
+
+  <dl class="ficha">
+    <div><dt>Corpus</dt><dd>5 archivos</dd></div>
+    <div><dt>Fragmentos</dt><dd>31</dd></div>
+    <div><dt>Acierto medido</dt><dd>100&nbsp;%</dd></div>
+    <div><dt>Línea base</dt><dd>21&nbsp;%</dd></div>
+    <div><dt>Red</dt><dd>ninguna</dd></div>
+  </dl>
+
+  <section>
+    <h2>Lo que hay en la oficina</h2>
+    <p>Nadie tiene el manual en Markdown ni el historial en JSON. Esto es lo que
+    hay de verdad en la carpeta compartida de un taller, y es lo que FixMate lee
+    tal como está:</p>
+    <ul class="insumos">
+      <li><span class="f">xlsx</span><b>historial-2026.xlsx</b><span class="q">18 órdenes de trabajo, con membrete arriba y columnas que se llaman «N° OT», «Falla reportada», «Causa raíz».</span></li>
+      <li><span class="f">docx</span><b>manual-hidraulica.docx</b><span class="q">Un manual en Word. Sus títulos se vuelven secciones, así que un procedimiento no se recupera partido a la mitad.</span></li>
+      <li><span class="f">pdf</span><b>manual-electrico.pdf</b><span class="q">Se lee sin instalar nada: si no hay poppler ni pypdf, lo abre un lector propio.</span></li>
+      <li><span class="f">xlsx</span><b>acta-GE074-01.xlsx</b><span class="q">Un acta de nefer llenada, de donde salen los componentes dañados y las recuperaciones.</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="n">01</span>Indexar, y volver a indexar sin releer nada</h2>
+    <div class="consola"><b>$ nefer fixmate -i indice.json indexar /taller</b>
+
+  nuevo: acta-GE074-01.xlsx
+  nuevo: historial-2026.xlsx
+  nuevo: manual-electrico.pdf
+  nuevo: manual-grupo-electrogeno.md
+  nuevo: manual-hidraulica.docx
+
+Indice escrito: indice.json (31 fragmentos de 5 archivos)
+
+<b>$ nefer fixmate -i indice.json indexar /taller</b>
+
+  <em>sin cambios: 5 archivos</em></div>
+    <p class="nota">Cada archivo queda anotado con la huella de su
+    <strong>contenido</strong>, no con su fecha: copiar la carpeta compartida a
+    otra máquina no obliga a releer un manual de cuatrocientas páginas.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">02</span>Preguntar como se pregunta en el patio</h2>
+    <p>La consulta no se escribe con las palabras del manual. Se escribe —o se
+    dicta al teléfono— como la diría el mecánico que tiene la máquina delante.</p>
+    <div class="consola"><b>$ nefer fixmate consultar 'gotea aceite por el cilindro del brazo toda la noche'</b>
+
+DIAGNOSTICO (confianza alta, redactor extractivo)
+  3 antecedente(s) coinciden. El mas parecido (OT-2026-0501, 64%)
+  registra: Fuga de aceite hidráulico en el cilindro del brazo;
+  charco bajo la máquina después de una noche parada.
+
+CAUSA RAIZ MAS PROBABLE
+  Sello del vástago cortado por una rebaba en el cromado.
+
+PASOS
+  1. Aliviar la presión del circuito antes de desconectar mangueras
+  2. Pulir el cromado y cambiar el juego completo de sellos
+  3. Apretar los pernos de la tapa a 210 N·m en cruz
+
+HERRAMIENTAS Y REPUESTOS
+  · Juego de sellos de vástago
+  · Aceite hidráulico ISO 68
+
+EVIDENCIA
+  <i>OT-2026-0501 (informe, 64%) — historial-2026.xlsx</i>
+  <i>OT-2025-0377 (informe, 35%) — historial-2026.xlsx</i>
+  <i>OT-2026-0288 (informe, 27%) — historial-2026.xlsx</i></div>
+    <p class="nota">El torque <strong>210 N·m</strong> no lo calculó nadie: está
+    copiado literal de la orden que lo aplicó. Un par de apriete estimado es un
+    perno reventado.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">03</span>Cuando el historial entero corrige a la búsqueda</h2>
+    <p>«Humo negro y pierde fuerza» se parece, palabra por palabra, al informe de
+    un inyector. Pero de todas las veces que alguien escribió algo así en esta
+    flota, el 54&nbsp;% terminó en el filtro de aire.</p>
+    <div class="consola"><b>$ nefer fixmate consultar 'sale humo negro y pierde fuerza en la subida' --dtc P0300</b>
+
+LO QUE DICE EL HISTORIAL COMPLETO
+     <em>54%</em>  Filtro de aire colmatado (3 casos)
+     37%  Inyector con retorno excesivo o goteo (3 casos)
+      5%  Sello o reten de cilindro vencido (3 casos)
+         <i>(el clasificador acierta el 93% sobre 14 casos;
+          la causa mas comun sola daria 21%)</i>
+
+CAUSA RAIZ MAS PROBABLE
+  Filtro de aire colmatado por polvo de mina; la restricción de
+  admisión empobreció la mezcla y el motor pasó a quemar rico.
+
+  <i>«La causa y el procedimiento salen de OT-2026-0412, que es el
+   antecedente recuperado que coincide con esa estadistica.»</i></div>
+    <div class="destacado">
+      <h3>Por qué importa el 21&nbsp;%</h3>
+      <p>Un 93&nbsp;% de acierto no dice nada solo. Al lado va siempre la línea
+      base —acertar siempre la causa más común daría 21&nbsp;%— y el número de
+      casos con que se midió. Con menos de doce casos confirmados, el
+      clasificador no opina: devuelve la búsqueda sola.</p>
+      <p>Y los nombres de arriba no son los que tecleó el mecánico: son los
+      del <b>catálogo de causas</b>. «Filtro de aire colmatado», «filtro aire
+      tapado» y «FILTROS DE AIRE OBSTRUIDOS» son un solo código, y por eso se
+      pueden contar juntos. Lo que el catálogo no reconoce se queda sin
+      código y se dice cuánto es: ese número es lo que hay que agregarle.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">04</span>Qué le va a pasar a este equipo</h2>
+    <p>Sin sensores ni telemetría: con el horómetro que el técnico anota en cada
+    acta y las fechas de las órdenes de trabajo.</p>
+    <div class="consola"><b>$ nefer fixmate predecir GE074-01</b>
+
+EQUIPO GE074-01 · 8 registros fechados
+
+USO
+  5.71 h/dia (4 lecturas en 238 dias); horometro 2050.0 al 2026-07-08
+
+PROXIMO SERVICIO
+  2500 h: faltan 56.0 h (~10 dias, <em>2026-09-25</em>)
+
+MTBF
+  119 dias entre fallas, en promedio
+
+LO QUE LE VUELVE A PASAR
+  <u>VENCIDA</u> · Filtro de aire colmatado por polvo de mina.
+      2 casos · cada ~122 dias · ultima 2026-03-14 (hace 185 dias)
+
+REPUESTOS QUE CONVIENE TENER
+  · Filtro de aire primario P533781
+  · Filtro de aire secundario P533782
+
+  <u>aviso: El horometro anotado baja entre 2026-07-08 → 2026-08-26.
+  Una maquina no desanda horas: revise esas actas. El ritmo se
+  calculo solo con los tramos que avanzan.</u></div>
+    <p class="nota">El próximo servicio se dice <strong>en fecha</strong>:
+    «faltan 118 horas» no se puede poner en un calendario. Y un dato torcido se
+    señala en vez de promediarse: ese aviso salió de un horómetro mal anotado en
+    el acta.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">05</span>Cerrar el círculo</h2>
+    <p>El técnico resolvió una falla que el índice no tenía. La registra desde la
+    misma herramienta, en el momento, sin abrir un Excel tres días después en la
+    oficina.</p>
+    <div class="consola"><b>$ nefer fixmate cerrar \
+    --falla 'El ventilador no gira y el motor se calienta en dos horas' \
+    --causa 'Correa del ventilador partida por polea desalineada' \
+    --solucion 'Se cambio la correa y se alineo la polea' \
+    --equipo GE074-03 --repuesto 'Correa 8PK1230'</b>
+
+Registrado OT-2026-0001 en historial-nuevo.json
+<em>Indexado: ya lo encuentra la siguiente consulta.</em>
+
+<b>$ nefer fixmate consultar 'el motor se calienta y el ventilador no gira'</b>
+
+CAUSA RAIZ MAS PROBABLE
+  <em>Correa del ventilador partida por polea desalineada</em>
+
+LO QUE DICE EL HISTORIAL COMPLETO
+     77%  Baterías sulfatadas por cargas incompletas. (3 casos)
+     ...
+
+EVIDENCIA
+  <i>OT-2026-0001 (informe, 64%) — historial-nuevo.json</i></div>
+    <div class="destacado">
+      <h3>La falla nueva le gana a la estadística</h3>
+      <p>El clasificador apostaba por las baterías: aprendió de las averías
+      viejas y no puede conocer una que se registró hace diez segundos. Cuando
+      la búsqueda ya trae un antecedente que encaja de sobra, manda la
+      evidencia. Si no fuera así, el asistente no aprendería nunca nada nuevo.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">06</span>Y todo esto, en el teléfono</h2>
+    <p>Hasta aquí, la computadora de la oficina. Pero la máquina está en el
+    patio y el socavón no tiene señal, así que el mismo motor va dentro de la
+    app de campo: se le carga el índice una vez y responde sin red.</p>
+    <ul class="insumos">
+      <li><span class="f">1&nbsp;MB</span><b>Cabe de sobra</b><span class="q">Un taller de 2000 fragmentos pesa 7,9 MB, 1,0 MB comprimido. Se copia una vez y queda guardado en el teléfono.</span></li>
+      <li><span class="f">voz</span><b>Se dicta</b><span class="q">Donde el teléfono lo trae, el botón escribe lo que usted diga —y lo deja a la vista antes de buscar, por si entendió otra cosa.</span></li>
+      <li><span class="f">campo</span><b>Y se cierra ahí mismo</b><span class="q">Lo que resuelve se registra en el acto y ya lo encuentra el compañero de al lado. Cuando hay señal, un botón lo manda todo a la oficina.</span></li>
+    </ul>
+    <div class="destacado">
+      <h3>El mismo motor, escrito dos veces</h3>
+      <p>Python en la oficina, JavaScript en el teléfono. Dos versiones de la
+      misma búsqueda se separan solas, y nadie lo nota hasta que el teléfono
+      contesta otra cosa. Por eso una prueba corre las mismas consultas en los
+      dos y compara el orden de los antecedentes, sus puntajes, la causa y los
+      pasos: si se separan, no se publica.</p>
+    </div>
+    <p class="nota">Queda también una <strong>API</strong> para quien prefiera
+    servirlo desde la oficina. Ahí, un <code>404</code> no es una avería: es la
+    respuesta. <strong>Sin antecedente no hay diagnóstico</strong>, y decirlo
+    vale más que inventar uno.</p>
+  </section>
+
+  <section>
+    <h2>Lo que todavía no hace</h2>
+    <p>Dicho aquí para que nadie lo descubra en el patio:</p>
+    <ul class="limites">
+      <li><strong>La foto no diagnostica.</strong> El técnico fotografía la fuga
+      y la foto entra al acta, pero la consulta es texto o voz. Reconocer la
+      avería en la imagen pide un modelo multimodal, y eso pide red: justo lo
+      que no hay en el socavón.</li>
+      <li><strong>Un PDF escaneado necesita OCR aparte.</strong> Se detecta y se
+      avisa; no se indexa vacío, que sería peor.</li>
+      <li><strong>La predicción no tiene telemetría.</strong> Sale del horómetro
+      anotado a mano. Con equipos que envíen datos de verdad se anticiparía
+      mucho antes.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Probarlo</h2>
+    <div class="qr">
+      <img src="qr-fixmate.svg" alt="Código QR de esta página">
+      <div>
+        <b>Esta página</b>
+        <p class="dir">https://nilthonnn.github.io/nefer/fixmate/</p>
+      </div>
+    </div>
+    <p><code>python3 herramientas/demo-fixmate.py</code> monta el taller
+    completo en una carpeta temporal y corre estos mismos comandos. Con
+    <code>--dir /tmp/taller</code> la carpeta queda en pie para probar con sus
+    propias consultas.</p>
+    <a class="cta" href="../fixmate-app.html" download="fixmate-app.html">
+      <div>
+        <strong>Descargar FixMate</strong>
+        <em>Un archivo. Doble clic y anda: sin internet, sin instalar nada.
+            Cargue ahí su historial en Excel y sus manuales en PDF o Word</em>
+      </div>
+    </a>
+    <a class="cta" href="app/">
+      <div>
+        <strong>Abrirlo aquí mismo</strong>
+        <em>La misma app, servida desde esta página</em>
+      </div>
+    </a>
+  </section>
+
+  <footer>
+    <p>Los datos del taller son ficticios y están en el repositorio. Nada de
+    esto necesitó red ni clave de ningún servicio: es el camino local completo,
+    el mismo que corre en el patio. Fecha de referencia fija, 15 de septiembre
+    de 2026, para que la demo dé lo mismo hoy que mañana.</p>
+    <p><a href="https://github.com/nilthonnn/nefer">github.com/nilthonnn/nefer</a></p>
+  </footer>
+
+</main>
+</body>
+</html>

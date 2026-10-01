@@ -609,6 +609,11 @@
               flex:none; padding-top:.15rem; min-width:1.4rem; }
   .pasos b { color:var(--ink); }
 
+  /* El diagnóstico de fallas se mudó a su propia app, en
+     docs/fixmate/app/. Vivía aquí de prestado: esta app levanta actas
+     fotográficas de despacho y recepción, que es otro producto, otro
+     momento del trabajo y otro usuario. Eran 1900 líneas de otra cosa
+     dentro de 8100. */
   .nota { font-size:.82rem; color:var(--ink-3); margin:.6rem 0 0; }
   h2.rot { font-family:var(--cond); font-size:1.3rem; font-weight:700;
            text-transform:uppercase; letter-spacing:.02em; margin:1.5rem 0 .5rem;
@@ -975,6 +980,8 @@
       </div>
     </section>
 
+    <!-- ================= DIAGNÓSTICO ================= -->
+
     <!-- ================= GUÍA ================= -->
     <section class="vista" id="v-guia" role="tabpanel" aria-labelledby="tab-guia">
       <div class="encab">
@@ -1144,7 +1151,7 @@ var NEFER = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-10 · instalable";
+  var VERSION = "2026-09-16 · diagnóstico";
 
   "use strict";
 
@@ -1289,6 +1296,7 @@ var NEFER = (function () {
     inicio:    ["Actas de campo",  "actas de campo"],
     despacho:  ["Despacho",        "salida de equipo"],
     recepcion: ["Recepción",       "retorno de equipo"],
+    diagnostico: ["Diagnóstico",   "asistente en campo"],
     guia:      ["Guía rápida",     "cómo se usa"]
   };
   var actual = "inicio";
@@ -5472,4 +5480,5 @@ var ENTREGABLE = (function () {
   ENTREGABLE.xlsx = xlsx;
 })();
 </script>
+
 
