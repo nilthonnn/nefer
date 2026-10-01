@@ -838,6 +838,8 @@
           <option value="compresor">Compresor transportable</option>
           <option value="plataforma_elevacion">Plataforma de elevación</option>
           <option value="maquinaria_amarilla">Maquinaria amarilla</option>
+          <option value="rodillo">Rodillo vibrante</option>
+          <option value="motoniveladora">Motoniveladora</option>
           <option value="generico">Genérico</option>
         </select>
         <button type="button" class="primary ruta" id="d-camara-app" hidden>Cámara</button>
@@ -970,6 +972,8 @@
             <option value="compresor">Compresor transportable</option>
             <option value="plataforma_elevacion">Plataforma de elevación</option>
             <option value="maquinaria_amarilla">Maquinaria amarilla</option>
+            <option value="rodillo">Rodillo vibrante</option>
+            <option value="motoniveladora">Motoniveladora</option>
             <option value="generico">Genérico</option>
           </select>
           <button class="primary" id="r-empezar" type="button">Empezar recepción</button>
@@ -1305,7 +1309,7 @@ var RDRENTA = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-09-30 · autoguardado";
+  var VERSION = "2026-10-01 · rodillo y motoniveladora";
 
   "use strict";
 
@@ -3219,6 +3223,22 @@ var RDRENTA = (function () {
     maquinaria_amarilla: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
       "VISTA LATERAL DERECHA","HORÓMETRO","CABINA","CUCHARÓN / HOJA","SISTEMA HIDRÁULICO",
       "TREN DE RODAJE / LLANTAS","MOTOR"],
+    // Copiadas de rdrenta/layout.py, que a su vez las copió de las actas
+    // RL19-04-01-010 y MN15T-14-01-12 del cliente. Hay una prueba que compara
+    // las dos listas: si cambian allí y aquí no, falla.
+    rodillo: [
+      "VISTA FRONTAL","VISTA POSTERIOR","VISTA IZQUIERDA","VISTA DERECHA","HORÓMETRO",
+      "TIMÓN","PALANCA DE CONTROL","VISTO LATERAL DE LA ROLA","VISTA IZQUIERDA DE MOTOR",
+      "VISTA DERECHA DE MOTOR","NEUMÁTICO IZQUIERDO","NEUMÁTICO DERECHO",
+      "LLAVE DE CONTACTO","PICO Y LAMPA","TACOS DE MADERA","ACCESORIOS"],
+    motoniveladora: [
+      "VISTA FRONTAL","VISTA POSTERIOR","VISTA IZQUIERDA","VISTA DERECHA","HORÓMETRO",
+      "PALA Y PICO + LLAVE DE CONTACTO","ASIENTO DE OPERADOR","MANDOS DE CONTROL",
+      "NEUMÁTICO DELANTERO DERECHO","NEUMÁTICO DELANTERO IZQUIERDO",
+      "NEUMÁTICO POSTERIOR Y CENTRO DERECHO","NEUMÁTICO POSTERIOR Y CENTRO IZQUIERDA",
+      "VISTA SUPERIOR DE MOTOR","VISTA FRONTAL DE MOTOR","CUCHILLAS CON SUS MEDICIONES",
+      "DESGARRADORES CON SUS MEDICIONES","BATERÍAS","MANDO Y BOTONES DE CONTROL","TACOS",
+      "ACCESORIOS"],
     generico: ["VISTA FRONTAL","VISTA POSTERIOR","VISTA LATERAL IZQUIERDA",
       "VISTA LATERAL DERECHA","HORÓMETRO","PANEL DE CONTROL"]
   };
@@ -3249,8 +3269,54 @@ var RDRENTA = (function () {
     ["CUCHARÓN / HOJA",         ["cucharon","cuchara","hoja","balde","bucket"]],
     ["SISTEMA HIDRÁULICO",      ["hidraulico","hidraulica","manguera","hydraulic"]],
     ["TREN DE RODAJE / LLANTAS",["rodaje","llanta","oruga","neumatico","track"]],
-    ["MOTOR",                   ["motor","engine"]]
+    ["MOTOR",                   ["motor","engine"]],
+    ["TIMÓN",                   ["timon","volante"]],
+    ["PALANCA DE CONTROL",      ["palanca"]],
+    ["VISTO LATERAL DE LA ROLA",["rola","tambor","drum"]],
+    ["PICO Y LAMPA",            ["picoylampa","picolampa","lampa"]],
+    ["TACOS DE MADERA",         ["tacosdemadera","tacomadera"]],
+    ["ASIENTO DE OPERADOR",     ["asiento","seat"]],
+    ["MANDOS DE CONTROL",       ["mandos"]],
+    ["CUCHILLAS CON SUS MEDICIONES", ["cuchilla","cuchillas","blade"]],
+    ["DESGARRADORES CON SUS MEDICIONES",
+      ["desgarrador","desgarradores","escarificador","ripper"]],
+    ["NEUMÁTICO DELANTERO DERECHO",   ["neumaticodelanteroderecho","llantadelanteraderecha"]],
+    ["NEUMÁTICO DELANTERO IZQUIERDO", ["neumaticodelanteroizquierdo","llantadelanteraizquierda"]],
+    ["ACCESORIOS",              ["accesorio","accesorios"]]
   ];
+
+  /* Una misma vista no se llama igual en todas las familias: el acta del
+     rodillo dice «VISTA IZQUIERDA» donde la del grupo electrógeno dice «VISTA
+     LATERAL IZQUIERDA». Sin esto, una foto llamada `izquierda.jpg` se colocaba
+     sola en unas familias y caía al reparto por hora de captura en las otras,
+     sin que el operador entendiera por qué. Copiado de layout.SINONIMOS_VISTA. */
+  var SINONIMOS = {
+    "VISTA LATERAL IZQUIERDA": ["VISTA IZQUIERDA"],
+    "VISTA LATERAL DERECHA": ["VISTA DERECHA"],
+    "VISTA IZQUIERDA": ["VISTA LATERAL IZQUIERDA"],
+    "VISTA DERECHA": ["VISTA LATERAL DERECHA"],
+    "VISTA LATERAL IZQUIERDA DE MOTOR": ["VISTA IZQUIERDA DE MOTOR"],
+    "VISTA LATERAL DERECHA DE MOTOR": ["VISTA DERECHA DE MOTOR"],
+    "TREN DE RODAJE / LLANTAS": ["NEUMÁTICO IZQUIERDO", "NEUMÁTICO DERECHO"],
+    "MANDO DE CONTROL": ["MANDOS DE CONTROL", "MANDO Y BOTONES DE CONTROL",
+                         "PALANCA DE CONTROL"],
+    "TACOS": ["TACOS DE MADERA"],
+    "TACOS DE MADERA": ["TACOS"],
+    "BATERÍA": ["BATERÍAS"]
+  };
+
+  // El hueco que le toca a una foto: el de su rótulo, o el del rótulo que
+  // significa lo mismo en esta familia.
+  function huecoDe(vistas, sugerida) {
+    var i = vistas.indexOf(sugerida);
+    if (i !== -1) return i;
+    var otros = SINONIMOS[sugerida] || [];
+    for (var k = 0; k < otros.length; k++) {
+      i = vistas.indexOf(otros[k]);
+      if (i !== -1) return i;
+    }
+    return -1;
+  }
 
   // Accesorios que aparecen en las actas de recepción reales. Es una lista de
   // sugerencias, no una jaula: el campo sigue admitiendo cualquier texto.
@@ -3487,7 +3553,7 @@ var RDRENTA = (function () {
     // Primero lo que el nombre del archivo delata.
     libres = libres.filter(function (f) {
       if (!f.sugerida) return true;
-      var i = vistas.indexOf(f.sugerida);
+      var i = huecoDe(vistas, f.sugerida);
       if (i === -1 || casillas[i] !== null) return true;
       casillas[i] = f.id; propuestas[i] = true;
       return false;
