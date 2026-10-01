@@ -1,0 +1,624 @@
+"""La pestaña de diagnóstico, conducida en un navegador de verdad.
+
+El motor ya se compara contra el de Python en `test_fixmate_cruce.py`. Lo que
+se prueba aquí es lo otro: que en el teléfono se pueda cargar el índice, que
+quede guardado para la próxima vez —que es lo que hace que sirva sin señal— y
+que la respuesta aparezca en pantalla con su evidencia.
+
+Se salta entera sin Playwright o sin Chromium.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+
+import pytest
+
+pytest.importorskip("playwright.sync_api", reason="Playwright no esta instalado")
+from playwright.sync_api import sync_playwright  # noqa: E402
+
+from navegador import HAY_CHROMIUM, opciones  # noqa: E402
+
+RAIZ = Path(__file__).resolve().parents[1]
+APP = RAIZ / "docs" / "fixmate" / "app" / "index.html"
+EJEMPLOS = RAIZ / "ejemplos" / "fixmate"
+
+pytestmark = pytest.mark.skipif(not HAY_CHROMIUM, reason="no hay Chromium disponible")
+
+UA_ANDROID = ("Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/120 Mobile Safari/537.36")
+
+
+@pytest.fixture(scope="module")
+def indice(tmp_path_factory) -> Path:
+    from nefer.fixmate import Indice, Motor, actualizar
+
+    indice = Indice()
+    actualizar(indice, [EJEMPLOS])
+    indice.medicion = Motor(indice).medicion()
+    return indice.guardar(tmp_path_factory.mktemp("indice") / "indice.json")
+
+
+class Telefono:
+    """La app abierta como la abre un operario, en un teléfono."""
+
+    def __init__(self, pw, contexto_extra=None):
+        self.navegador = pw.chromium.launch(**opciones())
+        self.contexto = self.navegador.new_context(
+            user_agent=UA_ANDROID, viewport={"width": 412, "height": 915},
+            **(contexto_extra or {}))
+        self.pg = self.contexto.new_page()
+        self.pg.goto(APP.as_uri())
+
+    def cargar(self, ruta: Path):
+        with self.pg.expect_file_chooser() as elegido:
+            self.pg.click("label[for='dx-archivo']")
+        elegido.value.set_files(str(ruta))
+        self.pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+
+    def consultar(self, texto: str, dtc: str = ""):
+        self.pg.fill("#dx-consulta", texto)
+        if dtc:
+            self.pg.fill("#dx-dtc", dtc)
+        self.pg.click("#dx-buscar")
+        self.pg.wait_for_timeout(300)
+
+    def cerrar(self):
+        self.contexto.close()
+        self.navegador.close()
+
+
+def test_la_pestana_esta_y_pide_los_papeles_antes_de_nada():
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            assert t.pg.is_visible("#v-diagnostico")
+            assert t.pg.is_visible("#dx-sin-indice"), "sin índice tiene que pedirlo"
+            assert not t.pg.is_visible("#dx-listo")
+            texto = t.pg.text_content("#dx-sin-indice")
+            assert "Todavía no hay nada cargado" in texto
+            # Y dice qué hay que traer, no sólo que falta algo.
+            assert "historial" in texto.lower() and "manuales" in texto.lower()
+        finally:
+            t.cerrar()
+
+
+def test_con_el_indice_cargado_contesta_con_su_evidencia(indice):
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            estado = t.pg.text_content("#dx-estado")
+            assert "fragmentos" in estado
+
+            t.consultar("gotea aceite por el cilindro del brazo toda la noche")
+            salida = t.pg.text_content("#dx-salida")
+            assert "Sello del vástago cortado" in salida
+            assert "EVIDENCIA" in salida.upper()
+            assert "OT-2026-0501" in salida
+            # Y lo que dice el historial entero, con su medición al lado.
+            assert "LO QUE DICE EL HISTORIAL COMPLETO" in salida.upper()
+            assert "acierta el" in salida
+        finally:
+            t.cerrar()
+
+
+def test_el_torque_que_ensena_sale_de_la_fuente(indice):
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            t.consultar("que apriete lleva el perno de la tapa del cilindro")
+            salida = t.pg.text_content("#dx-salida")
+            assert "210 N·m" in salida
+            assert "manual OEM" in salida, "tiene que avisar de contrastarlo"
+        finally:
+            t.cerrar()
+
+
+def test_sin_antecedentes_lo_dice_y_no_inventa(indice):
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            t.consultar("tramites de aduana del contenedor en el puerto")
+            assert "No hay antecedentes" in t.pg.text_content("#dx-estado")
+            assert t.pg.text_content("#dx-salida").strip() == ""
+        finally:
+            t.cerrar()
+
+
+def test_el_indice_queda_guardado_para_la_proxima_vez(indice):
+    """Lo que hace que sirva en el socavón: se carga una vez y ya está."""
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            # Se vuelve a abrir la app en el mismo teléfono, sin tocar nada.
+            otra = t.contexto.new_page()
+            otra.goto(APP.as_uri())
+            otra.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+            assert "guardado en este teléfono" in otra.text_content("#dx-estado")
+
+            otra.fill("#dx-consulta", "no arranca en la mañana")
+            otra.click("#dx-buscar")
+            otra.wait_for_timeout(300)
+            assert "Baterías" in otra.text_content("#dx-salida")
+        finally:
+            t.cerrar()
+
+
+def test_un_indice_de_otro_embebedor_se_rechaza_con_su_motivo(indice, tmp_path):
+    # Mezclar embebedores no da error: da respuestas sin sentido. El teléfono
+    # tiene que negarse igual que la herramienta de escritorio.
+    datos = json.loads(indice.read_text(encoding="utf-8"))
+    datos["embebedor"] = "openai-text-embedding-3-small"
+    ajeno = tmp_path / "ajeno.json"
+    ajeno.write_text(json.dumps(datos), encoding="utf-8")
+
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            with t.pg.expect_file_chooser() as elegido:
+                t.pg.click("label[for='dx-archivo']")
+            elegido.value.set_files(str(ajeno))
+            t.pg.wait_for_timeout(500)
+            estado = t.pg.text_content("#dx-estado")
+            assert "Vuelva a indexarlo" in estado or "vuelva a indexarlo" in estado
+            assert t.pg.is_visible("#dx-sin-indice"), "sigue sin índice utilizable"
+        finally:
+            t.cerrar()
+
+
+def test_el_archivo_suelto_no_se_abre_con_datos_inventados_dentro():
+    """Se abría con el historial de un taller inventado ya cargado.
+
+    Cargando el historial de verdad encima, los dos quedaban mezclados y la
+    evidencia citaba «OT-2026-0233» sin manera de saber que esa orden no
+    existió nunca. Peor: dos órdenes reales con el mismo número que una
+    inventada se pisaban en silencio, y desaparecían del índice.
+    """
+    descargable = RAIZ / "docs" / "fixmate-app.html"
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(descargable.as_uri())
+            pg.wait_for_selector("#dx-sin-indice:not([hidden])", timeout=15000)
+            assert not pg.is_visible("#dx-listo"), "se abrió con datos ya cargados"
+            # Pero el ejemplo sigue estando, a un toque y rotulado.
+            assert pg.is_visible("#dx-ejemplo")
+            assert "inventada" in pg.text_content("#dx-ejemplo")
+        finally:
+            navegador.close()
+
+
+def test_el_taller_de_ejemplo_se_pide_y_sale_rotulado_como_inventado():
+    """Demuestra el diagnóstico sin preparar nada, y sin hacerse pasar por real."""
+    descargable = RAIZ / "docs" / "fixmate-app.html"
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(descargable.as_uri())
+            pg.wait_for_selector("#dx-ejemplo:not([hidden])", timeout=15000)
+            pg.click("#dx-ver-ejemplo")
+            pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+            assert "no son datos suyos" in pg.text_content("#dx-estado")
+
+            pg.fill("#dx-consulta", "humo negro y pierde fuerza")
+            pg.click("#dx-buscar")
+            pg.wait_for_timeout(500)
+            salida = pg.text_content("#dx-salida")
+            assert "Filtro de aire" in salida
+            # Y cada antecedente dice que no pasó de verdad.
+            assert "inventado" in salida.lower()
+            assert "(ejemplo)" in salida
+        finally:
+            navegador.close()
+
+
+def test_la_cuenta_de_archivos_no_miente():
+    """Decía «23 fragmentos de 0 archivos»: miraba una lista que un índice
+    armado afuera no trae."""
+    descargable = RAIZ / "docs" / "fixmate-app.html"
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(descargable.as_uri())
+            pg.wait_for_selector("#dx-ejemplo:not([hidden])", timeout=15000)
+            pg.click("#dx-ver-ejemplo")
+            pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+            estado = pg.text_content("#dx-estado")
+            assert "de 0 archivos" not in estado, estado
+            assert "de 2 archivos" in estado, estado
+        finally:
+            navegador.close()
+
+
+def test_un_numero_de_orden_repetido_se_avisa_y_no_desaparece_callado(historial_xlsx):
+    """Dos historiales distintos pueden numerar sus órdenes igual.
+
+    Perder una sin avisar es perder un antecedente que el próximo técnico va
+    a necesitar, y nadie se entera hasta que no aparece.
+    """
+    descargable = RAIZ / "docs" / "fixmate-app.html"
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(descargable.as_uri())
+            pg.wait_for_selector("#dx-ejemplo:not([hidden])", timeout=15000)
+            pg.click("#dx-ver-ejemplo")
+            pg.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+
+            # El historial de prueba repite una orden con la del ejemplo.
+            with pg.expect_file_chooser() as elegido:
+                pg.click("#dx-biblio summary")
+                pg.click("label[for='dx-archivo-2']")
+            elegido.value.set_files(str(historial_xlsx))
+            pg.wait_for_timeout(2500)
+
+            estado = pg.text_content("#dx-estado")
+            assert "mismo número de orden" in estado, estado
+            # Y dice cuál, no sólo que pasó: un número que no se nombra no
+            # se puede ir a buscar.
+            assert re.search(r"OT-\d{4}-\d+", estado), estado
+        finally:
+            navegador.close()
+
+
+# ------------------------------- cerrar el círculo desde el propio teléfono
+
+def test_lo_que_se_cierra_en_faena_responde_en_el_acto(indice):
+    """Sin señal y sin reindexar: lo que el técnico registra, ya se encuentra."""
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            # Una falla que el índice no tiene: nadie la registró todavía.
+            t.consultar("el ventilador no gira y el motor se calienta")
+            assert not t.pg.is_hidden("#dx-cierre"), (
+                "aunque no haya antecedentes —sobre todo entonces— tiene que "
+                "poder registrarse lo que resulte")
+
+            t.pg.fill("#dx-c-causa", "Correa del ventilador partida por polea desalineada")
+            t.pg.fill("#dx-c-solucion", "Se cambió la correa y se alineó la polea")
+            t.pg.fill("#dx-c-equipo", "GE074-03")
+            t.pg.fill("#dx-c-repuestos", "Correa 8PK1230")
+            t.pg.click("#dx-registrar")
+            t.pg.wait_for_timeout(400)
+            assert "registrado OT-CAMPO" in t.pg.text_content("#dx-c-aviso")
+
+            # Y la siguiente consulta ya lo encuentra, en el mismo teléfono.
+            t.consultar("el ventilador no gira y sube la temperatura")
+            salida = t.pg.text_content("#dx-salida")
+            assert "Correa del ventilador partida" in salida
+            assert "Correa 8PK1230" in salida
+        finally:
+            t.cerrar()
+
+
+def test_un_informe_sin_causa_ni_solucion_no_se_registra(indice):
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            t.consultar("ruido raro en la caja de transmisión")
+            t.pg.fill("#dx-c-causa", "")
+            t.pg.fill("#dx-c-solucion", "")
+            t.pg.click("#dx-registrar")
+            t.pg.wait_for_timeout(200)
+            assert "falta la causa" in t.pg.text_content("#dx-c-aviso")
+            assert t.pg.is_hidden("#dx-envio"), "no hay nada pendiente que enviar"
+        finally:
+            t.cerrar()
+
+
+def test_lo_registrado_sobrevive_a_cerrar_la_app(indice):
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            t.consultar("el ventilador no gira")
+            t.pg.fill("#dx-c-causa", "Correa partida")
+            t.pg.fill("#dx-c-solucion", "Se cambió la correa")
+            t.pg.click("#dx-registrar")
+            t.pg.wait_for_timeout(400)
+
+            otra = t.contexto.new_page()
+            otra.goto(APP.as_uri())
+            otra.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+            otra.wait_for_timeout(300)
+            assert "por enviar" in otra.text_content("#dx-pend")
+
+            otra.fill("#dx-consulta", "el ventilador no gira")
+            otra.click("#dx-buscar")
+            otra.wait_for_timeout(300)
+            assert "Correa partida" in otra.text_content("#dx-salida")
+        finally:
+            t.cerrar()
+
+
+def test_los_informes_se_envian_como_un_archivo_para_la_oficina(indice, tmp_path):
+    """Un archivo por WhatsApp es toda la sincronización que un taller necesita."""
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            t.cargar(indice)
+            t.consultar("el ventilador no gira")
+            t.pg.fill("#dx-c-causa", "Correa partida")
+            t.pg.fill("#dx-c-solucion", "Se cambió la correa")
+            t.pg.fill("#dx-c-equipo", "GE074-03")
+            t.pg.click("#dx-registrar")
+            t.pg.wait_for_timeout(400)
+
+            with t.pg.expect_download() as bajada:
+                t.pg.click("#dx-enviar")
+            archivo = tmp_path / "envio.json"
+            bajada.value.save_as(str(archivo))
+
+            envio = json.loads(archivo.read_text(encoding="utf-8"))
+            assert len(envio["pendientes"]) == 1
+            informe = envio["pendientes"][0]
+            assert informe["causa_raiz"] == "Correa partida"
+            assert informe["codigo_equipo"] == "GE074-03"
+            assert informe["codigo_ot"].startswith("OT-CAMPO-")
+
+            # Y la oficina lo mete en su historial con lo que ya tiene.
+            from nefer.fixmate import cierre
+
+            historial = tmp_path / "historial.json"
+            parte = cierre.recibir(archivo, historial)
+            assert len(parte.nuevos) == 1 and not parte.rechazados
+            # Reenviarlo —que es lo que va a pasar— no duplica nada.
+            assert not cierre.recibir(archivo, historial).nuevos
+        finally:
+            t.cerrar()
+
+
+# ------------------------------------ cargar los papeles en el propio teléfono
+
+@pytest.fixture(scope="module")
+def historial_xlsx(tmp_path_factory) -> Path:
+    """Un historial como lo manda un taller: con membrete y sin empezar en A1."""
+    openpyxl = pytest.importorskip("openpyxl")
+
+    destino = tmp_path_factory.mktemp("taller") / "historial-fallas.xlsx"
+    libro = openpyxl.Workbook()
+    hoja = libro.active
+    hoja["A1"] = "TRANSPORTES Y MAQUINARIA S.A.C."
+    hoja["A2"] = "Historial de fallas — Flota de excavadoras"
+    hoja.append([])
+    hoja.append([])
+    hoja.append(["N° OT", "Fecha", "Equipo", "Horómetro", "Código de falla",
+                 "Falla reportada", "Causa raíz", "Trabajo realizado", "Repuestos"])
+    for fila in [
+        ["OT-2026-0311", "2026-03-04", "EX-220-01", 4820, "P0300",
+         "Humo negro y pierde fuerza en la subida cargado",
+         "Filtro de aire colmatado", "Cambio de filtro primario y secundario",
+         "Filtro P181054"],
+        ["OT-2026-0349", "2026-04-18", "EX-220-02", 5210, "",
+         "Gotea aceite por el cilindro del brazo toda la noche",
+         "Sello del vástago vencido", "Cambio de sellos del cilindro del brazo",
+         "Kit de sellos 707-99"],
+        ["OT-2026-0402", "2026-05-22", "EX-220-01", 5390, "",
+         "No arranca en la mañana, el arranque gira lento",
+         "Bornes de batería sulfatados", "Limpieza de bornes y ajuste a 8 N·m", ""],
+    ]:
+        hoja.append(fila)
+    libro.save(destino)
+    return destino
+
+
+def _con_papeles(t, *rutas):
+    with t.pg.expect_file_chooser() as elegido:
+        t.pg.click("label[for='dx-archivo']")
+    elegido.value.set_files([str(r) for r in rutas])
+    t.pg.wait_for_selector("#dx-listo:not([hidden])", timeout=20000)
+
+
+def test_el_excel_del_taller_se_carga_en_el_telefono(historial_xlsx):
+    """Antes esto sólo pasaba en la oficina.
+
+    El técnico recibía un índice ya cocinado, y cargar el historial de un
+    equipo nuevo obligaba a volver a la computadora. Un .xlsx es un zip con
+    XML dentro, y el navegador sabe descomprimir y leer XML de fábrica.
+    """
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            assert "Todavía no hay nada cargado" in t.pg.inner_text("#dx-sin-indice")
+            _con_papeles(t, historial_xlsx)
+
+            estado = t.pg.inner_text("#dx-estado")
+            assert "3 fragmentos" in estado.lower()
+
+            # Y contesta con lo que se acaba de cargar, con las palabras del
+            # patio y no con las del encabezado del Excel.
+            t.consultar("la máquina bota humo negro y no tiene fuerza")
+            salida = t.pg.inner_text("#dx-salida")
+            assert "Filtro de aire colmatado" in salida
+            assert "OT-2026-0311" in salida
+        finally:
+            t.cerrar()
+
+
+def test_lo_que_se_agrega_se_suma_a_lo_que_ya_habia(historial_xlsx, tmp_path):
+    """Acumular experiencia es el punto: el segundo archivo no borra el primero."""
+    manual = tmp_path / "manual-hidraulico.md"
+    manual.write_text(
+        "# Sistema hidráulico\n\n"
+        "PELIGRO: el acumulador conserva presión veinte minutos después de "
+        "parar el motor.\n\n"
+        "Par de apriete de la tapa del cilindro: 210 N·m.\n",
+        encoding="utf-8")
+
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            _con_papeles(t, historial_xlsx)
+            antes = t.pg.inner_text("#dx-biblio-resumen")
+            t.pg.click("#dx-biblio summary")      # la biblioteca se pliega
+
+            with t.pg.expect_file_chooser() as elegido:
+                t.pg.click("label[for='dx-archivo-2']")
+            elegido.value.set_files(str(manual))
+            t.pg.wait_for_timeout(1500)
+
+            despues = t.pg.inner_text("#dx-biblio-resumen")
+            assert despues != antes
+            fuentes = t.pg.inner_text("#dx-fuentes")
+            assert "historial-fallas.xlsx" in fuentes, "borró lo que ya había"
+            assert "manual-hidraulico.md" in fuentes
+
+            # El torque del manual sale citado, y la advertencia también.
+            t.consultar("qué apriete lleva la tapa del cilindro")
+            salida = t.pg.inner_text("#dx-salida")
+            assert "210 N·m" in salida
+        finally:
+            t.cerrar()
+
+
+def test_el_pdf_del_manual_se_lee_en_el_telefono(tmp_path):
+    """Los manuales OEM vienen en PDF; era el agujero que quedaba."""
+    from test_fixmate_cruce import _pdf_de_manual
+
+    manual = tmp_path / "manual-hidraulico.pdf"
+    manual.write_bytes(_pdf_de_manual())
+
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            _con_papeles(t, manual)
+            t.consultar("qué apriete lleva la tapa del cilindro")
+            salida = t.pg.inner_text("#dx-salida")
+            # El torque sale citado de la fuente, no estimado.
+            assert "210 N.m" in salida
+        finally:
+            t.cerrar()
+
+
+def test_un_pdf_escaneado_lo_dice_en_vez_de_cargarse_vacio(tmp_path):
+    """Una foto de una página no es un manual.
+
+    Cargarlo vacío y después contestar «no hay antecedente» sería mentir con
+    más pasos: el técnico creería que el manual está y que no dice nada.
+    """
+    from test_fixmate_cruce import _flujo_pdf, _pdf_crudo
+
+    falso = tmp_path / "escaneado.pdf"
+    falso.write_bytes(_pdf_crudo([
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>",
+        _flujo_pdf(b"q 612 0 0 792 0 0 cm /Im0 Do Q")]))
+
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            with t.pg.expect_file_chooser() as elegido:
+                t.pg.click("label[for='dx-archivo']")
+            elegido.value.set_files(str(falso))
+            t.pg.wait_for_timeout(2000)
+            estado = t.pg.inner_text("#dx-estado")
+            assert "OCR" in estado
+        finally:
+            t.cerrar()
+
+
+def test_lo_cargado_sigue_ahi_al_reabrir(historial_xlsx):
+    """Sin esto no sirve en faena: se carga una vez y queda."""
+    with sync_playwright() as pw:
+        t = Telefono(pw)
+        try:
+            _con_papeles(t, historial_xlsx)
+            t.pg.wait_for_timeout(1200)      # que termine de guardar
+
+            otra = t.contexto.new_page()
+            otra.goto(APP.as_uri())
+            otra.wait_for_selector("#dx-listo:not([hidden])", timeout=15000)
+            otra.fill("#dx-consulta", "gotea aceite del brazo")
+            otra.click("#dx-buscar")
+            otra.wait_for_timeout(900)
+            assert "Sello del vástago" in otra.inner_text("#dx-salida")
+        finally:
+            t.cerrar()
+
+
+# ------------------------------------------- que Android la pueda instalar
+
+def test_servida_se_puede_instalar_en_el_telefono(tmp_path):
+    """Sin manifiesto, Android ofrece «agregar a pantalla de inicio» con una
+    captura de la página por icono, y el acceso directo abre en blanco."""
+    import functools
+    import http.server
+    import json
+    import threading
+    import urllib.request
+
+    raiz = (RAIZ / "docs" / "fixmate" / "app").resolve()
+    srv = http.server.ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(raiz)))
+    puerto = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        with sync_playwright() as pw:
+            navegador = pw.chromium.launch(**opciones())
+            pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+            try:
+                pg.goto(f"http://127.0.0.1:{puerto}/")
+                pg.wait_for_timeout(1200)
+                assert pg.eval_on_selector("link[rel=manifest]", "l => l.href")
+
+                base = f"http://127.0.0.1:{puerto}/"
+                man = json.loads(urllib.request.urlopen(base + "manifest.webmanifest").read())
+                assert man["display"] == "standalone"
+                assert man["name"].startswith("FixMate")
+                # Android recorta el icono: sin uno «maskable» lo recorta mal.
+                assert any(i["purpose"] == "maskable" for i in man["icons"])
+                for icono in man["icons"]:
+                    assert urllib.request.urlopen(base + icono["src"]).getcode() == 200
+
+                # Y el trabajador de servicio, que es lo que la hace abrir
+                # sin señal una vez instalada.
+                registrados = pg.evaluate(
+                    "async () => (await navigator.serviceWorker.getRegistrations()).length")
+                assert registrados == 1
+            finally:
+                navegador.close()
+    finally:
+        srv.shutdown()
+
+
+def test_el_archivo_suelto_tambien_se_puede_instalar():
+    """Lleva el icono y el manifiesto dentro: un archivo mandado por WhatsApp
+    no tiene vecinos a los que pedirles nada."""
+    import json
+    import urllib.parse
+
+    descargable = RAIZ / "docs" / "fixmate-app.html"
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(descargable.as_uri())
+            pg.wait_for_timeout(1200)
+            href = pg.eval_on_selector("link[rel=manifest]", "l => l.href")
+            assert href.startswith("data:application/manifest+json")
+
+            man = json.loads(urllib.parse.unquote(href.split(",", 1)[1]))
+            assert man["display"] == "standalone"
+            # `start_url` tiene que ser la dirección real desde la que se
+            # abrió: un manifiesto en `data:` no resuelve rutas relativas, y
+            # sin esto el acceso directo abre en blanco.
+            assert man["start_url"] == pg.url
+            assert any(i["purpose"] == "maskable" for i in man["icons"])
+            assert all(i["src"].startswith("data:image/png;base64,")
+                       for i in man["icons"])
+        finally:
+            navegador.close()

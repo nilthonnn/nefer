@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Arma el demo descargable: la app entera en un solo archivo.
 
+Con el índice de ejemplo dentro, para que la pestaña de diagnóstico funcione
+en el archivo suelto: es lo que se manda por WhatsApp, y sin índice esa
+pestaña sólo sabría pedir uno que el que lo recibe no tiene.
+
 La versión servida trae la tipografía en archivos aparte, que es lo correcto
 —se guardan en caché una vez y no se vuelven a pedir—. Pero un archivo suelto
 no puede llevar vecinos: si se descarga `index.html` a solas, esas rutas no

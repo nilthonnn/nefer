@@ -72,6 +72,79 @@ fotos volcadas a disco y ya asociadas a su rótulo. Recupera también las
 fotografías pegadas desde Word, que quedan incrustadas como metarchivos EMF y
 que ninguna librería de Python lee directamente (ver `nefer/emf.py`).
 
+### Diagnosticar una falla en campo
+
+```bash
+python -m nefer fixmate -i indice.json indexar historial.xlsx manuales/ actas/
+python -m nefer fixmate -i indice.json consultar "humo negro y pierde fuerza en la subida" --dtc P0300
+```
+
+**FixMate AI** indexa el historial de fallas propio, los manuales del
+fabricante —en PDF, Word o Excel, como estén— y las actas que este mismo
+paquete genera, y responde a una falla descrita como la describe un mecánico
+—no como la titula un capítulo— con la causa raíz que se confirmó, el
+procedimiento que funcionó y las herramientas y repuestos que hicieron falta.
+
+Funciona sin red, y no es una opción: **no hay ningún camino que salga a un
+servicio**. El índice es un archivo que se copia al teléfono, el embebedor y
+el buscador corren en la máquina, y el historial de fallas de la flota no
+sale de ahí. Para dictar la consulta está el teclado del propio teléfono, que
+transcribe sin cuenta de nadie.
+
+Además de buscar, **aprende del historial entero**: un clasificador
+bayesiano entrenado con las causas raíz confirmadas dice a qué termina
+pareciéndose una descripción así, publica su acierto medido al lado del
+porcentaje y corrige a la búsqueda cuando esta se fue por un parecido de
+palabras. Y **predice con lo que hay**: del horómetro anotado a mano y de las
+fechas de las órdenes salen el ritmo de uso, el próximo servicio en fecha y
+las causas que reinciden y ya están vencidas.
+
+```bash
+python -m nefer fixmate -i indice.json predecir GE074-01
+python -m nefer fixmate -i indice.json cerrar --falla "..." --causa "..." --solucion "..."
+```
+
+`cerrar` cierra el círculo: la falla resuelta hoy entra al historial y al
+índice en el acto, y la encuentra el compañero que pregunte mañana.
+
+Y **el mismo motor va en la app de campo**, en la pestaña *Diagnóstico*: se le
+carga el índice una vez y responde en el teléfono sin señal, que es donde está
+la máquina. Ahí mismo se registra lo que resultó —queda buscable en el acto— y
+cuando hay señal se manda todo junto a la oficina, que lo recibe con
+`nefer fixmate recibir`. Está escrito dos veces —Python en la oficina,
+JavaScript en el teléfono— y `tests/test_fixmate_cruce.py` corre las mismas
+consultas en los dos motores y falla si un ranking se separa.
+
+Tres reglas, las mismas de un acta y por el mismo motivo —lo que imprime una
+herramienta se lee como un dato—:
+
+- Sin antecedente en el índice no hay diagnóstico. Se dice que no lo hay.
+- Ningún par de apriete se estima: se copia literal de la fuente o no se da.
+- Cada respuesta cita la orden de trabajo o la sección de manual de la que
+  salió, y una evidencia floja se rotula como pista, no como diagnóstico.
+  Con menos de doce casos confirmados, el clasificador no opina.
+
+Para verlo funcionando sin preparar nada:
+
+```bash
+python3 herramientas/demo-fixmate.py
+```
+
+Arma un taller de mentira —historial en Excel, manuales en Word y PDF, un
+acta— y corre encima los comandos de verdad, uno por uno, explicando qué
+enseña cada paso. Esa misma corrida, para enseñarla desde el teléfono, está
+publicada en **<https://nilthonnn.github.io/nefer/fixmate/>** (la página vive
+en `docs/fixmate/` y `tests/test_publicacion_fixmate.py` falla si se queda
+atrás de la demo).
+
+Cuando el archivo deje de alcanzar —varias sedes escribiendo a la vez— el
+mismo motor busca contra **PostgreSQL con pgvector** (`nefer fixmate subir`,
+luego `--pg`), con la misma interfaz y la misma búsqueda híbrida.
+
+Todo el detalle —los formatos que lee, la API HTTP, la consulta dictada,
+PostgreSQL con pgvector y lo que falta— está en
+**[docs/FIXMATE.md](docs/FIXMATE.md)**.
+
 ### Otros comandos
 
 ```bash
@@ -86,6 +159,7 @@ python -m nefer pdf acta.xlsx                   # convertir un Excel ya generado
 |---|---|
 | **[docs/MANUAL-OPERACION.md](docs/MANUAL-OPERACION.md)** | Cómo levantar un acta, de la primera prueba en patio al uso diario |
 | **[docs/MANUAL-APP.md](docs/MANUAL-APP.md)** | La aplicación de campo pantalla por pantalla y botón por botón |
+| **[docs/FIXMATE.md](docs/FIXMATE.md)** | FixMate AI: el asistente de diagnóstico sobre el historial de fallas y los manuales OEM |
 | **[docs/app/](docs/app/)** | Aplicación de campo: despacho y recepción desde el celular, sin conexión. Cámara, galería, carpeta, arrastre y pegado; genera el PDF y el Excel en el propio teléfono |
 | **[docs/AUDITORIA-FORMATO.md](docs/AUDITORIA-FORMATO.md)** | Qué se midió del formato real, qué no cuadraba en el entregable y cómo se corrigió |
 | **[docs/AUDITORIA-CALIDAD.md](docs/AUDITORIA-CALIDAD.md)** | Revisión de la app guiada por ISO/IEC 25010: arranque, seguridad, código muerto y espacio |
@@ -136,7 +210,9 @@ Tres reglas que el validador hace cumplir porque de ellas depende una firma:
 
 En `ejemplos/` hay dos manifiestos de referencia con datos ficticios. No
 incluyen fotografías; para probar el flujo completo, extráigalas de un acta
-propia con `nefer extraer`.
+propia con `nefer extraer`. En `ejemplos/fixmate/` hay un historial de fallas
+y un extracto de manual, también ficticios, con los que probar el asistente de
+diagnóstico.
 
 ## Estructura
 
@@ -150,6 +226,7 @@ propia con `nefer extraer`.
 | `nefer/textos.py` | Redacción automática de rótulos, recuperaciones y guías |
 | `nefer/pdf.py` | Excel → PDF vía LibreOffice headless |
 | `nefer/cli.py` | Línea de comandos |
+| `nefer/fixmate/` | FixMate AI: lectura de documentos, búsqueda híbrida, diagnóstico, predicción y API |
 
 ## Copias por cliente
 
@@ -174,7 +251,9 @@ python -m pytest
 ```
 
 Cubren la geometría contra las actas reales, el validador, la redacción
-automática y la ida y vuelta completa manifiesto → Excel → manifiesto.
+automática, la ida y vuelta completa manifiesto → Excel → manifiesto y todo
+FixMate: los lectores de PDF, Word y Excel, la búsqueda, el clasificador de
+causas, la predicción, el cierre del círculo y la API.
 
 La aplicación de campo tiene su propia suite, que conduce un navegador de
 verdad: abre el selector de archivos real y dispara una cámara simulada, para

@@ -400,6 +400,9 @@ def construir_parser() -> argparse.ArgumentParser:
                    help="acta de la que tomar equipo y cliente para encabezar la guia")
     g.set_defaults(func=cmd_guias)
 
+    from .fixmate.cli import agregar_subcomando
+    agregar_subcomando(sub)
+
     t = sub.add_parser("plantilla", help="imprimir un manifiesto JSON en blanco")
     t.add_argument("-o", "--salida")
     t.set_defaults(func=cmd_plantilla)
