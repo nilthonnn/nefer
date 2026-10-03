@@ -237,6 +237,41 @@ jobs:
             exit 1
           fi
 
+  # La app de estados financieros es un proyecto aparte: no comparte código
+  # ni datos con las actas, así que se prueba sola y su fallo no tapa a los
+  # demás, ni al revés.
+  eeff:
+    name: estados financieros MYPE (navegador)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Instalar
+        run: pip install -e ".[navegador]" openpyxl
+
+      - name: Navegador
+        run: python -m playwright install --with-deps chromium
+
+      - name: Probar
+        run: |
+          set -o pipefail
+          python -m pytest -q -rs tests/test_eeff_navegador.py | tee salida.txt
+
+      - name: Ninguna prueba se saltó
+        run: |
+          if grep -qE '[0-9]+ skipped' salida.txt; then
+            echo "::error::alguna prueba se saltó; aquí eso cuenta como fallo"
+            grep -E '^SKIPPED' salida.txt || true
+            exit 1
+          fi
+
   camal:
     name: la app del camal (navegador, Excel, PDF y puente)
     runs-on: ubuntu-latest

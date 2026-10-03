@@ -1,0 +1,1728 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Estados Financieros MYPE</title>
+<meta name="description" content="Estado de resultados y estado de situación financiera para micro y pequeñas empresas del Perú, a partir del balance de comprobación del PCGE. Funciona sin conexión.">
+<meta name="theme-color" content="#0F3D3E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono.svg" type="image/svg+xml">
+<style>
+:root {
+  --fondo: #F4F6F5;
+  --papel: #FFFFFF;
+  --tinta: #17201F;
+  --tenue: #5B6866;
+  --linea: #D9E0DE;
+  --marca: #0F6B5E;
+  --marca-tinta: #FFFFFF;
+  --suave: #E6F2EF;
+  --bien: #1E7D45;
+  --ojo: #9A6B00;
+  --mal: #B3261E;
+  --sombra: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fondo: #101615; --papel: #182120; --tinta: #E6ECEA; --tenue: #9AA8A5;
+    --linea: #2C3836; --marca: #3FB8A2; --marca-tinta: #0B1413; --suave: #1F2E2B;
+    --bien: #5CC98A; --ojo: #E0B04A; --mal: #F2867E; --sombra: none;
+  }
+}
+:root[data-theme="dark"] {
+  --fondo: #101615; --papel: #182120; --tinta: #E6ECEA; --tenue: #9AA8A5;
+  --linea: #2C3836; --marca: #3FB8A2; --marca-tinta: #0B1413; --suave: #1F2E2B;
+  --bien: #5CC98A; --ojo: #E0B04A; --mal: #F2867E; --sombra: none;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--fondo); color: var(--tinta);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+header.barra {
+  position: sticky; top: 0; z-index: 5; background: var(--marca); color: var(--marca-tinta);
+  padding: 10px 16px calc(0px); padding-top: max(10px, env(safe-area-inset-top));
+}
+header.barra .fila { display: flex; align-items: center; gap: 10px; max-width: 980px; margin: 0 auto; }
+header.barra h1 { font-size: 17px; margin: 0; flex: 1; min-width: 0; }
+header.barra h1 small { display: block; font-weight: 400; opacity: .85; font-size: 12px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header.barra select { font: inherit; font-size: 14px; border-radius: 8px; border: 0; padding: 6px 8px;
+  background: rgba(255,255,255,.18); color: inherit; }
+header.barra select option { color: #000; }
+nav.pestanas { display: flex; gap: 2px; overflow-x: auto; max-width: 980px; margin: 8px auto 0;
+  scrollbar-width: none; }
+nav.pestanas::-webkit-scrollbar { display: none; }
+nav.pestanas button {
+  flex: 0 0 auto; font: inherit; font-size: 14px; background: none; color: inherit; opacity: .78;
+  border: 0; border-bottom: 3px solid transparent; padding: 8px 12px; cursor: pointer;
+}
+nav.pestanas button[aria-selected="true"] { opacity: 1; border-bottom-color: currentColor; font-weight: 600; }
+main { max-width: 980px; margin: 0 auto; padding: 16px 16px 96px; }
+section.vista[hidden] { display: none; }
+.tarjeta { background: var(--papel); border: 1px solid var(--linea); border-radius: 12px;
+  padding: 16px; margin-bottom: 14px; box-shadow: var(--sombra); }
+.tarjeta h2 { font-size: 16px; margin: 0 0 10px; }
+.tarjeta h3 { font-size: 14px; margin: 16px 0 6px; color: var(--tenue); text-transform: uppercase; letter-spacing: .03em; }
+.rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+label.campo { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--tenue); }
+label.campo input, label.campo select, textarea {
+  font: inherit; font-size: 15px; color: var(--tinta); background: var(--papel);
+  border: 1px solid var(--linea); border-radius: 8px; padding: 9px 10px; width: 100%;
+}
+label.campo input:focus, select:focus, textarea:focus, .monto:focus {
+  outline: 2px solid var(--marca); outline-offset: 0; border-color: transparent; }
+.ayuda { font-size: 12px; color: var(--tenue); margin: 2px 0 0; }
+.ayuda.mal { color: var(--mal); }
+.ayuda.bien { color: var(--bien); }
+.botones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.b { font: inherit; font-size: 14px; border-radius: 8px; padding: 9px 14px; cursor: pointer;
+  border: 1px solid var(--linea); background: var(--papel); color: var(--tinta); }
+.b.primario { background: var(--marca); color: var(--marca-tinta); border-color: var(--marca); }
+.b.peligro { color: var(--mal); }
+.segmento { display: inline-flex; border: 1px solid var(--linea); border-radius: 8px; overflow: hidden; }
+.segmento button { font: inherit; font-size: 14px; border: 0; background: var(--papel); color: var(--tinta);
+  padding: 8px 12px; cursor: pointer; }
+.segmento button[aria-pressed="true"] { background: var(--marca); color: var(--marca-tinta); }
+.aviso { border-left: 4px solid var(--ojo); background: var(--suave); padding: 10px 12px; border-radius: 6px;
+  margin: 10px 0; font-size: 14px; }
+.aviso.mal { border-left-color: var(--mal); }
+.aviso.bien { border-left-color: var(--bien); }
+.aviso:empty { display: none; }
+
+/* Balance de comprobación */
+.tabla-scroll { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+table.bc td, table.bc th { padding: 4px 6px; border-bottom: 1px solid var(--linea); vertical-align: middle; }
+table.bc th { font-size: 12px; color: var(--tenue); text-align: right; font-weight: 600; }
+table.bc th:first-child, table.bc th:nth-child(2) { text-align: left; }
+table.bc td.cod { font-weight: 600; width: 34px; }
+table.bc td.nom { font-size: 13px; min-width: 150px; }
+table.bc tr.clase td { background: var(--suave); font-weight: 600; font-size: 13px; padding: 6px; }
+table.bc tr.tot td { font-weight: 700; border-top: 2px solid var(--tinta); }
+input.monto { font: inherit; font-size: 14px; width: 112px; text-align: right; padding: 6px 8px;
+  border: 1px solid var(--linea); border-radius: 6px; background: var(--papel); color: var(--tinta);
+  font-variant-numeric: tabular-nums; }
+input.monto.con { border-color: var(--marca); }
+.solo-saldo tr.cta.vacia { display: none; }
+
+/* Estados */
+table.ef td { padding: 5px 4px; border-bottom: 1px solid var(--linea); }
+table.ef td.n { text-align: right; white-space: nowrap; width: 1%; padding-left: 12px; }
+table.ef th { font-size: 12px; color: var(--tenue); text-align: right; padding: 4px 4px 6px 12px; white-space: nowrap; }
+table.ef th:first-child { text-align: left; padding-left: 4px; }
+table.ef tr.grupo td { font-weight: 700; padding-top: 14px; border-bottom: 0; text-transform: uppercase; font-size: 13px; letter-spacing: .02em; }
+table.ef tr.sub td { font-weight: 600; border-top: 1px solid var(--tinta); }
+table.ef tr.total td { font-weight: 700; border-top: 2px solid var(--tinta); border-bottom: 3px double var(--tinta); }
+table.ef tr.l td:first-child { padding-left: 14px; }
+table.ef td.var { color: var(--tenue); font-size: 12px; }
+.membrete { text-align: center; margin-bottom: 10px; }
+.membrete b { display: block; font-size: 16px; }
+.membrete .titulo { font-weight: 700; margin-top: 8px; letter-spacing: .03em; }
+.membrete p { margin: 2px 0; font-size: 13px; color: var(--tenue); }
+.firmas { display: none; }
+.notas { font-size: 12px; color: var(--tenue); margin-top: 10px; }
+
+/* Indicadores */
+table.ind td { padding: 8px 4px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+table.ind td.n { text-align: right; white-space: nowrap; font-weight: 600; }
+table.ind .exp { display: block; font-size: 12px; color: var(--tenue); }
+.sello { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 99px; padding: 1px 8px; margin-top: 3px; }
+.sello.bien { color: var(--bien); border: 1px solid var(--bien); }
+.sello.ojo { color: var(--ojo); border: 1px solid var(--ojo); }
+.sello.mal { color: var(--mal); border: 1px solid var(--mal); }
+dl.trib { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; margin: 0; font-variant-numeric: tabular-nums; }
+dl.trib dt { color: var(--tinta); }
+dl.trib dd { margin: 0; text-align: right; font-weight: 600; white-space: nowrap; }
+dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-top: 6px; }
+
+.inicio { border: 2px solid var(--marca); }
+.caminos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
+.camino { font: inherit; text-align: left; display: flex; flex-direction: column; gap: 4px; cursor: pointer;
+  background: var(--suave); color: var(--tinta); border: 1px solid var(--linea); border-radius: 10px; padding: 14px; }
+.camino b { font-size: 15px; }
+.camino span { font-size: 13px; color: var(--tenue); }
+.camino:hover, .camino:focus-visible { border-color: var(--marca); }
+details.mas { margin-top: 14px; border-top: 1px solid var(--linea); padding-top: 10px; }
+details.mas summary { cursor: pointer; font-size: 14px; color: var(--marca); font-weight: 600; margin-bottom: 10px; }
+.soltar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 2px dashed var(--linea);
+  border-radius: 10px; padding: 12px; }
+.soltar.encima { border-color: var(--marca); background: var(--suave); }
+a.b { text-decoration: none; display: inline-block; }
+.informe p { margin: 0 0 10px; }
+.informe h3 { margin-top: 18px; }
+.informe ul { margin: 0 0 10px; padding-left: 20px; }
+.informe li { margin-bottom: 6px; }
+.pie { position: fixed; left: 0; right: 0; bottom: 0; background: var(--papel); border-top: 1px solid var(--linea);
+  padding: 8px 16px; padding-bottom: max(8px, env(safe-area-inset-bottom)); z-index: 4; }
+.pie .botones { margin: 0 auto; max-width: 980px; justify-content: flex-end; }
+#estado-guardado { font-size: 12px; color: var(--tenue); margin-right: auto; align-self: center; }
+
+@media (max-width: 520px) {
+  input.monto { width: 96px; }
+  table.ef { font-size: 13px; }
+  table.ef td.var, table.ef th.var { display: none; }
+  table.ind { font-size: 13px; }
+  .pie .botones { flex-wrap: nowrap; gap: 6px; }
+  .pie .b { padding: 8px 10px; font-size: 13px; }
+  #estado-guardado { display: none; }
+  table.ind td.n { padding-left: 8px; }
+}
+
+@media print {
+  @page { size: A4; margin: 16mm 14mm; }
+  :root { --fondo: #fff; --papel: #fff; --tinta: #000; --tenue: #333; --linea: #bbb; --suave: #fff; }
+  body { background: #fff; font-size: 11pt; }
+  header.barra, .pie, .no-imprimir, section.vista[data-vista="empresa"], section.vista[data-vista="datos"] { display: none !important; }
+  main { padding: 0; max-width: none; }
+  section.vista[hidden] { display: block; }
+  #inicio { display: none !important; }
+  .tarjeta { border: 0; box-shadow: none; padding: 0; margin: 0; }
+  .reporte { break-after: page; }
+  .reporte:last-child { break-after: auto; }
+  table.ef td.var, table.ef th.var { display: table-cell !important; }
+  .firmas { display: flex; justify-content: space-around; gap: 40px; margin-top: 70px; text-align: center; font-size: 10pt; }
+  .firmas div { border-top: 1px solid #000; padding-top: 4px; min-width: 200px; }
+  .aviso { border: 1px solid #999; }
+}
+</style>
+</head>
+<body>
+<header class="barra">
+  <div class="fila">
+    <h1>Estados Financieros MYPE<small id="cab-empresa">Perú · PCGE</small></h1>
+    <label class="no-imprimir"><span class="sr" hidden>Ejercicio</span>
+      <select id="sel-ejercicio" aria-label="Ejercicio"></select></label>
+  </div>
+  <nav class="pestanas" role="tablist">
+    <button role="tab" data-ir="empresa" aria-selected="true">Empresa</button>
+    <button role="tab" data-ir="datos" aria-selected="false">Saldos</button>
+    <button role="tab" data-ir="resultados" aria-selected="false">Resultados</button>
+    <button role="tab" data-ir="situacion" aria-selected="false">Situación financiera</button>
+    <button role="tab" data-ir="tributos" aria-selected="false">Tributos e indicadores</button>
+    <button role="tab" data-ir="informe" aria-selected="false">Informe</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ======================= EMPRESA ======================= -->
+  <section class="vista" data-vista="empresa">
+    <div class="tarjeta inicio" id="inicio" hidden>
+      <h2>Empiece en un minuto</h2>
+      <p class="ayuda">Elija cómo traer los números. Todo se queda en este equipo.</p>
+      <div class="caminos">
+        <label class="camino" for="f-archivo-inicio">
+          <b>Subir el balance del contador</b>
+          <span>Excel (.xlsx), CSV o TXT del sistema contable. Los estados salen solos.</span>
+        </label>
+        <input type="file" id="f-archivo-inicio" accept=".xlsx,.csv,.txt,text/csv,text/plain" hidden>
+        <button class="camino" id="b-a-mano">
+          <b>Llenarlo a mano</b>
+          <span>Unos 20 montos: caja, clientes, mercadería, deudas, ventas y gastos.</span>
+        </button>
+        <button class="camino" id="b-ejemplo-inicio">
+          <b>Ver un ejemplo</b>
+          <span>Una comercializadora ficticia con dos años, para conocer la app.</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Datos de la empresa</h2>
+      <div class="rejilla">
+        <label class="campo">RUC
+          <input id="e-ruc" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="20xxxxxxxxx">
+          <span class="ayuda" id="ruc-ayuda">11 dígitos</span>
+        </label>
+        <label class="campo">Razón social
+          <input id="e-razon" placeholder="Mi Empresa S.A.C.">
+        </label>
+        <label class="campo">Régimen tributario
+          <select id="e-regimen">
+            <option value="RMT">Régimen MYPE Tributario (RMT)</option>
+            <option value="RER">Régimen Especial de Renta (RER)</option>
+            <option value="RG">Régimen General</option>
+            <option value="NRUS">Nuevo RUS</option>
+          </select>
+        </label>
+        <label class="campo">Actividad principal
+          <select id="e-actividad">
+            <option value="comercio">Comercio y restaurantes</option>
+            <option value="servicios">Servicios y otras actividades</option>
+            <option value="industria">Industria manufacturera</option>
+            <option value="construccion">Construcción</option>
+            <option value="agro">Agropecuaria</option>
+            <option value="transporte">Transporte</option>
+            <option value="mineria">Minería</option>
+            <option value="pesca">Pesca</option>
+            <option value="telecom">Telecomunicaciones</option>
+          </select>
+        </label>
+        <label class="campo">N.º de trabajadores
+          <input id="e-trabajadores" inputmode="numeric" placeholder="0">
+        </label>
+        <label class="campo">Domicilio fiscal
+          <input id="e-domicilio" placeholder="Av. … Lima">
+        </label>
+      </div>
+      <details class="mas">
+      <summary>Firmas de los estados (opcional)</summary>
+      <div class="rejilla">
+        <label class="campo">Gerente / representante legal
+          <input id="e-gerente">
+        </label>
+        <label class="campo">Contador público colegiado
+          <input id="e-contador">
+        </label>
+        <label class="campo">Matrícula CPC
+          <input id="e-matricula" placeholder="Ej. 12345">
+        </label>
+      </div>
+      </details>
+    </div>
+
+    <div class="tarjeta">
+      <h2>Ejercicio <span id="t-ejercicio"></span></h2>
+      <div class="rejilla">
+        <label class="campo">Fecha de corte
+          <input id="j-corte" type="date">
+          <span class="ayuda">31/12 para el anual; otra fecha para un estado a la fecha.</span>
+        </label>
+        <label class="campo">UIT del año (S/)
+          <input id="j-uit" inputmode="decimal">
+          <span class="ayuda">2024: 5,150 · 2025: 5,350 · 2026: 5,500</span>
+        </label>
+      </div>
+      <details class="mas">
+      <summary>Ajustes de presentación y tributarios (opcional)</summary>
+      <div class="rejilla">
+        <label class="campo">Préstamos de largo plazo dentro de la cuenta 45 (S/)
+          <input id="j-lp" inputmode="decimal" placeholder="0.00">
+          <span class="ayuda">Lo que vence después de 12 meses; el resto se presenta corriente.</span>
+        </label>
+        <label class="campo">% de gastos operativos que son de ventas
+          <input id="j-pv" inputmode="decimal" placeholder="0">
+          <span class="ayuda">Sólo si no usa las cuentas 94 y 95. Sin dato, todo va a administración.</span>
+        </label>
+      </div>
+
+        <label class="campo">Adiciones (gastos no deducibles)
+          <input id="j-adiciones" inputmode="decimal" placeholder="0.00">
+        </label>
+        <label class="campo">Deducciones
+          <input id="j-deducciones" inputmode="decimal" placeholder="0.00">
+        </label>
+        <label class="campo">Pérdidas de años anteriores a compensar
+          <input id="j-perdidas" inputmode="decimal" placeholder="0.00">
+        </label>
+        <label class="campo">Pagos a cuenta del IR ya efectuados
+          <input id="j-pagos" inputmode="decimal" placeholder="0.00">
+        </label>
+      </div>
+      </details>
+      <div class="botones">
+        <button class="b" id="b-nuevo-ej">Nuevo ejercicio</button>
+        <button class="b peligro" id="b-borrar-ej">Borrar este ejercicio</button>
+        <button class="b" id="b-ejemplo">Cargar ejemplo</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= SALDOS ======================= -->
+  <section class="vista" data-vista="datos" hidden>
+    <div class="tarjeta">
+      <div class="botones" style="margin-top:0;align-items:center">
+        <div class="segmento" role="group" aria-label="Forma de ingreso">
+          <button id="m-simple" aria-pressed="true">Rápido por rubros</button>
+          <button id="m-pcge" aria-pressed="false">Balance de comprobación</button>
+        </div>
+      </div>
+      <p class="ayuda" id="modo-ayuda"></p>
+      <div id="cuadre" class="aviso"></div>
+      <p class="ayuda" id="import-ayuda" aria-live="polite"></p>
+
+      <div id="vista-simple"></div>
+
+      <div id="vista-pcge" hidden>
+        <label class="ayuda" style="display:flex;gap:6px;align-items:center;margin:8px 0">
+          <input type="checkbox" id="solo-saldo"> Mostrar sólo las cuentas con saldo
+        </label>
+        <div class="tabla-scroll">
+          <table class="bc" id="tabla-bc"></table>
+        </div>
+        <h3>Traer el balance del contador</h3>
+        <div class="soltar" id="soltar">
+          <label class="b primario" for="f-archivo">Subir archivo</label>
+          <input type="file" id="f-archivo" accept=".xlsx,.csv,.txt,text/csv,text/plain" hidden>
+          <span class="ayuda">o arrástrelo aquí · Excel (.xlsx), CSV o TXT. Reconoce el formato de 8 y 10 columnas por su encabezado («deudor», «acreedor»).</span>
+        </div>
+        <h3>O pegarlo</h3>
+        <p class="ayuda">Una cuenta por línea: <b>código · nombre · deudor · acreedor</b>, separados por tabulación
+          (copiar y pegar de Excel), punto y coma o coma. Las subcuentas se suman a su cuenta de dos dígitos
+          (101, 1041 → 10). Reemplaza los saldos del ejercicio.</p>
+        <textarea id="pegado" rows="5" placeholder="1041	Cuentas corrientes operativas	92850.00	0.00"></textarea>
+        <div class="botones"><button class="b primario" id="b-importar">Importar saldos</button>
+          <button class="b peligro" id="b-limpiar">Poner todo en cero</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= RESULTADOS ======================= -->
+  <section class="vista" data-vista="resultados" hidden>
+    <div class="tarjeta reporte" id="rep-er"></div>
+  </section>
+
+  <!-- ======================= SITUACIÓN ======================= -->
+  <section class="vista" data-vista="situacion" hidden>
+    <div class="tarjeta reporte" id="rep-esf"></div>
+  </section>
+
+  <!-- ======================= TRIBUTOS ======================= -->
+  <section class="vista" data-vista="tributos" hidden>
+    <div class="tarjeta reporte" id="rep-trib"></div>
+    <div class="tarjeta reporte" id="rep-ind"></div>
+  </section>
+
+  <!-- ======================= INFORME ======================= -->
+  <section class="vista" data-vista="informe" hidden>
+    <div class="tarjeta reporte" id="rep-informe"></div>
+    <div class="tarjeta no-imprimir">
+      <h2>Compartir y profundizar</h2>
+      <div class="botones" style="margin-top:0">
+        <button class="b primario" id="b-copiar-informe">Copiar informe</button>
+        <a class="b" id="b-whatsapp" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+      </div>
+      <h3>Preguntarle a una IA</h3>
+      <p class="ayuda">Este texto lleva los dos estados y los indicadores, sin el RUC ni nombres. Cópielo y péguelo en
+        Claude, ChatGPT o Gemini para pedir un análisis más fino o un plan de acción. Lo envía usted: la app no manda nada.</p>
+      <textarea id="prompt-ia" rows="7" readonly></textarea>
+      <div class="botones"><button class="b" id="b-copiar-ia">Copiar para la IA</button></div>
+      <p class="ayuda" id="copiado" aria-live="polite"></p>
+    </div>
+  </section>
+</main>
+
+<div class="pie">
+  <div class="botones">
+    <span id="estado-guardado"></span>
+    <button class="b" id="b-csv">Excel (CSV)</button>
+    <button class="b" id="b-respaldo">Respaldo</button>
+    <label class="b" style="display:inline-flex;align-items:center" for="f-restaurar">Restaurar</label>
+    <input type="file" id="f-restaurar" accept="application/json,.json" hidden>
+    <button class="b primario" id="b-imprimir">Imprimir / PDF</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ------------------------------------------------------------------
+   Plan Contable General Empresarial (PCGE 2019), a dos dígitos.
+   El balance de comprobación se lleva a este nivel: de ahí salen los
+   estados con el formato de la SMV. Las subcuentas se suman a su cuenta.
+   ------------------------------------------------------------------ */
+var PCGE = [
+  ["10","Efectivo y equivalentes de efectivo"],
+  ["11","Inversiones financieras"],
+  ["12","Cuentas por cobrar comerciales – terceros"],
+  ["13","Cuentas por cobrar comerciales – relacionadas"],
+  ["14","Cuentas por cobrar al personal, accionistas, directores y gerentes"],
+  ["16","Cuentas por cobrar diversas – terceros"],
+  ["17","Cuentas por cobrar diversas – relacionadas"],
+  ["18","Servicios y otros contratados por anticipado"],
+  ["19","Estimación de cuentas de cobranza dudosa"],
+  ["20","Mercaderías"],
+  ["21","Productos terminados"],
+  ["22","Subproductos, desechos y desperdicios"],
+  ["23","Productos en proceso"],
+  ["24","Materias primas"],
+  ["25","Materiales auxiliares, suministros y repuestos"],
+  ["26","Envases y embalajes"],
+  ["27","Activos no corrientes mantenidos para la venta"],
+  ["28","Inventarios por recibir"],
+  ["29","Desvalorización de inventarios"],
+  ["30","Inversiones mobiliarias"],
+  ["31","Propiedades de inversión"],
+  ["32","Activos por derecho de uso"],
+  ["33","Propiedad, planta y equipo"],
+  ["34","Intangibles"],
+  ["35","Activos biológicos"],
+  ["36","Desvalorización de activo inmovilizado"],
+  ["37","Activo diferido"],
+  ["38","Otros activos"],
+  ["39","Depreciación, amortización y agotamiento acumulados"],
+  ["40","Tributos, contraprestaciones y aportes al sistema de pensiones y de salud por pagar"],
+  ["41","Remuneraciones y participaciones por pagar"],
+  ["42","Cuentas por pagar comerciales – terceros"],
+  ["43","Cuentas por pagar comerciales – relacionadas"],
+  ["44","Cuentas por pagar a los accionistas, directores y gerentes"],
+  ["45","Obligaciones financieras"],
+  ["46","Cuentas por pagar diversas – terceros"],
+  ["47","Cuentas por pagar diversas – relacionadas"],
+  ["48","Provisiones"],
+  ["49","Pasivo diferido"],
+  ["50","Capital"],
+  ["51","Acciones de inversión"],
+  ["52","Capital adicional"],
+  ["56","Resultados no realizados"],
+  ["57","Excedente de revaluación"],
+  ["58","Reservas"],
+  ["59","Resultados acumulados"],
+  ["60","Compras"],
+  ["61","Variación de inventarios"],
+  ["62","Gastos de personal, directores y gerentes"],
+  ["63","Gastos de servicios prestados por terceros"],
+  ["64","Gastos por tributos"],
+  ["65","Otros gastos de gestión"],
+  ["66","Pérdida por medición de activos no financieros al valor razonable"],
+  ["67","Gastos financieros"],
+  ["68","Valuación y deterioro de activos y provisiones"],
+  ["69","Costo de ventas"],
+  ["70","Ventas"],
+  ["71","Variación de la producción almacenada"],
+  ["72","Producción de activo inmovilizado"],
+  ["73","Descuentos, rebajas y bonificaciones obtenidos"],
+  ["74","Descuentos, rebajas y bonificaciones concedidos"],
+  ["75","Otros ingresos de gestión"],
+  ["76","Ganancia por medición de activos no financieros al valor razonable"],
+  ["77","Ingresos financieros"],
+  ["78","Cargas cubiertas por provisiones"],
+  ["79","Cargas imputables a cuentas de costos y gastos"],
+  ["88","Impuesto a la renta"],
+  ["89","Determinación del resultado del ejercicio"],
+  ["90","Costos de producción"],
+  ["94","Gastos administrativos"],
+  ["95","Gastos de ventas"],
+  ["97","Gastos financieros (por función)"]
+];
+var NOMBRE = {};
+PCGE.forEach(function (c) { NOMBRE[c[0]] = c[1]; });
+
+var CLASES = {
+  "1": "Elemento 1 · Activo disponible y exigible",
+  "2": "Elemento 2 · Activo realizable",
+  "3": "Elemento 3 · Activo inmovilizado",
+  "4": "Elemento 4 · Pasivo",
+  "5": "Elemento 5 · Patrimonio",
+  "6": "Elemento 6 · Gastos por naturaleza",
+  "7": "Elemento 7 · Ingresos",
+  "8": "Elemento 8 · Saldos intermediarios de gestión",
+  "9": "Elemento 9 · Contabilidad analítica de explotación"
+};
+
+/* Ingreso rápido: los rubros que lleva casi cualquier MYPE, con su cuenta
+   y el lado en el que el dueño los piensa (lo que tiene, lo que debe). */
+var SIMPLE = [
+  ["Lo que tiene (activo)", [
+    ["10","Caja y bancos","d"],
+    ["12","Clientes por cobrar","d"],
+    ["16","Otras cuentas por cobrar","d"],
+    ["20","Mercadería e inventarios","d"],
+    ["18","Pagos adelantados (seguros, alquileres)","d"],
+    ["33","Local, maquinaria, equipos y vehículos (costo)","d"],
+    ["39","Depreciación acumulada","a"]
+  ]],
+  ["Lo que debe (pasivo)", [
+    ["40","Impuestos y aportes por pagar (IGV, renta, EsSalud, AFP/ONP)","a"],
+    ["41","Sueldos y beneficios por pagar","a"],
+    ["42","Proveedores por pagar","a"],
+    ["45","Préstamos de bancos y cajas","a"],
+    ["46","Otras cuentas por pagar","a"]
+  ]],
+  ["Lo que es de los dueños (patrimonio)", [
+    ["50","Capital aportado","a"],
+    ["58","Reservas","a"],
+    ["59","Utilidades acumuladas de años anteriores (pérdida en negativo)","a"]
+  ]],
+  ["Lo que vendió y gastó en el período", [
+    ["70","Ventas (sin IGV)","a"],
+    ["69","Costo de la mercadería vendida","d"],
+    ["95","Gastos de ventas","d"],
+    ["94","Gastos de administración","d"],
+    ["75","Otros ingresos","a"],
+    ["97","Intereses y gastos financieros","d"],
+    ["77","Intereses ganados","a"],
+    ["88","Impuesto a la renta registrado (deje vacío para estimarlo)","d"]
+  ]]
+];
+
+var UIT = { 2022: 4600, 2023: 4950, 2024: 5150, 2025: 5350, 2026: 5500 };
+
+// Participación de los trabajadores en las utilidades (D. Leg. 892),
+// sólo para empresas con más de 20 trabajadores.
+var PARTICIPACION = { pesca: .10, telecom: .10, industria: .10, mineria: .08, comercio: .08 };
+var ACTIVIDAD_TXT = {
+  comercio: "comercio y restaurantes", servicios: "otras actividades", industria: "industria",
+  construccion: "otras actividades", agro: "otras actividades", transporte: "otras actividades",
+  mineria: "minería", pesca: "pesca", telecom: "telecomunicaciones"
+};
+var REGIMEN_TXT = { RMT: "Régimen MYPE Tributario", RER: "Régimen Especial de Renta",
+  RG: "Régimen General", NRUS: "Nuevo RUS" };
+var MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto",
+  "septiembre","octubre","noviembre","diciembre"];
+
+/* ------------------------------------------------------------------
+   Números: en el Perú el decimal es punto y el millar coma, pero lo
+   que se pega de otro sistema puede venir al revés. Se acepta todo.
+   ------------------------------------------------------------------ */
+function num(v) {
+  if (typeof v === "number") return isFinite(v) ? v : 0;
+  var s = String(v == null ? "" : v).replace(/S\/|\s| /g, "");
+  if (!s) return 0;
+  var neg = /^\(.*\)$/.test(s) || /-$/.test(s);
+  s = s.replace(/[()]/g, "").replace(/-$/, "");
+  var c = s.indexOf(",") >= 0, p = s.indexOf(".") >= 0;
+  if (c && p) {
+    s = s.lastIndexOf(",") > s.lastIndexOf(".")
+      ? s.replace(/\./g, "").replace(",", ".")
+      : s.replace(/,/g, "");
+  } else if (c) {
+    s = /^-?\d{1,3}(,\d{3})+$/.test(s) ? s.replace(/,/g, "") : s.replace(",", ".");
+  } else if (p && /^-?\d{1,3}(\.\d{3}){2,}$/.test(s)) {
+    s = s.replace(/\./g, "");
+  }
+  var n = parseFloat(s);
+  if (!isFinite(n)) return 0;
+  return neg ? -Math.abs(n) : n;
+}
+function r2(n) { return Math.round((n + Number.EPSILON) * 100) / 100; }
+var FMT = new Intl.NumberFormat("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function soles(n) { n = r2(n); return n < 0 ? "(" + FMT.format(-n) + ")" : FMT.format(n); }
+function plano(n) { return n ? FMT.format(r2(n)) : ""; }
+function pct(n) { return isFinite(n) ? (n * 100).toFixed(1) + " %" : "—"; }
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
+
+/* RUC: once dígitos, prefijo válido y dígito verificador módulo 11. */
+function validarRuc(ruc) {
+  ruc = String(ruc || "").trim();
+  if (!ruc) return { ok: false, msg: "11 dígitos" };
+  if (!/^\d{11}$/.test(ruc)) return { ok: false, msg: "El RUC tiene 11 dígitos, sólo números." };
+  if (["10","15","16","17","20"].indexOf(ruc.slice(0, 2)) < 0)
+    return { ok: false, msg: "Debe empezar con 10, 15, 16, 17 o 20." };
+  var pesos = [5,4,3,2,7,6,5,4,3,2], suma = 0;
+  for (var i = 0; i < 10; i++) suma += +ruc[i] * pesos[i];
+  var dv = 11 - (suma % 11); if (dv === 10) dv = 0; if (dv === 11) dv = 1;
+  if (dv !== +ruc[10]) return { ok: false, msg: "El dígito verificador no corresponde: revise el número." };
+  return { ok: true, msg: ruc[0] === "2" ? "RUC válido · persona jurídica" : "RUC válido · persona natural" };
+}
+
+/* ------------------------------------------------------------------
+   Estado de la app: una empresa, varios ejercicios. Se guarda solo.
+   ------------------------------------------------------------------ */
+var CLAVE = "eeff-mype-v1";
+
+function ejercicioVacio(anio) {
+  return { corte: anio + "-12-31", uit: UIT[anio] || UIT[2026], lp: 0, pv: 0,
+    adiciones: 0, deducciones: 0, perdidas: 0, pagos: 0, saldos: {} };
+}
+function estadoVacio() {
+  var anio = String(new Date().getFullYear());
+  var ej = {}; ej[anio] = ejercicioVacio(anio);
+  return { version: 1, modo: "simple",
+    empresa: { ruc: "", razon: "", regimen: "RMT", actividad: "comercio", trabajadores: 0,
+      domicilio: "", gerente: "", contador: "", matricula: "" },
+    actual: anio, ejercicios: ej };
+}
+function leer() {
+  try {
+    var t = localStorage.getItem(CLAVE);
+    if (t) { var e = JSON.parse(t); if (e && e.ejercicios) return e; }
+  } catch (err) { /* sin almacenamiento: se trabaja en memoria */ }
+  return estadoVacio();
+}
+var E = leer();
+var guardadoTimer = null;
+function guardar() {
+  clearTimeout(guardadoTimer);
+  guardadoTimer = setTimeout(function () {
+    var el = document.getElementById("estado-guardado");
+    try { localStorage.setItem(CLAVE, JSON.stringify(E)); el.textContent = "Guardado en este equipo"; }
+    catch (err) { el.textContent = "No se pudo guardar: use Respaldo"; }
+  }, 250);
+}
+function ej() { return E.ejercicios[E.actual]; }
+function anterior() { return E.ejercicios[String(+E.actual - 1)] || null; }
+
+/* ------------------------------------------------------------------
+   El cálculo. n(c) es el saldo neto deudor de la cuenta: deudor menos
+   acreedor. Los pasivos, el patrimonio y los ingresos salen negativos y
+   se les cambia el signo al presentarlos.
+   ------------------------------------------------------------------ */
+function calcular(j, emp) {
+  var s = j.saldos || {};
+  function n(c) { var x = s[c]; return x ? num(x.d) - num(x.a) : 0; }
+  function suma(lista) { return lista.reduce(function (t, c) { return t + n(c); }, 0); }
+  var usadas = {};
+  function usa(lista) { lista.forEach(function (c) { usadas[c] = true; }); }
+
+  // --- Estado de resultados (por función, formato SMV) ---
+  var destino = Math.abs(suma(["94","95","97"])) > 0.004;
+  var ventas = -suma(["70","74"]); usa(["70","74"]);
+  var costo;
+  if (Math.abs(n("69")) > 0.004) { costo = n("69"); usa(["69"]); }
+  else { costo = suma(["60","61"]); usa(["60","61","69"]); }
+  var gVen, gAdm, gFin, otrosG;
+  if (destino) {
+    gAdm = n("94"); gVen = n("95"); gFin = n("97"); otrosG = 0;
+    usa(["94","95","97"]);
+  } else {
+    var opex = suma(["62","63","64","65","68"]);
+    var pv = Math.min(Math.max(num(j.pv), 0), 100) / 100;
+    gVen = opex * pv; gAdm = opex - gVen; gFin = n("67"); otrosG = n("66");
+    usa(["62","63","64","65","66","67","68","94","95","97"]);
+  }
+  var otrosI = -suma(["71","72","73","75","76","78"]); usa(["71","72","73","75","76","78"]);
+  var ingFin = -n("77"); usa(["77"]);
+  var bruta = ventas - costo;
+  var operativa = bruta - gVen - gAdm + otrosI - otrosG;
+  var uai = operativa + ingFin - gFin;
+
+  var trib = tributos(j, emp, { ventas: ventas, otrosI: otrosI, ingFin: ingFin, uai: uai });
+  var irReg = n("88"); usa(["88"]);
+  var estimado = Math.abs(irReg) < 0.005;
+  var part = estimado ? trib.participacion : 0;
+  var ir = estimado ? trib.impuesto : irReg;
+  var neta = uai - part - ir;
+
+  // --- Estado de situación financiera ---
+  var n10 = n("10"), n40 = n("40"), n45 = -n("45");
+  var lp = Math.min(Math.max(num(j.lp), 0), Math.max(n45, 0));
+  var esf = {
+    efectivo: Math.max(n10, 0),
+    invFin: n("11"),
+    cxc: suma(["12","13","19"]),
+    otrasCxc: suma(["14","16","17"]),
+    impAct: Math.max(n40, 0),
+    anticipados: n("18"),
+    inventarios: suma(["20","21","22","23","24","25","26","28","29"]),
+    mantenidos: n("27"),
+    invMob: n("30"), propInv: n("31"), derechoUso: n("32"), ppe: n("33"), intangibles: n("34"),
+    biologicos: n("35"), depAcum: suma(["36","39"]), diferido: n("37"), otrosAct: n("38"),
+    obligCP: -Math.min(n10, 0) + n45 - lp,
+    tributos: -Math.min(n40, 0),
+    remun: -n("41"),
+    cxp: -suma(["42","43"]),
+    otrasCxp: -suma(["44","46","47"]),
+    provisiones: -n("48"),
+    partEst: part > 0 && estimado ? part : 0,
+    irEst: estimado ? ir : 0,
+    obligLP: lp, pasivoDif: -n("49"),
+    capital: -suma(["50","51"]), capAdic: -n("52"), noRealiz: -suma(["56","57"]),
+    reservas: -n("58"), acumulados: -n("59"), ejercicio: neta
+  };
+  usa(["10","11","12","13","14","16","17","18","19","20","21","22","23","24","25","26","27","28","29",
+    "30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49",
+    "50","51","52","56","57","58","59"]);
+  esf.ac = esf.efectivo + esf.invFin + esf.cxc + esf.otrasCxc + esf.impAct + esf.anticipados + esf.inventarios + esf.mantenidos;
+  esf.anc = esf.invMob + esf.propInv + esf.derechoUso + esf.ppe + esf.intangibles + esf.biologicos + esf.depAcum + esf.diferido + esf.otrosAct;
+  esf.activo = esf.ac + esf.anc;
+  esf.pc = esf.obligCP + esf.tributos + esf.remun + esf.cxp + esf.otrasCxp + esf.provisiones + esf.partEst + esf.irEst;
+  esf.pnc = esf.obligLP + esf.pasivoDif;
+  esf.pasivo = esf.pc + esf.pnc;
+  esf.patrimonio = esf.capital + esf.capAdic + esf.noRealiz + esf.reservas + esf.acumulados + esf.ejercicio;
+  esf.pyp = esf.pasivo + esf.patrimonio;
+
+  // --- Cuadre ---
+  // Las cuentas que no pasan a los estados se compensan entre sí: la 60 con
+  // la 61 y, con cuentas por función, la 62 a la 68 con la 79. Sólo se
+  // señalan los grupos que no quedaron en cero.
+  var debe = 0, haber = 0, fuera = [];
+  var grupos = [["60","61"]];
+  if (destino) grupos.push(["62","63","64","65","66","67","68","79"]);
+  var agrupada = {};
+  grupos.forEach(function (g) {
+    var libres = g.filter(function (c) { return !usadas[c]; });
+    libres.forEach(function (c) { agrupada[c] = true; });
+    var t = suma(libres);
+    if (libres.length && Math.abs(t) > 0.004)
+      fuera.push({ cta: libres.length > 1 ? libres[0] + " a " + libres[libres.length - 1] : libres[0], saldo: t });
+  });
+  Object.keys(s).sort().forEach(function (c) {
+    debe += num(s[c].d); haber += num(s[c].a);
+    if (!usadas[c] && !agrupada[c] && Math.abs(n(c)) > 0.004) fuera.push({ cta: c, saldo: n(c) });
+  });
+  return {
+    er: { ventas: ventas, costo: costo, bruta: bruta, gVen: gVen, gAdm: gAdm, otrosI: otrosI, otrosG: otrosG,
+      operativa: operativa, ingFin: ingFin, gFin: gFin, uai: uai, part: part, ir: ir, neta: neta,
+      estimado: estimado, destino: destino },
+    esf: esf, trib: trib, debe: debe, haber: haber, fuera: fuera,
+    diferencia: esf.activo - esf.pyp, n: n
+  };
+}
+
+/* ------------------------------------------------------------------
+   Tributos. Es una estimación para planificar y para que el balance
+   cuadre antes del cierre; la declaración jurada anual la hace el
+   contador con el detalle de adiciones y deducciones.
+   ------------------------------------------------------------------ */
+function tributos(j, emp, r) {
+  var uit = num(j.uit) || UIT[2026];
+  var reg = emp.regimen;
+  var trab = Math.floor(num(emp.trabajadores));
+  var mesCorte = +String(j.corte || "").slice(5, 7) || 12;
+  var ingresos = r.ventas + r.otrosI;
+  var t = { regimen: reg, uit: uit, ingresos: ingresos, ventasUit: r.ventas / uit, meses: mesCorte,
+    participacion: 0, tasaPart: 0, impuesto: 0, renta: 0, base: 0, detalle: [], alertas: [], libros: "" };
+
+  // Categoría según la Ley MYPE (Ley 30056): ventas anuales en UIT.
+  t.categoria = t.ventasUit <= 150 ? "Microempresa" : t.ventasUit <= 1700 ? "Pequeña empresa"
+    : t.ventasUit <= 2300 ? "Mediana empresa" : "Gran empresa";
+
+  if (reg === "NRUS") {
+    var mensual = ingresos / mesCorte;
+    var cuota = mensual <= 5000 ? 20 : 50;
+    t.impuesto = cuota * mesCorte;
+    t.detalle.push(["Ingreso mensual promedio", mensual]);
+    t.detalle.push(["Categoría " + (cuota === 20 ? "1 (hasta S/ 5,000 al mes)" : "2 (hasta S/ 8,000 al mes)"), cuota]);
+    t.detalle.push(["Cuotas del período (" + mesCorte + " meses)", t.impuesto]);
+    if (mensual > 8000 || ingresos > 96000)
+      t.alertas.push(["mal", "Los ingresos superan el tope del Nuevo RUS (S/ 8,000 al mes o S/ 96,000 al año). Corresponde migrar al RER o al RMT."]);
+    t.alertas.push(["", "El Nuevo RUS es para personas naturales y no obliga a llevar contabilidad: estos estados sirven para la gestión del negocio."]);
+    t.etiqueta = "Cuotas del Nuevo RUS";
+    t.libros = "No está obligado a llevar libros contables; conserve los comprobantes de compra y de venta.";
+    return t;
+  }
+
+  if (reg === "RER") {
+    t.impuesto = Math.max(ingresos, 0) * 0.015;
+    t.detalle.push(["Ingresos netos del período", ingresos]);
+    t.detalle.push(["Cuota de renta: 1.5 % de los ingresos netos", t.impuesto]);
+    if (ingresos > 525000)
+      t.alertas.push(["mal", "Los ingresos superan S/ 525,000, el tope anual del RER. Corresponde pasar al RMT o al Régimen General."]);
+    if (trab > 10)
+      t.alertas.push(["mal", "El RER admite hasta 10 trabajadores por turno."]);
+    t.etiqueta = "Impuesto a la renta (RER, 1.5 % de ingresos)";
+    t.libros = "Registro de Compras y Registro de Ventas e Ingresos.";
+    return t;
+  }
+
+  // RMT y Régimen General: sobre la renta neta.
+  var adic = num(j.adiciones), deduc = num(j.deducciones);
+  var rentaAntes = r.uai + adic - deduc;
+  t.detalle.push(["Resultado contable antes de participaciones e impuesto", r.uai]);
+  if (adic) t.detalle.push(["(+) Adiciones", adic]);
+  if (deduc) t.detalle.push(["(−) Deducciones", -deduc]);
+  if (trab > 20 && rentaAntes > 0) {
+    t.tasaPart = PARTICIPACION[emp.actividad] || 0.05;
+    t.participacion = rentaAntes * t.tasaPart;
+    t.detalle.push(["(−) Participación de los trabajadores (" + (t.tasaPart * 100) + " %, " +
+      ACTIVIDAD_TXT[emp.actividad] + ")", -t.participacion]);
+  }
+  var renta = rentaAntes - t.participacion;
+  var compensable = Math.min(Math.max(num(j.perdidas), 0), Math.max(renta, 0));
+  if (compensable) t.detalle.push(["(−) Pérdidas tributarias compensadas", -compensable]);
+  t.renta = Math.max(renta - compensable, 0);
+  t.detalle.push(["Renta neta imponible", t.renta]);
+
+  if (reg === "RMT") {
+    var tramo = 15 * uit;
+    var a = Math.min(t.renta, tramo), b = Math.max(t.renta - tramo, 0);
+    t.impuesto = a * 0.10 + b * 0.295;
+    t.detalle.push(["10 % hasta 15 UIT (S/ " + FMT.format(tramo) + ")", a * 0.10]);
+    if (b) t.detalle.push(["29.5 % sobre el exceso", b * 0.295]);
+    if (t.ventasUit > 1700)
+      t.alertas.push(["mal", "Los ingresos superan 1,700 UIT: no puede permanecer en el RMT el próximo ejercicio."]);
+    t.etiqueta = "Impuesto a la renta (RMT)";
+    t.pagoCuenta = t.ventasUit <= 300 ? "1 % de los ingresos netos del mes" : "el mayor entre el coeficiente y 1.5 %";
+  } else {
+    t.impuesto = t.renta * 0.295;
+    t.detalle.push(["29.5 % sobre la renta neta", t.impuesto]);
+    t.etiqueta = "Impuesto a la renta (Régimen General)";
+    t.pagoCuenta = "el mayor entre el coeficiente y 1.5 % de los ingresos netos del mes";
+    if (t.ventasUit <= 1700)
+      t.alertas.push(["", "Con ingresos de hasta 1,700 UIT podría acogerse al RMT y pagar 10 % sobre las primeras 15 UIT de renta."]);
+  }
+  if (trab > 20) t.alertas.push(["", "Con más de 20 trabajadores corresponde repartir utilidades: la participación se calcula antes del impuesto."]);
+
+  // Libros contables obligatorios según ingresos brutos anuales (referencial).
+  var u = t.ventasUit;
+  t.libros = u <= 300 ? "Registro de Ventas e Ingresos, Registro de Compras y Libro Diario de Formato Simplificado."
+    : u <= 500 ? "Registro de Ventas e Ingresos, Registro de Compras, Libro Diario y Libro Mayor."
+    : u <= 1700 ? "Registro de Ventas e Ingresos, Registro de Compras, Libro Diario, Libro Mayor y Libro de Inventarios y Balances."
+    : "Contabilidad completa.";
+  return t;
+}
+
+/* ------------------------------------------------------------------
+   Presentación
+   ------------------------------------------------------------------ */
+function fechaLarga(iso) {
+  var p = String(iso || "").split("-");
+  if (p.length !== 3) return iso || "";
+  return (+p[2]) + " de " + MESES[+p[1] - 1] + " de " + p[0];
+}
+function membrete(titulo, periodo) {
+  var em = E.empresa;
+  return '<div class="membrete"><b>' + esc(em.razon || "(Razón social)") + '</b>' +
+    '<p>RUC ' + esc(em.ruc || "—") + (em.domicilio ? " · " + esc(em.domicilio) : "") + '</p>' +
+    '<div class="titulo">' + titulo + '</div><p>' + periodo + '</p><p>(Expresado en soles)</p></div>';
+}
+function firmas() {
+  var em = E.empresa;
+  return '<div class="firmas"><div>' + esc(em.gerente || "") + '<br>Gerente General</div><div>' +
+    esc(em.contador || "") + '<br>Contador Público Colegiado' +
+    (em.matricula ? '<br>Matrícula N.º ' + esc(em.matricula) : "") + '</div></div>';
+}
+function variacion(a, b) {
+  if (b == null || Math.abs(b) < 0.005) return "";
+  return pct((a - b) / Math.abs(b));
+}
+
+// Una fila de un estado: [tipo, texto, clave]. tipo: g grupo, l línea, s subtotal, t total.
+function tablaEstado(filas, act, ant) {
+  var anioA = E.actual, anioB = String(+E.actual - 1);
+  var h = '<table class="ef"><thead><tr><th></th><th>' + anioA + '</th>' +
+    (ant ? '<th>' + anioB + '</th><th class="var">Var.</th>' : "") + '</tr></thead><tbody>';
+  filas.forEach(function (f) {
+    var tipo = f[0], txt = f[1], k = f[2];
+    if (tipo === "g") { h += '<tr class="grupo"><td colspan="4">' + txt + '</td></tr>'; return; }
+    var a = act[k], b = ant ? ant[k] : null;
+    if (tipo === "l" && Math.abs(a) < 0.005 && (!ant || Math.abs(b) < 0.005) && !f[3]) return;
+    var cls = tipo === "s" ? "sub" : tipo === "t" ? "total" : "l";
+    h += '<tr class="' + cls + '" data-k="' + k + '"><td>' + txt + '</td><td class="n">' + soles(a) + '</td>' +
+      (ant ? '<td class="n">' + soles(b) + '</td><td class="n var">' + variacion(a, b) + '</td>' : "") + '</tr>';
+  });
+  return h + '</tbody></table>';
+}
+
+function filasER(r) {
+  var ir = r.estimado ? "(−) " + (r.trib.etiqueta || "Impuesto a la renta") + " · estimado" : "(−) Impuesto a la renta";
+  return [
+    ["l", "Ventas netas (ingresos operacionales)", "ventas", true],
+    ["l", "(−) Costo de ventas", "costoN"],
+    ["s", "Utilidad bruta", "bruta"],
+    ["l", "(−) Gastos de ventas", "gVenN"],
+    ["l", "(−) Gastos de administración", "gAdmN"],
+    ["l", "(+) Otros ingresos operativos", "otrosI"],
+    ["l", "(−) Otros gastos operativos", "otrosGN"],
+    ["s", "Utilidad operativa", "operativa"],
+    ["l", "(+) Ingresos financieros", "ingFin"],
+    ["l", "(−) Gastos financieros", "gFinN"],
+    ["s", "Resultado antes de participaciones e impuesto a la renta", "uai"],
+    ["l", "(−) Participación de los trabajadores" + (r.estimado ? " · estimada" : ""), "partN"],
+    ["l", ir, "irN"],
+    ["t", "Resultado neto del ejercicio", "neta"]
+  ];
+}
+function vistaER(r) {
+  var o = Object.assign({}, r.er);
+  o.costoN = -o.costo; o.gVenN = -o.gVen; o.gAdmN = -o.gAdm; o.otrosGN = -o.otrosG;
+  o.gFinN = -o.gFin; o.partN = -o.part; o.irN = -o.ir;
+  return o;
+}
+
+var FILAS_ESF = [
+  ["g", "Activo"],
+  ["g", "Activo corriente"],
+  ["l", "Efectivo y equivalentes de efectivo", "efectivo", true],
+  ["l", "Inversiones financieras", "invFin"],
+  ["l", "Cuentas por cobrar comerciales (neto)", "cxc"],
+  ["l", "Otras cuentas por cobrar", "otrasCxc"],
+  ["l", "Activos por impuestos (saldo a favor)", "impAct"],
+  ["l", "Servicios y otros contratados por anticipado", "anticipados"],
+  ["l", "Inventarios (neto)", "inventarios"],
+  ["l", "Activos no corrientes mantenidos para la venta", "mantenidos"],
+  ["s", "Total activo corriente", "ac"],
+  ["g", "Activo no corriente"],
+  ["l", "Inversiones mobiliarias", "invMob"],
+  ["l", "Propiedades de inversión", "propInv"],
+  ["l", "Activos por derecho de uso", "derechoUso"],
+  ["l", "Propiedad, planta y equipo", "ppe"],
+  ["l", "Intangibles", "intangibles"],
+  ["l", "Activos biológicos", "biologicos"],
+  ["l", "(−) Depreciación, amortización y deterioro acumulados", "depAcum"],
+  ["l", "Activo diferido", "diferido"],
+  ["l", "Otros activos", "otrosAct"],
+  ["s", "Total activo no corriente", "anc"],
+  ["t", "Total activo", "activo"],
+  ["g", "Pasivo"],
+  ["g", "Pasivo corriente"],
+  ["l", "Obligaciones financieras", "obligCP"],
+  ["l", "Tributos y aportes por pagar", "tributos"],
+  ["l", "Remuneraciones y participaciones por pagar", "remun"],
+  ["l", "Cuentas por pagar comerciales", "cxp"],
+  ["l", "Otras cuentas por pagar", "otrasCxp"],
+  ["l", "Provisiones", "provisiones"],
+  ["l", "Participación de los trabajadores por pagar · estimada", "partEst"],
+  ["l", "Impuesto a la renta por pagar · estimado", "irEst"],
+  ["s", "Total pasivo corriente", "pc"],
+  ["g", "Pasivo no corriente"],
+  ["l", "Obligaciones financieras de largo plazo", "obligLP"],
+  ["l", "Pasivo diferido", "pasivoDif"],
+  ["s", "Total pasivo no corriente", "pnc"],
+  ["s", "Total pasivo", "pasivo"],
+  ["g", "Patrimonio"],
+  ["l", "Capital", "capital", true],
+  ["l", "Capital adicional", "capAdic"],
+  ["l", "Resultados no realizados y excedente de revaluación", "noRealiz"],
+  ["l", "Reservas", "reservas"],
+  ["l", "Resultados acumulados", "acumulados"],
+  ["l", "Resultado del ejercicio", "ejercicio", true],
+  ["s", "Total patrimonio", "patrimonio"],
+  ["t", "Total pasivo y patrimonio", "pyp"]
+];
+
+function avisoCuadre(r) {
+  var partes = [];
+  if (Math.abs(r.diferencia) >= 0.5) {
+    var msg = "<b>El estado no cuadra:</b> el activo difiere del pasivo más el patrimonio en S/ " +
+      soles(r.diferencia) + ".";
+    if (Math.abs(r.debe - r.haber) >= 0.5)
+      msg += " El balance de comprobación tampoco cuadra (debe S/ " + soles(r.debe) + ", haber S/ " +
+        soles(r.haber) + "): revise los saldos ingresados.";
+    if (r.fuera.length)
+      msg += " Hay saldo en cuentas que no pasan a los estados: " + listaFuera(r) +
+        ". La 60 debe quedar saldada con la 61 y, si usa cuentas por función, la 62 a la 68 con la 79.";
+    partes.push('<div class="aviso mal">' + msg + '</div>');
+  }
+  return partes.join("");
+}
+
+function listaFuera(r) {
+  return r.fuera.map(function (f) { return f.cta + " (S/ " + soles(f.saldo) + ")"; }).join(", ");
+}
+
+var ultimoInforme = "";
+function render() {
+  var j = ej(), ja = anterior();
+  var r = calcular(j, E.empresa), ra = ja ? calcular(ja, E.empresa) : null;
+  var em = E.empresa;
+  document.getElementById("cab-empresa").textContent =
+    (em.razon || "Perú · PCGE") + (em.ruc ? " · RUC " + em.ruc : "");
+
+  // Estado de resultados
+  var mes = fechaLarga(j.corte);
+  var periodo = "Por el período del 1 de enero al " + mes;
+  var h = membrete("ESTADO DE RESULTADOS", periodo);
+  h += avisoCuadre(r);
+  h += tablaEstado(filasER(Object.assign({ trib: r.trib }, r.er)), vistaER(r), ra ? vistaER(ra) : null);
+  var notas = [];
+  notas.push(r.er.destino ? "Gastos tomados de las cuentas por función 94, 95 y 97."
+    : "Gastos tomados de las cuentas por naturaleza (62 a 68)" +
+      (num(j.pv) ? ", " + num(j.pv) + " % asignado a ventas." : ", todos presentados como administración."));
+  if (r.er.estimado) notas.push("La cuenta 88 está sin saldo: la participación y el impuesto a la renta se estiman según el régimen (" +
+    REGIMEN_TXT[em.regimen] + ").");
+  h += '<p class="notas">' + notas.join(" ") + '</p>' + firmas();
+  document.getElementById("rep-er").innerHTML = h;
+
+  // Estado de situación financiera
+  h = membrete("ESTADO DE SITUACIÓN FINANCIERA", "Al " + mes + (ja ? " y al 31 de diciembre de " + (+E.actual - 1) : ""));
+  h += avisoCuadre(r);
+  h += tablaEstado(FILAS_ESF, r.esf, ra ? ra.esf : null);
+  if (Math.abs(r.diferencia) < 0.5 && (r.esf.activo || r.esf.pyp))
+    h += '<div class="aviso bien no-imprimir">Activo = Pasivo + Patrimonio. El estado cuadra.</div>';
+  h += firmas();
+  document.getElementById("rep-esf").innerHTML = h;
+
+  // Tributos
+  document.getElementById("rep-trib").innerHTML = vistaTributos(r, j);
+  document.getElementById("rep-ind").innerHTML = vistaIndicadores(r, ra);
+
+  // Cuadre en la pestaña de saldos
+  var c = document.getElementById("cuadre");
+  var dif = r.debe - r.haber;
+  if (!r.debe && !r.haber) { c.className = "aviso"; c.innerHTML = "Aún no hay saldos en " + E.actual + ". Ingréselos o use <b>Cargar ejemplo</b>."; }
+  else if (Math.abs(r.diferencia) < 0.5) { c.className = "aviso bien"; c.innerHTML = "Cuadra: activo S/ " + soles(r.esf.activo) + " = pasivo + patrimonio. Resultado del ejercicio S/ " + soles(r.er.neta) + "."; }
+  else {
+    var detalle = E.modo === "pcge"
+      ? " Debe S/ " + soles(r.debe) + " · Haber S/ " + soles(r.haber) +
+        (Math.abs(dif) >= 0.5 ? " (diferencia " + soles(dif) + ")." : ".") +
+        (r.fuera.length ? " Cuentas sin pasar a los estados: " + listaFuera(r) + "." : "")
+      : " Lo que tiene debe ser igual a lo que debe, más lo de los dueños, más el resultado: revise los montos.";
+    c.className = "aviso mal";
+    c.innerHTML = "No cuadra por S/ " + soles(r.diferencia) + "." + detalle;
+  }
+  // Informe y lo que se comparte
+  var sec = escribirInforme(r, ra);
+  document.getElementById("rep-informe").innerHTML = informeHtml(sec);
+  ultimoInforme = informeTexto(sec);
+  document.getElementById("b-whatsapp").href = "https://wa.me/?text=" + encodeURIComponent(ultimoInforme);
+  document.getElementById("prompt-ia").value = promptIA(r, ra);
+
+  // El arranque se muestra sólo mientras no hay ningún saldo en ningún año.
+  document.getElementById("inicio").hidden = Object.keys(E.ejercicios).some(function (a) {
+    return Object.keys(E.ejercicios[a].saldos || {}).length; });
+
+  var tot = document.getElementById("bc-totales");
+  if (tot) tot.innerHTML = '<td></td><td>Totales</td><td style="text-align:right">' + soles(r.debe) +
+    '</td><td style="text-align:right">' + soles(r.haber) + '</td>';
+}
+
+function vistaTributos(r, j) {
+  var t = r.trib, em = E.empresa;
+  var h = '<h2>Cálculo tributario ' + E.actual + ' · ' + REGIMEN_TXT[em.regimen] + '</h2>';
+  h += '<dl class="trib">';
+  t.detalle.forEach(function (d) { h += '<dt>' + d[0] + '</dt><dd>' + soles(d[1]) + '</dd>'; });
+  if (em.regimen === "RMT" || em.regimen === "RG") {
+    h += '<dt class="fuerte">Impuesto a la renta calculado</dt><dd class="fuerte">' + soles(t.impuesto) + '</dd>';
+    var pagos = num(j.pagos);
+    if (pagos) {
+      h += '<dt>(−) Pagos a cuenta efectuados</dt><dd>' + soles(-pagos) + '</dd>';
+      var saldo = t.impuesto - pagos;
+      h += '<dt class="fuerte">' + (saldo >= 0 ? "Saldo por regularizar en la declaración anual" : "Saldo a favor") +
+        '</dt><dd class="fuerte">' + soles(Math.abs(saldo)) + '</dd>';
+    }
+  }
+  h += '</dl>';
+  if (!r.er.estimado)
+    h += '<div class="aviso">La cuenta 88 tiene S/ ' + soles(r.er.ir) + ' registrados y es lo que se presenta en los estados. ' +
+      'El cálculo de arriba es para contrastarlo.</div>';
+  t.alertas.forEach(function (a) { h += '<div class="aviso ' + a[0] + '">' + a[1] + '</div>'; });
+  h += '<h3>La empresa</h3><dl class="trib">';
+  h += '<dt>Ventas netas en UIT (UIT S/ ' + FMT.format(t.uit) + ')</dt><dd>' + FMT.format(r2(t.ventasUit)) + '</dd>';
+  h += '<dt>Categoría según ventas (Ley 30056)</dt><dd>' + t.categoria + '</dd>';
+  h += '</dl>';
+  if (t.pagoCuenta) h += '<p class="ayuda" style="margin-top:8px"><b>Pagos a cuenta mensuales:</b> ' + t.pagoCuenta + '.</p>';
+  h += '<p class="ayuda"><b>Libros obligatorios:</b> ' + t.libros + '</p>';
+  if (t.meses !== 12) h += '<p class="ayuda">El corte no es al 31 de diciembre: los límites anuales se comparan con lo acumulado a la fecha.</p>';
+  h += '<p class="notas">Referencial. Tasas y topes vigentes para 2026; confirme con su contador y con SUNAT antes de declarar.</p>';
+  return h;
+}
+
+function semaforo(v, malHasta, bienDesde, invertido) {
+  if (!isFinite(v)) return "";
+  var nivel;
+  if (!invertido) nivel = v < malHasta ? "mal" : v >= bienDesde ? "bien" : "ojo";
+  else nivel = v > malHasta ? "mal" : v <= bienDesde ? "bien" : "ojo";
+  return '<span class="sello ' + nivel + '">' + { mal: "Atención", ojo: "Ajustado", bien: "Saludable" }[nivel] + '</span>';
+}
+function indicadores(r) {
+  var e = r.esf, x = r.er, d = function (a, b) { return Math.abs(b) < 0.005 ? NaN : a / b; };
+  return {
+    liquidez: d(e.ac, e.pc),
+    acida: d(e.ac - e.inventarios - e.anticipados, e.pc),
+    capital: e.ac - e.pc,
+    endeud: d(e.pasivo, e.activo),
+    apalanc: d(e.pasivo, e.patrimonio),
+    mBruto: d(x.bruta, x.ventas),
+    mOper: d(x.operativa, x.ventas),
+    mNeto: d(x.neta, x.ventas),
+    roa: d(x.neta, e.activo),
+    roe: d(x.neta, e.patrimonio),
+    diasInv: d(e.inventarios * 360, x.costo),
+    diasCob: d(e.cxc * 360, x.ventas),
+    diasPag: d(e.cxp * 360, x.costo)
+  };
+}
+function vistaIndicadores(r, ra) {
+  var i = indicadores(r), ia = ra ? indicadores(ra) : null;
+  function veces(v) { return isFinite(v) ? v.toFixed(2) : "—"; }
+  function dias(v) { return isFinite(v) ? Math.round(v) + " días" : "—"; }
+  var filas = [
+    ["Liquidez corriente", "Activo corriente ÷ pasivo corriente. Cuántos soles tiene para cada sol que vence en el año.", "liquidez", veces, semaforo(i.liquidez, 1, 1.5)],
+    ["Prueba ácida", "Igual, sin contar inventarios ni pagos adelantados.", "acida", veces, semaforo(i.acida, 0.7, 1)],
+    ["Capital de trabajo", "Activo corriente − pasivo corriente.", "capital", soles, i.capital < 0 ? '<span class="sello mal">Atención</span>' : ""],
+    ["Endeudamiento", "Pasivo ÷ activo. Qué parte de lo que tiene está financiada por terceros.", "endeud", pct, semaforo(i.endeud, 0.7, 0.5, true)],
+    ["Pasivo / patrimonio", "Cuánto deben por cada sol de los dueños.", "apalanc", veces, semaforo(i.apalanc, 2, 1, true)],
+    ["Margen bruto", "Utilidad bruta ÷ ventas.", "mBruto", pct, ""],
+    ["Margen operativo", "Utilidad operativa ÷ ventas.", "mOper", pct, semaforo(i.mOper, 0, 0.05)],
+    ["Margen neto", "Resultado neto ÷ ventas.", "mNeto", pct, semaforo(i.mNeto, 0, 0.05)],
+    ["Rentabilidad del activo (ROA)", "Resultado neto ÷ activo total.", "roa", pct, semaforo(i.roa, 0, 0.05)],
+    ["Rentabilidad del patrimonio (ROE)", "Resultado neto ÷ patrimonio. Lo que rinde el dinero de los dueños.", "roe", pct, semaforo(i.roe, 0, 0.1)],
+    ["Rotación de inventarios", "Días que la mercadería pasa en almacén.", "diasInv", dias, ""],
+    ["Período de cobro", "Días que tardan los clientes en pagar.", "diasCob", dias, ""],
+    ["Período de pago", "Días que tarda la empresa en pagar a proveedores.", "diasPag", dias, ""]
+  ];
+  var h = '<h2>Indicadores financieros</h2><table class="ind"><thead><tr><th></th><th style="text-align:right">' +
+    E.actual + '</th>' + (ia ? '<th style="text-align:right">' + (+E.actual - 1) + '</th>' : "") + '</tr></thead><tbody>';
+  filas.forEach(function (f) {
+    h += '<tr data-k="' + f[2] + '"><td>' + f[0] + '<span class="exp">' + f[1] + '</span>' + f[4] + '</td><td class="n">' +
+      f[3](i[f[2]]) + '</td>' + (ia ? '<td class="n">' + f[3](ia[f[2]]) + '</td>' : "") + '</tr>';
+  });
+  h += '</tbody></table><p class="notas">Los días usan 360 al año y los saldos al cierre. Si el corte no es anual, compárelos con cuidado.</p>';
+  return h;
+}
+
+
+/* ------------------------------------------------------------------
+   Informe para el gerente. Se escribe solo, con reglas fijas sobre los
+   estados y los indicadores: no hay IA detrás ni datos que salgan del
+   equipo. Lo que una persona tardaría una hora en redactar.
+   ------------------------------------------------------------------ */
+function escribirInforme(r, ra) {
+  var x = r.er, e = r.esf, i = indicadores(r), ia = ra ? indicadores(ra) : null;
+  var anio = E.actual, antes = String(+E.actual - 1);
+  var secciones = [], resumen = [], salud = [], acciones = [];
+  var nombre = E.empresa.razon || "La empresa";
+
+  if (!x.ventas && !e.activo) return [{ h: "Informe", p: ["Aún no hay saldos en " + anio + ". Cargue el balance o llene los rubros para que el informe se escriba solo."] }];
+  if (Math.abs(r.diferencia) >= 0.5)
+    resumen.push("Antes de usar este informe: los estados no cuadran por S/ " + soles(r.diferencia) + ". Corrija los saldos en la pestaña Saldos.");
+
+  var frase = nombre + " vendió S/ " + soles(x.ventas) + " al " + fechaLarga(ej().corte);
+  if (ra && ra.er.ventas) {
+    var crec = (x.ventas - ra.er.ventas) / Math.abs(ra.er.ventas);
+    frase += ", " + (crec >= 0 ? "un " + pct(crec) + " más" : "un " + pct(-crec) + " menos") + " que en " + antes;
+  }
+  frase += x.neta >= 0
+    ? ". Ganó S/ " + soles(x.neta) + (x.ventas ? ": S/ " + (i.mNeto * 100).toFixed(1) + " por cada S/ 100 vendidos." : ".")
+    : ". Perdió S/ " + soles(-x.neta) + ".";
+  resumen.push(frase);
+  if (ia && isFinite(i.mBruto) && isFinite(ia.mBruto)) {
+    var dpp = (i.mBruto - ia.mBruto) * 100;
+    if (dpp <= -2) resumen.push("El margen bruto bajó de " + pct(ia.mBruto) + " a " + pct(i.mBruto) + ": se está vendiendo más barato o comprando más caro.");
+    else if (dpp >= 2) resumen.push("El margen bruto subió de " + pct(ia.mBruto) + " a " + pct(i.mBruto) + ".");
+  }
+  if (ra && ra.er.ventas && x.ventas) {
+    var gOp = (x.gVen + x.gAdm) / x.ventas, gOpA = (ra.er.gVen + ra.er.gAdm) / ra.er.ventas;
+    if (gOp - gOpA >= 0.02) resumen.push("Los gastos de ventas y administración pesan más: " + pct(gOp) + " de las ventas, frente a " + pct(gOpA) + " en " + antes + ".");
+  }
+
+  if (isFinite(i.liquidez)) {
+    if (i.liquidez < 1) {
+      salud.push("Liquidez en riesgo: debe S/ " + soles(e.pc) + " en los próximos 12 meses y tiene S/ " + soles(e.ac) + " para cubrirlo (" + i.liquidez.toFixed(2) + " por cada sol).");
+      acciones.push("Pida más plazo a los proveedores o pase deuda de corto a largo plazo con su banco o caja.");
+    } else salud.push("Liquidez " + (i.liquidez >= 1.5 ? "holgada" : "ajustada") + ": tiene S/ " + i.liquidez.toFixed(2) + " por cada sol que vence en el año.");
+  }
+  if (isFinite(i.endeud)) {
+    salud.push("El " + pct(i.endeud) + " de lo que tiene la empresa está financiado por terceros" +
+      (i.endeud > 0.7 ? ": es alto." : i.endeud > 0.5 ? ": moderado." : ": bajo."));
+    if (i.endeud > 0.7) acciones.push("No tome deuda nueva hasta bajar el endeudamiento; use las utilidades para amortizar.");
+  }
+  if (isFinite(i.roe) && x.neta > 0) salud.push("Cada S/ 100 que pusieron los dueños rindió S/ " + (i.roe * 100).toFixed(1) + " en el período.");
+  var ciclo = (isFinite(i.diasInv) ? i.diasInv : 0) + (isFinite(i.diasCob) ? i.diasCob : 0) - (isFinite(i.diasPag) ? i.diasPag : 0);
+  if (isFinite(i.diasInv) || isFinite(i.diasCob))
+    salud.push("Ciclo de caja: " + Math.round(ciclo) + " días entre que paga la mercadería y cobra la venta.");
+
+  if (x.neta < 0) acciones.push("Está perdiendo: revise primero los precios y después los gastos fijos que no generan ventas.");
+  if (isFinite(i.diasCob) && i.diasCob > 45) acciones.push("Los clientes tardan " + Math.round(i.diasCob) + " días en pagar: ofrezca descuento por pronto pago o pida adelantos.");
+  if (isFinite(i.diasInv) && i.diasInv > 90) acciones.push("Hay mercadería para " + Math.round(i.diasInv) + " días: compre en lotes más chicos y liquide lo que no rota.");
+  if (ia && isFinite(i.mBruto) && isFinite(ia.mBruto) && i.mBruto < ia.mBruto - 0.02) acciones.push("Actualice la lista de precios con el costo de reposición, no con el de compra anterior.");
+
+  var t = r.trib, imp = [];
+  imp.push((x.estimado ? "Impuesto a la renta estimado" : "Impuesto a la renta registrado") + ": S/ " + soles(x.ir) + " (" + REGIMEN_TXT[E.empresa.regimen] + ").");
+  var pagos = num(ej().pagos);
+  if (pagos && (E.empresa.regimen === "RMT" || E.empresa.regimen === "RG")) {
+    var saldoIR = t.impuesto - pagos;
+    imp.push(saldoIR >= 0 ? "Separe S/ " + soles(saldoIR) + " para la regularización de la declaración anual." : "Tendría un saldo a favor de S/ " + soles(-saldoIR) + ".");
+    if (saldoIR > 0) acciones.push("Reserve hoy S/ " + soles(saldoIR) + " para el impuesto anual, para que no salga de la caja de un solo golpe.");
+  }
+  t.alertas.forEach(function (a) { if (a[0] === "mal") { imp.push(a[1]); acciones.push(a[1]); } });
+  t.alertas.forEach(function (a) { if (a[0] !== "mal" && /podría acogerse/.test(a[1])) acciones.push(a[1]); });
+
+  if (!acciones.length) acciones.push("Los indicadores están sanos: mantenga el control mensual y compare contra este mismo informe el próximo mes.");
+
+  secciones.push({ h: "Resumen", p: resumen });
+  secciones.push({ h: "Salud financiera", p: salud });
+  secciones.push({ h: "Impuestos", p: imp });
+  secciones.push({ h: "Qué hacer", li: acciones });
+  return secciones;
+}
+function informeHtml(sec) {
+  return '<div class="informe">' + membrete("INFORME DE GESTIÓN", "Al " + fechaLarga(ej().corte)) +
+    sec.map(function (x) {
+      return '<h3>' + x.h + '</h3>' + (x.p ? x.p.map(function (t) { return '<p>' + esc(t) + '</p>'; }).join("") : "") +
+        (x.li ? '<ul>' + x.li.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("") + '</ul>' : "");
+    }).join("") +
+    '<p class="notas">Escrito automáticamente con reglas fijas a partir de los estados. Revíselo antes de enviarlo.</p></div>';
+}
+function informeTexto(sec) {
+  var L = ["*Informe de gestión " + E.actual + "*" + (E.empresa.razon ? " · " + E.empresa.razon : "")];
+  sec.forEach(function (x) {
+    L.push("", "*" + x.h + "*");
+    (x.p || []).forEach(function (t) { L.push(t); });
+    (x.li || []).forEach(function (t) { L.push("• " + t); });
+  });
+  return L.join("\n");
+}
+function promptIA(r, ra) {
+  var em = E.empresa, anio = E.actual, antes = String(+E.actual - 1);
+  function col(v) { return soles(v); }
+  var L = [
+    "Eres analista financiero de micro y pequeñas empresas del Perú. Analiza estos estados financieros " +
+      "(soles, PCGE 2019, " + REGIMEN_TXT[em.regimen] + ", actividad: " + ACTIVIDAD_TXT[em.actividad] +
+      ", " + (Math.floor(num(em.trabajadores)) || 0) + " trabajadores, corte al " + fechaLarga(ej().corte) + ").",
+    "Dame en lenguaje simple: 1) diagnóstico en 5 líneas, 2) los 3 riesgos principales, 3) un plan de 90 días con acciones concretas y medibles, " +
+      "4) qué conviene revisar en lo tributario con SUNAT. No inventes datos que no estén aquí.",
+    "", "ESTADO DE RESULTADOS (" + anio + (ra ? " | " + antes : "") + ")"
+  ];
+  var a = vistaER(r), b = ra ? vistaER(ra) : null;
+  filasER(Object.assign({ trib: r.trib }, r.er)).forEach(function (f) {
+    if (Math.abs(a[f[2]]) < 0.005 && (!b || Math.abs(b[f[2]]) < 0.005)) return;
+    L.push("- " + f[1] + ": " + col(a[f[2]]) + (b ? " | " + col(b[f[2]]) : ""));
+  });
+  L.push("", "ESTADO DE SITUACIÓN FINANCIERA (" + anio + (ra ? " | " + antes : "") + ")");
+  FILAS_ESF.forEach(function (f) {
+    if (f[0] === "g") return;
+    var v = r.esf[f[2]], w = ra ? ra.esf[f[2]] : null;
+    if (Math.abs(v) < 0.005 && (!ra || Math.abs(w) < 0.005)) return;
+    L.push("- " + f[1] + ": " + col(v) + (ra ? " | " + col(w) : ""));
+  });
+  var i = indicadores(r);
+  L.push("", "INDICADORES " + anio);
+  L.push("- Liquidez corriente: " + (isFinite(i.liquidez) ? i.liquidez.toFixed(2) : "—") + "; prueba ácida: " + (isFinite(i.acida) ? i.acida.toFixed(2) : "—"));
+  L.push("- Endeudamiento: " + pct(i.endeud) + "; ROE: " + pct(i.roe) + "; margen neto: " + pct(i.mNeto));
+  L.push("- Días de inventario: " + (isFinite(i.diasInv) ? Math.round(i.diasInv) : "—") + "; de cobro: " + (isFinite(i.diasCob) ? Math.round(i.diasCob) : "—") + "; de pago: " + (isFinite(i.diasPag) ? Math.round(i.diasPag) : "—"));
+  return L.join("\n");
+}
+function copiar(texto, aviso) {
+  var el = document.getElementById("copiado");
+  function listo() { el.className = "ayuda bien"; el.textContent = aviso; }
+  function aMano() {
+    var t = document.createElement("textarea"); t.value = texto; document.body.appendChild(t); t.select();
+    try { document.execCommand("copy"); listo(); } catch (e) { el.textContent = "Seleccione el texto y cópielo a mano."; }
+    t.remove();
+  }
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(texto).then(listo, aMano);
+  else aMano();
+}
+
+/* ------------------------------------------------------------------
+   Ingreso de saldos
+   ------------------------------------------------------------------ */
+function saldo(c) { var s = ej().saldos; if (!s[c]) s[c] = { d: 0, a: 0 }; return s[c]; }
+function limpiarVacios() {
+  var s = ej().saldos;
+  Object.keys(s).forEach(function (c) { if (!num(s[c].d) && !num(s[c].a)) delete s[c]; });
+}
+
+function construirSimple() {
+  var h = "";
+  SIMPLE.forEach(function (g) {
+    h += '<h3>' + g[0] + '</h3><div class="rejilla">';
+    g[1].forEach(function (f) {
+      h += '<label class="campo">' + esc(f[1]) + ' <span style="opacity:.7">· cta. ' + f[0] + '</span>' +
+        '<input class="monto-simple" inputmode="decimal" data-c="' + f[0] + '" data-lado="' + f[2] + '" placeholder="0.00"></label>';
+    });
+    h += '</div>';
+  });
+  document.getElementById("vista-simple").innerHTML = h;
+}
+function llenarSimple() {
+  document.querySelectorAll(".monto-simple").forEach(function (inp) {
+    if (inp === document.activeElement) return;
+    var s = ej().saldos[inp.dataset.c], v = 0;
+    if (s) v = inp.dataset.lado === "d" ? num(s.d) - num(s.a) : num(s.a) - num(s.d);
+    inp.value = plano(v);
+  });
+}
+
+function construirPCGE() {
+  var h = '<thead><tr><th>Cta.</th><th>Denominación</th><th>Deudor</th><th>Acreedor</th></tr></thead><tbody>';
+  var codigos = PCGE.map(function (c) { return c[0]; });
+  Object.keys(ej().saldos).forEach(function (c) { if (codigos.indexOf(c) < 0) codigos.push(c); });
+  codigos.sort();
+  var clase = "";
+  codigos.forEach(function (c) {
+    if (c[0] !== clase) { clase = c[0]; h += '<tr class="clase"><td colspan="4">' + (CLASES[clase] || "Elemento " + clase) + '</td></tr>'; }
+    h += '<tr class="cta" data-c="' + c + '"><td class="cod">' + c + '</td><td class="nom">' + esc(NOMBRE[c] || "Cuenta " + c) +
+      '</td><td><input class="monto" inputmode="decimal" data-c="' + c + '" data-lado="d" aria-label="Deudor ' + c + '"></td>' +
+      '<td><input class="monto" inputmode="decimal" data-c="' + c + '" data-lado="a" aria-label="Acreedor ' + c + '"></td></tr>';
+  });
+  h += '</tbody><tfoot><tr class="tot" id="bc-totales"></tr></tfoot>';
+  document.getElementById("tabla-bc").innerHTML = h;
+}
+function llenarPCGE() {
+  var s = ej().saldos;
+  document.querySelectorAll("#tabla-bc input.monto").forEach(function (inp) {
+    var x = s[inp.dataset.c], v = x ? num(x[inp.dataset.lado]) : 0;
+    if (inp !== document.activeElement) inp.value = plano(v);
+    inp.classList.toggle("con", !!v);
+  });
+  document.querySelectorAll("#tabla-bc tr.cta").forEach(function (tr) {
+    var x = s[tr.dataset.c];
+    tr.classList.toggle("vacia", !(x && (num(x.d) || num(x.a))));
+  });
+}
+
+function importar(texto) {
+  var filas = [], omitidas = 0, colD = -1, colA = -1;
+  texto.split(/\r?\n/).forEach(function (linea) {
+    if (!linea.trim()) return;
+    var sep = linea.indexOf("\t") >= 0 ? "\t" : linea.indexOf(";") >= 0 ? ";" : linea.indexOf("|") >= 0 ? "|" : ",";
+    var campos = linea.split(sep).map(function (x) { return x.trim(); });
+    var cod = (campos[0] || "").replace(/\s/g, "");
+    if (!/^\d{2,}$/.test(cod)) {
+      // Encabezado del formato de 8 o 10 columnas: las sumas dicen «debe /
+      // haber» y los saldos «deudor / acreedor». Se toman las de los saldos.
+      var bajo = campos.map(function (x) { return x.toLowerCase(); });
+      var iD = bajo.findIndex(function (x) { return /deudor/.test(x); });
+      var iA = bajo.findIndex(function (x) { return /acreedor/.test(x); });
+      if (iD > 0 && iA > 0) { colD = iD; colA = iA; }
+      omitidas++; return;
+    }
+    var d = 0, a = 0;
+    if (colD > 0) {
+      d = num(campos[colD]); a = num(campos[colA]);
+    } else {
+      // Sin encabezado: los dos últimos campos numéricos son deudor y
+      // acreedor (vacío cuenta como cero); con uno solo, el signo decide.
+      var vals = campos.slice(1).filter(function (x) { return x === "" || /^\(?(S\/)?-?[\d.,]+\)?-?$/.test(x); });
+      while (vals.length > 2 && vals[0] === "") vals.shift();
+      if (!vals.some(function (x) { return /\d/.test(x); })) { omitidas++; return; }
+      if (vals.length >= 2) { d = num(vals[vals.length - 2]); a = num(vals[vals.length - 1]); }
+      else { var v = num(vals[0]); if (v >= 0) d = v; else a = -v; }
+    }
+    filas.push({ cod: cod, d: d, a: a });
+  });
+  // Si vienen la cuenta y sus subcuentas (10, 101, 104), sólo cuentan las
+  // del nivel más fino: sumar las dos duplicaría el saldo.
+  var hojas = filas.filter(function (f) {
+    return !filas.some(function (g) { return g.cod.length > f.cod.length && g.cod.indexOf(f.cod) === 0; });
+  });
+  omitidas += filas.length - hojas.length;
+  if (!hojas.length) return { leidas: 0, omitidas: omitidas };
+  var acumulado = {};
+  hojas.forEach(function (f) {
+    var c = f.cod.slice(0, 2);
+    if (!acumulado[c]) acumulado[c] = { d: 0, a: 0 };
+    acumulado[c].d = r2(acumulado[c].d + f.d); acumulado[c].a = r2(acumulado[c].a + f.a);
+  });
+  ej().saldos = acumulado;
+  return { leidas: hojas.length, omitidas: omitidas, cuentas: Object.keys(acumulado).length };
+}
+
+/* ------------------------------------------------------------------
+   Leer el Excel del contador tal como viene (.xlsx), sin librerías: un
+   .xlsx es un zip de XML. Se descomprime con lo que trae el navegador y
+   la primera hoja se convierte en líneas separadas por tabulación, que
+   es lo mismo que pegar desde Excel.
+   ------------------------------------------------------------------ */
+function leerZip(buf) {
+  var dv = new DataView(buf), u8 = new Uint8Array(buf), fin = -1;
+  for (var i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 66000); i--)
+    if (dv.getUint32(i, true) === 0x06054b50) { fin = i; break; }
+  if (fin < 0) throw new Error("no es un archivo .xlsx");
+  var total = dv.getUint16(fin + 10, true), p = dv.getUint32(fin + 16, true), dir = {};
+  var td = new TextDecoder();
+  for (var k = 0; k < total; k++) {
+    var metodo = dv.getUint16(p + 10, true), comp = dv.getUint32(p + 20, true);
+    var ln = dv.getUint16(p + 28, true), lx = dv.getUint16(p + 30, true), lc = dv.getUint16(p + 32, true);
+    var local = dv.getUint32(p + 42, true);
+    var nombre = td.decode(u8.subarray(p + 46, p + 46 + ln));
+    dir[nombre] = { metodo: metodo, comp: comp, local: local };
+    p += 46 + ln + lx + lc;
+  }
+  return function (nombre) {
+    var e = dir[nombre]; if (!e) return Promise.resolve(null);
+    var ini = e.local + 30 + dv.getUint16(e.local + 26, true) + dv.getUint16(e.local + 28, true);
+    var datos = u8.subarray(ini, ini + e.comp);
+    if (e.metodo === 0) return Promise.resolve(td.decode(datos));
+    var flujo = new Blob([datos]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Response(flujo).text();
+  };
+}
+function xlsxATexto(buf) {
+  var leer = leerZip(buf), xml = new DOMParser();
+  return Promise.all([leer("xl/sharedStrings.xml"), leer("xl/workbook.xml"), leer("xl/_rels/workbook.xml.rels")])
+    .then(function (r) {
+      var textos = [];
+      if (r[0]) Array.prototype.forEach.call(xml.parseFromString(r[0], "application/xml").getElementsByTagName("si"),
+        function (si) { textos.push(Array.prototype.map.call(si.getElementsByTagName("t"), function (t) { return t.textContent; }).join("")); });
+      // La primera hoja del libro, siguiendo su relación; si no, sheet1.
+      var ruta = "xl/worksheets/sheet1.xml";
+      if (r[1] && r[2]) {
+        var hoja = xml.parseFromString(r[1], "application/xml").getElementsByTagName("sheet")[0];
+        var id = hoja && (hoja.getAttribute("r:id") || hoja.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id"));
+        Array.prototype.forEach.call(xml.parseFromString(r[2], "application/xml").getElementsByTagName("Relationship"), function (rel) {
+          if (rel.getAttribute("Id") === id) ruta = "xl/" + rel.getAttribute("Target").replace(/^\/?xl\//, "").replace(/^\//, "");
+        });
+      }
+      return leer(ruta).then(function (hojaXml) {
+        if (!hojaXml) throw new Error("el libro no tiene hojas");
+        var lineas = [];
+        Array.prototype.forEach.call(xml.parseFromString(hojaXml, "application/xml").getElementsByTagName("row"), function (row) {
+          var celdas = [];
+          Array.prototype.forEach.call(row.getElementsByTagName("c"), function (c) {
+            var col = (c.getAttribute("r") || "").replace(/\d+/g, ""), idx = 0;
+            for (var q = 0; q < col.length; q++) idx = idx * 26 + col.charCodeAt(q) - 64;
+            var t = c.getAttribute("t"), v = c.getElementsByTagName("v")[0], val = "";
+            if (t === "s" && v) val = textos[+v.textContent] || "";
+            else if (t === "inlineStr") val = Array.prototype.map.call(c.getElementsByTagName("t"), function (x) { return x.textContent; }).join("");
+            else if (v) val = v.textContent;
+            celdas[(idx || celdas.length + 1) - 1] = String(val).replace(/[\t\r\n]/g, " ");
+          });
+          for (var z = 0; z < celdas.length; z++) if (celdas[z] == null) celdas[z] = "";
+          lineas.push(celdas.join("\t"));
+        });
+        return lineas.join("\n");
+      });
+    });
+}
+function importarArchivo(archivo) {
+  var ay = document.getElementById("import-ayuda");
+  var esXlsx = /\.xlsx$/i.test(archivo.name);
+  var lectura = esXlsx ? archivo.arrayBuffer().then(xlsxATexto) : archivo.text();
+  return lectura.then(function (texto) {
+    var r = importar(texto);
+    mostrarImportacion(r, archivo.name);
+    return r;
+  }).catch(function (err) {
+    ay.className = "ayuda mal";
+    ay.textContent = "No se pudo leer " + archivo.name + ": " + err.message + ". Si es .xls antiguo, guárdelo como .xlsx o CSV.";
+  });
+}
+function mostrarImportacion(r, origen) {
+  var ay = document.getElementById("import-ayuda");
+  if (!r.leidas) { ay.className = "ayuda mal"; ay.textContent = "No se reconoció ninguna línea con código de cuenta y montos."; return; }
+  ay.className = "ayuda bien";
+  ay.textContent = (origen ? origen + ": " : "") + r.leidas + " líneas leídas en " + r.cuentas + " cuentas" +
+    (r.omitidas ? " · " + r.omitidas + " omitidas (títulos, totales o cuentas resumen)" : "") + ".";
+  guardar(); construirPCGE(); llenarPCGE(); llenarSimple(); render();
+}
+
+/* ------------------------------------------------------------------
+   Ejemplo: una comercializadora en el RMT, dos ejercicios, con el
+   balance de comprobación cuadrado. 2026 usa las cuentas por función
+   (destino) y 2025 sólo las de naturaleza, para mostrar los dos caminos.
+   ------------------------------------------------------------------ */
+function ejemplo() {
+  function bc(o) { var s = {}; Object.keys(o).forEach(function (c) { var v = o[c]; s[c] = v >= 0 ? { d: v, a: 0 } : { d: 0, a: -v }; }); return s; }
+  var e26 = ejercicioVacio("2026");
+  e26.lp = 36000; e26.adiciones = 0; e26.pagos = 6060;
+  e26.saldos = bc({
+    "10": 92850, "12": 36200, "19": -1200, "20": 92400, "18": 3600, "33": 120000, "39": -38000, "34": 6000,
+    "40": -4850, "41": -7200, "42": -54300, "45": -60000, "46": -3500,
+    "50": -80000, "58": -4000, "59": -25000,
+    "60": 438000, "61": -438000, "62": 54000, "63": 28800, "64": 1900, "65": 2300, "67": 6200, "68": 12800,
+    "69": 430000, "70": -612000, "74": 6000, "75": -2400, "77": -600, "79": -106000,
+    "94": 62000, "95": 37800, "97": 6200
+  });
+  var e25 = ejercicioVacio("2025");
+  e25.lp = 48000; e25.pv = 35;
+  e25.saldos = bc({
+    "10": 76000, "12": 29800, "19": -900, "20": 78600, "18": 2400, "33": 108000, "39": -26000, "34": 6000,
+    "40": -9100, "41": -6100, "42": -47900, "45": -72000, "46": -2800,
+    "50": -80000, "58": -2000, "59": -4950,
+    "62": 46000, "63": 24500, "64": 1600, "65": 1900, "67": 5400, "68": 11200,
+    "69": 352000, "70": -498000, "74": 3000, "75": -1800, "77": -300, "88": 5450
+  });
+  E = { version: 1, modo: "pcge",
+    empresa: { ruc: "20000000001", razon: "COMERCIAL EJEMPLO S.A.C.", regimen: "RMT", actividad: "comercio",
+      trabajadores: 6, domicilio: "Av. Ejemplo 123, Lima", gerente: "Gerente de ejemplo",
+      contador: "Contador de ejemplo", matricula: "00000" },
+    actual: "2026", ejercicios: { "2025": e25, "2026": e26 } };
+}
+
+/* ------------------------------------------------------------------
+   Exportar
+   ------------------------------------------------------------------ */
+function descargar(nombre, tipo, contenido) {
+  var blob = new Blob([contenido], { type: tipo });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = nombre;
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function csv() {
+  var r = calcular(ej(), E.empresa), ja = anterior(), ra = ja ? calcular(ja, E.empresa) : null;
+  var L = [];
+  function q(s) { s = String(s); return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  function n2(v) { return v == null ? "" : r2(v).toFixed(2); }
+  L.push([q(E.empresa.razon), "RUC " + E.empresa.ruc].join(","));
+  L.push("");
+  L.push(["ESTADO DE RESULTADOS", E.actual, ra ? +E.actual - 1 : ""].join(","));
+  var a = vistaER(r), b = ra ? vistaER(ra) : null;
+  filasER(Object.assign({ trib: r.trib }, r.er)).forEach(function (f) {
+    L.push([q(f[1]), n2(a[f[2]]), b ? n2(b[f[2]]) : ""].join(","));
+  });
+  L.push("");
+  L.push(["ESTADO DE SITUACION FINANCIERA", E.actual, ra ? +E.actual - 1 : ""].join(","));
+  FILAS_ESF.forEach(function (f) {
+    if (f[0] === "g") { L.push(q(f[1].toUpperCase())); return; }
+    L.push([q(f[1]), n2(r.esf[f[2]]), ra ? n2(ra.esf[f[2]]) : ""].join(","));
+  });
+  L.push("");
+  L.push("BALANCE DE COMPROBACION " + E.actual + ",Cuenta,Deudor,Acreedor");
+  Object.keys(ej().saldos).sort().forEach(function (c) {
+    var s = ej().saldos[c]; L.push([c, q(NOMBRE[c] || ""), n2(num(s.d)), n2(num(s.a))].join(","));
+  });
+  descargar("estados-financieros-" + (E.empresa.ruc || "mype") + "-" + E.actual + ".csv",
+    "text/csv;charset=utf-8", "﻿" + L.join("\r\n"));
+}
+
+/* ------------------------------------------------------------------
+   Enlaces con la pantalla
+   ------------------------------------------------------------------ */
+var CAMPOS_EMP = { "e-ruc": "ruc", "e-razon": "razon", "e-regimen": "regimen", "e-actividad": "actividad",
+  "e-trabajadores": "trabajadores", "e-domicilio": "domicilio", "e-gerente": "gerente",
+  "e-contador": "contador", "e-matricula": "matricula" };
+var CAMPOS_EJ = { "j-corte": "corte", "j-uit": "uit", "j-lp": "lp", "j-pv": "pv", "j-adiciones": "adiciones",
+  "j-deducciones": "deducciones", "j-perdidas": "perdidas", "j-pagos": "pagos" };
+var NUMERICOS = { uit: 1, lp: 1, pv: 1, adiciones: 1, deducciones: 1, perdidas: 1, pagos: 1 };
+
+function llenarFormularios() {
+  Object.keys(CAMPOS_EMP).forEach(function (id) {
+    var el = document.getElementById(id); if (el !== document.activeElement) el.value = E.empresa[CAMPOS_EMP[id]] || "";
+  });
+  Object.keys(CAMPOS_EJ).forEach(function (id) {
+    var el = document.getElementById(id), k = CAMPOS_EJ[id];
+    if (el !== document.activeElement) el.value = NUMERICOS[k] ? plano(num(ej()[k])) : (ej()[k] || "");
+  });
+  document.getElementById("t-ejercicio").textContent = E.actual;
+  var v = validarRuc(E.empresa.ruc), ay = document.getElementById("ruc-ayuda");
+  ay.textContent = v.msg; ay.className = "ayuda" + (E.empresa.ruc ? (v.ok ? " bien" : " mal") : "");
+  var sel = document.getElementById("sel-ejercicio");
+  sel.innerHTML = Object.keys(E.ejercicios).sort().reverse().map(function (a) {
+    return '<option value="' + a + '"' + (a === E.actual ? " selected" : "") + '>' + a + '</option>';
+  }).join("");
+}
+function aplicarModo() {
+  var simple = E.modo !== "pcge";
+  document.getElementById("m-simple").setAttribute("aria-pressed", simple);
+  document.getElementById("m-pcge").setAttribute("aria-pressed", !simple);
+  document.getElementById("vista-simple").hidden = !simple;
+  document.getElementById("vista-pcge").hidden = simple;
+  document.getElementById("modo-ayuda").textContent = simple
+    ? "Montos al cierre, en soles y sin IGV en ventas y gastos. Cada rubro se guarda en su cuenta del PCGE; el contador puede seguir en «Balance de comprobación»."
+    : "Saldos finales del balance de comprobación (sumas y saldos) a dos dígitos del PCGE 2019.";
+}
+function todo() {
+  llenarFormularios(); aplicarModo();
+  construirPCGE(); llenarPCGE(); llenarSimple(); render();
+}
+function cambio() { guardar(); llenarPCGE(); llenarSimple(); render(); }
+
+document.addEventListener("input", function (ev) {
+  var t = ev.target;
+  if (CAMPOS_EMP[t.id]) {
+    var k = CAMPOS_EMP[t.id];
+    E.empresa[k] = k === "trabajadores" ? Math.max(0, Math.floor(num(t.value))) : (k === "ruc" ? t.value.replace(/\D/g, "") : t.value);
+    if (k === "ruc" && t.value !== E.empresa.ruc) t.value = E.empresa.ruc;
+    var v = validarRuc(E.empresa.ruc), ay = document.getElementById("ruc-ayuda");
+    ay.textContent = v.msg; ay.className = "ayuda" + (E.empresa.ruc ? (v.ok ? " bien" : " mal") : "");
+    guardar(); render(); return;
+  }
+  if (CAMPOS_EJ[t.id]) {
+    var kk = CAMPOS_EJ[t.id];
+    ej()[kk] = NUMERICOS[kk] ? num(t.value) : t.value;
+    guardar(); render(); return;
+  }
+  if (t.classList.contains("monto")) {
+    var s = saldo(t.dataset.c); s[t.dataset.lado] = num(t.value);
+    limpiarVacios(); guardar(); llenarSimple(); render();
+    t.classList.toggle("con", !!num(t.value)); return;
+  }
+  if (t.classList.contains("monto-simple")) {
+    var v2 = num(t.value), x = saldo(t.dataset.c);
+    var natural = t.dataset.lado, otro = natural === "d" ? "a" : "d";
+    if (v2 >= 0) { x[natural] = v2; x[otro] = 0; } else { x[natural] = 0; x[otro] = -v2; }
+    limpiarVacios(); guardar(); llenarPCGE(); render();
+  }
+});
+document.addEventListener("change", function (ev) {
+  var t = ev.target;
+  if (t.id === "e-regimen" || t.id === "e-actividad") { E.empresa[CAMPOS_EMP[t.id]] = t.value; guardar(); render(); }
+});
+document.addEventListener("focusout", function (ev) {
+  var t = ev.target;
+  if (t.classList && (t.classList.contains("monto") || t.classList.contains("monto-simple") ||
+      (CAMPOS_EJ[t.id] && NUMERICOS[CAMPOS_EJ[t.id]]))) {
+    if (t.classList.contains("monto")) t.value = plano(num(ej().saldos[t.dataset.c] ? ej().saldos[t.dataset.c][t.dataset.lado] : 0));
+    else if (t.classList.contains("monto-simple")) llenarSimple();
+    else t.value = plano(num(ej()[CAMPOS_EJ[t.id]]));
+  }
+});
+
+document.querySelectorAll("nav.pestanas button").forEach(function (b) {
+  b.addEventListener("click", function () { irA(b.dataset.ir); });
+});
+function irA(vista) {
+  document.querySelectorAll("nav.pestanas button").forEach(function (x) {
+    x.setAttribute("aria-selected", x.dataset.ir === vista);
+  });
+  document.querySelectorAll("section.vista").forEach(function (s) { s.hidden = s.dataset.vista !== vista; });
+  try { sessionStorage.setItem("eeff-vista", vista); } catch (e) { /* nada */ }
+  window.scrollTo(0, 0);
+}
+document.getElementById("m-simple").onclick = function () { E.modo = "simple"; guardar(); aplicarModo(); llenarSimple(); render(); };
+document.getElementById("m-pcge").onclick = function () { E.modo = "pcge"; guardar(); aplicarModo(); llenarPCGE(); render(); };
+document.getElementById("solo-saldo").onchange = function () {
+  document.getElementById("tabla-bc").classList.toggle("solo-saldo", this.checked);
+};
+document.getElementById("sel-ejercicio").onchange = function () { E.actual = this.value; guardar(); todo(); };
+document.getElementById("b-nuevo-ej").onclick = function () {
+  var sug = String(Math.max.apply(null, Object.keys(E.ejercicios).map(Number)) + 1);
+  var anio = prompt("Año del nuevo ejercicio", sug);
+  if (!anio || !/^\d{4}$/.test(anio.trim())) return;
+  anio = anio.trim();
+  if (!E.ejercicios[anio]) E.ejercicios[anio] = ejercicioVacio(anio);
+  E.actual = anio; guardar(); todo();
+};
+document.getElementById("b-borrar-ej").onclick = function () {
+  if (Object.keys(E.ejercicios).length < 2) { alert("Debe quedar al menos un ejercicio. Use «Poner todo en cero» para vaciarlo."); return; }
+  if (!confirm("¿Borrar el ejercicio " + E.actual + " y todos sus saldos?")) return;
+  delete E.ejercicios[E.actual];
+  E.actual = Object.keys(E.ejercicios).sort().pop(); guardar(); todo();
+};
+document.getElementById("b-ejemplo").onclick = function () {
+  var hay = Object.keys(E.ejercicios).some(function (a) { return Object.keys(E.ejercicios[a].saldos).length; }) || E.empresa.razon;
+  if (hay && !confirm("El ejemplo reemplaza la empresa y los saldos actuales. Descargue un respaldo antes si los necesita. ¿Continuar?")) return;
+  ejemplo(); guardar(); todo(); irA("resultados");
+};
+document.getElementById("b-importar").onclick = function () {
+  var r = importar(document.getElementById("pegado").value);
+  if (r.leidas) document.getElementById("pegado").value = "";
+  mostrarImportacion(r);
+};
+document.getElementById("b-limpiar").onclick = function () {
+  if (!confirm("¿Poner en cero todos los saldos de " + E.actual + "?")) return;
+  ej().saldos = {}; guardar(); cambio();
+};
+document.getElementById("b-csv").onclick = csv;
+document.getElementById("b-copiar-informe").onclick = function () { copiar(ultimoInforme, "Informe copiado. Péguelo en un correo o mensaje."); };
+document.getElementById("b-copiar-ia").onclick = function () {
+  copiar(document.getElementById("prompt-ia").value, "Copiado. Péguelo en Claude, ChatGPT o Gemini.");
+};
+function alSubir(input, despues) {
+  input.onchange = function () {
+    var f = this.files && this.files[0]; this.value = "";
+    if (!f) return;
+    importarArchivo(f).then(function (r) {
+      if (r && r.leidas) { E.modo = "pcge"; guardar(); aplicarModo(); if (despues) despues(); }
+    });
+  };
+}
+alSubir(document.getElementById("f-archivo"));
+alSubir(document.getElementById("f-archivo-inicio"), function () { irA("resultados"); });
+document.getElementById("b-a-mano").onclick = function () { E.modo = "simple"; guardar(); aplicarModo(); irA("datos"); };
+document.getElementById("b-ejemplo-inicio").onclick = function () { document.getElementById("b-ejemplo").click(); };
+(function () {
+  var zona = document.getElementById("soltar");
+  ["dragenter", "dragover"].forEach(function (t) { zona.addEventListener(t, function (ev) { ev.preventDefault(); zona.classList.add("encima"); }); });
+  ["dragleave", "drop"].forEach(function (t) { zona.addEventListener(t, function () { zona.classList.remove("encima"); }); });
+  zona.addEventListener("drop", function (ev) {
+    ev.preventDefault();
+    var f = ev.dataTransfer && ev.dataTransfer.files[0];
+    if (f) importarArchivo(f);
+  });
+})();
+document.getElementById("b-respaldo").onclick = function () {
+  descargar("respaldo-eeff-" + (E.empresa.ruc || "mype") + ".json", "application/json", JSON.stringify(E, null, 1));
+};
+document.getElementById("f-restaurar").onchange = function () {
+  var f = this.files && this.files[0]; if (!f) return;
+  var lector = new FileReader();
+  lector.onload = function () {
+    try {
+      var nuevo = JSON.parse(lector.result);
+      if (!nuevo || !nuevo.ejercicios || !nuevo.empresa) throw new Error("formato");
+      if (!nuevo.ejercicios[nuevo.actual]) nuevo.actual = Object.keys(nuevo.ejercicios).sort().pop();
+      E = nuevo; guardar(); todo();
+    } catch (err) { alert("El archivo no es un respaldo de esta aplicación."); }
+  };
+  lector.readAsText(f);
+  this.value = "";
+};
+document.getElementById("b-imprimir").onclick = function () { window.print(); };
+
+construirSimple();
+todo();
+try { var v0 = sessionStorage.getItem("eeff-vista"); if (v0) irA(v0); } catch (e) { /* nada */ }
+
+if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+  navigator.serviceWorker.register("sw.js").catch(function () { /* sin caché: sigue en línea */ });
+}
+
+// Para las pruebas automáticas: el cálculo, sin pasar por la pantalla.
+window.EEFF = { calcular: calcular, num: num, validarRuc: validarRuc, importar: importar, xlsxATexto: xlsxATexto,
+  estado: function () { return E; } };
+</script>
+</body>
+</html>
