@@ -160,7 +160,7 @@ python -m nefer pdf acta.xlsx                   # convertir un Excel ya generado
 | **[docs/MANUAL-OPERACION.md](docs/MANUAL-OPERACION.md)** | Cómo levantar un acta, de la primera prueba en patio al uso diario |
 | **[docs/MANUAL-APP.md](docs/MANUAL-APP.md)** | La aplicación de campo pantalla por pantalla y botón por botón |
 | **[docs/FIXMATE.md](docs/FIXMATE.md)** | FixMate AI: el asistente de diagnóstico sobre el historial de fallas y los manuales OEM |
-| **[docs/eeff/](docs/eeff/)** | Estados financieros para MYPE del Perú: estado de resultados y estado de situación financiera desde el balance de comprobación del PCGE, con el impuesto a la renta por régimen e indicadores. Ver **[docs/EEFF-MYPE.md](docs/EEFF-MYPE.md)** |
+| **[docs/eeff/](docs/eeff/)** | Estados financieros para MYPE del Perú: estado de resultados y estado de situación financiera desde el balance de comprobación del PCGE, con el impuesto a la renta por régimen e indicadores. Proyecto aparte; manual en **[docs/eeff/MANUAL.md](docs/eeff/MANUAL.md)** |
 | **[docs/app/](docs/app/)** | Aplicación de campo: despacho y recepción desde el celular, sin conexión. Cámara, galería, carpeta, arrastre y pegado; genera el PDF y el Excel en el propio teléfono |
 | **[docs/AUDITORIA-FORMATO.md](docs/AUDITORIA-FORMATO.md)** | Qué se midió del formato real, qué no cuadraba en el entregable y cómo se corrigió |
 | **[docs/AUDITORIA-CALIDAD.md](docs/AUDITORIA-CALIDAD.md)** | Revisión de la app guiada por ISO/IEC 25010: arranque, seguridad, código muerto y espacio |

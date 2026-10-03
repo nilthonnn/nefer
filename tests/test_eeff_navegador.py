@@ -274,3 +274,83 @@ def test_exporta_csv_con_los_dos_estados(pg):
     assert "ESTADO DE RESULTADOS,2026,2025" in texto
     assert "Total activo,311850.00" in texto
     assert "Resultado neto del ejercicio,65700.00,49050.00" in texto
+
+
+# ------------------------------------------- lo que ahorra tiempo (Musk, paso 4 y 5)
+
+BALANCE_10_COLUMNAS = [
+    ["BALANCE DE COMPROBACIÓN AL 31/12/2026"],
+    ["Cuenta", "Denominación", "Sumas Debe", "Sumas Haber", "Saldos Deudor", "Saldos Acreedor",
+     "Inventario Activo", "Inventario Pasivo", "Resultados Pérdidas", "Resultados Ganancias"],
+    ["10", "EFECTIVO", 50000, 20000, 30000, None, 30000, None, None, None],
+    ["101", "Caja", 10000, 5000, 5000, None, 5000, None, None, None],
+    ["1041", "Banco", 40000, 15000, 25000, None, 25000, None, None, None],
+    ["50", "CAPITAL", None, 20000, None, 20000, None, 20000, None, None],
+    ["70", "VENTAS", None, 50000, None, 50000, None, None, None, 50000],
+    ["69", "COSTO DE VENTAS", 40000, None, 40000, None, None, None, 40000, None],
+    ["", "TOTALES", 130000, 130000, 70000, 70000, None, None, None, None],
+]
+
+
+def test_formato_de_diez_columnas_toma_los_saldos_y_no_duplica_subcuentas(pg):
+    texto = "\n".join("\t".join("" if v is None else str(v) for v in fila) for fila in BALANCE_10_COLUMNAS)
+    r = pg.evaluate("t => EEFF.importar(t)", texto)
+    s = pg.evaluate("() => EEFF.estado().ejercicios[EEFF.estado().actual].saldos")
+    # La 10 viene como resumen de la 101 y la 1041: cuenta sólo una vez.
+    assert s["10"] == {"d": 30000, "a": 0}
+    assert s["50"] == {"d": 0, "a": 20000}
+    assert s["69"] == {"d": 40000, "a": 0}
+    assert r["cuentas"] == 4
+
+
+def test_sube_el_excel_del_contador_desde_el_arranque(pg, tmp_path):
+    openpyxl = pytest.importorskip("openpyxl")
+    libro = openpyxl.Workbook()
+    hoja = libro.active
+    hoja.title = "Balance"
+    for fila in BALANCE_10_COLUMNAS:
+        hoja.append(fila)
+    archivo = tmp_path / "balance-2026.xlsx"
+    libro.save(archivo)
+
+    assert pg.is_visible("#inicio"), "sin datos, lo primero que se ve es cómo empezar"
+    with pg.expect_file_chooser() as elegido:
+        pg.click("label[for='f-archivo-inicio']")
+    elegido.value.set_files(str(archivo))
+    pg.wait_for_selector("section[data-vista='resultados']:not([hidden])", timeout=5000)
+
+    assert "9,000.00" in pg.text_content("#rep-er tr[data-k='neta']")   # 10,000 − IR 10 %
+    assert "Cuadra" in pg.text_content("#cuadre")
+    pg.click("nav button[data-ir='empresa']")
+    assert not pg.is_visible("#inicio"), "con datos, el arranque estorba"
+
+
+def test_el_informe_se_escribe_solo(pg):
+    pg.click("#b-ejemplo")
+    pg.click("nav button[data-ir='informe']")
+    texto = pg.text_content("#rep-informe")
+    assert "vendió S/ 606,000.00" in texto
+    assert "22.4 % más que en 2025" in texto
+    assert "Ganó S/ 65,700.00" in texto
+    assert "Separe S/ 1,240.00" in texto         # IR 7,300 − pagos a cuenta 6,060
+    assert "Qué hacer" in texto
+
+    wa = pg.get_attribute("#b-whatsapp", "href")
+    assert wa.startswith("https://wa.me/?text=") and "606%2C000.00" in wa
+
+    ia = pg.input_value("#prompt-ia")
+    assert "Ventas netas (ingresos operacionales): 606,000.00 | 495,000.00" in ia
+    assert "20000000001" not in ia and "COMERCIAL EJEMPLO" not in ia, "a la IA no van ni el RUC ni el nombre"
+
+
+def test_el_informe_avisa_cuando_hay_perdida_y_poca_liquidez(pg):
+    pg.evaluate("""() => { const E = EEFF.estado(); const j = E.ejercicios[E.actual];
+        j.saldos = {"10": {d: 1000, a: 0}, "42": {d: 0, a: 9000}, "50": {d: 0, a: 2000},
+                    "70": {d: 0, a: 10000}, "69": {d: 12000, a: 0}, "94": {d: 8000, a: 0}}; }""")
+    pg.click("nav button[data-ir='datos']")
+    pg.click("#m-pcge")  # cualquier acción que vuelva a pintar
+    pg.click("nav button[data-ir='informe']")
+    texto = pg.text_content("#rep-informe")
+    assert "Perdió S/ 10,000.00" in texto
+    assert "Liquidez en riesgo" in texto
+    assert "Está perdiendo" in texto

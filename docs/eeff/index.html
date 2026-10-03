@@ -138,6 +138,23 @@ dl.trib dt { color: var(--tinta); }
 dl.trib dd { margin: 0; text-align: right; font-weight: 600; white-space: nowrap; }
 dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-top: 6px; }
 
+.inicio { border: 2px solid var(--marca); }
+.caminos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 10px; }
+.camino { font: inherit; text-align: left; display: flex; flex-direction: column; gap: 4px; cursor: pointer;
+  background: var(--suave); color: var(--tinta); border: 1px solid var(--linea); border-radius: 10px; padding: 14px; }
+.camino b { font-size: 15px; }
+.camino span { font-size: 13px; color: var(--tenue); }
+.camino:hover, .camino:focus-visible { border-color: var(--marca); }
+details.mas { margin-top: 14px; border-top: 1px solid var(--linea); padding-top: 10px; }
+details.mas summary { cursor: pointer; font-size: 14px; color: var(--marca); font-weight: 600; margin-bottom: 10px; }
+.soltar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 2px dashed var(--linea);
+  border-radius: 10px; padding: 12px; }
+.soltar.encima { border-color: var(--marca); background: var(--suave); }
+a.b { text-decoration: none; display: inline-block; }
+.informe p { margin: 0 0 10px; }
+.informe h3 { margin-top: 18px; }
+.informe ul { margin: 0 0 10px; padding-left: 20px; }
+.informe li { margin-bottom: 6px; }
 .pie { position: fixed; left: 0; right: 0; bottom: 0; background: var(--papel); border-top: 1px solid var(--linea);
   padding: 8px 16px; padding-bottom: max(8px, env(safe-area-inset-bottom)); z-index: 4; }
 .pie .botones { margin: 0 auto; max-width: 980px; justify-content: flex-end; }
@@ -161,6 +178,7 @@ dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-
   header.barra, .pie, .no-imprimir, section.vista[data-vista="empresa"], section.vista[data-vista="datos"] { display: none !important; }
   main { padding: 0; max-width: none; }
   section.vista[hidden] { display: block; }
+  #inicio { display: none !important; }
   .tarjeta { border: 0; box-shadow: none; padding: 0; margin: 0; }
   .reporte { break-after: page; }
   .reporte:last-child { break-after: auto; }
@@ -184,12 +202,33 @@ dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-
     <button role="tab" data-ir="resultados" aria-selected="false">Resultados</button>
     <button role="tab" data-ir="situacion" aria-selected="false">Situación financiera</button>
     <button role="tab" data-ir="tributos" aria-selected="false">Tributos e indicadores</button>
+    <button role="tab" data-ir="informe" aria-selected="false">Informe</button>
   </nav>
 </header>
 
 <main>
   <!-- ======================= EMPRESA ======================= -->
   <section class="vista" data-vista="empresa">
+    <div class="tarjeta inicio" id="inicio" hidden>
+      <h2>Empiece en un minuto</h2>
+      <p class="ayuda">Elija cómo traer los números. Todo se queda en este equipo.</p>
+      <div class="caminos">
+        <label class="camino" for="f-archivo-inicio">
+          <b>Subir el balance del contador</b>
+          <span>Excel (.xlsx), CSV o TXT del sistema contable. Los estados salen solos.</span>
+        </label>
+        <input type="file" id="f-archivo-inicio" accept=".xlsx,.csv,.txt,text/csv,text/plain" hidden>
+        <button class="camino" id="b-a-mano">
+          <b>Llenarlo a mano</b>
+          <span>Unos 20 montos: caja, clientes, mercadería, deudas, ventas y gastos.</span>
+        </button>
+        <button class="camino" id="b-ejemplo-inicio">
+          <b>Ver un ejemplo</b>
+          <span>Una comercializadora ficticia con dos años, para conocer la app.</span>
+        </button>
+      </div>
+    </div>
+
     <div class="tarjeta">
       <h2>Datos de la empresa</h2>
       <div class="rejilla">
@@ -228,7 +267,8 @@ dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-
           <input id="e-domicilio" placeholder="Av. … Lima">
         </label>
       </div>
-      <h3>Firmas de los estados</h3>
+      <details class="mas">
+      <summary>Firmas de los estados (opcional)</summary>
       <div class="rejilla">
         <label class="campo">Gerente / representante legal
           <input id="e-gerente">
@@ -240,6 +280,7 @@ dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-
           <input id="e-matricula" placeholder="Ej. 12345">
         </label>
       </div>
+      </details>
     </div>
 
     <div class="tarjeta">
@@ -253,6 +294,10 @@ dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-
           <input id="j-uit" inputmode="decimal">
           <span class="ayuda">2024: 5,150 · 2025: 5,350 · 2026: 5,500</span>
         </label>
+      </div>
+      <details class="mas">
+      <summary>Ajustes de presentación y tributarios (opcional)</summary>
+      <div class="rejilla">
         <label class="campo">Préstamos de largo plazo dentro de la cuenta 45 (S/)
           <input id="j-lp" inputmode="decimal" placeholder="0.00">
           <span class="ayuda">Lo que vence después de 12 meses; el resto se presenta corriente.</span>
@@ -262,8 +307,7 @@ dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-
           <span class="ayuda">Sólo si no usa las cuentas 94 y 95. Sin dato, todo va a administración.</span>
         </label>
       </div>
-      <h3>Ajustes tributarios (para la renta neta)</h3>
-      <div class="rejilla">
+
         <label class="campo">Adiciones (gastos no deducibles)
           <input id="j-adiciones" inputmode="decimal" placeholder="0.00">
         </label>
@@ -277,6 +321,7 @@ dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-
           <input id="j-pagos" inputmode="decimal" placeholder="0.00">
         </label>
       </div>
+      </details>
       <div class="botones">
         <button class="b" id="b-nuevo-ej">Nuevo ejercicio</button>
         <button class="b peligro" id="b-borrar-ej">Borrar este ejercicio</button>
@@ -296,6 +341,7 @@ dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-
       </div>
       <p class="ayuda" id="modo-ayuda"></p>
       <div id="cuadre" class="aviso"></div>
+      <p class="ayuda" id="import-ayuda" aria-live="polite"></p>
 
       <div id="vista-simple"></div>
 
@@ -306,14 +352,19 @@ dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-
         <div class="tabla-scroll">
           <table class="bc" id="tabla-bc"></table>
         </div>
-        <h3>Pegar desde Excel o el sistema contable</h3>
+        <h3>Traer el balance del contador</h3>
+        <div class="soltar" id="soltar">
+          <label class="b primario" for="f-archivo">Subir archivo</label>
+          <input type="file" id="f-archivo" accept=".xlsx,.csv,.txt,text/csv,text/plain" hidden>
+          <span class="ayuda">o arrástrelo aquí · Excel (.xlsx), CSV o TXT. Reconoce el formato de 8 y 10 columnas por su encabezado («deudor», «acreedor»).</span>
+        </div>
+        <h3>O pegarlo</h3>
         <p class="ayuda">Una cuenta por línea: <b>código · nombre · deudor · acreedor</b>, separados por tabulación
           (copiar y pegar de Excel), punto y coma o coma. Las subcuentas se suman a su cuenta de dos dígitos
           (101, 1041 → 10). Reemplaza los saldos del ejercicio.</p>
         <textarea id="pegado" rows="5" placeholder="1041	Cuentas corrientes operativas	92850.00	0.00"></textarea>
         <div class="botones"><button class="b primario" id="b-importar">Importar saldos</button>
           <button class="b peligro" id="b-limpiar">Poner todo en cero</button></div>
-        <p class="ayuda" id="import-ayuda"></p>
       </div>
     </div>
   </section>
@@ -333,6 +384,24 @@ dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-
     <div class="tarjeta reporte" id="rep-trib"></div>
     <div class="tarjeta reporte" id="rep-ind"></div>
   </section>
+
+  <!-- ======================= INFORME ======================= -->
+  <section class="vista" data-vista="informe" hidden>
+    <div class="tarjeta reporte" id="rep-informe"></div>
+    <div class="tarjeta no-imprimir">
+      <h2>Compartir y profundizar</h2>
+      <div class="botones" style="margin-top:0">
+        <button class="b primario" id="b-copiar-informe">Copiar informe</button>
+        <a class="b" id="b-whatsapp" target="_blank" rel="noopener">Enviar por WhatsApp</a>
+      </div>
+      <h3>Preguntarle a una IA</h3>
+      <p class="ayuda">Este texto lleva los dos estados y los indicadores, sin el RUC ni nombres. Cópielo y péguelo en
+        Claude, ChatGPT o Gemini para pedir un análisis más fino o un plan de acción. Lo envía usted: la app no manda nada.</p>
+      <textarea id="prompt-ia" rows="7" readonly></textarea>
+      <div class="botones"><button class="b" id="b-copiar-ia">Copiar para la IA</button></div>
+      <p class="ayuda" id="copiado" aria-live="polite"></p>
+    </div>
+  </section>
 </main>
 
 <div class="pie">
@@ -340,7 +409,7 @@ dl.trib .fuerte { font-weight: 700; border-top: 1px solid var(--tinta); padding-
     <span id="estado-guardado"></span>
     <button class="b" id="b-csv">Excel (CSV)</button>
     <button class="b" id="b-respaldo">Respaldo</button>
-    <label class="b" style="display:inline-block" for="f-restaurar">Restaurar</label>
+    <label class="b" style="display:inline-flex;align-items:center" for="f-restaurar">Restaurar</label>
     <input type="file" id="f-restaurar" accept="application/json,.json" hidden>
     <button class="b primario" id="b-imprimir">Imprimir / PDF</button>
   </div>
@@ -919,6 +988,7 @@ function listaFuera(r) {
   return r.fuera.map(function (f) { return f.cta + " (S/ " + soles(f.saldo) + ")"; }).join(", ");
 }
 
+var ultimoInforme = "";
 function render() {
   var j = ej(), ja = anterior();
   var r = calcular(j, E.empresa), ra = ja ? calcular(ja, E.empresa) : null;
@@ -968,6 +1038,17 @@ function render() {
     c.className = "aviso mal";
     c.innerHTML = "No cuadra por S/ " + soles(r.diferencia) + "." + detalle;
   }
+  // Informe y lo que se comparte
+  var sec = escribirInforme(r, ra);
+  document.getElementById("rep-informe").innerHTML = informeHtml(sec);
+  ultimoInforme = informeTexto(sec);
+  document.getElementById("b-whatsapp").href = "https://wa.me/?text=" + encodeURIComponent(ultimoInforme);
+  document.getElementById("prompt-ia").value = promptIA(r, ra);
+
+  // El arranque se muestra sólo mientras no hay ningún saldo en ningún año.
+  document.getElementById("inicio").hidden = Object.keys(E.ejercicios).some(function (a) {
+    return Object.keys(E.ejercicios[a].saldos || {}).length; });
+
   var tot = document.getElementById("bc-totales");
   if (tot) tot.innerHTML = '<td></td><td>Totales</td><td style="text-align:right">' + soles(r.debe) +
     '</td><td style="text-align:right">' + soles(r.haber) + '</td>';
@@ -1058,6 +1139,140 @@ function vistaIndicadores(r, ra) {
   return h;
 }
 
+
+/* ------------------------------------------------------------------
+   Informe para el gerente. Se escribe solo, con reglas fijas sobre los
+   estados y los indicadores: no hay IA detrás ni datos que salgan del
+   equipo. Lo que una persona tardaría una hora en redactar.
+   ------------------------------------------------------------------ */
+function escribirInforme(r, ra) {
+  var x = r.er, e = r.esf, i = indicadores(r), ia = ra ? indicadores(ra) : null;
+  var anio = E.actual, antes = String(+E.actual - 1);
+  var secciones = [], resumen = [], salud = [], acciones = [];
+  var nombre = E.empresa.razon || "La empresa";
+
+  if (!x.ventas && !e.activo) return [{ h: "Informe", p: ["Aún no hay saldos en " + anio + ". Cargue el balance o llene los rubros para que el informe se escriba solo."] }];
+  if (Math.abs(r.diferencia) >= 0.5)
+    resumen.push("Antes de usar este informe: los estados no cuadran por S/ " + soles(r.diferencia) + ". Corrija los saldos en la pestaña Saldos.");
+
+  var frase = nombre + " vendió S/ " + soles(x.ventas) + " al " + fechaLarga(ej().corte);
+  if (ra && ra.er.ventas) {
+    var crec = (x.ventas - ra.er.ventas) / Math.abs(ra.er.ventas);
+    frase += ", " + (crec >= 0 ? "un " + pct(crec) + " más" : "un " + pct(-crec) + " menos") + " que en " + antes;
+  }
+  frase += x.neta >= 0
+    ? ". Ganó S/ " + soles(x.neta) + (x.ventas ? ": S/ " + (i.mNeto * 100).toFixed(1) + " por cada S/ 100 vendidos." : ".")
+    : ". Perdió S/ " + soles(-x.neta) + ".";
+  resumen.push(frase);
+  if (ia && isFinite(i.mBruto) && isFinite(ia.mBruto)) {
+    var dpp = (i.mBruto - ia.mBruto) * 100;
+    if (dpp <= -2) resumen.push("El margen bruto bajó de " + pct(ia.mBruto) + " a " + pct(i.mBruto) + ": se está vendiendo más barato o comprando más caro.");
+    else if (dpp >= 2) resumen.push("El margen bruto subió de " + pct(ia.mBruto) + " a " + pct(i.mBruto) + ".");
+  }
+  if (ra && ra.er.ventas && x.ventas) {
+    var gOp = (x.gVen + x.gAdm) / x.ventas, gOpA = (ra.er.gVen + ra.er.gAdm) / ra.er.ventas;
+    if (gOp - gOpA >= 0.02) resumen.push("Los gastos de ventas y administración pesan más: " + pct(gOp) + " de las ventas, frente a " + pct(gOpA) + " en " + antes + ".");
+  }
+
+  if (isFinite(i.liquidez)) {
+    if (i.liquidez < 1) {
+      salud.push("Liquidez en riesgo: debe S/ " + soles(e.pc) + " en los próximos 12 meses y tiene S/ " + soles(e.ac) + " para cubrirlo (" + i.liquidez.toFixed(2) + " por cada sol).");
+      acciones.push("Pida más plazo a los proveedores o pase deuda de corto a largo plazo con su banco o caja.");
+    } else salud.push("Liquidez " + (i.liquidez >= 1.5 ? "holgada" : "ajustada") + ": tiene S/ " + i.liquidez.toFixed(2) + " por cada sol que vence en el año.");
+  }
+  if (isFinite(i.endeud)) {
+    salud.push("El " + pct(i.endeud) + " de lo que tiene la empresa está financiado por terceros" +
+      (i.endeud > 0.7 ? ": es alto." : i.endeud > 0.5 ? ": moderado." : ": bajo."));
+    if (i.endeud > 0.7) acciones.push("No tome deuda nueva hasta bajar el endeudamiento; use las utilidades para amortizar.");
+  }
+  if (isFinite(i.roe) && x.neta > 0) salud.push("Cada S/ 100 que pusieron los dueños rindió S/ " + (i.roe * 100).toFixed(1) + " en el período.");
+  var ciclo = (isFinite(i.diasInv) ? i.diasInv : 0) + (isFinite(i.diasCob) ? i.diasCob : 0) - (isFinite(i.diasPag) ? i.diasPag : 0);
+  if (isFinite(i.diasInv) || isFinite(i.diasCob))
+    salud.push("Ciclo de caja: " + Math.round(ciclo) + " días entre que paga la mercadería y cobra la venta.");
+
+  if (x.neta < 0) acciones.push("Está perdiendo: revise primero los precios y después los gastos fijos que no generan ventas.");
+  if (isFinite(i.diasCob) && i.diasCob > 45) acciones.push("Los clientes tardan " + Math.round(i.diasCob) + " días en pagar: ofrezca descuento por pronto pago o pida adelantos.");
+  if (isFinite(i.diasInv) && i.diasInv > 90) acciones.push("Hay mercadería para " + Math.round(i.diasInv) + " días: compre en lotes más chicos y liquide lo que no rota.");
+  if (ia && isFinite(i.mBruto) && isFinite(ia.mBruto) && i.mBruto < ia.mBruto - 0.02) acciones.push("Actualice la lista de precios con el costo de reposición, no con el de compra anterior.");
+
+  var t = r.trib, imp = [];
+  imp.push((x.estimado ? "Impuesto a la renta estimado" : "Impuesto a la renta registrado") + ": S/ " + soles(x.ir) + " (" + REGIMEN_TXT[E.empresa.regimen] + ").");
+  var pagos = num(ej().pagos);
+  if (pagos && (E.empresa.regimen === "RMT" || E.empresa.regimen === "RG")) {
+    var saldoIR = t.impuesto - pagos;
+    imp.push(saldoIR >= 0 ? "Separe S/ " + soles(saldoIR) + " para la regularización de la declaración anual." : "Tendría un saldo a favor de S/ " + soles(-saldoIR) + ".");
+    if (saldoIR > 0) acciones.push("Reserve hoy S/ " + soles(saldoIR) + " para el impuesto anual, para que no salga de la caja de un solo golpe.");
+  }
+  t.alertas.forEach(function (a) { if (a[0] === "mal") { imp.push(a[1]); acciones.push(a[1]); } });
+  t.alertas.forEach(function (a) { if (a[0] !== "mal" && /podría acogerse/.test(a[1])) acciones.push(a[1]); });
+
+  if (!acciones.length) acciones.push("Los indicadores están sanos: mantenga el control mensual y compare contra este mismo informe el próximo mes.");
+
+  secciones.push({ h: "Resumen", p: resumen });
+  secciones.push({ h: "Salud financiera", p: salud });
+  secciones.push({ h: "Impuestos", p: imp });
+  secciones.push({ h: "Qué hacer", li: acciones });
+  return secciones;
+}
+function informeHtml(sec) {
+  return '<div class="informe">' + membrete("INFORME DE GESTIÓN", "Al " + fechaLarga(ej().corte)) +
+    sec.map(function (x) {
+      return '<h3>' + x.h + '</h3>' + (x.p ? x.p.map(function (t) { return '<p>' + esc(t) + '</p>'; }).join("") : "") +
+        (x.li ? '<ul>' + x.li.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("") + '</ul>' : "");
+    }).join("") +
+    '<p class="notas">Escrito automáticamente con reglas fijas a partir de los estados. Revíselo antes de enviarlo.</p></div>';
+}
+function informeTexto(sec) {
+  var L = ["*Informe de gestión " + E.actual + "*" + (E.empresa.razon ? " · " + E.empresa.razon : "")];
+  sec.forEach(function (x) {
+    L.push("", "*" + x.h + "*");
+    (x.p || []).forEach(function (t) { L.push(t); });
+    (x.li || []).forEach(function (t) { L.push("• " + t); });
+  });
+  return L.join("\n");
+}
+function promptIA(r, ra) {
+  var em = E.empresa, anio = E.actual, antes = String(+E.actual - 1);
+  function col(v) { return soles(v); }
+  var L = [
+    "Eres analista financiero de micro y pequeñas empresas del Perú. Analiza estos estados financieros " +
+      "(soles, PCGE 2019, " + REGIMEN_TXT[em.regimen] + ", actividad: " + ACTIVIDAD_TXT[em.actividad] +
+      ", " + (Math.floor(num(em.trabajadores)) || 0) + " trabajadores, corte al " + fechaLarga(ej().corte) + ").",
+    "Dame en lenguaje simple: 1) diagnóstico en 5 líneas, 2) los 3 riesgos principales, 3) un plan de 90 días con acciones concretas y medibles, " +
+      "4) qué conviene revisar en lo tributario con SUNAT. No inventes datos que no estén aquí.",
+    "", "ESTADO DE RESULTADOS (" + anio + (ra ? " | " + antes : "") + ")"
+  ];
+  var a = vistaER(r), b = ra ? vistaER(ra) : null;
+  filasER(Object.assign({ trib: r.trib }, r.er)).forEach(function (f) {
+    if (Math.abs(a[f[2]]) < 0.005 && (!b || Math.abs(b[f[2]]) < 0.005)) return;
+    L.push("- " + f[1] + ": " + col(a[f[2]]) + (b ? " | " + col(b[f[2]]) : ""));
+  });
+  L.push("", "ESTADO DE SITUACIÓN FINANCIERA (" + anio + (ra ? " | " + antes : "") + ")");
+  FILAS_ESF.forEach(function (f) {
+    if (f[0] === "g") return;
+    var v = r.esf[f[2]], w = ra ? ra.esf[f[2]] : null;
+    if (Math.abs(v) < 0.005 && (!ra || Math.abs(w) < 0.005)) return;
+    L.push("- " + f[1] + ": " + col(v) + (ra ? " | " + col(w) : ""));
+  });
+  var i = indicadores(r);
+  L.push("", "INDICADORES " + anio);
+  L.push("- Liquidez corriente: " + (isFinite(i.liquidez) ? i.liquidez.toFixed(2) : "—") + "; prueba ácida: " + (isFinite(i.acida) ? i.acida.toFixed(2) : "—"));
+  L.push("- Endeudamiento: " + pct(i.endeud) + "; ROE: " + pct(i.roe) + "; margen neto: " + pct(i.mNeto));
+  L.push("- Días de inventario: " + (isFinite(i.diasInv) ? Math.round(i.diasInv) : "—") + "; de cobro: " + (isFinite(i.diasCob) ? Math.round(i.diasCob) : "—") + "; de pago: " + (isFinite(i.diasPag) ? Math.round(i.diasPag) : "—"));
+  return L.join("\n");
+}
+function copiar(texto, aviso) {
+  var el = document.getElementById("copiado");
+  function listo() { el.className = "ayuda bien"; el.textContent = aviso; }
+  function aMano() {
+    var t = document.createElement("textarea"); t.value = texto; document.body.appendChild(t); t.select();
+    try { document.execCommand("copy"); listo(); } catch (e) { el.textContent = "Seleccione el texto y cópielo a mano."; }
+    t.remove();
+  }
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(texto).then(listo, aMano);
+  else aMano();
+}
+
 /* ------------------------------------------------------------------
    Ingreso de saldos
    ------------------------------------------------------------------ */
@@ -1117,29 +1332,139 @@ function llenarPCGE() {
 }
 
 function importar(texto) {
-  var acumulado = {}, leidas = 0, omitidas = 0;
+  var filas = [], omitidas = 0, colD = -1, colA = -1;
   texto.split(/\r?\n/).forEach(function (linea) {
     if (!linea.trim()) return;
     var sep = linea.indexOf("\t") >= 0 ? "\t" : linea.indexOf(";") >= 0 ? ";" : linea.indexOf("|") >= 0 ? "|" : ",";
     var campos = linea.split(sep).map(function (x) { return x.trim(); });
     var cod = (campos[0] || "").replace(/\s/g, "");
-    if (!/^\d{2,}/.test(cod)) { omitidas++; return; }
-    var c = cod.slice(0, 2);
-    // Los dos últimos campos numéricos son deudor y acreedor (vacío cuenta
-    // como cero); con uno solo, el signo decide.
-    var vals = campos.slice(1).filter(function (x) { return x === "" || /^\(?(S\/)?-?[\d.,]+\)?-?$/.test(x); });
-    while (vals.length > 2 && vals[0] === "") vals.shift();
-    if (!vals.some(function (x) { return /\d/.test(x); })) { omitidas++; return; }
+    if (!/^\d{2,}$/.test(cod)) {
+      // Encabezado del formato de 8 o 10 columnas: las sumas dicen «debe /
+      // haber» y los saldos «deudor / acreedor». Se toman las de los saldos.
+      var bajo = campos.map(function (x) { return x.toLowerCase(); });
+      var iD = bajo.findIndex(function (x) { return /deudor/.test(x); });
+      var iA = bajo.findIndex(function (x) { return /acreedor/.test(x); });
+      if (iD > 0 && iA > 0) { colD = iD; colA = iA; }
+      omitidas++; return;
+    }
     var d = 0, a = 0;
-    if (vals.length >= 2) { d = num(vals[vals.length - 2]); a = num(vals[vals.length - 1]); }
-    else { var v = num(vals[0]); if (v >= 0) d = v; else a = -v; }
-    if (!acumulado[c]) acumulado[c] = { d: 0, a: 0 };
-    acumulado[c].d = r2(acumulado[c].d + d); acumulado[c].a = r2(acumulado[c].a + a);
-    leidas++;
+    if (colD > 0) {
+      d = num(campos[colD]); a = num(campos[colA]);
+    } else {
+      // Sin encabezado: los dos últimos campos numéricos son deudor y
+      // acreedor (vacío cuenta como cero); con uno solo, el signo decide.
+      var vals = campos.slice(1).filter(function (x) { return x === "" || /^\(?(S\/)?-?[\d.,]+\)?-?$/.test(x); });
+      while (vals.length > 2 && vals[0] === "") vals.shift();
+      if (!vals.some(function (x) { return /\d/.test(x); })) { omitidas++; return; }
+      if (vals.length >= 2) { d = num(vals[vals.length - 2]); a = num(vals[vals.length - 1]); }
+      else { var v = num(vals[0]); if (v >= 0) d = v; else a = -v; }
+    }
+    filas.push({ cod: cod, d: d, a: a });
   });
-  if (!leidas) return { leidas: 0, omitidas: omitidas };
+  // Si vienen la cuenta y sus subcuentas (10, 101, 104), sólo cuentan las
+  // del nivel más fino: sumar las dos duplicaría el saldo.
+  var hojas = filas.filter(function (f) {
+    return !filas.some(function (g) { return g.cod.length > f.cod.length && g.cod.indexOf(f.cod) === 0; });
+  });
+  omitidas += filas.length - hojas.length;
+  if (!hojas.length) return { leidas: 0, omitidas: omitidas };
+  var acumulado = {};
+  hojas.forEach(function (f) {
+    var c = f.cod.slice(0, 2);
+    if (!acumulado[c]) acumulado[c] = { d: 0, a: 0 };
+    acumulado[c].d = r2(acumulado[c].d + f.d); acumulado[c].a = r2(acumulado[c].a + f.a);
+  });
   ej().saldos = acumulado;
-  return { leidas: leidas, omitidas: omitidas, cuentas: Object.keys(acumulado).length };
+  return { leidas: hojas.length, omitidas: omitidas, cuentas: Object.keys(acumulado).length };
+}
+
+/* ------------------------------------------------------------------
+   Leer el Excel del contador tal como viene (.xlsx), sin librerías: un
+   .xlsx es un zip de XML. Se descomprime con lo que trae el navegador y
+   la primera hoja se convierte en líneas separadas por tabulación, que
+   es lo mismo que pegar desde Excel.
+   ------------------------------------------------------------------ */
+function leerZip(buf) {
+  var dv = new DataView(buf), u8 = new Uint8Array(buf), fin = -1;
+  for (var i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 66000); i--)
+    if (dv.getUint32(i, true) === 0x06054b50) { fin = i; break; }
+  if (fin < 0) throw new Error("no es un archivo .xlsx");
+  var total = dv.getUint16(fin + 10, true), p = dv.getUint32(fin + 16, true), dir = {};
+  var td = new TextDecoder();
+  for (var k = 0; k < total; k++) {
+    var metodo = dv.getUint16(p + 10, true), comp = dv.getUint32(p + 20, true);
+    var ln = dv.getUint16(p + 28, true), lx = dv.getUint16(p + 30, true), lc = dv.getUint16(p + 32, true);
+    var local = dv.getUint32(p + 42, true);
+    var nombre = td.decode(u8.subarray(p + 46, p + 46 + ln));
+    dir[nombre] = { metodo: metodo, comp: comp, local: local };
+    p += 46 + ln + lx + lc;
+  }
+  return function (nombre) {
+    var e = dir[nombre]; if (!e) return Promise.resolve(null);
+    var ini = e.local + 30 + dv.getUint16(e.local + 26, true) + dv.getUint16(e.local + 28, true);
+    var datos = u8.subarray(ini, ini + e.comp);
+    if (e.metodo === 0) return Promise.resolve(td.decode(datos));
+    var flujo = new Blob([datos]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+    return new Response(flujo).text();
+  };
+}
+function xlsxATexto(buf) {
+  var leer = leerZip(buf), xml = new DOMParser();
+  return Promise.all([leer("xl/sharedStrings.xml"), leer("xl/workbook.xml"), leer("xl/_rels/workbook.xml.rels")])
+    .then(function (r) {
+      var textos = [];
+      if (r[0]) Array.prototype.forEach.call(xml.parseFromString(r[0], "application/xml").getElementsByTagName("si"),
+        function (si) { textos.push(Array.prototype.map.call(si.getElementsByTagName("t"), function (t) { return t.textContent; }).join("")); });
+      // La primera hoja del libro, siguiendo su relación; si no, sheet1.
+      var ruta = "xl/worksheets/sheet1.xml";
+      if (r[1] && r[2]) {
+        var hoja = xml.parseFromString(r[1], "application/xml").getElementsByTagName("sheet")[0];
+        var id = hoja && (hoja.getAttribute("r:id") || hoja.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id"));
+        Array.prototype.forEach.call(xml.parseFromString(r[2], "application/xml").getElementsByTagName("Relationship"), function (rel) {
+          if (rel.getAttribute("Id") === id) ruta = "xl/" + rel.getAttribute("Target").replace(/^\/?xl\//, "").replace(/^\//, "");
+        });
+      }
+      return leer(ruta).then(function (hojaXml) {
+        if (!hojaXml) throw new Error("el libro no tiene hojas");
+        var lineas = [];
+        Array.prototype.forEach.call(xml.parseFromString(hojaXml, "application/xml").getElementsByTagName("row"), function (row) {
+          var celdas = [];
+          Array.prototype.forEach.call(row.getElementsByTagName("c"), function (c) {
+            var col = (c.getAttribute("r") || "").replace(/\d+/g, ""), idx = 0;
+            for (var q = 0; q < col.length; q++) idx = idx * 26 + col.charCodeAt(q) - 64;
+            var t = c.getAttribute("t"), v = c.getElementsByTagName("v")[0], val = "";
+            if (t === "s" && v) val = textos[+v.textContent] || "";
+            else if (t === "inlineStr") val = Array.prototype.map.call(c.getElementsByTagName("t"), function (x) { return x.textContent; }).join("");
+            else if (v) val = v.textContent;
+            celdas[(idx || celdas.length + 1) - 1] = String(val).replace(/[\t\r\n]/g, " ");
+          });
+          for (var z = 0; z < celdas.length; z++) if (celdas[z] == null) celdas[z] = "";
+          lineas.push(celdas.join("\t"));
+        });
+        return lineas.join("\n");
+      });
+    });
+}
+function importarArchivo(archivo) {
+  var ay = document.getElementById("import-ayuda");
+  var esXlsx = /\.xlsx$/i.test(archivo.name);
+  var lectura = esXlsx ? archivo.arrayBuffer().then(xlsxATexto) : archivo.text();
+  return lectura.then(function (texto) {
+    var r = importar(texto);
+    mostrarImportacion(r, archivo.name);
+    return r;
+  }).catch(function (err) {
+    ay.className = "ayuda mal";
+    ay.textContent = "No se pudo leer " + archivo.name + ": " + err.message + ". Si es .xls antiguo, guárdelo como .xlsx o CSV.";
+  });
+}
+function mostrarImportacion(r, origen) {
+  var ay = document.getElementById("import-ayuda");
+  if (!r.leidas) { ay.className = "ayuda mal"; ay.textContent = "No se reconoció ninguna línea con código de cuenta y montos."; return; }
+  ay.className = "ayuda bien";
+  ay.textContent = (origen ? origen + ": " : "") + r.leidas + " líneas leídas en " + r.cuentas + " cuentas" +
+    (r.omitidas ? " · " + r.omitidas + " omitidas (títulos, totales o cuentas resumen)" : "") + ".";
+  guardar(); construirPCGE(); llenarPCGE(); llenarSimple(); render();
 }
 
 /* ------------------------------------------------------------------
@@ -1332,18 +1657,42 @@ document.getElementById("b-ejemplo").onclick = function () {
   ejemplo(); guardar(); todo(); irA("resultados");
 };
 document.getElementById("b-importar").onclick = function () {
-  var r = importar(document.getElementById("pegado").value), ay = document.getElementById("import-ayuda");
-  if (!r.leidas) { ay.className = "ayuda mal"; ay.textContent = "No se reconoció ninguna línea con código de cuenta y montos."; return; }
-  ay.className = "ayuda bien";
-  ay.textContent = r.leidas + " líneas leídas en " + r.cuentas + " cuentas" + (r.omitidas ? " · " + r.omitidas + " omitidas (títulos o totales)" : "") + ".";
-  document.getElementById("pegado").value = "";
-  guardar(); construirPCGE(); llenarPCGE(); llenarSimple(); render();
+  var r = importar(document.getElementById("pegado").value);
+  if (r.leidas) document.getElementById("pegado").value = "";
+  mostrarImportacion(r);
 };
 document.getElementById("b-limpiar").onclick = function () {
   if (!confirm("¿Poner en cero todos los saldos de " + E.actual + "?")) return;
   ej().saldos = {}; guardar(); cambio();
 };
 document.getElementById("b-csv").onclick = csv;
+document.getElementById("b-copiar-informe").onclick = function () { copiar(ultimoInforme, "Informe copiado. Péguelo en un correo o mensaje."); };
+document.getElementById("b-copiar-ia").onclick = function () {
+  copiar(document.getElementById("prompt-ia").value, "Copiado. Péguelo en Claude, ChatGPT o Gemini.");
+};
+function alSubir(input, despues) {
+  input.onchange = function () {
+    var f = this.files && this.files[0]; this.value = "";
+    if (!f) return;
+    importarArchivo(f).then(function (r) {
+      if (r && r.leidas) { E.modo = "pcge"; guardar(); aplicarModo(); if (despues) despues(); }
+    });
+  };
+}
+alSubir(document.getElementById("f-archivo"));
+alSubir(document.getElementById("f-archivo-inicio"), function () { irA("resultados"); });
+document.getElementById("b-a-mano").onclick = function () { E.modo = "simple"; guardar(); aplicarModo(); irA("datos"); };
+document.getElementById("b-ejemplo-inicio").onclick = function () { document.getElementById("b-ejemplo").click(); };
+(function () {
+  var zona = document.getElementById("soltar");
+  ["dragenter", "dragover"].forEach(function (t) { zona.addEventListener(t, function (ev) { ev.preventDefault(); zona.classList.add("encima"); }); });
+  ["dragleave", "drop"].forEach(function (t) { zona.addEventListener(t, function () { zona.classList.remove("encima"); }); });
+  zona.addEventListener("drop", function (ev) {
+    ev.preventDefault();
+    var f = ev.dataTransfer && ev.dataTransfer.files[0];
+    if (f) importarArchivo(f);
+  });
+})();
 document.getElementById("b-respaldo").onclick = function () {
   descargar("respaldo-eeff-" + (E.empresa.ruc || "mype") + ".json", "application/json", JSON.stringify(E, null, 1));
 };
@@ -1372,7 +1721,7 @@ if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
 }
 
 // Para las pruebas automáticas: el cálculo, sin pasar por la pantalla.
-window.EEFF = { calcular: calcular, num: num, validarRuc: validarRuc, importar: importar,
+window.EEFF = { calcular: calcular, num: num, validarRuc: validarRuc, importar: importar, xlsxATexto: xlsxATexto,
   estado: function () { return E; } };
 </script>
 </body>
