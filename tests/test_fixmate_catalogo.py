@@ -318,3 +318,48 @@ def test_la_palabra_inequivoca_pesa_tambien_en_la_causa_del_taller(tmp_path):
     # es «cavitacion», que solo puede ser una cosa.
     entrada = ampliado.clasificar("ruido de cavitación en la bomba")
     assert entrada is not None and entrada.codigo == "HID.CAVITACION.ASPIRACION"
+
+
+# ------------------------- lo generico y lo especifico no pueden empatar
+
+@pytest.mark.parametrize("texto, codigo", [
+    # Nombra el cilindro: gana la entrada que lo nombra.
+    ("Sello del vástago cortado en el cilindro de levante.",
+     "HID.FUGA.CILINDRO_PLUMA"),
+    ("rectificado de hilo de vástago de cilindro pendular",
+     "HID.FUGA.CILINDRO_PLUMA"),
+    ("rectificado de hilo de émbolo de cilindro pendular",
+     "HID.FUGA.CILINDRO_PLUMA"),
+    # No lo nombra: gana el sello genérico, que es lo correcto.
+    ("Sello del vástago cortado por rebaba en el cromado.", "HID.FUGA.SELLO"),
+    ("Sello del vástago vencido", "HID.FUGA.SELLO"),
+    ("sellos goteando en el cilindro del brazo", "HID.FUGA.SELLO"),
+])
+def test_nombrar_el_cilindro_decide_entre_lo_generico_y_lo_especifico(texto, codigo):
+    """Dos entradas que describen bien la misma falla empatan, y el empate se
+    abstiene. Pero aquí el texto **sí** alcanza: dice de qué cilindro habla.
+
+    Pasó de verdad. Al agregar la entrada de cilindro de pluma, «Sello del
+    vástago cortado en el cilindro de levante» quedó 9 a 9 contra el sello
+    genérico —`sello` pesaba 3, `levante` pesaba 3, el resto compartido— y se
+    quedó sin código, con el nombre del cilindro escrito en la propia frase.
+    Nombrar cuál es más información que decir que se fue un sello.
+    """
+    entrada = POR_DEFECTO.clasificar(texto)
+    assert entrada is not None, f"no reconoció «{texto}»"
+    assert entrada.codigo == codigo
+
+
+def test_el_nombre_de_una_pieza_no_es_una_causa():
+    """Lo que trae un historial real son líneas de compra, no diagnósticos.
+
+    «Manguera hidráulica de telescopio» es lo que se pidió al almacén, no por
+    qué falló la máquina. Codificarlo sería adivinar, y el catálogo prefiere
+    contarlo como sin codificar: ese número es lo que falta por escribir en el
+    taller, y borrarlo con una suposición es perder la única señal honesta.
+    """
+    for linea in ("MANGUERA HIDRAULICA DE TELESCOPIO",
+                  "MANGUERA HIDRAULICA DE ESTABILIZADOR",
+                  "SERVICIO DE VULCANIZADO DE LLANTAS 445/65D22.5",
+                  "KIT DE ORINES DE MANGUERAS HIDRAULICAS"):
+        assert POR_DEFECTO.clasificar(linea) is None, linea

@@ -369,13 +369,14 @@ rubro—:
 | **Mecanismo** | el proceso físico | `Desgaste` |
 | **Causa** | la condición raíz | `Sello o retén de cilindro vencido` |
 
-36 entradas de fábrica, repartidas así:
+41 entradas de fábrica, repartidas así:
 
 | Sistema | Entradas |
 |---|---|
 | `admision` | 2 |
 | `combustible` | 4 |
 | `electrico` | 6 |
+| `elevacion` | 5 |
 | `escape` | 1 |
 | `estructura` | 3 |
 | `frenos` | 1 |
@@ -455,12 +456,47 @@ inyección y la de agua.
 
 El catálogo está espejado en el motor del teléfono, y ese espejo **se
 genera**: `python herramientas/espejo-catalogo.py` lo reescribe desde el
-Python, y una prueba se pone roja si quedó viejo. Treinta y seis entradas y
-casi doscientas pistas no se copian a mano sin errarle a una, y dos catálogos
+Python, y una prueba se pone roja si quedó viejo. Cuarenta y una entradas y
+más de doscientas pistas no se copian a mano sin errarle a una, y dos catálogos
 que se separan no dan error en ninguna parte: el teléfono agrupa una causa, la
 oficina la agrupa distinto, los dos informes se ven razonables. Aparte, otra
 prueba corre el JavaScript de la app con los mismos textos y compara código
 por código, incluidos los que los dos tienen que rechazar.
+
+### El historial que de verdad llega
+
+Todo lo de arriba da por hecho un historial de una fila por orden con una
+columna de causa raíz. Eso es lo que se pide en una plantilla. Lo que exporta
+un sistema de mantenimiento de verdad es otra cosa, y hasta que apareció un
+archivo real no se sabía cuánta:
+
+| | la plantilla | el export de verdad |
+|---|---|---|
+| estructura | una fila por orden | la cabecera repetida 40 veces, con 20 a 90 filas debajo de cada una |
+| causa raíz | una columna | **no existe**: en 13 años y 10.894 horas de un manlift, nadie escribió por qué falló |
+| material | una celda | una fila por línea, con la fecha de despacho delante y el nombre del técnico detrás |
+| horómetro | `2810.0` | `10,894.40`, con separador de millares |
+
+`nefer/fixmate/historial_bloques.py` lee esa forma, y `nefer fixmate indexar`
+la reconoce sola: antes caía en «manual» y se indexaba como prosa, que es igual
+que no indexarla.
+
+**Lo que no se sabe no se rellena.** La causa raíz queda vacía y `cobertura()`
+la cuenta como sin codificar, porque deducirla de lo que se cambió la
+convertiría en un dato que no es. Lo que sí se puede decir de un historial sin
+causas es el ritmo de uso, el próximo servicio y dónde se va el dinero por
+sistema — y eso se dice.
+
+Dos cosas se separan porque venían pegadas y hacían daño:
+
+- **El nombre del técnico**, que cierra cada línea de material. Es dato útil
+  —quién lo hizo— y es basura dentro de la descripción de una pieza: con el
+  nombre pegado, `ACEITE 15W40 RIMULA R4X SHELL` son seis repuestos distintos
+  en vez de uno, uno por técnico que lo pidió. Se parte en dos y no se pierde
+  ninguno.
+- **Una orden sin material no se tira.** Su fecha y su horómetro son una
+  lectura, y de las lecturas sale el ritmo. Tirarla perdía, en el archivo real,
+  dos lecturas de un historial de trece años.
 
 ## Lo que el historial anticipa
 

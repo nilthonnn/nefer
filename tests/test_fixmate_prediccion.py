@@ -8,6 +8,8 @@ dos horometros no hay ritmo.
 
 import datetime as dt
 
+import pytest
+
 from nefer.fixmate import prediccion
 from nefer.fixmate.indice import Fragmento, Indice
 
@@ -223,3 +225,72 @@ def test_un_horometro_que_retrocede_se_dice_y_no_se_promedia():
 
     parte = prediccion.pronostico(indice, "GE074-01", HOY)
     assert any("no desanda horas" in a for a in parte.avisos)
+
+
+# ------------------------------- el separador de millares costaba un historial
+
+@pytest.mark.parametrize("celda, esperado", [
+    # El caso que lo destapó: el horómetro de un manlift con trece años encima.
+    ("10,894.40", 10894.40),
+    ("3,557.40", 3557.40),
+    ("9,776.70", 9776.70),
+    # El mismo número como lo escribe media Europa.
+    ("10.894,40", 10894.40),
+    ("1.234.567", 1234567.0),
+    # Sin separador, que es lo único que funcionaba antes.
+    ("10894.40", 10894.40),
+    ("2810.0", 2810.0),
+    # Una sola coma seguida de tres cifras es de millares: nadie anota un
+    # horómetro con tres decimales.
+    ("1,234", 1234.0),
+    # Y con una o dos, es decimal.
+    ("0,5", 0.5),
+    ("15.80", 15.80),
+    ("-12,5", -12.5),
+    (2810.0, 2810.0),
+    (1450, 1450.0),
+    ("", None),
+    ("sin dato", None),
+    (None, None),
+    (True, None),
+])
+def test_el_horometro_se_lee_con_separador_de_millares(celda, esperado):
+    """«10,894.40» se leía **10.894**: la expresión capturaba «10,894», cambiaba
+    la coma por punto y una máquina de diez mil ochocientas horas pasaba a
+    tener once. No daba error, daba números: el ritmo salía 0.0 h/día y el
+    aviso de «el horómetro baja» se disparaba en un historial que no baja.
+
+    No se notaba porque el corpus de ejemplo escribe «2810.0», sin separador,
+    y el separador de millares es lo normal en una hoja de taller peruana.
+    """
+    from nefer.fixmate.prediccion import _numero
+
+    obtenido = _numero(celda)
+    if esperado is None:
+        assert obtenido is None
+    else:
+        assert obtenido == pytest.approx(esperado)
+
+
+def test_el_ritmo_de_uso_sale_bien_con_horometros_separados_por_coma():
+    """La prueba de arriba mira la función; esta mira la consecuencia, que es
+    lo que se publicaba mal."""
+    import datetime as dt
+
+    indice = Indice()
+    indice.agregar([
+        Fragmento(id=f"ot:OT-{n}", texto=f"ORDEN DE TRABAJO OT-{n}",
+                  tipo="informe", fuente="historial.xlsx",
+                  metadatos={"codigo_ot": f"OT-{n}",
+                             "codigo_equipo": "MLAD041-02",
+                             "fecha": fecha, "horometro": horometro,
+                             "causa_raiz": "Sello o reten de cilindro vencido"})
+        for n, (fecha, horometro) in enumerate([
+            ("2024-01-01", "9,000.00"), ("2024-07-01", "10,000.00"),
+            ("2025-01-01", "11,000.00")], 1)])
+
+    parte = prediccion.pronostico(indice, "MLAD041-02", dt.date(2025, 1, 2))
+    assert parte.uso is not None, "no calculó el ritmo"
+    # 2000 h en 366 dias: ~5.46 h/dia. Antes salia 0.0.
+    assert parte.uso.ritmo_horas_dia == pytest.approx(2000 / 366, rel=0.01)
+    assert parte.uso.horometro == pytest.approx(11000.0)

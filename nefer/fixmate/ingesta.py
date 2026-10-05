@@ -28,7 +28,7 @@ import json
 import re
 from pathlib import Path
 
-from . import documentos, texto as _texto
+from . import documentos, historial_bloques, texto as _texto
 from .indice import Fragmento
 
 EXTENSIONES_MANUAL = documentos.EXTENSIONES
@@ -461,11 +461,17 @@ def es_acta_de_nefer(ruta: Path) -> bool:
 
 
 def de_excel(ruta: str | Path, clave: str | None = None) -> list[Fragmento]:
-    """Un Excel puede ser tres cosas distintas; aqui se decide cual es.
+    """Un Excel puede ser cuatro cosas distintas; aqui se decide cual es.
 
     Se prueba de lo mas especifico a lo mas general: acta de nefer, historial
-    de fallas con columnas reconocibles y, si no es ninguno, un manual con
-    una seccion por hoja.
+    de fallas con columnas reconocibles, historial por bloques como lo exporta
+    el sistema del taller y, si no es ninguno, un manual con una seccion por
+    hoja.
+
+    El de bloques va despues del de columnas y antes del manual a proposito:
+    es mas raro que una hoja con titulos arriba, y hasta que existio este
+    lector esos historiales caian en «manual» y se indexaban como prosa, que
+    es lo mismo que no indexarlos.
     """
     ruta = Path(ruta)
     clave = clave or clave_de(ruta)
@@ -474,7 +480,11 @@ def de_excel(ruta: str | Path, clave: str | None = None) -> list[Fragmento]:
     try:
         return de_historial_xlsx(ruta, clave=clave)
     except ErrorIngesta:
-        return de_manual(documentos.leer(ruta), fuente=ruta.name, clave=clave)
+        pass
+    informes = historial_bloques.leer(ruta)
+    if informes:
+        return de_historial(informes, fuente=ruta.name, clave=clave)
+    return de_manual(documentos.leer(ruta), fuente=ruta.name, clave=clave)
 
 
 def de_archivo(ruta: str | Path, raiz=None) -> list[Fragmento]:

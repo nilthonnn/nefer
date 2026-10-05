@@ -702,7 +702,7 @@ var FIXMATE = (function () {
   var CAT_PESO_DE_UNA_SOLA = 3;
   var CAT_PESO_DE_DOS = 2;
   var CAT_PESO_GENERICA = 1;
-  var CAT_INEQUIVOCAS = ["acumulador", "alternador", "cavitacion", "colmatad", "embrague", "inyector", "radiador", "sulfatad", "termostato", "turbo", "vastago"];
+  var CAT_INEQUIVOCAS = ["acumulador", "alternador", "cavitacion", "colmatad", "embrague", "inyector", "levante", "pendular", "radiador", "sulfatad", "telescopio", "termostato", "turbo", "vastago"];
   var CAT_PLANIFICADO = ["programado", "programada", "preventivo", "preventiva", "rutina", "rutinario", "segun plan", "por horas", "mantenimiento de", "servicio de", "pm "];
   var CAT_ENTRADAS = [
     ["ADM.RESTRICCION.FILTRO", "Filtro de aire colmatado", ["filtro", "aire", "colmatad", "tapad", "obstruid", "saturad", "restriccion", "admision", "sucio"]],
@@ -737,6 +737,11 @@ var FIXMATE = (function () {
     ["EST.FISURA.SOLDADURA", "Fisura en soldadura o elemento estructural", ["fisura", "grieta", "soldadura", "rajad", "estructura", "chasis", "quebrad", "trizad"]],
     ["EST.DESGASTE.TREN_RODAJE", "Tren de rodaje o cadena fuera de tolerancia", ["cadena", "rodaje", "zapata", "rodillo", "eslabon", "desgaste", "tension", "oruga"]],
     ["EST.DESGASTE.DIENTES", "Dientes o cuchillas de cucharon gastados", ["diente", "cuchilla", "cucharon", "gastad", "adaptador"]],
+    ["HID.FUGA.CILINDRO_PLUMA", "Cilindro de pluma, pendular o telescopio con sellos vencidos", ["pendular", "telescopio", "levante", "pluma", "embolo", "cilindro", "vastago"]],
+    ["ELE.NO_BAJA.EMERGENCIA", "Bomba o mando de bajada de emergencia inoperativo", ["emergencia", "bajada", "descenso", "auxiliar", "inoperativ", "manual"]],
+    ["ELE.NO_RESPONDE.CANASTILLA", "Joystick, botonera o sensor de canastilla en falla", ["canastilla", "joystick", "botonera", "inductivo", "cesta", "mando", "guardapolvo"]],
+    ["EST.HOLGURA.PINES_BOCINAS", "Pines y bocinas de articulacion o direccion gastados", ["bocina", "pasador", "articulacion", "direccion", "holgura", "buje", "excentrica"]],
+    ["HID.NO_ESTABILIZA.GATO", "Estabilizador o gato de apoyo que no sostiene", ["estabilizador", "gato", "apoyo", "nivelacion", "patin", "asienta"]],
     ["ILU.NO_ENCIENDE.DRIVER", "Driver o conector de foco LED da\u00f1ado", ["driver", "foco", "led", "balasto", "enciende", "parpade", "luminaria", "reflector"]],
     ["LUB.FALTA.NIVEL", "Nivel de aceite bajo por consumo o fuga", ["nivel", "aceite", "consumo", "rellenar", "lubricacion"]],
     ["LUB.VENCIDO.INTERVALO", "Aceite o filtro fuera de intervalo", ["intervalo", "vencid", "atrasad", "sobrepasad", "excedid", "horas"]],

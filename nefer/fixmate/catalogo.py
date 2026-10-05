@@ -71,6 +71,16 @@ INEQUIVOCAS = frozenset({
     "sulfatad", "colmatad", "cavitacion", "termostato", "turbo",
     "alternador", "inyector", "embrague", "radiador", "vastago",
     "acumulador",
+    # Los tres nombran un cilindro concreto de una maquina de elevacion, y en
+    # el rubro no son otra cosa: el pendular nivela la pluma, el de levante la
+    # sube, el de telescopio la alarga. Pesan porque nombrar CUAL cilindro es
+    # mas informacion que decir que se fue un sello, y sin eso la entrada
+    # especifica empataba 9 a 9 con la generica y las dos se abstenian:
+    # «Sello del vastago cortado en el cilindro de levante» se quedaba sin
+    # codigo aunque el texto diga exactamente cual es. Un texto que no nombra
+    # el cilindro —«sello del vastago cortado por rebaba en el cromado»— sigue
+    # yendo al sello generico, que es lo correcto.
+    "pendular", "telescopio", "levante",
 })
 
 # Lo que vale cada pista al ORDENAR. Una pista que usan muchas entradas no
@@ -260,6 +270,36 @@ DE_FABRICA: tuple[Entrada, ...] = (
     _e("EST.DESGASTE.DIENTES", "estructura", "Desgaste excesivo", "Abrasion",
        "Dientes o cuchillas de cucharon gastados",
        "diente", "cuchilla", "cucharon", "gastad", "adaptador"),
+
+    # ------------------------------------------- plataformas de elevacion
+    # Estas cinco salen del historial real de un manlift articulado con trece
+    # anos y 10.894 horas encima: lo que se le cambio, orden por orden. No son
+    # las que trae un catalogo de fabricante, son las que el taller pago.
+    # Lleva «vastago» y no «sello» a proposito: el vastago y el embolo son las
+    # dos piezas que se rectifican en un cilindro de pluma, y nombrarlas es lo
+    # que hace que esta entrada le gane al sello genérico cuando el texto dice
+    # de que cilindro habla. Con «sello» aqui, «Sello del vastago vencido» —sin
+    # mas— empataba con HID.FUGA.SELLO y las dos se abstenian.
+    _e("HID.FUGA.CILINDRO_PLUMA", "elevacion", "Fuga externa o deriva",
+       "Desgaste", "Cilindro de pluma, pendular o telescopio con sellos vencidos",
+       "pendular", "telescopio", "levante", "pluma", "embolo", "cilindro",
+       "vastago"),
+    _e("ELE.NO_BAJA.EMERGENCIA", "elevacion", "No desciende",
+       "Falla de respaldo", "Bomba o mando de bajada de emergencia inoperativo",
+       "emergencia", "bajada", "descenso", "auxiliar", "inoperativ",
+       "manual"),
+    _e("ELE.NO_RESPONDE.CANASTILLA", "elevacion", "Mando sin respuesta",
+       "Falla electrica", "Joystick, botonera o sensor de canastilla en falla",
+       "canastilla", "joystick", "botonera", "inductivo", "cesta", "mando",
+       "guardapolvo"),
+    _e("EST.HOLGURA.PINES_BOCINAS", "elevacion", "Holgura excesiva",
+       "Desgaste", "Pines y bocinas de articulacion o direccion gastados",
+       "bocina", "pasador", "articulacion", "direccion", "holgura", "buje",
+       "excentrica"),
+    _e("HID.NO_ESTABILIZA.GATO", "elevacion", "No nivela",
+       "Fuga interna o desgaste",
+       "Estabilizador o gato de apoyo que no sostiene",
+       "estabilizador", "gato", "apoyo", "nivelacion", "patin", "asienta"),
 
     # ----------------------------------------------------------- iluminacion
     # La torre de iluminacion viaja remolcada y llega sacudida: lo que falla no
