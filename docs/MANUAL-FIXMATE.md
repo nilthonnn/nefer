@@ -295,7 +295,30 @@ Otras órdenes:
 
 ---
 
-## 11. Lo que no hace, dicho aquí
+## 11. RCM: análisis de confiabilidad (en construcción)
+
+Desde esta versión FixMate tiene el esqueleto de un análisis RCM: activo →
+función → falla funcional → modo de falla → efecto → consecuencia, con las
+siete preguntas de SAE JA1011 verificadas y una matriz de decisión que elige
+entre las seis estrategias de mantenimiento y deja escrito por qué.
+
+Todavía **no tiene pantalla ni comandos**: se usa como biblioteca. El diseño
+completo, con lo que hace y lo que no, está en
+[ARQUITECTURA-RCM-TPM.md](ARQUITECTURA-RCM-TPM.md); los casos de prueba
+funcionales, en [CASOS-RCM-TPM-FIXMATE.md](CASOS-RCM-TPM-FIXMATE.md).
+
+Tres cosas conviene saber antes de usarlo:
+
+- **No marca «completo» por cortesía.** El criterio de JA1011 es binario:
+  faltando una de las siete preguntas, el análisis no está completo, y si
+  falta alguna de las cuatro que sostienen la cadena, el resumen dice que
+  todavía no es un análisis RCM.
+- **No trae escala de criticidad.** La matriz es de su empresa. Sin método
+  configurado, la criticidad queda «no evaluada», que no es cero.
+- **Con consecuencia de seguridad nunca sale «operar hasta la falla».** Si
+  ninguna tarea proactiva sirve, la salida es rediseño, y es obligatorio.
+
+## 12. Lo que no hace, dicho aquí
 
 - **La foto todavía no diagnostica.** La consulta es texto o dictado. Reconocer
   la avería en una imagen pide un modelo que necesita red, que es justo lo que
@@ -308,3 +331,14 @@ Otras órdenes:
 - **No es mantenimiento predictivo.** No hay sensores. Lo que hay es analítica
   sobre fechas y horómetro anotados a mano: útil y honesto, pero no es lo
   mismo.
+- **No tiene TPM.** Ni checklist de mantenimiento autónomo ni registro de
+  anomalías. Está diseñado y pendiente de construir.
+- **No genera el plan de tareas.** El análisis RCM dice qué estrategia
+  corresponde; todavía no produce la tarea con su intervalo, herramienta y
+  repuesto.
+- **No calcula costo-efectividad.** No hay un solo dato económico en el
+  sistema. Donde haría falta, dice «información económica insuficiente» y no
+  declara ningún ahorro.
+- **No garantiza que su RCM esté bien hecho.** Exige que las siete preguntas
+  estén respondidas; no puede juzgar si están bien respondidas. Eso pide un
+  facilitador y a los mantenedores en la sala, y eso no es software.
