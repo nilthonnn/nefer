@@ -103,6 +103,20 @@ reportada`, `Descripción de la falla`, `Causa raíz`, `Solución aplicada`,
 `Horómetro`, `Equipo`. Si su encabezado está dos filas abajo del membrete,
 igual lo encuentra.
 
+**Y lee el historial que exporta el sistema, no solo la plantilla.** Esos
+exports no traen una fila por orden: traen la cabecera repetida una vez por
+cada orden, con veinte o noventa filas de material debajo, la fecha de
+despacho delante de cada línea y el nombre del técnico detrás. Eso entra tal
+cual. El nombre del técnico se guarda aparte, para que `ACEITE 15W40 RIMULA
+R4X SHELL` no sean seis repuestos distintos, uno por quien lo pidió.
+
+**Si su historial no trae columna de causa raíz, igual sirve.** Muchos no la
+traen: lo que está escrito es lo que se cambió y lo que hizo el tercero. Con
+eso FixMate le da el ritmo de uso, el próximo servicio y dónde se va el dinero
+por sistema. Lo que **no** va a hacer es inventarle la causa: las órdenes sin
+causa salen contadas como «sin codificar», y ese número es exactamente lo que
+falta por escribir en el taller.
+
 Tres cosas que conviene saber:
 
 - **Lo que se agrega se suma.** El historial de otra faena no borra el
