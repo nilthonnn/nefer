@@ -145,7 +145,6 @@ def _con_lector_propio(ruta: Path) -> str:
 
 _RE_OBJETO = re.compile(rb"(\d+)\s+\d+\s+obj\b(.*?)\bendobj", re.S)
 _RE_FILTROS = re.compile(rb"/Filter\s*(\[[^\]]*\]|/\w+)")
-_RE_REF = re.compile(rb"/%s\s+(\d+)\s+\d+\s+R")
 _RE_FUENTES = re.compile(rb"/Font\s*<<(.*?)>>", re.S)
 _RE_FUENTE = re.compile(rb"/([^\s/<>\[\]]+)\s+(\d+)\s+\d+\s+R")
 _RE_HEX = re.compile(rb"<([0-9A-Fa-f\s]*)>")

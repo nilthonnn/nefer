@@ -216,3 +216,150 @@ def test_agrupar_usa_el_catalogo_y_no_mezcla_lo_que_no_reconoce():
             mapa["corrosión galvánica del tanque de urea"])
     assert mapa["corrosión galvánica en el tanque de urea"] not in {
         e.causa for e in POR_DEFECTO.entradas}
+
+
+# ------------------------------- calificar es una cosa y ordenar es otra
+
+def test_ninguna_pista_sola_alcanza_para_codificar():
+    """Una palabra suelta no es un diagnóstico, ni siquiera «turbo».
+
+    Antes algunas sí codificaban solas, porque la misma cuenta decidía si la
+    entrada entraba en discusión y cuál ganaba: una pista inequívoca valía
+    dos y con eso compraba el mínimo. «turbo», la palabra sola, devolvía
+    «Turbo con holgura o alabes dañados», que el texto no dice en ninguna
+    parte. Y lo hacía de forma inconsistente —«turbo» decidía, «embrague» no—
+    sin más razón que cuántas entradas nombran esa pista.
+    """
+    solas = [(p, e.codigo) for e in POR_DEFECTO.entradas for p in e.pistas
+             if POR_DEFECTO.clasificar(p) is not None]
+    assert not solas, f"estas pistas codifican solas: {solas}"
+
+
+def test_una_pista_no_es_prefijo_de_otra_de_la_misma_entrada():
+    """Si lo fuera, una sola palabra contaría por dos pistas.
+
+    Es como «turbocompresor» se codificaba solo: casaba con la pista
+    «turbocompresor» y también con «turbo», y entre las dos compraban el
+    mínimo con una palabra. La redundante sobra —«turbo» ya la encuentra por
+    prefijo— y además rompe en silencio la regla de las dos pistas.
+    """
+    for e in POR_DEFECTO.entradas:
+        for a in e.pistas:
+            if len(a) < catalogo.MINIMO_PARA_PREFIJO:
+                continue
+            repetidas = [b for b in e.pistas if b != a and b.startswith(a)]
+            assert not repetidas, f"{e.codigo}: «{a}» ya encuentra {repetidas}"
+
+
+@pytest.mark.parametrize("texto, codigo", [
+    # Tres pistas del borne y tres de la batería: a puro recuento, empate, y
+    # el caso más común del rubro se quedaba sin código. La densidad por vaso
+    # y el vaso en corto señalan a una sola entrada; «bateria» y «flojo», no.
+    ("baterías sulfatadas con densidad baja en dos vasos",
+     "ELE.NO_ARRANCA.BATERIA"),
+    # «acople» está en una sola entrada; «aceite», «nivel», «fuga» y
+    # «presion» están en media docena y no señalan a ninguna.
+    ("nivel de aceite hidráulico bajo por fuga lenta en el acople rápido",
+     "HID.FUGA.MANGUERA"),
+])
+def test_cuando_el_recuento_empata_decide_la_pista_que_distingue(texto, codigo):
+    """Una pista que usan muchas entradas no distingue; una que usa una sola
+    señala a esa y a ninguna otra. Sin esto una frase larga ponía a siete
+    entradas en el mínimo y el catálogo se abstenía, no por prudencia sino
+    por ruido."""
+    entrada = POR_DEFECTO.clasificar(texto)
+    assert entrada is not None, f"no reconoció «{texto}»"
+    assert entrada.codigo == codigo
+
+
+def test_la_torre_de_iluminacion_tiene_donde_caer():
+    """Viaja remolcada y llega sacudida: lo que falla no es el foco sino su
+    driver. Era el último caso del historial de ejemplo que se quedaba sin
+    codificar."""
+    entrada = POR_DEFECTO.clasificar(
+        "Driver de focos LED dañado por vibración en el traslado.")
+    assert entrada is not None and entrada.codigo == "ILU.NO_ENCIENDE.DRIVER"
+
+
+def test_el_peso_se_rehace_cuando_el_catalogo_crece():
+    """La entrada del taller trae pistas que el de fábrica no tiene.
+
+    Si el peso se calculara una sola vez al nacer, clasificar un texto que
+    las trae reventaba con KeyError en vez de contestar.
+    """
+    propio = Catalogo()
+    propio.agregar(Entrada("HID.FUGA.CILINDRO_GIRO", "hidraulico",
+                           "Fuga externa", "Desgaste",
+                           "Sello del cilindro de giro",
+                           ("giro", "corona", "deriva")))
+    entrada = propio.clasificar("deriva el giro de la torreta")
+    assert entrada is not None and entrada.codigo == "HID.FUGA.CILINDRO_GIRO"
+
+
+def test_la_palabra_inequivoca_pesa_tambien_en_la_causa_del_taller(tmp_path):
+    """`INEQUIVOCAS` es vocabulario del rubro, no la lista de pistas que usa
+    el catálogo de fábrica. «Cavitación» no es otra cosa que una bomba
+    aspirando mal, y tiene que pesar desde el día en que el taller agrega esa
+    causa, no desde que alguien se acuerde de anotarla en la lista."""
+    propio = tmp_path / "catalogo-taller.json"
+    propio.write_text(json.dumps([
+        {"codigo": "HID.CAVITACION.ASPIRACION", "sistema": "hidraulico",
+         "modo": "Ruido anormal", "mecanismo": "Cavitacion",
+         "causa": "Bomba cavitando por aspiración restringida",
+         "pistas": ["cavitacion", "aspiracion", "bomba", "ruido"]},
+        {"codigo": "HID.RUIDO.OTRA_COSA", "sistema": "hidraulico",
+         "modo": "Ruido anormal", "mecanismo": "Desgaste",
+         "causa": "Otra cosa que hace ruido en la bomba",
+         "pistas": ["aspiracion", "bomba", "ruido"]},
+    ]), encoding="utf-8")
+
+    ampliado = cargar(propio)
+    # Las dos califican con las mismas tres pistas genéricas; lo que desempata
+    # es «cavitacion», que solo puede ser una cosa.
+    entrada = ampliado.clasificar("ruido de cavitación en la bomba")
+    assert entrada is not None and entrada.codigo == "HID.CAVITACION.ASPIRACION"
+
+
+# ------------------------- lo generico y lo especifico no pueden empatar
+
+@pytest.mark.parametrize("texto, codigo", [
+    # Nombra el cilindro: gana la entrada que lo nombra.
+    ("Sello del vástago cortado en el cilindro de levante.",
+     "HID.FUGA.CILINDRO_PLUMA"),
+    ("rectificado de hilo de vástago de cilindro pendular",
+     "HID.FUGA.CILINDRO_PLUMA"),
+    ("rectificado de hilo de émbolo de cilindro pendular",
+     "HID.FUGA.CILINDRO_PLUMA"),
+    # No lo nombra: gana el sello genérico, que es lo correcto.
+    ("Sello del vástago cortado por rebaba en el cromado.", "HID.FUGA.SELLO"),
+    ("Sello del vástago vencido", "HID.FUGA.SELLO"),
+    ("sellos goteando en el cilindro del brazo", "HID.FUGA.SELLO"),
+])
+def test_nombrar_el_cilindro_decide_entre_lo_generico_y_lo_especifico(texto, codigo):
+    """Dos entradas que describen bien la misma falla empatan, y el empate se
+    abstiene. Pero aquí el texto **sí** alcanza: dice de qué cilindro habla.
+
+    Pasó de verdad. Al agregar la entrada de cilindro de pluma, «Sello del
+    vástago cortado en el cilindro de levante» quedó 9 a 9 contra el sello
+    genérico —`sello` pesaba 3, `levante` pesaba 3, el resto compartido— y se
+    quedó sin código, con el nombre del cilindro escrito en la propia frase.
+    Nombrar cuál es más información que decir que se fue un sello.
+    """
+    entrada = POR_DEFECTO.clasificar(texto)
+    assert entrada is not None, f"no reconoció «{texto}»"
+    assert entrada.codigo == codigo
+
+
+def test_el_nombre_de_una_pieza_no_es_una_causa():
+    """Lo que trae un historial real son líneas de compra, no diagnósticos.
+
+    «Manguera hidráulica de telescopio» es lo que se pidió al almacén, no por
+    qué falló la máquina. Codificarlo sería adivinar, y el catálogo prefiere
+    contarlo como sin codificar: ese número es lo que falta por escribir en el
+    taller, y borrarlo con una suposición es perder la única señal honesta.
+    """
+    for linea in ("MANGUERA HIDRAULICA DE TELESCOPIO",
+                  "MANGUERA HIDRAULICA DE ESTABILIZADOR",
+                  "SERVICIO DE VULCANIZADO DE LLANTAS 445/65D22.5",
+                  "KIT DE ORINES DE MANGUERAS HIDRAULICAS"):
+        assert POR_DEFECTO.clasificar(linea) is None, linea

@@ -153,13 +153,67 @@ def _fecha(valor) -> _dt.date | None:
     return None
 
 
+# Un numero tal como lo escribe una hoja de calculo de taller, con separador
+# de millares incluido: 10,894.40 · 10.894,40 · 10894.4 · 1,234 · 0,5
+_RE_NUMERO = re.compile(r"-?\d[\d.,]*\d|-?\d")
+
+
 def _numero(valor) -> float | None:
+    """El numero que dice una celda, con separador de millares y todo.
+
+    Esto costaba un historial entero. El horometro de un manlift con trece
+    anos de trabajo venia escrito «10,894.40», y la version anterior capturaba
+    «10,894», cambiaba la coma por punto y devolvia **10.894 horas**. Una
+    maquina de diez mil ochocientas horas pasaba a tener once, el ritmo de uso
+    salia 0.0 h/dia y el aviso de «el horometro baja» se disparaba en un
+    historial que no baja en ninguna parte. Nada de eso daba error: daba
+    numeros, y los numeros se publicaban.
+
+    No se notaba porque el corpus de ejemplo escribe «2810.0», sin separador.
+    Un dato de verdad lo encontro en treinta segundos.
+
+    Cual separador es el decimal se decide por posicion, no por el caracter,
+    que es lo unico que funciona en los dos lados del Atlantico:
+
+    - si estan los dos, el ultimo manda  («10,894.40» y «10.894,40» -> 10894.4)
+    - si solo hay uno y aparece varias veces, es de millares  («1.234.567»)
+    - si solo hay uno y lo siguen exactamente tres cifras, es de millares
+      («1,234» -> 1234): nadie escribe un horometro con tres decimales
+    - si no, es decimal  («15.80», «0,5»)
+    """
     if isinstance(valor, bool) or valor is None:
         return None
     if isinstance(valor, (int, float)):
         return float(valor)
-    m = re.search(r"-?\d+(?:[.,]\d+)?", str(valor))
-    return float(m.group(0).replace(",", ".")) if m else None
+    m = _RE_NUMERO.search(str(valor))
+    if not m:
+        return None
+    crudo = m.group(0)
+    signo = -1.0 if crudo.startswith("-") else 1.0
+    cuerpo = crudo.lstrip("-+")
+
+    puntos, comas = cuerpo.count("."), cuerpo.count(",")
+    if puntos and comas:
+        decimal = "." if cuerpo.rfind(".") > cuerpo.rfind(",") else ","
+    elif puntos or comas:
+        sep = "." if puntos else ","
+        cuantos = puntos or comas
+        ultimo = cuerpo.rfind(sep)
+        cifras = len(cuerpo) - ultimo - 1
+        decimal = "" if (cuantos > 1 or cifras == 3) else sep
+    else:
+        decimal = ""
+
+    entero = cuerpo
+    for c in (".", ","):
+        if c != decimal:
+            entero = entero.replace(c, "")
+    if decimal:
+        entero = entero.replace(decimal, ".")
+    try:
+        return signo * float(entero)
+    except ValueError:
+        return None
 
 
 def _causa_de(meta: dict) -> str:

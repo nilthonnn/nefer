@@ -134,13 +134,6 @@ def desde_diagnostico(consulta, diagnostico, solucion: str,
     return informe
 
 
-def fragmento_de(informe: dict, origen: str = "") -> Fragmento:
-    """El fragmento que representaria a ese informe, sin guardar nada."""
-    fragmento = ingesta.de_informe(informe, origen)
-    if origen:
-        fragmento.metadatos["_origen"] = origen
-    return fragmento
-
 
 # ------------------------------------------------- lo que llega del campo
 

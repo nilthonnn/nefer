@@ -190,7 +190,7 @@ def test_la_regla_en_python_tambien_filtra_lo_que_trae_la_base(cargado):
     assert all(c.fragmento.tipo == "manual" for c in solo_manual)
 
 
-def test_el_motor_entero_funciona_contra_la_base(cargado):
+def test_el_motor_entero_funciona_contra_la_base(cargado, indice_local):
     """Diagnóstico, clasificador y evidencia, sin que el motor sepa dónde está."""
     from nefer.fixmate import Motor
     from nefer.fixmate.motor import Consulta
@@ -201,9 +201,14 @@ def test_el_motor_entero_funciona_contra_la_base(cargado):
     assert "Sello del vástago" in diagnostico.causa_raiz_mas_probable
     assert diagnostico.pasos_recomendados
     assert diagnostico.evidencia_historica[0].codigo_ot == "OT-2026-0501"
-    # El clasificador se entrena con lo que hay en la tabla.
+    # El clasificador se entrena con lo que hay en la tabla, y con el mismo
+    # corpus tiene que medir lo mismo que el índice en archivo. El número no
+    # va escrito aquí a propósito: cada vez que el catálogo codifica una causa
+    # más, el clasificador tiene un caso más que evaluar, y una prueba a la
+    # que hay que venir a corregirle el número cuando el motor mejora deja de
+    # vigilar y empieza a estorbar.
     assert diagnostico.causas_probables
-    assert diagnostico.precision_medida["casos"] == 14
+    assert diagnostico.precision_medida == indice_local.medicion
 
 
 def test_la_prediccion_lee_las_fechas_de_la_base(cargado):

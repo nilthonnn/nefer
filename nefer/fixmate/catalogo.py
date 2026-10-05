@@ -59,14 +59,42 @@ MINIMO_PISTAS = 2
 # para que una raiz corta no se lleve por delante media columna.
 MINIMO_PARA_PREFIJO = 4
 
-# Una pista de una sola palabra vale por dos cuando es inequivoca en el
-# rubro: «sulfatado» no es otra cosa que un borne, «colmatado» no es otra
-# cosa que un filtro.
+# Una pista pesa mas cuando es inequivoca en el rubro: «sulfatado» no es otra
+# cosa que un borne, «colmatado» no es otra cosa que un filtro. Pesa, no
+# califica: ver `clasificar`, que es donde esta la diferencia y donde importa.
+#
+# Es vocabulario del rubro, no la lista de pistas que usa el catalogo de
+# fabrica: «cavitacion» y «acumulador» no las usa ninguna entrada de aqui, y
+# estan porque el taller que agregue esas causas con `cargar()` las necesita
+# pesando desde el primer dia y no cuando alguien se acuerde de esta lista.
 INEQUIVOCAS = frozenset({
     "sulfatad", "colmatad", "cavitacion", "termostato", "turbo",
     "alternador", "inyector", "embrague", "radiador", "vastago",
     "acumulador",
+    # Los tres nombran un cilindro concreto de una maquina de elevacion, y en
+    # el rubro no son otra cosa: el pendular nivela la pluma, el de levante la
+    # sube, el de telescopio la alarga. Pesan porque nombrar CUAL cilindro es
+    # mas informacion que decir que se fue un sello, y sin eso la entrada
+    # especifica empataba 9 a 9 con la generica y las dos se abstenian:
+    # «Sello del vastago cortado en el cilindro de levante» se quedaba sin
+    # codigo aunque el texto diga exactamente cual es. Un texto que no nombra
+    # el cilindro —«sello del vastago cortado por rebaba en el cromado»— sigue
+    # yendo al sello generico, que es lo correcto.
+    "pendular", "telescopio", "levante",
 })
+
+# Lo que vale cada pista al ORDENAR. Una pista que usan muchas entradas no
+# distingue: «presion» esta en la bomba hidraulica, en el riel de inyeccion y
+# en el neumatico. Una que usa una sola entrada senala a esa y a ninguna otra.
+#
+# Sin esto el puntaje era absoluto, y una frase larga hacia empatar a todo el
+# mundo en el minimo: «nivel de aceite hidraulico por debajo de la toma de la
+# bomba, por fuga lenta en el acople rapido» ponia SIETE entradas a dos puntos
+# y el catalogo se abstenia, no por prudencia sino por ruido.
+PESO_INEQUIVOCA = 4
+PESO_DE_UNA_SOLA = 3
+PESO_DE_DOS = 2
+PESO_GENERICA = 1
 
 
 # Un servicio planificado no es una falla. La norma separa lo correctivo de
@@ -121,9 +149,12 @@ DE_FABRICA: tuple[Entrada, ...] = (
     _e("ESC.FUGA.MULTIPLE", "escape", "Fuga de gases", "Fatiga termica",
        "Junta o multiple de escape fisurado",
        "escape", "multiple", "junta", "fisura", "fuga", "gases", "sopla"),
+    # «turbocompresor» no va: «turbo» ya lo encuentra por prefijo, y tenerlas
+    # las dos hacia que esa sola palabra contara por dos pistas y se
+    # codificara sola, que es justo lo que el minimo esta para impedir.
     _e("ADM.BAJA_PRESION.TURBO", "admision", "Perdida de potencia",
        "Desgaste", "Turbo con holgura o alabes dañados",
-       "turbo", "turbocompresor", "holgura", "alabe", "sopla", "presion"),
+       "turbo", "holgura", "alabe", "sopla", "presion"),
 
     # ---------------------------------------------------------- combustible
     _e("COM.COMBUSTION.INYECTOR", "combustible", "Marcha inestable",
@@ -240,6 +271,44 @@ DE_FABRICA: tuple[Entrada, ...] = (
        "Dientes o cuchillas de cucharon gastados",
        "diente", "cuchilla", "cucharon", "gastad", "adaptador"),
 
+    # ------------------------------------------- plataformas de elevacion
+    # Estas cinco salen del historial real de un manlift articulado con trece
+    # anos y 10.894 horas encima: lo que se le cambio, orden por orden. No son
+    # las que trae un catalogo de fabricante, son las que el taller pago.
+    # Lleva «vastago» y no «sello» a proposito: el vastago y el embolo son las
+    # dos piezas que se rectifican en un cilindro de pluma, y nombrarlas es lo
+    # que hace que esta entrada le gane al sello genérico cuando el texto dice
+    # de que cilindro habla. Con «sello» aqui, «Sello del vastago vencido» —sin
+    # mas— empataba con HID.FUGA.SELLO y las dos se abstenian.
+    _e("HID.FUGA.CILINDRO_PLUMA", "elevacion", "Fuga externa o deriva",
+       "Desgaste", "Cilindro de pluma, pendular o telescopio con sellos vencidos",
+       "pendular", "telescopio", "levante", "pluma", "embolo", "cilindro",
+       "vastago"),
+    _e("ELE.NO_BAJA.EMERGENCIA", "elevacion", "No desciende",
+       "Falla de respaldo", "Bomba o mando de bajada de emergencia inoperativo",
+       "emergencia", "bajada", "descenso", "auxiliar", "inoperativ",
+       "manual"),
+    _e("ELE.NO_RESPONDE.CANASTILLA", "elevacion", "Mando sin respuesta",
+       "Falla electrica", "Joystick, botonera o sensor de canastilla en falla",
+       "canastilla", "joystick", "botonera", "inductivo", "cesta", "mando",
+       "guardapolvo"),
+    _e("EST.HOLGURA.PINES_BOCINAS", "elevacion", "Holgura excesiva",
+       "Desgaste", "Pines y bocinas de articulacion o direccion gastados",
+       "bocina", "pasador", "articulacion", "direccion", "holgura", "buje",
+       "excentrica"),
+    _e("HID.NO_ESTABILIZA.GATO", "elevacion", "No nivela",
+       "Fuga interna o desgaste",
+       "Estabilizador o gato de apoyo que no sostiene",
+       "estabilizador", "gato", "apoyo", "nivelacion", "patin", "asienta"),
+
+    # ----------------------------------------------------------- iluminacion
+    # La torre de iluminacion viaja remolcada y llega sacudida: lo que falla no
+    # es el foco sino su driver y los conectores que nadie amarro.
+    _e("ILU.NO_ENCIENDE.DRIVER", "iluminacion", "No enciende", "Vibracion",
+       "Driver o conector de foco LED dañado",
+       "driver", "foco", "led", "balasto", "enciende", "parpade",
+       "luminaria", "reflector"),
+
     # ------------------------------------------------------ lubricacion y uso
     _e("LUB.FALTA.NIVEL", "lubricacion", "Nivel bajo", "Consumo o fuga",
        "Nivel de aceite bajo por consumo o fuga",
@@ -266,6 +335,29 @@ class Catalogo:
         self._preparadas = [(e, {_texto.normalizar(p) for p in e.pistas})
                             for e in self.entradas]
 
+        self._pesar()
+
+    def _pesar(self) -> None:
+        """Cuanto distingue cada pista, segun en cuantas entradas aparece.
+
+        Se recalcula cada vez que el catalogo cambia, no una sola vez al
+        nacer: la entrada que agrega el taller trae pistas que el de fabrica
+        no tiene, y ademas corre a las demas de casillero —una pista que era
+        de una sola entrada deja de serlo en cuanto la segunda la nombra. El
+        peso sale del catalogo que hay, no del que venia.
+        """
+        cuantas: dict[str, int] = {}
+        for _, pistas in self._preparadas:
+            for pista in pistas:
+                cuantas[pista] = cuantas.get(pista, 0) + 1
+        self._peso = {
+            pista: (PESO_INEQUIVOCA if pista in INEQUIVOCAS
+                    else PESO_DE_UNA_SOLA if n == 1
+                    else PESO_DE_DOS if n == 2
+                    else PESO_GENERICA)
+            for pista, n in cuantas.items()
+        }
+
     def __len__(self) -> int:
         return len(self.entradas)
 
@@ -278,10 +370,26 @@ class Catalogo:
     def clasificar(self, texto: str) -> Entrada | None:
         """La entrada que le corresponde a un texto, o None. Nunca adivina.
 
-        Gana la que mas pistas suyas encuentre. En empate, ninguna: dos
-        entradas igual de defendibles quieren decir que el texto no alcanza
-        para decidir, y elegir una a la suerte es peor que dejarlo sin
-        codificar, porque el error se suma a la cuenta de la flota.
+        Son dos preguntas distintas y antes se contestaban con el mismo
+        numero, que es de donde salian dos defectos:
+
+        **Calificar** —si una entrada esta en discusion— se decide contando
+        cuantas de sus pistas trae el texto. Hacen falta `MINIMO_PISTAS`
+        distintas, y eso ya no se puede comprar con una sola pista que valga
+        doble: antes «turbo», la palabra sola, codificaba `Turbo con holgura
+        o alabes danados`, que el texto no dice en ninguna parte. Y lo hacia
+        de forma inconsistente —«turbo» decidia, «embrague» se abstenia— sin
+        mas razon que cuantas entradas nombran esa pista.
+
+        **Ordenar** —cual de las que califican gana— se decide con el peso de
+        las pistas, porque no todas distinguen igual. «Acople» esta en una
+        sola entrada y senala a esa; «presion», «aceite» o «fuga» estan en
+        media docena y no senalan a ninguna.
+
+        En empate de peso, ninguna: dos entradas igual de defendibles quieren
+        decir que el texto no alcanza para decidir, y elegir a la suerte es
+        peor que dejarlo sin codificar, porque el error se suma a la cuenta de
+        toda la flota.
         """
         normal = _texto.normalizar(texto)
         if any(m in normal for m in PLANIFICADO):
@@ -292,16 +400,10 @@ class Catalogo:
 
         marcador: list[tuple[int, Entrada]] = []
         for entrada, pistas in self._preparadas:
-            puntos = 0
-            for pista in pistas:
-                if not _casa(pista, palabras):
-                    continue
-                puntos += 1
-                # Una pista inequivoca en el rubro vale por dos.
-                if pista in INEQUIVOCAS:
-                    puntos += 1
-            if puntos >= MINIMO_PISTAS:
-                marcador.append((puntos, entrada))
+            casan = [p for p in pistas if _casa(p, palabras)]
+            if len(casan) < MINIMO_PISTAS:
+                continue
+            marcador.append((sum(self._peso[p] for p in casan), entrada))
 
         if not marcador:
             return None
@@ -349,6 +451,7 @@ class Catalogo:
         self._por_codigo[entrada.codigo] = entrada
         self._preparadas.append(
             (entrada, {_texto.normalizar(p) for p in entrada.pistas}))
+        self._pesar()
 
 
 def cargar(ruta: str | Path, base: Catalogo | None = None) -> Catalogo:

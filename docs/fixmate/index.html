@@ -7,8 +7,10 @@
 <meta name="theme-color" content="#16191B">
 <meta name="description" content="Una corrida real de FixMate sobre el historial,
       los manuales y las actas de un taller de maquinaria pesada.">
-<link rel="icon" type="image/png" sizes="192x192" href="../app/icono-192.png">
-<link rel="apple-touch-icon" href="../app/apple-touch-icon.png">
+<!-- Los suyos, en app/. Con `../app/` salía el icono de la app de actas, que
+     es otro producto. -->
+<link rel="icon" type="image/png" sizes="192x192" href="app/icono-192.png">
+<link rel="apple-touch-icon" href="app/apple-touch-icon.png">
 <style>
   :root { color-scheme: light dark;
           --papel:#F3F4F2; --tinta:#16191B; --tinta2:#4E5860; --tinta3:#7C878E;
@@ -122,7 +124,7 @@
     <div><dt>Corpus</dt><dd>5 archivos</dd></div>
     <div><dt>Fragmentos</dt><dd>31</dd></div>
     <div><dt>Acierto medido</dt><dd>100&nbsp;%</dd></div>
-    <div><dt>Línea base</dt><dd>21&nbsp;%</dd></div>
+    <div><dt>Línea base</dt><dd>29&nbsp;%</dd></div>
     <div><dt>Red</dt><dd>ninguna</dd></div>
   </dl>
 
@@ -202,8 +204,8 @@ LO QUE DICE EL HISTORIAL COMPLETO
      <em>54%</em>  Filtro de aire colmatado (3 casos)
      37%  Inyector con retorno excesivo o goteo (3 casos)
       5%  Sello o reten de cilindro vencido (3 casos)
-         <i>(el clasificador acierta el 93% sobre 14 casos;
-          la causa mas comun sola daria 21%)</i>
+         <i>(el clasificador acierta el 100% sobre 14 casos;
+          la causa mas comun sola daria 29%)</i>
 
 CAUSA RAIZ MAS PROBABLE
   Filtro de aire colmatado por polvo de mina; la restricción de
@@ -212,9 +214,9 @@ CAUSA RAIZ MAS PROBABLE
   <i>«La causa y el procedimiento salen de OT-2026-0412, que es el
    antecedente recuperado que coincide con esa estadistica.»</i></div>
     <div class="destacado">
-      <h3>Por qué importa el 21&nbsp;%</h3>
-      <p>Un 93&nbsp;% de acierto no dice nada solo. Al lado va siempre la línea
-      base —acertar siempre la causa más común daría 21&nbsp;%— y el número de
+      <h3>Por qué importa el 29&nbsp;%</h3>
+      <p>Un 100&nbsp;% de acierto no dice nada solo. Al lado va siempre la línea
+      base —acertar siempre la causa más común daría 29&nbsp;%— y el número de
       casos con que se midió. Con menos de doce casos confirmados, el
       clasificador no opina: devuelve la búsqueda sola.</p>
       <p>Y los nombres de arriba no son los que tecleó el mecánico: son los
@@ -357,6 +359,14 @@ EVIDENCIA
       <div>
         <strong>Abrirlo aquí mismo</strong>
         <em>La misma app, servida desde esta página</em>
+      </div>
+    </a>
+    <a class="cta" href="../MANUAL-FIXMATE.md">
+      <div>
+        <strong>Manual de uso</strong>
+        <em>Pantalla por pantalla y botón por botón, para el técnico en el
+            patio: cargar el historial, preguntar, y registrar lo que
+            encontró</em>
       </div>
     </a>
   </section>

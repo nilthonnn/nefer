@@ -60,10 +60,6 @@ class Embebedor(Protocol):
         ...
 
 
-class ErrorEmbebedor(RuntimeError):
-    """No se pudo obtener el vector de un texto."""
-
-
 def _l2(vector: list[float]) -> list[float]:
     norma = math.sqrt(sum(v * v for v in vector))
     if norma == 0.0:

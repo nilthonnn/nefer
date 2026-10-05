@@ -690,17 +690,24 @@ var FIXMATE = (function () {
     return menor >= 3 && comunes / menor >= SOLAPE_CAUSAS;
   }
 
-  // Espejo de nefer/fixmate/catalogo.py, generado desde el. Dos catalogos
-  // que se separan harian que el telefono agrupe distinto que la oficina,
-  // y la prueba cruzada lo dice.
+  // El catalogo de causas, igual que en nefer/fixmate/catalogo.py. El
+  // telefono clasifica sin red y con su propia copia; dos copias que se
+  // separan hacen que agrupe distinto que la oficina sin que nada de error,
+  // asi que esta se genera desde la otra y una prueba falla si quedo vieja.
+  // ---- espejo del catalogo: lo genera herramientas/espejo-catalogo.py
+  // No se edita a mano: se corre la herramienta y se vuelve a commitear.
   var CAT_MINIMO_PISTAS = 2;
   var CAT_MINIMO_PREFIJO = 4;
-  var CAT_INEQUIVOCAS = ["acumulador", "alternador", "cavitacion", "colmatad", "embrague", "inyector", "radiador", "sulfatad", "termostato", "turbo", "vastago"];
+  var CAT_PESO_INEQUIVOCA = 4;
+  var CAT_PESO_DE_UNA_SOLA = 3;
+  var CAT_PESO_DE_DOS = 2;
+  var CAT_PESO_GENERICA = 1;
+  var CAT_INEQUIVOCAS = ["acumulador", "alternador", "cavitacion", "colmatad", "embrague", "inyector", "levante", "pendular", "radiador", "sulfatad", "telescopio", "termostato", "turbo", "vastago"];
   var CAT_PLANIFICADO = ["programado", "programada", "preventivo", "preventiva", "rutina", "rutinario", "segun plan", "por horas", "mantenimiento de", "servicio de", "pm "];
   var CAT_ENTRADAS = [
     ["ADM.RESTRICCION.FILTRO", "Filtro de aire colmatado", ["filtro", "aire", "colmatad", "tapad", "obstruid", "saturad", "restriccion", "admision", "sucio"]],
     ["ESC.FUGA.MULTIPLE", "Junta o multiple de escape fisurado", ["escape", "multiple", "junta", "fisura", "fuga", "gases", "sopla"]],
-    ["ADM.BAJA_PRESION.TURBO", "Turbo con holgura o alabes da\u00f1ados", ["turbo", "turbocompresor", "holgura", "alabe", "sopla", "presion"]],
+    ["ADM.BAJA_PRESION.TURBO", "Turbo con holgura o alabes da\u00f1ados", ["turbo", "holgura", "alabe", "sopla", "presion"]],
     ["COM.COMBUSTION.INYECTOR", "Inyector con retorno excesivo o goteo", ["inyector", "retorno", "gote", "pulveriza", "combustion", "excesiv"]],
     ["COM.RESTRICCION.FILTRO", "Filtro de combustible colmatado", ["filtro", "combustible", "petroleo", "diesel", "colmatad", "tapad", "obstruid"]],
     ["COM.CONTAMINACION.AGUA", "Agua o particulas en el combustible", ["agua", "combustible", "contaminad", "particula", "sedimento", "tanque", "condensacion"]],
@@ -730,10 +737,37 @@ var FIXMATE = (function () {
     ["EST.FISURA.SOLDADURA", "Fisura en soldadura o elemento estructural", ["fisura", "grieta", "soldadura", "rajad", "estructura", "chasis", "quebrad", "trizad"]],
     ["EST.DESGASTE.TREN_RODAJE", "Tren de rodaje o cadena fuera de tolerancia", ["cadena", "rodaje", "zapata", "rodillo", "eslabon", "desgaste", "tension", "oruga"]],
     ["EST.DESGASTE.DIENTES", "Dientes o cuchillas de cucharon gastados", ["diente", "cuchilla", "cucharon", "gastad", "adaptador"]],
+    ["HID.FUGA.CILINDRO_PLUMA", "Cilindro de pluma, pendular o telescopio con sellos vencidos", ["pendular", "telescopio", "levante", "pluma", "embolo", "cilindro", "vastago"]],
+    ["ELE.NO_BAJA.EMERGENCIA", "Bomba o mando de bajada de emergencia inoperativo", ["emergencia", "bajada", "descenso", "auxiliar", "inoperativ", "manual"]],
+    ["ELE.NO_RESPONDE.CANASTILLA", "Joystick, botonera o sensor de canastilla en falla", ["canastilla", "joystick", "botonera", "inductivo", "cesta", "mando", "guardapolvo"]],
+    ["EST.HOLGURA.PINES_BOCINAS", "Pines y bocinas de articulacion o direccion gastados", ["bocina", "pasador", "articulacion", "direccion", "holgura", "buje", "excentrica"]],
+    ["HID.NO_ESTABILIZA.GATO", "Estabilizador o gato de apoyo que no sostiene", ["estabilizador", "gato", "apoyo", "nivelacion", "patin", "asienta"]],
+    ["ILU.NO_ENCIENDE.DRIVER", "Driver o conector de foco LED da\u00f1ado", ["driver", "foco", "led", "balasto", "enciende", "parpade", "luminaria", "reflector"]],
     ["LUB.FALTA.NIVEL", "Nivel de aceite bajo por consumo o fuga", ["nivel", "aceite", "consumo", "rellenar", "lubricacion"]],
     ["LUB.VENCIDO.INTERVALO", "Aceite o filtro fuera de intervalo", ["intervalo", "vencid", "atrasad", "sobrepasad", "excedid", "horas"]],
     ["OPE.DA\u00d1O.OPERACION", "Sobrecarga, golpe o maniobra indebida", ["golpe", "sobrecarga", "operador", "maniobra", "choque", "impacto"]],
   ];
+  // ---- fin del espejo del catalogo
+
+  // Cuanto distingue cada pista: una que usan muchas entradas no senala a
+  // ninguna. Se calcula aqui sobre CAT_ENTRADAS, con la misma cuenta que hace
+  // catalogo.py, en vez de venir en una tabla que se pueda quedar vieja.
+  var CAT_PESO = (function () {
+    var cuantas = tabla(), peso = tabla();
+    CAT_ENTRADAS.forEach(function (entrada) {
+      var vistas = tabla();
+      entrada[2].forEach(function (p) { vistas[normalizar(p)] = true; });
+      Object.keys(vistas).forEach(function (p) {
+        cuantas[p] = (cuantas[p] || 0) + 1;
+      });
+    });
+    Object.keys(cuantas).forEach(function (p) {
+      peso[p] = CAT_INEQUIVOCAS.indexOf(p) >= 0 ? CAT_PESO_INEQUIVOCA
+        : cuantas[p] === 1 ? CAT_PESO_DE_UNA_SOLA
+        : cuantas[p] === 2 ? CAT_PESO_DE_DOS : CAT_PESO_GENERICA;
+    });
+    return peso;
+  })();
 
   // Las pistas se escriben como raiz y casan por prefijo: «bateri»
   // encuentra «bateria» y «baterias». El tokenizador no lematiza, y sin
@@ -755,17 +789,22 @@ var FIXMATE = (function () {
     var palabras = tabla();
     tokenizar(texto).forEach(function (t) { palabras[t] = true; });
 
+    // Dos preguntas distintas, y antes se contestaban con el mismo numero:
+    // CUANTAS pistas trae el texto decide si la entrada entra en discusion
+    // —hacen falta CAT_MINIMO_PISTAS distintas, y eso no se compra con una
+    // pista que valga doble—, y el PESO de esas pistas decide cual gana.
     var marcador = [];
     CAT_ENTRADAS.forEach(function (entrada) {
-      var pistas = entrada[2], puntos = 0;
+      var pistas = entrada[2], casan = 0, puntos = 0, vistas = tabla();
       for (var i = 0; i < pistas.length; i++) {
         var pista = normalizar(pistas[i]);
+        if (vistas[pista]) continue;
+        vistas[pista] = true;
         if (!casaPista(pista, palabras)) continue;
-        puntos += 1;
-        // Una pista inequivoca en el rubro vale por dos.
-        if (CAT_INEQUIVOCAS.indexOf(pista) >= 0) puntos += 1;
+        casan += 1;
+        puntos += CAT_PESO[pista] || CAT_PESO_GENERICA;
       }
-      if (puntos >= CAT_MINIMO_PISTAS) marcador.push([puntos, entrada]);
+      if (casan >= CAT_MINIMO_PISTAS) marcador.push([puntos, entrada]);
     });
     if (!marcador.length) return null;
     marcador.sort(function (a, b) {
