@@ -59,14 +59,32 @@ MINIMO_PISTAS = 2
 # para que una raiz corta no se lleve por delante media columna.
 MINIMO_PARA_PREFIJO = 4
 
-# Una pista de una sola palabra vale por dos cuando es inequivoca en el
-# rubro: «sulfatado» no es otra cosa que un borne, «colmatado» no es otra
-# cosa que un filtro.
+# Una pista pesa mas cuando es inequivoca en el rubro: «sulfatado» no es otra
+# cosa que un borne, «colmatado» no es otra cosa que un filtro. Pesa, no
+# califica: ver `clasificar`, que es donde esta la diferencia y donde importa.
+#
+# Es vocabulario del rubro, no la lista de pistas que usa el catalogo de
+# fabrica: «cavitacion» y «acumulador» no las usa ninguna entrada de aqui, y
+# estan porque el taller que agregue esas causas con `cargar()` las necesita
+# pesando desde el primer dia y no cuando alguien se acuerde de esta lista.
 INEQUIVOCAS = frozenset({
     "sulfatad", "colmatad", "cavitacion", "termostato", "turbo",
     "alternador", "inyector", "embrague", "radiador", "vastago",
     "acumulador",
 })
+
+# Lo que vale cada pista al ORDENAR. Una pista que usan muchas entradas no
+# distingue: «presion» esta en la bomba hidraulica, en el riel de inyeccion y
+# en el neumatico. Una que usa una sola entrada senala a esa y a ninguna otra.
+#
+# Sin esto el puntaje era absoluto, y una frase larga hacia empatar a todo el
+# mundo en el minimo: «nivel de aceite hidraulico por debajo de la toma de la
+# bomba, por fuga lenta en el acople rapido» ponia SIETE entradas a dos puntos
+# y el catalogo se abstenia, no por prudencia sino por ruido.
+PESO_INEQUIVOCA = 4
+PESO_DE_UNA_SOLA = 3
+PESO_DE_DOS = 2
+PESO_GENERICA = 1
 
 
 # Un servicio planificado no es una falla. La norma separa lo correctivo de
@@ -121,9 +139,12 @@ DE_FABRICA: tuple[Entrada, ...] = (
     _e("ESC.FUGA.MULTIPLE", "escape", "Fuga de gases", "Fatiga termica",
        "Junta o multiple de escape fisurado",
        "escape", "multiple", "junta", "fisura", "fuga", "gases", "sopla"),
+    # «turbocompresor» no va: «turbo» ya lo encuentra por prefijo, y tenerlas
+    # las dos hacia que esa sola palabra contara por dos pistas y se
+    # codificara sola, que es justo lo que el minimo esta para impedir.
     _e("ADM.BAJA_PRESION.TURBO", "admision", "Perdida de potencia",
        "Desgaste", "Turbo con holgura o alabes dañados",
-       "turbo", "turbocompresor", "holgura", "alabe", "sopla", "presion"),
+       "turbo", "holgura", "alabe", "sopla", "presion"),
 
     # ---------------------------------------------------------- combustible
     _e("COM.COMBUSTION.INYECTOR", "combustible", "Marcha inestable",
@@ -240,6 +261,14 @@ DE_FABRICA: tuple[Entrada, ...] = (
        "Dientes o cuchillas de cucharon gastados",
        "diente", "cuchilla", "cucharon", "gastad", "adaptador"),
 
+    # ----------------------------------------------------------- iluminacion
+    # La torre de iluminacion viaja remolcada y llega sacudida: lo que falla no
+    # es el foco sino su driver y los conectores que nadie amarro.
+    _e("ILU.NO_ENCIENDE.DRIVER", "iluminacion", "No enciende", "Vibracion",
+       "Driver o conector de foco LED dañado",
+       "driver", "foco", "led", "balasto", "enciende", "parpade",
+       "luminaria", "reflector"),
+
     # ------------------------------------------------------ lubricacion y uso
     _e("LUB.FALTA.NIVEL", "lubricacion", "Nivel bajo", "Consumo o fuga",
        "Nivel de aceite bajo por consumo o fuga",
@@ -266,6 +295,29 @@ class Catalogo:
         self._preparadas = [(e, {_texto.normalizar(p) for p in e.pistas})
                             for e in self.entradas]
 
+        self._pesar()
+
+    def _pesar(self) -> None:
+        """Cuanto distingue cada pista, segun en cuantas entradas aparece.
+
+        Se recalcula cada vez que el catalogo cambia, no una sola vez al
+        nacer: la entrada que agrega el taller trae pistas que el de fabrica
+        no tiene, y ademas corre a las demas de casillero —una pista que era
+        de una sola entrada deja de serlo en cuanto la segunda la nombra. El
+        peso sale del catalogo que hay, no del que venia.
+        """
+        cuantas: dict[str, int] = {}
+        for _, pistas in self._preparadas:
+            for pista in pistas:
+                cuantas[pista] = cuantas.get(pista, 0) + 1
+        self._peso = {
+            pista: (PESO_INEQUIVOCA if pista in INEQUIVOCAS
+                    else PESO_DE_UNA_SOLA if n == 1
+                    else PESO_DE_DOS if n == 2
+                    else PESO_GENERICA)
+            for pista, n in cuantas.items()
+        }
+
     def __len__(self) -> int:
         return len(self.entradas)
 
@@ -278,10 +330,26 @@ class Catalogo:
     def clasificar(self, texto: str) -> Entrada | None:
         """La entrada que le corresponde a un texto, o None. Nunca adivina.
 
-        Gana la que mas pistas suyas encuentre. En empate, ninguna: dos
-        entradas igual de defendibles quieren decir que el texto no alcanza
-        para decidir, y elegir una a la suerte es peor que dejarlo sin
-        codificar, porque el error se suma a la cuenta de la flota.
+        Son dos preguntas distintas y antes se contestaban con el mismo
+        numero, que es de donde salian dos defectos:
+
+        **Calificar** —si una entrada esta en discusion— se decide contando
+        cuantas de sus pistas trae el texto. Hacen falta `MINIMO_PISTAS`
+        distintas, y eso ya no se puede comprar con una sola pista que valga
+        doble: antes «turbo», la palabra sola, codificaba `Turbo con holgura
+        o alabes danados`, que el texto no dice en ninguna parte. Y lo hacia
+        de forma inconsistente —«turbo» decidia, «embrague» se abstenia— sin
+        mas razon que cuantas entradas nombran esa pista.
+
+        **Ordenar** —cual de las que califican gana— se decide con el peso de
+        las pistas, porque no todas distinguen igual. «Acople» esta en una
+        sola entrada y senala a esa; «presion», «aceite» o «fuga» estan en
+        media docena y no senalan a ninguna.
+
+        En empate de peso, ninguna: dos entradas igual de defendibles quieren
+        decir que el texto no alcanza para decidir, y elegir a la suerte es
+        peor que dejarlo sin codificar, porque el error se suma a la cuenta de
+        toda la flota.
         """
         normal = _texto.normalizar(texto)
         if any(m in normal for m in PLANIFICADO):
@@ -292,16 +360,10 @@ class Catalogo:
 
         marcador: list[tuple[int, Entrada]] = []
         for entrada, pistas in self._preparadas:
-            puntos = 0
-            for pista in pistas:
-                if not _casa(pista, palabras):
-                    continue
-                puntos += 1
-                # Una pista inequivoca en el rubro vale por dos.
-                if pista in INEQUIVOCAS:
-                    puntos += 1
-            if puntos >= MINIMO_PISTAS:
-                marcador.append((puntos, entrada))
+            casan = [p for p in pistas if _casa(p, palabras)]
+            if len(casan) < MINIMO_PISTAS:
+                continue
+            marcador.append((sum(self._peso[p] for p in casan), entrada))
 
         if not marcador:
             return None
@@ -349,6 +411,7 @@ class Catalogo:
         self._por_codigo[entrada.codigo] = entrada
         self._preparadas.append(
             (entrada, {_texto.normalizar(p) for p in entrada.pistas}))
+        self._pesar()
 
 
 def cargar(ruta: str | Path, base: Catalogo | None = None) -> Catalogo:

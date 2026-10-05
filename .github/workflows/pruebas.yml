@@ -65,6 +65,7 @@ jobs:
             tests/test_fixmate_cierre.py \
             tests/test_fixmate_cruce.py \
             tests/test_fixmate_documentos.py \
+            tests/test_fixmate_espejo.py \
             tests/test_fixmate_indice.py \
             tests/test_fixmate_ingesta.py \
             tests/test_fixmate_motor.py \
