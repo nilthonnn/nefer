@@ -1,0 +1,15 @@
+{
+  "id": "cil-ex220-2026-03-18-A",
+  "checklist_id": "cil-ex220",
+  "activo_codigo": "EX-220",
+  "operador": "(operador del turno A)",
+  "fecha": "2026-03-18",
+  "items": [
+    {"punto_id": "cil-ex220.1", "resultado": "ok", "segundos": 8},
+    {"punto_id": "cil-ex220.2", "resultado": "ok", "segundos": 5},
+    {"punto_id": "cil-ex220.3", "resultado": "ok", "segundos": 7},
+    {"punto_id": "cil-ex220.4", "resultado": "ok", "segundos": 6},
+    {"punto_id": "cil-ex220.5", "resultado": "nok", "segundos": 9,
+     "observacion": "Se escucha un chirrido raro al girar la pluma, no se de donde sale"}
+  ]
+}

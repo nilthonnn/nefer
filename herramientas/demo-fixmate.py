@@ -33,6 +33,11 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
+# Los documentos de RCM y TPM no se fabrican: la demo los usa desde el repo,
+# por ruta, que es como los usa tambien quien sigue los casos de prueba a
+# mano. Asi los dos corren sobre exactamente los mismos archivos.
+EJEMPLOS_RCM = RAIZ / "ejemplos" / "rcm-tpm"
+
 # Una demo no tiene por que ensenar los avisos de obsolescencia de las
 # librerias de terceros: el que la mira esta mirando otra cosa.
 warnings.filterwarnings("ignore")
@@ -67,7 +72,7 @@ def correr(orden: list[str], carpeta: Path) -> int:
     """Corre un comando de nefer de verdad y muestra lo que imprime."""
     import shlex
 
-    argv = [str(a).format(d=carpeta) for a in orden]
+    argv = [str(a).format(d=carpeta, e=EJEMPLOS_RCM) for a in orden]
     print(f"\n$ nefer {shlex.join(argv)}\n")
     try:
         return cli_nefer.main(argv)
@@ -296,6 +301,68 @@ def demo_cierre(carpeta: Path) -> None:
             "el motor se calienta y el ventilador no gira"], carpeta)
 
 
+def demo_rcm(carpeta: Path) -> None:
+    """El analisis de confiabilidad, y las cuatro salidas del arbol."""
+    titulo("7 · RCM: de la funcion a la estrategia, con el porque escrito")
+    parrafo("Una excavadora inventada con cuatro modos de falla, puestos para "
+            "que cada uno salga por un camino distinto del arbol. Lo que "
+            "importa no es el veredicto: es que cada uno lleva su motivo.")
+    correr(["fixmate", "rcm", "analizar", "{e}/analisis-ex220.json"], carpeta)
+
+    parrafo("La manguera de freno no tiene tarea proactiva que sirva y puede "
+            "herir a alguien. «Operar hasta la falla» no es una salida legal "
+            "ahi, asi que sale rediseño, y es obligatorio.")
+
+    parrafo("Las tareas nacen incompletas y lo dicen. De «hay una edad a la "
+            "que la probabilidad sube» no sale un numero: sale que existe uno "
+            "y hay que medirlo.")
+    correr(["fixmate", "rcm", "tareas", "{e}/analisis-ex220.json"], carpeta)
+
+    parrafo("Y la matriz FMECA sale en CSV, una fila por modo.")
+    correr(["fixmate", "rcm", "matriz", "{e}/analisis-ex220.json",
+            "-o", "{d}/fmeca-ex220.csv"], carpeta)
+
+
+def demo_tpm(carpeta: Path) -> None:
+    """La ronda del operador, y el enganche con el analisis RCM."""
+    titulo("8 · TPM: la ronda de medio minuto, enganchada a RCM")
+    parrafo("Cinco puntos, 31 segundos de presupuesto. Los que estan fuera "
+            "del alcance del operador salen marcados: eso se decidio al "
+            "escribir la pauta, en frio, no en campo con la maquina parada.")
+    correr(["fixmate", "tpm", "checklist", "{e}/pauta-ex220.json"], carpeta)
+
+    parrafo("Una ronda con un hallazgo y un punto que no se pudo ver. El "
+            "texto libre del operador pasa por el catalogo y llega hasta el "
+            "modo de falla del analisis, sin que nadie escriba el enlace.")
+    correr(["fixmate", "tpm", "ejecutar", "{e}/ronda-ex220-hallazgo.json",
+            "-p", "{e}/pauta-ex220.json",
+            "--rcm", "{e}/analisis-ex220.json"], carpeta)
+
+    parrafo("Y la ronda que se firmo en vez de hacerse: cinco puntos en cinco "
+            "segundos sobre un presupuesto de treinta y uno. El criterio es "
+            "configurable de la planta, no una norma, y la herramienta lo dice.")
+    correr(["fixmate", "tpm", "ejecutar", "{e}/ronda-ex220-firmada.json",
+            "-p", "{e}/pauta-ex220.json"], carpeta)
+
+    parrafo("Y la otra mitad del puente, que es la que importa: el punto 5 "
+            "no declara que modo vigila, y «un chirrido raro al girar la "
+            "pluma» el catalogo no lo codifica. La anomalia queda sin "
+            "enlazar, y se ve. Nunca se elige el modo mas parecido.")
+    correr(["fixmate", "tpm", "ejecutar", "{e}/ronda-ex220-sin-enganche.json",
+            "-p", "{e}/pauta-ex220.json",
+            "--rcm", "{e}/analisis-ex220.json"], carpeta)
+
+    parrafo("Indexado el analisis, una consulta normal lo recupera sola: el "
+            "motor no se toco para esto.")
+    correr(["fixmate", "-i", "{d}/indice-rcm.json", "indexar",
+            "{e}/historial-ex220.json"], carpeta)
+    correr(["fixmate", "-i", "{d}/indice-rcm.json", "rcm", "analizar",
+            "{e}/analisis-ex220.json", "--indexar"], carpeta)
+    correr(["fixmate", "-i", "{d}/indice-rcm.json", "consultar",
+            "radiador tapado con tierra"], carpeta)
+    correr(["fixmate", "-i", "{d}/indice-rcm.json", "tablero"], carpeta)
+
+
 def demo_api(carpeta: Path) -> None:
     """Las respuestas HTTP que consume la app de campo."""
     titulo("7 · La API que consume la app de campo")
@@ -360,6 +427,8 @@ DEMOS = {
     "aprendizaje": demo_aprendizaje,
     "prediccion": demo_prediccion,
     "cierre": demo_cierre,
+    "rcm": demo_rcm,
+    "tpm": demo_tpm,
     "api": demo_api,
 }
 

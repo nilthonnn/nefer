@@ -1,0 +1,16 @@
+{
+  "id": "cil-ex220-2026-03-16-A",
+  "checklist_id": "cil-ex220",
+  "activo_codigo": "EX-220",
+  "operador": "(operador del turno A)",
+  "fecha": "2026-03-16",
+  "items": [
+    {"punto_id": "cil-ex220.1", "resultado": "nok", "segundos": 11,
+     "observacion": "El panal esta tapado con tierra, no pasa la luz por el tercio inferior"},
+    {"punto_id": "cil-ex220.2", "resultado": "ok", "segundos": 5},
+    {"punto_id": "cil-ex220.3", "resultado": "ok", "segundos": 7},
+    {"punto_id": "cil-ex220.4", "resultado": "sin_acceso", "segundos": 4,
+     "observacion": "Guarda inferior soldada; no se puede ver sin levantar la maquina"},
+    {"punto_id": "cil-ex220.5", "resultado": "ok", "segundos": 6}
+  ]
+}

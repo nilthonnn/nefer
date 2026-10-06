@@ -15,6 +15,11 @@ de comandos. INT-001 está además fijado como prueba automática en
 
 ## Preparación
 
+Los datos de ejemplo están en [`ejemplos/rcm-tpm/`](../ejemplos/rcm-tpm/):
+una excavadora inventada con lo justo para recorrer todos los casos. Para la
+versión corta —qué teclear y qué tiene que salir— vea
+[OPERACION-RCM-TPM.md](OPERACION-RCM-TPM.md).
+
 ```python
 from nefer.fixmate.activos  import Activo
 from nefer.fixmate.rcm      import Analisis, Consecuencia, Efecto, Referencia, completitud
@@ -227,7 +232,7 @@ hacer no se puede auditar.
 ## RCM-011 · Exportar la matriz FMEA/FMECA
 
 ```
-nefer fixmate rcm matriz analisis.json -o fmeca.csv
+nefer fixmate rcm matriz ejemplos/rcm-tpm/analisis-ex220.json -o fmeca.csv
 ```
 
 **Debe:** una fila por modo, 30 columnas, `;` como separador, y la columna
@@ -259,7 +264,7 @@ modificar son dos permisos distintos.
 ## TPM-001 · Crear la pauta de mantenimiento autónomo
 
 ```
-nefer fixmate tpm checklist pauta.json
+nefer fixmate tpm checklist ejemplos/rcm-tpm/pauta-ex220.json
 ```
 
 **Debe:** listar los puntos con su clase, criterio y alcance, y el
@@ -278,7 +283,8 @@ juzga otra cosa y la pauta no mide nada.
 ## TPM-002 · Ejecutar la pauta
 
 ```
-nefer fixmate tpm ejecutar ronda.json -p pauta.json
+nefer fixmate tpm ejecutar ejemplos/rcm-tpm/ronda-ex220-hallazgo.json \
+  -p ejemplos/rcm-tpm/pauta-ex220.json
 ```
 
 **Debe:** decir `Ronda COMPLETA` o `Ronda INCOMPLETA`, con el conteo y los
@@ -312,7 +318,8 @@ defecto: se encontró que no se pudo mirar.
 ## TPM-004 · Vincular la anomalía con el modo de falla RCM
 
 ```
-nefer fixmate tpm ejecutar ronda.json -p pauta.json --rcm analisis.json
+nefer fixmate tpm ejecutar ejemplos/rcm-tpm/ronda-ex220-hallazgo.json \
+  -p ejemplos/rcm-tpm/pauta-ex220.json --rcm ejemplos/rcm-tpm/analisis-ex220.json
 ```
 
 **Debe:** imprimir `modo F1.1.1` cuando el enganche se logró.

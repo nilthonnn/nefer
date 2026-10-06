@@ -1,0 +1,125 @@
+{
+  "activo": {
+    "codigo": "EX-220", "nombre": "Excavadora hidraulica",
+    "marca": "Komatsu", "modelo": "PC220-8", "serie": "INVENTADA-0001",
+    "categoria": "excavadora",
+    "contexto": "Interior mina, turno continuo de 12 h, 4.200 m sobre el nivel del mar, polvo de silice en suspension"
+  },
+  "facilitador": "(nombre del facilitador)",
+  "participantes": ["(mantenedor 1)", "(mantenedor 2)", "(operador)"],
+  "fecha": "2026-03-15",
+  "metodo_criticidad": "Prioridad de accion (EJEMPLO)",
+
+  "funciones": [
+    {
+      "descripcion": "Mantener la temperatura del refrigerante en regimen durante la operacion continua",
+      "estandar": "Entre 80 y 95 grados C con carga continua al 100 % a 4.200 m",
+      "tipo": "principal",
+      "fallas": [
+        {
+          "descripcion": "La temperatura del refrigerante supera 95 grados C con carga continua",
+          "modos": [
+            {
+              "descripcion": "Radiador obstruido por polvo de mina acumulado en el panal",
+              "codigo_catalogo": "TER.SOBRECALENTAMIENTO.RADIADOR",
+              "ubicacion": {"subsistema": "refrigeracion", "componente": "panal del radiador"},
+              "evidente": true,
+              "efecto": {
+                "local": "Sube la temperatura del refrigerante y el ECM reduce potencia por derate termico",
+                "observa_operador": "Aguja en rojo y perdida notoria de fuerza en pendiente",
+                "parametro": "Temperatura de refrigerante por encima de 95 grados C",
+                "alarma": "Codigo de derate por temperatura en el tablero",
+                "componente_afectado": "Panal del radiador; con el tiempo, culata",
+                "como_detectarlo": "Inspeccion visual del panal a contraluz"
+              },
+              "consecuencias": [
+                {"clase": "produccion", "descripcion": "Se detiene el frente hasta que enfria"}
+              ],
+              "criticidad": {"severidad": 4, "frecuencia": 4, "deteccion": 2},
+              "evidencia": [
+                {"fuente": "historial", "referencia": "OT-2025-014", "nota": "Tres ocurrencias en cinco meses"}
+              ],
+              "estado": "validado",
+              "decision": {
+                "detectable": true, "viable": true, "intervalo_edad": false,
+                "restaurable": false, "costo_efectiva": null, "probable": null
+              }
+            },
+            {
+              "descripcion": "Embrague viscoso del ventilador degradado: no acopla a plena velocidad",
+              "codigo_catalogo": "TER.SOBRECALENTAMIENTO.VENTILADOR",
+              "ubicacion": {"subsistema": "refrigeracion", "componente": "embrague viscoso"},
+              "evidente": true,
+              "efecto": {
+                "local": "El ventilador gira por debajo de su velocidad nominal y no extrae el calor",
+                "observa_operador": "La maquina calienta aunque el panal este limpio",
+                "parametro": "Temperatura de refrigerante por encima de 95 grados C"
+              },
+              "consecuencias": [{"clase": "produccion"}],
+              "criticidad": {"severidad": 3, "frecuencia": 2, "deteccion": 4},
+              "decision": {
+                "detectable": false, "intervalo_edad": true, "restaurable": false,
+                "viable": true, "costo_efectiva": null, "probable": null
+              }
+            },
+            {
+              "descripcion": "Valvula de alivio del circuito de refrigeracion pegada en cerrado",
+              "ubicacion": {"sistema": "termico", "subsistema": "refrigeracion", "componente": "valvula de alivio"},
+              "causa": "Asiento incrustado por falta de recambio de refrigerante",
+              "mecanismo": "Atascamiento",
+              "evidente": false,
+              "efecto": {
+                "local": "No alivia la sobrepresion; por si sola no produce ningun efecto visible",
+                "observa_operador": "Nada: la maquina trabaja igual hasta que revienta una manguera",
+                "como_detectarlo": "Prueba de apertura en banco contra presion de tarado"
+              },
+              "consecuencias": [
+                {"clase": "seguridad", "descripcion": "Chorro de refrigerante a presion y temperatura sobre el operador"}
+              ],
+              "criticidad": {"severidad": 5, "frecuencia": 2, "deteccion": 5},
+              "decision": {
+                "probable": true, "detectable": false, "intervalo_edad": null,
+                "restaurable": null, "viable": true, "costo_efectiva": null
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "descripcion": "Detener la maquina dentro de la distancia de frenado reglamentaria en rampa cargada",
+      "estandar": "Detencion completa en 9 m desde 10 km/h, en rampa de 10 % y con tolva cargada",
+      "tipo": "principal",
+      "fallas": [
+        {
+          "descripcion": "No alcanza la distancia de frenado reglamentaria",
+          "modos": [
+            {
+              "descripcion": "Manguera de freno fisurada por fatiga y rozamiento con la estructura",
+              "ubicacion": {"sistema": "frenos", "subsistema": "circuito hidraulico", "componente": "manguera del eje delantero"},
+              "causa": "Rozamiento continuo contra el larguero por abrazadera suelta",
+              "mecanismo": "Fatiga",
+              "evidente": true,
+              "efecto": {
+                "local": "Perdida progresiva de presion en el circuito de freno",
+                "observa_operador": "El pedal se va al fondo y la maquina no retiene en rampa",
+                "parametro": "Presion de freno por debajo de la de tarado",
+                "componente_afectado": "Circuito completo del eje delantero"
+              },
+              "consecuencias": [
+                {"clase": "seguridad", "descripcion": "Maquina sin freno en rampa cargada, con gente en el frente"},
+                {"clase": "produccion"}
+              ],
+              "criticidad": {"severidad": 5, "frecuencia": 2, "deteccion": 4},
+              "estado": "propuesto",
+              "decision": {
+                "detectable": false, "intervalo_edad": false, "restaurable": false,
+                "viable": true, "costo_efectiva": false, "probable": null
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

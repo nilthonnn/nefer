@@ -302,18 +302,29 @@ la línea de comandos. **No hay pantalla todavía**: se usa con `nefer fixmate
 rcm` y `nefer fixmate tpm`, o como biblioteca.
 
 ```
-nefer fixmate rcm analizar  analisis.json [--indexar]
-nefer fixmate rcm matriz    analisis.json -o fmeca.csv
-nefer fixmate rcm tareas    analisis.json
-nefer fixmate tpm checklist pauta.json
-nefer fixmate tpm ejecutar  ronda.json -p pauta.json --rcm analisis.json
+nefer fixmate rcm analizar  ejemplos/rcm-tpm/analisis-ex220.json [--indexar]
+nefer fixmate rcm matriz    ejemplos/rcm-tpm/analisis-ex220.json -o fmeca.csv
+nefer fixmate rcm tareas    ejemplos/rcm-tpm/analisis-ex220.json
+nefer fixmate tpm checklist ejemplos/rcm-tpm/pauta-ex220.json
+nefer fixmate tpm ejecutar  ejemplos/rcm-tpm/ronda-ex220-hallazgo.json \
+                            -p ejemplos/rcm-tpm/pauta-ex220.json \
+                            --rcm ejemplos/rcm-tpm/analisis-ex220.json
 nefer fixmate tablero
+```
+
+**Para probarlo**, los datos de ejemplo están en `ejemplos/rcm-tpm/` y la
+guía paso a paso en [OPERACION-RCM-TPM.md](OPERACION-RCM-TPM.md) — media
+hora, sin red. Para verlo de corrido:
+
+```
+python3 herramientas/demo-fixmate.py rcm
+python3 herramientas/demo-fixmate.py tpm
 ```
 
 El diseño completo está en
 [ARQUITECTURA-RCM-TPM.md](ARQUITECTURA-RCM-TPM.md), cómo decide en
-[METODOLOGIA-FIXMATE.md](METODOLOGIA-FIXMATE.md), y los casos para probarlo
-a mano en [CASOS-RCM-TPM-FIXMATE.md](CASOS-RCM-TPM-FIXMATE.md).
+[METODOLOGIA-FIXMATE.md](METODOLOGIA-FIXMATE.md), y los casos con su razón
+de ser en [CASOS-RCM-TPM-FIXMATE.md](CASOS-RCM-TPM-FIXMATE.md).
 
 **Lo que gana el técnico sin hacer nada.** Una vez indexado un análisis, una
 consulta normal lo recupera sola: preguntar por un síntoma devuelve, además

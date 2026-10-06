@@ -1,0 +1,14 @@
+{
+  "id": "cil-ex220-2026-03-17-B",
+  "checklist_id": "cil-ex220",
+  "activo_codigo": "EX-220",
+  "operador": "(operador del turno B)",
+  "fecha": "2026-03-17",
+  "items": [
+    {"punto_id": "cil-ex220.1", "resultado": "ok", "segundos": 1},
+    {"punto_id": "cil-ex220.2", "resultado": "ok", "segundos": 1},
+    {"punto_id": "cil-ex220.3", "resultado": "ok", "segundos": 1},
+    {"punto_id": "cil-ex220.4", "resultado": "ok", "segundos": 1},
+    {"punto_id": "cil-ex220.5", "resultado": "ok", "segundos": 1}
+  ]
+}
