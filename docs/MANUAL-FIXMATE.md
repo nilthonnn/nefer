@@ -295,28 +295,48 @@ Otras órdenes:
 
 ---
 
-## 11. RCM: análisis de confiabilidad (en construcción)
+## 11. RCM y TPM
 
-Desde esta versión FixMate tiene el esqueleto de un análisis RCM: activo →
-función → falla funcional → modo de falla → efecto → consecuencia, con las
-siete preguntas de SAE JA1011 verificadas y una matriz de decisión que elige
-entre las seis estrategias de mantenimiento y deja escrito por qué.
+FixMate hace ahora análisis de confiabilidad y mantenimiento autónomo, desde
+la línea de comandos. **No hay pantalla todavía**: se usa con `nefer fixmate
+rcm` y `nefer fixmate tpm`, o como biblioteca.
 
-Todavía **no tiene pantalla ni comandos**: se usa como biblioteca. El diseño
-completo, con lo que hace y lo que no, está en
-[ARQUITECTURA-RCM-TPM.md](ARQUITECTURA-RCM-TPM.md); los casos de prueba
-funcionales, en [CASOS-RCM-TPM-FIXMATE.md](CASOS-RCM-TPM-FIXMATE.md).
+```
+nefer fixmate rcm analizar  analisis.json [--indexar]
+nefer fixmate rcm matriz    analisis.json -o fmeca.csv
+nefer fixmate rcm tareas    analisis.json
+nefer fixmate tpm checklist pauta.json
+nefer fixmate tpm ejecutar  ronda.json -p pauta.json --rcm analisis.json
+nefer fixmate tablero
+```
 
-Tres cosas conviene saber antes de usarlo:
+El diseño completo está en
+[ARQUITECTURA-RCM-TPM.md](ARQUITECTURA-RCM-TPM.md), cómo decide en
+[METODOLOGIA-FIXMATE.md](METODOLOGIA-FIXMATE.md), y los casos para probarlo
+a mano en [CASOS-RCM-TPM-FIXMATE.md](CASOS-RCM-TPM-FIXMATE.md).
+
+**Lo que gana el técnico sin hacer nada.** Una vez indexado un análisis, una
+consulta normal lo recupera sola: preguntar por un síntoma devuelve, además
+de los antecedentes de siempre, el modo de falla RCM con su estrategia y la
+pauta autónoma que lo vigila. Cada cosa dice de dónde sale.
+
+**Lo que conviene saber antes de usarlo:**
 
 - **No marca «completo» por cortesía.** El criterio de JA1011 es binario:
-  faltando una de las siete preguntas, el análisis no está completo, y si
-  falta alguna de las cuatro que sostienen la cadena, el resumen dice que
-  todavía no es un análisis RCM.
+  faltando una de las siete preguntas el análisis no está completo, y
+  `rcm analizar` sale con código 2.
 - **No trae escala de criticidad.** La matriz es de su empresa. Sin método
-  configurado, la criticidad queda «no evaluada», que no es cero.
+  configurado, la criticidad queda «no evaluada», que no es cero. El RPN
+  está disponible y viene con su advertencia pegada: multiplica escalas
+  ordinales, y por eso AIAG-VDA lo eliminó en 2019.
 - **Con consecuencia de seguridad nunca sale «operar hasta la falla».** Si
   ninguna tarea proactiva sirve, la salida es rediseño, y es obligatorio.
+- **Las tareas nacen incompletas y lo dicen.** El intervalo y el límite no
+  se inventan: el análisis dice que existe un número, no cuál es.
+- **Una ronda con un punto que no se pudo ver no está completa**, aunque los
+  demás estén.
+- **La anomalía se engancha con RCM sola, o no se engancha y se ve.** Nunca
+  se elige el modo de falla «más parecido».
 
 ## 12. Lo que no hace, dicho aquí
 
@@ -331,11 +351,11 @@ Tres cosas conviene saber antes de usarlo:
 - **No es mantenimiento predictivo.** No hay sensores. Lo que hay es analítica
   sobre fechas y horómetro anotados a mano: útil y honesto, pero no es lo
   mismo.
-- **No tiene TPM.** Ni checklist de mantenimiento autónomo ni registro de
-  anomalías. Está diseñado y pendiente de construir.
-- **No genera el plan de tareas.** El análisis RCM dice qué estrategia
-  corresponde; todavía no produce la tarea con su intervalo, herramienta y
-  repuesto.
+- **TPM es sólo el pilar 1.** Mantenimiento autónomo. Los otros siete
+  pilares no están, y la ronda todavía no se registra desde el teléfono.
+- **No calcula MTTR ni disponibilidad.** FixMate registra cuándo ocurrió una
+  falla, no cuánto duró la reparación. Un MTTR inventado se usa para
+  dimensionar un taller.
 - **No calcula costo-efectividad.** No hay un solo dato económico en el
   sistema. Donde haría falta, dice «información económica insuficiente» y no
   declara ningún ahorro.

@@ -7,8 +7,9 @@ se convierte en un paso que nadie entiende y que se marca OK sin mirar.
 Los casos marcados **pendiente** corresponden a fases no implementadas. No se
 pueden ejecutar todavía y no se marcan como fallidos: no existen.
 
-Estado al día de hoy: **RCM-001 a RCM-009 ejecutables**. TPM-001 a TPM-005 e
-INT-001, pendientes.
+Estado al día de hoy: **todos ejecutables**, los RCM también desde la línea
+de comandos. INT-001 está además fijado como prueba automática en
+`tests/test_fixmate_integracion_rcm_tpm.py`.
 
 ---
 
@@ -202,18 +203,164 @@ bajo el nombre RCM.
 
 ---
 
-## Pendientes
+## RCM-010 · Generar la tarea desde la decisión
 
-Estos casos corresponden a fases no implementadas. Se listan para que el
-alcance quede a la vista, no como pruebas que fallan.
+```python
+from nefer.fixmate.plan import generar, falta_por_completar
+plan = generar(a, d)
+t = plan.tareas[0]
+```
 
-| Caso | Contenido | Fase |
+**Debe:** `t.disparador == "condicion"` y `falta_por_completar(t)` listar el
+parámetro, el límite con su fuente y el procedimiento.
+
+**Importa porque:** de «hay una edad a la que la probabilidad sube» no sale
+un número. Ponerle 500 h porque suena razonable inventa el dato que
+justificaba toda la tarea.
+
+**Negativo:** un dictamen de `operar_hasta_falla` **no** genera tarea; el
+modo aparece en `plan.sin_tarea`. Un plan que esconde lo que decidió no
+hacer no se puede auditar.
+
+---
+
+## RCM-011 · Exportar la matriz FMEA/FMECA
+
+```
+nefer fixmate rcm matriz analisis.json -o fmeca.csv
+```
+
+**Debe:** una fila por modo, 30 columnas, `;` como separador, y la columna
+`evidente` con el texto `no (oculta)` donde corresponda.
+
+---
+
+## RCM-012 · Contrastar el análisis contra el historial
+
+```python
+from nefer.fixmate import fmeca
+c = fmeca.contrastar(a, indice)
+```
+
+**Debe:** `c.frecuencias` con lo contado, `c.nunca_ocurrieron` con los modos
+que no aparecieron, `c.sin_cubrir` con las causas del historial que ningún
+modo cubre, y `c.sin_codificar` con los informes que el catálogo no alcanzó.
+
+**Importa porque:** dos escrituras distintas de la misma causa —«radiador
+obstruido por tierra» y «radiador tapado con tierra»— cuentan como **una**,
+porque el cruce va por código del catálogo. Por texto libre se juntarían a
+veces sí y a veces no.
+
+**Lo que NO hace:** sin `aplicar=True` no toca el análisis. Medir y
+modificar son dos permisos distintos.
+
+---
+
+## TPM-001 · Crear la pauta de mantenimiento autónomo
+
+```
+nefer fixmate tpm checklist pauta.json
+```
+
+**Debe:** listar los puntos con su clase, criterio y alcance, y el
+presupuesto en segundos. Los puntos fuera del alcance del operador salen
+marcados `[TECNICO]`.
+
+**Negativo:** `clase: "detectar anomalias"` se rechaza. No es una clase de
+punto: es lo que pasa cuando un punto sale NOK, y no tiene criterio de
+aceptación posible.
+
+**Negativo:** un punto sin criterio se rechaza. Sin criterio, cada operador
+juzga otra cosa y la pauta no mide nada.
+
+---
+
+## TPM-002 · Ejecutar la pauta
+
+```
+nefer fixmate tpm ejecutar ronda.json -p pauta.json
+```
+
+**Debe:** decir `Ronda COMPLETA` o `Ronda INCOMPLETA`, con el conteo y los
+segundos contra el presupuesto.
+
+**Caso que hay que ver una vez:** una ronda con un punto en `sin_acceso`
+sale **INCOMPLETA** aunque los demás estén. La alternativa real a «no pude
+ver» es un OK falso, y un OK falso contamina la ronda entera.
+
+**Segundo caso:** una ronda entera despachada a un segundo por punto se
+marca sospechosa de firma. El criterio (0,4 del presupuesto) es
+**configurable de planta, no normativo**, y la app lo dice.
+
+---
+
+## TPM-003 · Registrar anomalía
+
+Un punto `nok` genera la anomalía sola, con la severidad derivada del
+alcance declarado en la pauta: dentro del alcance → `programable`; fuera →
+`detiene`.
+
+**Importa porque:** el alcance se decidió en frío al escribir la pauta, por
+quien conoce el bloqueo y el repuesto. Preguntárselo al operador en campo,
+con la máquina parada, garantiza la respuesta cómoda.
+
+**Negativo:** un `sin_acceso` **no** genera anomalía. No se encontró un
+defecto: se encontró que no se pudo mirar.
+
+---
+
+## TPM-004 · Vincular la anomalía con el modo de falla RCM
+
+```
+nefer fixmate tpm ejecutar ronda.json -p pauta.json --rcm analisis.json
+```
+
+**Debe:** imprimir `modo F1.1.1` cuando el enganche se logró.
+
+**Los cuatro casos en que NO se engancha, y se ve:**
+
+| Caso | Resultado |
+|---|---|
+| El catálogo no codifica el texto | `sin enlazar a RCM` |
+| Hay código pero ningún modo lo declara | `codigo X, sin modo que lo declare` |
+| El análisis es de otro activo | sin enlazar |
+| Dos modos declaran el mismo código | sin enlazar: la ambigüedad se resuelve en el análisis |
+
+**Importa porque:** una anomalía enlazada al modo equivocado contamina el
+MTBF por modo y la decisión de estrategia que sale de ahí. Un enlace que
+falta se ve; uno equivocado se suma con los demás.
+
+---
+
+## TPM-005 · Generar la acción
+
+La anomalía llega al cierre por el mismo camino que cualquier caso, y el
+informe guarda `anomalia_id` y `modo_falla_id`. `anomalia.cerrar()` exige
+decir qué se hizo: una anomalía cerrada en blanco es una anomalía borrada.
+
+---
+
+## INT-001 · El recorrido completo
+
+```
+ronda → anomalía → diagnóstico → modo RCM → estrategia → tarea
+      → cierre → historial → aprendizaje → contraste → tablero
+```
+
+Fijado en `tests/test_fixmate_integracion_rcm_tpm.py`. Nueve pasos
+verificados, y cuatro pruebas más que comprueban lo contrario: que la cadena
+**se niega a cerrarse** donde no hay evidencia.
+
+**El paso que más conviene mirar:** con cuatro casos en el historial, el
+clasificador bayesiano **no se entrena** —hacen falta doce— y declara por
+qué en vez de inventar un porcentaje. El aprendizaje real que sí ocurrió es
+otro: el cierre ya se recupera como evidencia para el próximo que pregunte.
+
+---
+
+## Pendiente
+
+| Caso | Contenido | Por qué |
 |---|---|---|
-| TPM-001 | Crear checklist de mantenimiento autónomo por equipo | 8 |
-| TPM-002 | Ejecutar checklist y registrar resultado | 8 |
-| TPM-003 | Registrar anomalía | 8 |
-| TPM-004 | Vincular anomalía con `failure_mode_id` de RCM | 8 |
-| TPM-005 | Generar acción desde la anomalía | 8 |
-| RCM-010 | Generar tarea de mantenimiento desde la decisión | 9 |
-| RCM-011 | Exportar la matriz FMEA/FMECA | 13 |
-| INT-001 | TPM → FixMate → RCM → tarea → cierre → aprendizaje | 10–11 |
+| UI-001 | Registrar la ronda desde el teléfono | No hay frontend para TPM |
+| API-001 | Crear un análisis por HTTP | Exige autenticación y control de versiones, que FixMate no tiene |

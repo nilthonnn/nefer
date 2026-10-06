@@ -5,9 +5,12 @@ exige cada cosa** y, sobre todo, **qué NO hace**. Se actualiza en cada fase;
 lo que todavía no está implementado aparece marcado como tal y no se describe
 en presente.
 
-Estado: **Fase 6–7 entregadas** (modelo de datos + motor de decisión RCM).
-TPM, plan de tareas, integración con el motor de diagnóstico, CLI, API y
-exportación FMECA están **pendientes**.
+Estado: **Fases 6–14 entregadas.** Modelo de datos, motor de decisión RCM,
+TPM (pilar 1), plan de tareas, indexación e integración con el motor de
+diagnóstico, cierre trazable, matriz FMECA, tablero, CLI y API de lectura.
+
+Lo que sigue **sin existir** está en la sección 6, y no se describe en
+presente en ninguna otra parte de este documento.
 
 ---
 
@@ -77,7 +80,7 @@ abajo efecto → consecuencia → criticidad → tarea— y no lo reemplaza. El
 vocabulario de sistemas de `activos.py` se deriva del catálogo en tiempo de
 import, justamente para que no puedan divergir.
 
-## 4. Lo que se agregó en esta fase
+## 4. Lo que se agregó
 
 ```
 nefer/fixmate/activos.py      Activo · Ubicacion · Flota · desde_indice()
@@ -85,9 +88,28 @@ nefer/fixmate/criticidad.py   Metodo configurable · Factor · Nivel · evaluar(
 nefer/fixmate/rcm.py          Funcion · FallaFuncional · ModoFalla · Efecto
                               · Consecuencia · Analisis · las 7 preguntas
 nefer/fixmate/decision.py     Respuestas · Dictamen · decidir() · Decisiones
+nefer/fixmate/tpm.py          Checklist · PuntoChecklist · Ejecucion
+                              · estado() · cumplimiento()
+nefer/fixmate/anomalia.py     Anomalia · desde_ejecucion() · clasificar()
+                              · enlazar() · salud()
+nefer/fixmate/plan.py         Tarea · Plan · generar() · punto_tpm()
+nefer/fixmate/indexado.py     de_analisis() · de_checklist() · de_anomalia()
+nefer/fixmate/fmeca.py        filas() · a_csv() · contrastar()
+nefer/fixmate/tablero.py      rcm() · tpm() · confiabilidad() · completo()
+nefer/fixmate/cargador.py     leer los JSON con errores que se entienden
 ```
 
-Ningún archivo existente cambió de comportamiento. Las 671 pruebas previas
+Cambios **compatibles** en archivos existentes:
+
+| Archivo | Cambio | Riesgo |
+|---|---|---|
+| `motor.py` | `Diagnostico.contexto_rcm`, con default `[]` | ninguno: campo nuevo al final |
+| `ingesta.py` | 3 claves opcionales más en `CAMPOS_INFORME` | ninguno: sólo se copian si están |
+| `cierre.py` | `desde_diagnostico()` copia el modo si hay uno solo | ninguno |
+| `cli.py` | subcomandos `rcm`, `tpm`, `tablero` | ninguno: parsers nuevos |
+| `api.py` | 4 endpoints GET; 3 campos opcionales en el informe | ninguno |
+
+Ninguna función existente cambió de comportamiento. Las 671 pruebas previas
 siguen pasando sin tocarse.
 
 ### 4.1 Cuatro cosas que el modelo se niega a aceptar
@@ -213,6 +235,136 @@ dominantes, ni la misma consecuencia si se detienen. Copiar un análisis sin
 reconfirmar el contexto es el atajo con el que un plan se llena de tareas que
 no aplican.
 
+### 4.8 TPM: pilar 1, y nada más
+
+`tpm.py` cubre Jishu Hozen. TPM tiene ocho pilares, y llamar «TPM
+implementado» a una lista de verificación es la clase de afirmación que
+vuelve inservible la palabra.
+
+**Cinco clases de punto, no siete.** El encargo pedía también «detectar
+anomalías» y «registrar anomalía». No son clases de punto: son lo que *pasa*
+cuando un punto sale NOK. Un punto cuya actividad es «detectar anomalías» no
+tiene criterio de aceptación posible y en campo se marca OK siempre.
+
+Tres defensas contra la degradación conocida de una ronda CIL —deja de
+ejecutarse y empieza a firmarse—:
+
+| Defensa | Qué impide |
+|---|---|
+| `sin_acceso` es un resultado y rompe la ronda completa | Que el operador marque OK en un punto que no pudo ver |
+| El tiempo se mide, no se declara | Una pauta de 30 s despachada en 4 no se ejecutó: se firmó. Criterio configurable de planta, **no normativo** |
+| `nunca_vistos` | Un punto inaccesible no es descuido del operador: es defecto de la máquina o de la pauta |
+
+### 4.9 La conexión TPM → RCM, y cuándo NO se cruza
+
+El encargo pide que sea automática «cuando exista suficiente información».
+La frase importante es la última, y es la que define el diseño.
+
+```
+texto libre del operador
+   │ catalogo.clasificar()     ← no adivina: sin «Otro», en empate no elige
+   ▼
+TER.SOBRECALENTAMIENTO.RADIADOR
+   │ enlazar(): coincidencia EXACTA de código y de activo
+   ▼
+modo de falla F1.1.1 del análisis RCM
+```
+
+Queda **sin enlazar**, y se cuenta, en cuatro casos: sin código; con código
+que ningún modo declara; con análisis de otro activo; y con dos modos que
+declaran el mismo código —ambigüedad que se resuelve en el análisis, no a la
+suerte—.
+
+Nunca se elige «el modo más parecido». Una anomalía enlazada al modo
+equivocado contamina el MTBF por modo, la frecuencia histórica del análisis
+y la decisión de estrategia que sale de ahí. Un enlace que falta se ve; uno
+equivocado se suma con los demás.
+
+### 4.10 RCM → TPM: tres condiciones declaradas, ninguna inferida
+
+`plan.punto_tpm()` baja una tarea a la ronda autónoma sólo si: la estrategia
+es **CBM**, la verificación es **sensorial** (vista, oído, tacto, olfato) y
+está declarado que cae **dentro del alcance del operador**. Una restauración
+no es una ronda de treinta segundos, y probar una protección no es mirarla.
+
+El borrador baja con el **criterio vacío**: el análisis dice *qué* mirar, no
+*qué significa que esté bien*.
+
+### 4.11 El plan: lo que no se rellena
+
+Una tarea generada con intervalo, límite y herramienta inventados se ve
+terminada y no lo está. En campo eso se ejecuta: alguien lleva la llave
+equivocada a 40 km.
+
+| Campo | Por qué nace vacío |
+|---|---|
+| `intervalo_dias` / `intervalo_horas` | De «hay una edad a la que la probabilidad sube» no sale un número: sale que existe uno y hay que medirlo |
+| `limite` + `fuente_limite` | Tiene que venir del OEM o de un estándar, nunca de esta herramienta. Un límite sin fuente sigue incompleto |
+| `procedimiento` | Igual |
+
+`operar_hasta_falla` **no genera tarea**: la decisión fue no programar nada.
+El plan lista aparte lo que decidió no hacer, porque un plan que lo esconde
+no se puede auditar.
+
+### 4.12 FMECA: la frecuencia se cuenta, no se declara
+
+Un FMECA se escribe en una sala con gente que opina; después la máquina
+falla como le parece. `contrastar()` recorre el historial y cuenta, cruzando
+por **código de catálogo** —la única llave estable: por texto libre,
+«colmatado» y «tapado» se juntan a veces sí y a veces no— y devuelve:
+
+- la frecuencia real de cada modo;
+- los modos analizados que **nunca ocurrieron**: puede ser prevención que
+  funciona o una fila copiada de otra máquina, y el dato no distingue;
+- las causas del historial **sin modo que las cubra**: ésas sí son un hueco,
+  y son la lista de trabajo de la próxima revisión;
+- los informes que el catálogo **no pudo codificar**, que es la medida
+  honesta de cuánto alcanza.
+
+**Contar no corrige.** Un modo que nunca ocurrió no se borra ni se marca
+inválido. Automatizarlo sería borrar tareas de seguridad por falta de
+evidencia, que es justo lo que la guarda de 4.4 impide. `aplicar=True` es un
+argumento aparte: medir y modificar son dos permisos distintos.
+
+### 4.13 El tablero: `None` no es cero
+
+Un tablero que muestra 0 % de cumplimiento sin ninguna ronda dice «lo
+hicieron mal» cuando lo que pasa es que no hay dato, y así es como un
+tablero deja de mirarse. Todo indicador incalculable devuelve `None`, y
+`a_dict()` lo conserva como `null`.
+
+**MTTR y disponibilidad quedan en `null` siempre.** FixMate registra cuándo
+ocurrió una falla, no cuánto duró la reparación ni cuántas horas estuvo
+detenida la máquina. Un MTTR inventado se usa para dimensionar un taller.
+
+El MTBF no se recalcula aquí: sale de `prediccion`, que ya declara sus
+mínimos. Dos fórmulas para la misma pregunta dan dos números distintos, que
+es peor que no tener ninguno.
+
+### 4.14 CLI y API
+
+```
+nefer fixmate rcm analizar  <a.json> [--indexar]   valida contra JA1011
+nefer fixmate rcm listar                           modos en el índice
+nefer fixmate rcm matriz    <a.json> [-o f.csv]    FMECA
+nefer fixmate rcm tareas    <a.json>               el plan y sus huecos
+nefer fixmate tpm checklist <p.json> [--indexar]   valida la pauta
+nefer fixmate tpm ejecutar  <e.json> -p <p.json> [--rcm <a.json>]
+nefer fixmate tpm pendientes                       anomalías abiertas
+nefer fixmate tablero                              MTBF y recurrencia
+```
+
+`rcm analizar` sale **0** con las siete contestadas y **2** si falta algo.
+Es código de salida, no texto: así entra en un CI sin que nadie parsee la
+pantalla.
+
+Los endpoints HTTP (`GET /rcm`, `/rcm/modos/{codigo}`, `/tpm/anomalias`,
+`/tablero`) son **de lectura**. Crear o aprobar un análisis por HTTP
+exigiría autenticación y control de versiones, y FixMate no tiene ninguna de
+las dos: sin eso, cualquiera en la red del taller reescribe el plan de
+mantenimiento sin dejar rastro. Los análisis se cargan con la CLI, que corre
+con los permisos de quien la ejecuta.
+
 ## 5. Compatibilidad
 
 - **No hay migración.** El código del activo es el mismo `codigo_equipo` que
@@ -232,18 +384,27 @@ Dicho antes de que alguien lo suponga:
 - **No garantiza un RCM correcto.** Exige que las siete preguntas estén
   respondidas; no puede juzgar si están bien respondidas. JA1011 requiere un
   facilitador y los mantenedores en la sala, y eso no es software.
-- **No hay TPM todavía.** Ni checklist ni anomalía. Está pendiente.
-- **No hay plan de tareas todavía.** La decisión dice *qué estrategia*; no
-  genera aún la tarea con su intervalo, herramienta y repuesto.
+- **TPM es sólo el pilar 1.** Jishu Hozen y parte de mantenimiento
+  planificado. Los otros siete pilares no existen.
 - **No hay costo-efectividad.** No existe un solo dato económico en el
   repositorio. `costo_efectiva=None` produce el aviso «Información económica
   insuficiente para determinar costo-efectividad» y nada más. No se declara
   ahorro.
-- **No hay integración con el motor de diagnóstico todavía.** Los análisis
-  aún no se indexan como fragmentos; eso es la fase siguiente.
-- **No hay CLI, API ni frontend** para RCM todavía.
+- **No hay MTTR ni disponibilidad.** Ver 4.13.
+- **No hay frontend para RCM ni TPM.** La ronda se registra por CLI o por
+  biblioteca, no desde un teléfono. Las pantallas del técnico siguen siendo
+  las de diagnóstico y cierre.
+- **La API no escribe RCM ni TPM.** Ver 4.14.
 - **Sigue sin haber mantenimiento predictivo por sensores**, y `prediccion.py`
   lo sigue diciendo en su encabezado.
+- **El enganche automático TPM → RCM tiene el techo del catálogo.** Con las
+  pistas dentro del texto indexado, una consulta con vocabulario de taller
+  recupera el análisis (medido: 0,558 y 0,591, contra 0,000 sin ellas). Lo
+  que el catálogo no codifica —«el motor sobrecalienta», dos palabras
+  genéricas— tampoco llega al análisis: 0,016. Se agranda agrandando el
+  catálogo con `catalogo.cargar()`.
+- **No valida el juicio.** Verifica que las siete preguntas estén
+  respondidas; no puede juzgar si están bien respondidas.
 
 ## 7. Pruebas
 
@@ -253,15 +414,24 @@ Dicho antes de que alguien lo suponga:
 | `test_fixmate_criticidad.py` | 13 | Que no haya escala por defecto; que el defecto del RPN se reproduzca y se advierta |
 | `test_fixmate_rcm.py` | 26 | Las cuatro negativas del modelo; la llave al catálogo; las 7 preguntas en binario |
 | `test_fixmate_decision.py` | 24 | La guarda de seguridad por fuerza bruta sobre 729 combinaciones; el orden del árbol; motivo escrito siempre |
+| `test_fixmate_tpm.py` | 21 | Las cinco clases con criterio; «no pude ver» rompe la ronda; el tiempo medido |
+| `test_fixmate_anomalia.py` | 24 | Cuándo NO se enlaza con RCM — los cuatro casos |
+| `test_fixmate_plan.py` | 17 | Lo que el plan no rellena; las tres condiciones para bajar a TPM |
+| `test_fixmate_indexado.py` | 15 | El §6 sin tocar el motor; que un fragmento RCM no aporte pasos |
+| `test_fixmate_fmeca.py` | 18 | Contar no corrige; el cruce por código, no por texto |
+| `test_fixmate_tablero.py` | 20 | `None` no es cero, en los tres tableros |
+| `test_fixmate_cli_rcm.py` | 18 | Los errores del cargador, que es su valor real |
+| `test_fixmate_integracion_rcm_tpm.py` | 5 | INT-001 entero, y que la cadena se niegue donde no hay evidencia |
 
 ## 8. Fases pendientes
 
 | Fase | Contenido | Estado |
 |---|---|---|
-| 8 | TPM: checklist configurable, ejecución, anomalía | pendiente |
-| 9 | Plan de tareas desde la decisión RCM | pendiente |
-| 10 | Indexar RCM/TPM como fragmentos → integración con el motor | pendiente |
-| 11 | Cierre con `failure_mode_id` → aprendizaje | pendiente |
-| 12 | CLI `fixmate rcm` / `fixmate tpm`, API, frontend | pendiente |
-| 13 | Exportación FMEA/FMECA | pendiente |
-| 14 | Tablero de indicadores RCM/TPM | pendiente |
+| 8 | TPM: checklist configurable, ejecución, anomalía | **hecha** · `tpm.py`, `anomalia.py` |
+| 9 | Plan de tareas desde la decisión RCM | **hecha** · `plan.py` |
+| 10 | Indexar RCM/TPM como fragmentos → integración con el motor | **hecha** · `indexado.py` |
+| 11 | Cierre trazable → aprendizaje | **hecha** · `cierre.py`, `ingesta.py` |
+| 12 | CLI `fixmate rcm` / `fixmate tpm`, API | **hecha** · `cli.py`, `api.py`, `cargador.py` |
+| 13 | Exportación FMEA/FMECA | **hecha** · `fmeca.py` |
+| 14 | Tablero de indicadores | **hecha** · `tablero.py` |
+| — | Frontend para RCM y TPM | **pendiente** |

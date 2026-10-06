@@ -287,16 +287,21 @@ def test_el_contexto_rcm_esta_aunque_este_vacio():
     assert r.json()["contexto_rcm"] == []
 
 
-def test_el_informe_acepta_la_trazabilidad_rcm_sin_exigirla(tmp_path, monkeypatch):
+def test_el_informe_acepta_la_trazabilidad_rcm_sin_exigirla(tmp_path):
     from fastapi.testclient import TestClient
 
     from nefer.fixmate import api as _api, embeddings
     from nefer.fixmate.indice import Indice
     from nefer.fixmate.motor import Motor
 
-    historial = tmp_path / "h.json"
-    monkeypatch.setenv("FIXMATE_HISTORIAL", str(historial))
-    c = TestClient(_api.crear_app(Motor(Indice(embeddings.EmbebedorLocal()))))
+    # Las DOS rutas van por argumento. `RUTA_HISTORIAL` y `RUTA_INDICE` se
+    # leen al importar el módulo, así que un monkeypatch posterior no las
+    # cambia; y al registrar un informe el endpoint escribe el historial Y
+    # guarda el índice. Sin esto, la prueba escribía sobre los dos archivos
+    # versionados de la raíz del repositorio y se contaminaba entre corridas.
+    c = TestClient(_api.crear_app(Motor(Indice(embeddings.EmbebedorLocal())),
+                                  ruta_indice=tmp_path / "i.json",
+                                  ruta_historial=tmp_path / "h.json"))
     base = {"resumen_falla": "Se recalienta", "causa_raiz": "Radiador obstruido",
             "solucion_aplicada": "Lavado del panal"}
     assert c.post("/informes", json=base).status_code in (200, 201)
