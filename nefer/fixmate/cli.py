@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 
-from . import cierre, embeddings, ingesta, prediccion
+from . import cierre, embeddings, indexado, ingesta, prediccion
 from .indice import ErrorIndice, Indice
 from .motor import Consulta, Motor, SinEvidencia
 
@@ -411,6 +411,254 @@ def cmd_sql(args) -> int:
     return 0
 
 
+# ----------------------------------------------------------- RCM y TPM
+
+def _cargar(fn, ruta):
+    """Carga un documento y muestra el error legible en vez de una traza."""
+    from .cargador import ErrorCargador
+    try:
+        return fn(ruta)
+    except ErrorCargador as exc:
+        print(str(exc), file=sys.stderr)
+        return None
+
+
+def cmd_rcm_analizar(args) -> int:
+    """Valida un analisis RCM contra las siete preguntas de JA1011."""
+    from . import cargador
+    from .rcm import completitud
+
+    par = _cargar(cargador.analisis_y_decisiones, args.archivo)
+    if par is None:
+        return 1
+    analisis, decisiones = par
+
+    print(f"Activo:   {analisis.activo.descripcion()}")
+    print(f"Contexto: {analisis.contexto or '(sin declarar)'}")
+    print(f"Funciones {len(analisis.funciones)} · fallas funcionales "
+          f"{len(analisis.fallas)} · modos de falla {len(analisis.modos)}")
+    graves, ocultos = analisis.modos_graves(), analisis.modos_ocultos()
+    if graves:
+        print(f"  {len(graves)} con consecuencia de seguridad o ambiental")
+    if ocultos:
+        print(f"  {len(ocultos)} ocultos: su tratamiento por defecto es "
+              "busqueda de fallas")
+
+    estado = completitud(analisis, decisiones.por_modo)
+    print(f"\nSAE JA1011: {estado.resumen()}")
+    for r in estado.pendientes:
+        print(f"  Q{r.pregunta.numero} · {r.pregunta.texto}")
+        for falta in r.faltantes[:4]:
+            print(f"      - {falta}")
+
+    if decisiones:
+        print("\nEstrategias: " + ", ".join(
+            f"{n} {k}" for k, n in decisiones.reparto().items() if n))
+        bloqueados = [m for m, x in decisiones if x.bloqueado_por_seguridad]
+        if bloqueados:
+            print(f"  {len(bloqueados)} con rediseño OBLIGATORIO: ninguna tarea "
+                  "proactiva alcanza y la falla puede herir a alguien.")
+
+    if args.indexar:
+        indice = _indice(args)
+        if indice is None:
+            return 1
+        n = indexado.indexar(indice, indexado.de_analisis(analisis, decisiones))
+        if not getattr(args, "pg", False):
+            indice.guardar(args.indice)
+        print(f"\n{n} modos de falla indexados. Ahora una consulta de campo "
+              "los recupera como cualquier otro antecedente.")
+    return 0 if estado.completo else 2
+
+
+def cmd_rcm_listar(args) -> int:
+    """Los modos de falla RCM que hay en el indice."""
+    indice = _indice(args)
+    if indice is None:
+        return 1
+    filas = [(f.metadatos.get("codigo_equipo", ""), f.metadatos.get("modo_falla_id", ""),
+              f.metadatos.get("sistema", ""), f.metadatos.get("estrategia_rotulo", ""),
+              f.metadatos.get("criticidad", ""), f.metadatos.get("estado_validacion", ""))
+             for f in indice.fragmentos if f.tipo == indexado.TIPO_RCM]
+    if not filas:
+        print("No hay analisis RCM en el indice. Carguelos con "
+              "`nefer fixmate rcm analizar archivo.json --indexar`.")
+        return 0
+    print(f"{len(filas)} modos de falla analizados\n")
+    print(f"{'EQUIPO':<10} {'MODO':<10} {'SISTEMA':<14} {'ESTRATEGIA':<32} "
+          f"{'CRITICIDAD':<14} ESTADO")
+    for fila in sorted(filas):
+        print("{:<10} {:<10} {:<14} {:<32} {:<14} {}".format(*(x or "-" for x in fila)))
+    return 0
+
+
+def cmd_rcm_matriz(args) -> int:
+    """Exporta la matriz FMEA/FMECA en CSV."""
+    from . import cargador, fmeca
+    from .plan import generar
+
+    par = _cargar(cargador.analisis_y_decisiones, args.archivo)
+    if par is None:
+        return 1
+    analisis, decisiones = par
+    plan = generar(analisis, decisiones)
+    csv = fmeca.a_csv(analisis, decisiones, plan, delimitador=args.delimitador)
+    if args.salida:
+        Path(args.salida).write_text(csv, encoding="utf-8")
+        print(f"{args.salida} · {len(analisis.modos)} filas")
+    else:
+        print(csv, end="")
+    return 0
+
+
+def cmd_rcm_tareas(args) -> int:
+    """El plan de tareas que sale del analisis, con los huecos a la vista."""
+    from . import cargador
+    from .plan import falta_por_completar, generar
+
+    par = _cargar(cargador.analisis_y_decisiones, args.archivo)
+    if par is None:
+        return 1
+    analisis, decisiones = par
+    plan = generar(analisis, decisiones)
+    if not plan.tareas and not plan.sin_tarea:
+        print("El analisis no tiene decisiones registradas todavia, asi que no "
+              "hay plan. Responda la Q6 antes de pedir tareas.")
+        return 2
+    print(f"{len(plan.tareas)} tareas · {len(plan.completas)} listas · "
+          f"{len(plan.borradores)} en borrador")
+    for t in plan.tareas:
+        print(f"\n{t.id} · {t.estrategia} ({t.disparador})")
+        print(f"   modo {t.modo_falla_id} · {t.componente}")
+        for falta in falta_por_completar(t):
+            print(f"   falta: {falta}")
+    if plan.sin_tarea:
+        print(f"\nSin tarea a proposito (operar hasta la falla): "
+              f"{', '.join(plan.sin_tarea)}")
+    return 0
+
+
+def cmd_tpm_checklist(args) -> int:
+    """Valida una pauta de mantenimiento autonomo."""
+    from . import cargador
+
+    pauta = _cargar(cargador.checklist, args.archivo)
+    if pauta is None:
+        return 1
+    print(f"{pauta.id} · {pauta.activo_codigo} · {pauta.nombre}")
+    print(f"{len(pauta.puntos)} puntos · {pauta.frecuencia} · "
+          f"presupuesto {pauta.presupuesto_seg} s")
+    for p in pauta.puntos:
+        alcance = "operador" if p.alcance_operador else "TECNICO"
+        print(f"  {p.id:<8} {p.clase:<14} {p.punto:<34} [{alcance}] {p.criterio}")
+    sin_criterio = [p.id for p in pauta.puntos if not p.criterio.strip()]
+    if sin_criterio:
+        print(f"Sin criterio: {', '.join(sin_criterio)}", file=sys.stderr)
+        return 2
+    if args.indexar:
+        indice = _indice(args)
+        if indice is None:
+            return 1
+        indexado.indexar(indice, [indexado.de_checklist(pauta)])
+        if not getattr(args, "pg", False):
+            indice.guardar(args.indice)
+        print("Pauta indexada.")
+    return 0
+
+
+def cmd_tpm_ejecutar(args) -> int:
+    """Registra una ronda y levanta las anomalias que haya."""
+    from . import cargador
+    from .anomalia import desde_ejecucion
+    from .tpm import estado as estado_ronda
+
+    pauta = _cargar(cargador.checklist, args.pauta)
+    ejecucion = _cargar(cargador.ejecucion, args.archivo)
+    if pauta is None or ejecucion is None:
+        return 1
+
+    analisis = None
+    if args.rcm:
+        par = _cargar(cargador.analisis_y_decisiones, args.rcm)
+        if par is None:
+            return 1
+        analisis = par[0]
+
+    e = estado_ronda(ejecucion, pauta)
+    print(f"{ejecucion.id} · {pauta.activo_codigo} · {ejecucion.operador}")
+    print(f"{e.respondidos}/{e.total} puntos · {e.ok} OK · {e.nok} NOK · "
+          f"{e.sin_acceso} sin ver · {e.segundos} s de {e.presupuesto_seg}")
+    print("Ronda COMPLETA" if e.completa else "Ronda INCOMPLETA")
+    if e.sin_acceso:
+        print("  Un punto que no se pudo ver no cuenta como visto: la ronda no "
+              "vale como completa aunque esten los demas.")
+    if e.sospechosa_de_firma:
+        print("  AVISO: demasiado rapida para haber sido ejecutada. Criterio "
+              "configurable de la planta, no una norma.")
+
+    anomalias = desde_ejecucion(ejecucion, pauta, analisis)
+    if not anomalias:
+        print("\nSin anomalias.")
+    for a in anomalias:
+        enlace = (f"modo {a.modo_falla_id}" if a.enlazada
+                  else ("sin enlazar a RCM" if not a.codigo_catalogo
+                        else f"codigo {a.codigo_catalogo}, sin modo que lo declare"))
+        print(f"\n{a.id} · {a.severidad} · {a.descripcion}")
+        print(f"   {enlace}")
+
+    if args.salida:
+        Path(args.salida).write_text(
+            json.dumps({"ejecucion": ejecucion.a_dict(),
+                        "anomalias": [a.a_dict() for a in anomalias]},
+                       ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"\n{args.salida}")
+    return 0
+
+
+def cmd_tpm_pendientes(args) -> int:
+    """Las anomalias abiertas que hay en el indice."""
+    indice = _indice(args)
+    if indice is None:
+        return 1
+    abiertas = [f for f in indice.fragmentos
+                if f.tipo == indexado.TIPO_ANOMALIA and f.metadatos.get("abierta")]
+    if not abiertas:
+        print("No hay anomalias abiertas en el indice.")
+        return 0
+    print(f"{len(abiertas)} anomalias abiertas\n")
+    for f in sorted(abiertas, key=lambda x: str(x.metadatos.get("fecha") or "")):
+        m = f.metadatos
+        print(f"{m.get('fecha',''):<12} {m.get('codigo_equipo',''):<10} "
+              f"{m.get('severidad',''):<13} {m.get('resumen_falla','')}")
+    return 0
+
+
+def cmd_tablero(args) -> int:
+    """Los indicadores de confiabilidad que el historial permite calcular."""
+    from . import tablero as _tablero
+
+    indice = _indice(args)
+    if indice is None:
+        return 1
+    datos = _tablero.confiabilidad(indice)
+    print(f"Equipos con historial: {datos.equipos}")
+    print(f"Fallas registradas:    {datos.fallas}")
+    if datos.mtbf_dias:
+        print("\nMTBF por equipo (dias entre fallas, base calendario):")
+        for codigo, dias in sorted(datos.mtbf_dias.items()):
+            print(f"  {codigo:<10} {dias:>5} d")
+    faltan = datos.equipos - len(datos.mtbf_dias)
+    if faltan > 0:
+        print(f"  ({faltan} sin MTBF: con una sola aparicion no hay intervalo, "
+              "hay una fecha)")
+    print("\nMTTR y disponibilidad: sin dato. FixMate registra cuando ocurrio "
+          "una falla,\nno cuanto duro la reparacion. Un MTTR inventado se usa "
+          "para dimensionar\nun taller, asi que no se calcula.")
+    if datos.reincidencias_vencidas:
+        print(f"\nReincidencias vencidas: {datos.reincidencias_vencidas}")
+    return 0
+
+
 def agregar_subcomando(sub) -> None:
     """Cuelga `fixmate` y sus ordenes del parser principal de nefer."""
     f = sub.add_parser(
@@ -505,3 +753,54 @@ def agregar_subcomando(sub) -> None:
 
     q = ordenes.add_parser("sql", help="imprimir el esquema de PostgreSQL con pgvector")
     q.set_defaults(func=cmd_sql)
+
+    # ---------------------------------------------------------- RCM
+    rcm = ordenes.add_parser(
+        "rcm", help="analisis de confiabilidad: JA1011, matriz FMECA y tareas")
+    rcm_sub = rcm.add_subparsers(dest="accion", required=True)
+
+    ra = con_pg(rcm_sub.add_parser(
+        "analizar", help="validar un analisis contra las siete preguntas"))
+    ra.add_argument("archivo", help="el analisis en JSON")
+    ra.add_argument("--indexar", action="store_true",
+                    help="meterlo al indice para que el motor lo recupere")
+    ra.set_defaults(func=cmd_rcm_analizar)
+
+    rl = con_pg(rcm_sub.add_parser("listar", help="los modos de falla del indice"))
+    rl.set_defaults(func=cmd_rcm_listar)
+
+    rm = rcm_sub.add_parser("matriz", help="exportar la matriz FMEA/FMECA en CSV")
+    rm.add_argument("archivo", help="el analisis en JSON")
+    rm.add_argument("-o", "--salida", help="archivo CSV a escribir")
+    rm.add_argument("--delimitador", default=";",
+                    help="por defecto «;», que es lo que Excel en es-PE espera")
+    rm.set_defaults(func=cmd_rcm_matriz)
+
+    rt = rcm_sub.add_parser("tareas", help="el plan que sale del analisis")
+    rt.add_argument("archivo", help="el analisis en JSON")
+    rt.set_defaults(func=cmd_rcm_tareas)
+
+    # ---------------------------------------------------------- TPM
+    tpm = ordenes.add_parser(
+        "tpm", help="mantenimiento autonomo: pautas, rondas y anomalias")
+    tpm_sub = tpm.add_subparsers(dest="accion", required=True)
+
+    tc = con_pg(tpm_sub.add_parser("checklist", help="validar una pauta"))
+    tc.add_argument("archivo", help="la pauta en JSON")
+    tc.add_argument("--indexar", action="store_true", help="meterla al indice")
+    tc.set_defaults(func=cmd_tpm_checklist)
+
+    te = tpm_sub.add_parser("ejecutar", help="registrar una ronda")
+    te.add_argument("archivo", help="la ejecucion en JSON")
+    te.add_argument("-p", "--pauta", required=True, help="la pauta en JSON")
+    te.add_argument("--rcm", help="el analisis, para enlazar las anomalias")
+    te.add_argument("-o", "--salida", help="archivo JSON con el resultado")
+    te.set_defaults(func=cmd_tpm_ejecutar)
+
+    tp = con_pg(tpm_sub.add_parser("pendientes", help="anomalias abiertas"))
+    tp.set_defaults(func=cmd_tpm_pendientes)
+
+    # ------------------------------------------------------ indicadores
+    tb = con_pg(ordenes.add_parser(
+        "tablero", help="MTBF y recurrencia sobre el historial cargado"))
+    tb.set_defaults(func=cmd_tablero)

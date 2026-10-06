@@ -1,0 +1,28 @@
+{
+  "informes": [
+    {
+      "resumen_falla": "Se recalienta",
+      "causa_raiz": "Radiador obstruido",
+      "solucion_aplicada": "Lavado del panal",
+      "codigos_dtc": [],
+      "pasos": [],
+      "herramientas": [],
+      "repuestos": [],
+      "fecha": "2026-10-06",
+      "codigo_ot": "OT-2026-0001"
+    },
+    {
+      "resumen_falla": "Se recalienta",
+      "causa_raiz": "Radiador obstruido",
+      "solucion_aplicada": "Lavado del panal",
+      "codigo_ot": "OT-X",
+      "codigos_dtc": [],
+      "pasos": [],
+      "herramientas": [],
+      "repuestos": [],
+      "modo_falla_id": "F1.1.1",
+      "anomalia_id": "an-1",
+      "fecha": "2026-10-06"
+    }
+  ]
+}

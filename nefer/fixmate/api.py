@@ -90,6 +90,10 @@ class RespuestaDiagnostico(BaseModel):
     # Lo que el motor entendio. Con la consulta dictada, es lo primero que el
     # tecnico tiene que poder leer.
     consulta_interpretada: str = ""
+    # Lo que aportan los analisis RCM y las pautas TPM que la busqueda
+    # recupero. Lista vacia cuando no hay ninguno cargado — que es el estado
+    # normal de un piloto recien empezado—, nunca ausente.
+    contexto_rcm: list[dict] = []
 
 
 class InformeEntrada(BaseModel):
@@ -107,6 +111,11 @@ class InformeEntrada(BaseModel):
     repuestos: list[str] = []
     horometro: Optional[float] = None
     horas_hombre: Optional[float] = None
+    # Trazabilidad hacia RCM y TPM. Opcionales para siempre: un historial de
+    # cinco años no los tiene, y exigirlos invalidaria cada informe viejo.
+    modo_falla_id: Optional[str] = None
+    codigo_catalogo: Optional[str] = None
+    anomalia_id: Optional[str] = None
 
 
 class InformeGuardado(BaseModel):
@@ -283,6 +292,71 @@ def crear_app(motor_diagnostico: _motor.Motor | None = None,
     def prediccion_equipo(equipo: str,
                           activo: _motor.Motor = Depends(motor_actual)) -> dict:
         return _prediccion.pronostico(activo.indice, equipo).a_dict()
+
+    # ------------------------------------------------------- RCM y TPM
+    #
+    # Son de LECTURA. Crear o aprobar un analisis RCM por HTTP exigiria
+    # autenticacion y control de versiones, y FixMate no tiene ninguna de las
+    # dos: un endpoint de escritura sin eso deja que cualquiera en la red del
+    # taller reescriba el plan de mantenimiento sin dejar rastro. Los
+    # analisis se cargan con la CLI, que corre con los permisos de quien la
+    # ejecuta. Cuando haya autenticacion, esto se amplia.
+
+    @app.get("/rcm", summary="Modos de falla analizados que hay en el indice")
+    def rcm_listar(equipo: Optional[str] = None,
+                   activo: _motor.Motor = Depends(motor_actual)) -> dict:
+        from . import indexado as _indexado
+
+        modos = [
+            {"id": f.metadatos.get("modo_falla_id", ""),
+             "codigo_equipo": f.metadatos.get("codigo_equipo", ""),
+             "codigo_catalogo": f.metadatos.get("codigo_catalogo", ""),
+             "sistema": f.metadatos.get("sistema", ""),
+             "evidente": f.metadatos.get("evidente", True),
+             "grave": f.metadatos.get("grave", False),
+             "criticidad": f.metadatos.get("criticidad", ""),
+             "estrategia": f.metadatos.get("estrategia", ""),
+             "estrategia_rotulo": f.metadatos.get("estrategia_rotulo", ""),
+             "estado_validacion": f.metadatos.get("estado_validacion", ""),
+             "resumen_falla": f.metadatos.get("resumen_falla", "")}
+            for f in activo.indice.fragmentos
+            if f.tipo == _indexado.TIPO_RCM
+            and (not equipo or f.metadatos.get("codigo_equipo") == equipo)]
+        return {"modos": modos, "total": len(modos)}
+
+    @app.get("/rcm/modos/{codigo_catalogo}",
+             summary="Los modos de falla que declaran ese codigo de catalogo")
+    def rcm_por_codigo(codigo_catalogo: str,
+                       activo: _motor.Motor = Depends(motor_actual)) -> dict:
+        from . import indexado as _indexado
+
+        modos = [f.metadatos for f in activo.indice.fragmentos
+                 if f.tipo == _indexado.TIPO_RCM
+                 and f.metadatos.get("codigo_catalogo") == codigo_catalogo]
+        return {"codigo_catalogo": codigo_catalogo, "modos": modos,
+                "total": len(modos)}
+
+    @app.get("/tpm/anomalias", summary="Anomalias registradas en el indice")
+    def tpm_anomalias(abiertas: bool = True, equipo: Optional[str] = None,
+                      activo: _motor.Motor = Depends(motor_actual)) -> dict:
+        from . import indexado as _indexado
+
+        salida = [f.metadatos for f in activo.indice.fragmentos
+                  if f.tipo == _indexado.TIPO_ANOMALIA
+                  and (not abiertas or f.metadatos.get("abierta"))
+                  and (not equipo or f.metadatos.get("codigo_equipo") == equipo)]
+        return {"anomalias": salida, "total": len(salida),
+                "filtro": "abiertas" if abiertas else "todas"}
+
+    @app.get("/tablero", summary="Indicadores de confiabilidad del historial")
+    def tablero(activo: _motor.Motor = Depends(motor_actual)) -> dict:
+        from . import tablero as _tablero
+
+        datos = _tablero.confiabilidad(activo.indice).a_dict()
+        datos["nota"] = (
+            "MTTR y disponibilidad quedan en null a proposito: FixMate "
+            "registra cuando ocurrio una falla, no cuanto duro la reparacion.")
+        return datos
 
     return app
 
