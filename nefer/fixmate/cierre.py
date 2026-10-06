@@ -34,6 +34,13 @@ from .indice import Fragmento, Indice, firma_de
 
 CAMPOS_MINIMOS = ("causa_raiz", "solucion_aplicada")
 
+# Lo que ata un cierre con el analisis RCM y con la ronda TPM que lo
+# levanto. Los tres son OPCIONALES y lo seguiran siendo: un historial de
+# cinco años no los tiene, y exigirlos convertiria cada informe viejo en un
+# informe invalido. Lo que no esta se lee como «no evaluado», nunca como un
+# valor supuesto.
+CAMPOS_TRAZA = ("modo_falla_id", "codigo_catalogo", "anomalia_id")
+
 
 class ErrorCierre(ValueError):
     """El informe no se puede registrar tal como viene."""
@@ -117,12 +124,23 @@ def registrar(informe: dict, historial: str | Path,
 
 def desde_diagnostico(consulta, diagnostico, solucion: str,
                       causa: str | None = None, **extra) -> dict:
-    """Arma el informe a partir de lo que ya se consulto, para no reescribirlo."""
+    """Arma el informe a partir de lo que ya se consulto, para no reescribirlo.
+
+    Si el diagnostico se apoyo en un analisis RCM, el modo de falla se copia
+    aqui — pero SOLO cuando hay uno solo. Con dos modos en la evidencia, el
+    cierre no puede decidir cual se confirmo: eso lo sabe el tecnico que
+    desarmo, y adivinarlo contaminaria la frecuencia historica del analisis,
+    que es justo el numero que despues decide la estrategia.
+    """
     informe = {
         "resumen_falla": getattr(consulta, "texto", str(consulta)),
         "causa_raiz": causa or getattr(diagnostico, "causa_raiz_mas_probable", ""),
         "solucion_aplicada": solucion,
     }
+    modos = {x.get("modo_falla_id") for x in getattr(diagnostico, "contexto_rcm", [])
+             if x.get("origen") == "analisis RCM" and x.get("modo_falla_id")}
+    if len(modos) == 1:
+        informe["modo_falla_id"] = modos.pop()
     for campo in ("codigo_equipo", "categoria"):
         valor = getattr(consulta, campo, None)
         if valor:
