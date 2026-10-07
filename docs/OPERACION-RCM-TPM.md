@@ -392,6 +392,26 @@ Tiene que leerlo sin convertir nada y dar el mismo informe. Con la decisión de
 10d puesta, `rcm tareas` sobre ese archivo saca la tarea de rediseño del freno
 como **proyecto**, no como tarea programada.
 
+**10j. La ronda del operador, encima del análisis.** Baje a **Evidencia de
+campo · ronda CIL**, pulse **Abrir una ronda del operador** y elija
+`ejemplos/rcm-tpm/ronda-ex220-telefono.json`.
+
+**Tiene que salir** 1 hallazgo, 1 en un modo, 0 sin enganchar; el modo
+**F1.1.1** marcado en el árbol con *1 en campo*; y en su ficha, lo que el
+operador escribió («el panal esta tapado con tierra…»), quién lo vio, cuándo y
+por qué enganchó. Además avisa de que la ronda llegó **incompleta**: un punto
+no se pudo ver.
+
+Pruebe también a exportar el análisis con la ronda abierta: el archivo que
+baja **no** lleva la ronda dentro. La ronda sigue siendo la ronda, y el
+análisis sigue entrando por `rcm analizar` sin convertir nada.
+
+**10k. La misma pantalla, en claro y en oscuro.** Cambie el tema del sistema
+operativo. Las cuatro superficies de FixMate —la página, la app, la ronda y
+esta— siguen al aparato y comparten la misma paleta. A 4.200 m al sol, una
+pantalla oscura no se lee; en interior mina a las tres de la mañana, una
+blanca encandila.
+
 **Qué mirar.** La pantalla no evalúa criticidad, no arma la matriz FMECA y no
 codifica contra el catálogo: lo dice ella misma en el inicio, y cada una se
 hace en el lado de la oficina. Lo que sí hace, lo hace **igual que Python**:
@@ -420,6 +440,8 @@ hay 10.206 dictámenes comparados uno por uno en
 | 10d | Pantalla RCM · guarda | Rediseño obligatorio; la guarda en el camino | |
 | 10e | Pantalla RCM · 89 % | Aparece Nowlan y Heap al contestar «no» a la edad | |
 | 10i | Pantalla RCM · ida y vuelta | Lo exportado lo lee `rcm analizar` sin convertir | |
+| 10j | Pantalla RCM · ronda encima | 1 hallazgo en F1.1.1, con quién y cuándo | |
+| 10k | Claro y oscuro | Las cuatro pantallas siguen al aparato | |
 
 ---
 

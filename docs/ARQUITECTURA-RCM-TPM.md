@@ -397,6 +397,17 @@ Dicho antes de que alguien lo suponga:
   generados de Python y cruzados por pruebas. Lo que **no** tienen pantalla:
   crear o editar el análisis —se edita el JSON—, evaluar criticidad, armar la
   matriz FMECA y cerrar anomalías. Eso sigue siendo línea de comandos.
+- **Las cuatro superficies comparten una sola piel.** Los tokens de color
+  salen de la app de diagnóstico (`herramientas/piel.py`) y se copian a la
+  página de entrada, a la ronda y al análisis; la capa común de componentes
+  (`herramientas/piel/base.css`) no declara un solo color, y una prueba lo
+  comprueba. Las dos pantallas nuevas eran oscuras y punto; ahora siguen al
+  aparato, que es lo que hace falta a 4.200 m al sol.
+- **El cruce ronda → análisis se puede hacer sin terminal.** La pantalla de
+  RCM abre el archivo del teléfono y pone cada hallazgo sobre su modo de
+  falla, con el mismo enganche que `anomalia.enlazar` —código exacto, mismo
+  activo, un solo candidato— y diciendo el motivo de los que no enganchan.
+  Codificar texto libre contra el catálogo sigue siendo del comando.
 - **La API no escribe RCM ni TPM.** Ver 4.14.
 - **Sigue sin haber mantenimiento predictivo por sensores**, y `prediccion.py`
   lo sigue diciendo en su encabezado.
@@ -425,10 +436,11 @@ Dicho antes de que alguien lo suponga:
 | `test_fixmate_tablero.py` | 20 | `None` no es cero, en los tres tableros |
 | `test_fixmate_cli_rcm.py` | 18 | Los errores del cargador, que es su valor real |
 | `test_fixmate_integracion_rcm_tpm.py` | 5 | INT-001 entero, y que la cadena se niegue donde no hay evidencia |
-| `test_fixmate_cruce_ronda.py` | 11 | Que el teléfono y la oficina digan lo mismo de una ronda |
+| `test_fixmate_cruce_ronda.py` | 12 | Que el teléfono y la oficina digan lo mismo de una ronda |
 | `test_fixmate_ronda_navegador.py` | 13 | «No pude ver» igual de fácil de tocar que «OK», en un navegador real |
-| `test_fixmate_cruce_rcm.py` | 16 | El árbol en las 729 combinaciones × 7 consecuencias × evidente/oculta: 10.206 dictámenes comparados |
-| `test_fixmate_rcm_navegador.py` | 14 | La guarda de seguridad en pantalla; que lo exportado vuelva a entrar por el cargador |
+| `test_fixmate_cruce_rcm.py` | 18 | El árbol en las 729 combinaciones × 7 consecuencias × evidente/oculta: 10.206 dictámenes comparados |
+| `test_fixmate_rcm_navegador.py` | 21 | La guarda de seguridad en pantalla; la ronda encima del análisis; que lo exportado vuelva a entrar |
+| `test_fixmate_piel.py` | 15 | Que las cuatro superficies sean el mismo producto, y que la capa común no declare color |
 
 ## 8. Fases pendientes
 

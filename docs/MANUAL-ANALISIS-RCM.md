@@ -7,6 +7,15 @@ Es trabajo de oficina o de sala de reuniones, no de patio. Para el patio está
 
 **Dónde está:** <https://nilthonnn.github.io/nefer/fixmate/rcm/>
 
+Arriba de todo está la barra de FixMate: el nombre del producto, la pantalla
+en la que está parado, y el paso a las otras dos —el diagnóstico del técnico y
+la ronda del operador—. Es la misma barra, el mismo color y la misma
+tipografía en las cuatro superficies: las tres personas hablan de la misma
+máquina, y una pantalla que parece de otro programa abre la pregunta de cuál
+de las tres tiene el dato bueno.
+
+Sigue el tema del aparato, claro u oscuro, como la app de diagnóstico.
+
 Se abre en el navegador, no se instala y no sube nada: el archivo del análisis
 se lee en su computadora y lo que se guarda, se guarda en su computadora.
 Funciona igual sin red una vez abierta la página.
@@ -194,7 +203,47 @@ evaluar»: deja el modo sin decisión, y la Q6 vuelve a contarlo como
 pendiente. Una decisión que nadie tomó no se rellena con la opción
 conservadora para que el análisis parezca completo.
 
-### 7. El tablero y el resumen
+### 7. La ronda del operador, encima del análisis
+
+Aquí se cierra el circuito que justifica todo lo demás: el operador ve algo
+en el turno, y la oficina abre el análisis y ve **en qué modo de falla** cayó
+eso que vio. Sin este cruce, la ronda es una lista de hallazgos, el análisis
+es un documento, y nadie los junta nunca.
+
+**Abrir una ronda del operador (.json)** toma el archivo que sale del botón
+«Guardar» de la [ronda CIL](MANUAL-RONDA-CIL.md) —el que trae `ejecucion`,
+`anomalias` y `estado`— y lo cruza con el análisis abierto. Hay un ejemplo en
+`ejemplos/rcm-tpm/ronda-ex220-telefono.json`.
+
+Lo que pasa después:
+
+- Cada hallazgo que engancha con un modo de falla **marca ese modo en el
+  árbol** y aparece en su ficha, con lo que el operador escribió, quién lo
+  vio, cuándo, y **por qué enganchó**.
+- Los que no enganchan se listan aparte **con el motivo**. No se esconden y
+  no se aproximan al modo «más parecido»: una anomalía puesta en el modo
+  equivocado contamina la frecuencia por modo y la decisión de estrategia que
+  sale de ahí.
+
+El enganche es el mismo que hace la oficina (`anomalia.enlazar`): código de
+catálogo **exacto**, mismo activo, y un solo candidato. Si dos modos del
+análisis declaran el mismo código, no se elige: la ambigüedad se resuelve en
+el análisis. Y hay una cosa que esta pantalla **no** hace, igual que el
+teléfono: deducir el código a partir de un texto libre. Eso es el catálogo
+ISO 14224 —41 entradas con sus pistas— y lo hace `fixmate tpm anomalias`.
+
+Tres avisos que aparecen solos: si la ronda es **de otra máquina**, no se
+engancha nada; si llegó **incompleta**, se dice, porque lo que no se vio no
+dice nada del modo de falla ni a favor ni en contra; y si la app la marcó
+**demasiado rápida para haber sido ejecutada**, conviene mirarla antes de
+usarla como evidencia.
+
+La ronda **no se guarda dentro del análisis**. Meterla ahí obligaría a
+inventar un campo que el cargador no lee, y el primer cliente que abriera el
+archivo con el comando perdería la evidencia sin enterarse. La ronda sigue
+siendo la ronda.
+
+### 8. El tablero y el resumen
 
 Modos, decididos, graves, ocultos, rediseños obligatorios, decisiones
 incompletas, y el reparto por estrategia. Debajo, una fila por modo con su
@@ -202,7 +251,7 @@ consecuencia, su criticidad declarada y su estrategia.
 
 Es un resumen **para mirar**. La matriz FMECA que se entrega sale del comando.
 
-### 8. Guardar
+### 9. Guardar
 
 **Guardar el análisis con sus decisiones** baja un `.json` que es el mismo
 archivo que se abrió, con las respuestas del árbol dentro de cada modo. Vuelve
