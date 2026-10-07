@@ -326,6 +326,80 @@ tiene.
 
 ---
 
+## 10. La pantalla del análisis RCM · 6 min
+
+Es la única prueba de esta guía que no usa la terminal. Se abre el archivo en
+el navegador —doble clic, o `file://`— y no hace falta servidor:
+
+```bash
+python3 -c "import pathlib,webbrowser; webbrowser.open(
+  pathlib.Path('docs/fixmate/rcm/index.html').resolve().as_uri())"
+```
+
+También está publicada en <https://nilthonnn.github.io/nefer/fixmate/rcm/>.
+
+**10a. El ejemplo, y que avise que es inventado.** Pulse **Abrir el análisis
+de ejemplo**. El propio botón tiene que decir que la EX-220 **no existe**.
+Arriba sale el contexto operacional (4.200 m, polvo de sílice) y el panel de
+JA1011 con **«Las siete están contestadas»** — el ejemplo trae los cuatro
+modos decididos.
+
+**10b. Las cuatro que sostienen la cadena.** En el panel de las siete, cuatro
+preguntas están marcadas *sostiene la cadena*: funciones, fallas funcionales,
+modos y consecuencias. No hay porcentaje en ninguna parte.
+
+**10c. La falla oculta.** Haga clic en el modo **F1.1.3** (válvula de alivio
+pegada). Tiene que decir **OCULTA**, explicar que el riesgo que se trata es la
+**falla múltiple**, y marcar las cinco preguntas de la rama evidente como *no
+aplica a este modo*.
+
+**10d. La guarda, que es la prueba importante.** Haga clic en **F2.1.1** (la
+manguera de freno: consecuencia de seguridad). Contéstele al árbol:
+degradación detectable **No**, intervalo de edad **No**, restaurar **No**,
+tarea viable **Sí**, costo-efectiva **No**.
+
+**Tiene que salir** «Rediseño o cambio de ingenieria», con el chip **REDISEÑO
+OBLIGATORIO**, y el último paso del camino tiene que ser la guarda cerrándose:
+*«¿operar hasta la falla?» → no → la guarda lo impide*. Si en algún momento la
+pantalla ofreciera «operar hasta la falla» como estrategia de ese modo, deje
+de probar y avise: es el único error de este proyecto que no tiene atenuante.
+
+**10e. El 89 %.** Al contestar **No** al intervalo de edad, tiene que aparecer
+el aviso de Nowlan y Heap (1978) y el 89 % de ítems sin zona de desgaste.
+
+**10f. Sin dato económico, sin ahorro.** Vaya a **F1.1.1** (el radiador) y
+ponga la pregunta del costo en **Sin evaluar**. Sale «Mantenimiento segun
+condicion» con el aviso *«Información económica insuficiente…»*. No hay ningún
+número de ahorro en pantalla.
+
+**10g. «Sin evaluar» no es «No».** Los tres botones de cada pregunta tienen
+que ser del mismo tamaño y estar en la misma fila. Una decisión con preguntas
+sin evaluar sale marcada **DECISIÓN INCOMPLETA**.
+
+**10h. Quitar una decisión.** En cualquier modo, **Quitar la decisión de este
+modo**. El panel de las siete baja a **5/7** —la Q6 queda abierta y con ella
+la Q7, que depende de que todas estén decididas—, nombra el modo en la Q6, y
+en el árbol ese modo queda **SIN DECIDIR**.
+
+**10i. Que lo exportado vuelva a entrar.** Pulse **Guardar el análisis con sus
+decisiones** y pase el archivo por la terminal:
+
+```bash
+python3 -m nefer fixmate rcm analizar ~/Descargas/analisis-EX-220.json
+```
+
+Tiene que leerlo sin convertir nada y dar el mismo informe. Con la decisión de
+10d puesta, `rcm tareas` sobre ese archivo saca la tarea de rediseño del freno
+como **proyecto**, no como tarea programada.
+
+**Qué mirar.** La pantalla no evalúa criticidad, no arma la matriz FMECA y no
+codifica contra el catálogo: lo dice ella misma en el inicio, y cada una se
+hace en el lado de la oficina. Lo que sí hace, lo hace **igual que Python**:
+hay 10.206 dictámenes comparados uno por uno en
+`tests/test_fixmate_cruce_rcm.py`.
+
+---
+
 ## Hoja de resultados
 
 | # | Prueba | Esperado | ¿Pasó? |
@@ -343,13 +417,18 @@ tiene.
 | 7 | `tablero` | MTTR sin dato, y dice por qué | |
 | 8 | `contrastar` | `F1.1.1: 3` pese a tres escrituras | |
 | 9 | API | 4 modos; MTTR `null`; `contexto_rcm` con origen declarado | |
+| 10d | Pantalla RCM · guarda | Rediseño obligatorio; la guarda en el camino | |
+| 10e | Pantalla RCM · 89 % | Aparece Nowlan y Heap al contestar «no» a la edad | |
+| 10i | Pantalla RCM · ida y vuelta | Lo exportado lo lee `rcm analizar` sin convertir | |
 
 ---
 
 ## Lo que NO va a encontrar, y es a propósito
 
-- **No hay pantalla.** RCM y TPM se operan por línea de comandos. El
-  frontend está pendiente.
+- **No hay pantalla para *crear* el análisis.** La hay para recorrerlo y
+  decidirlo (prueba 10), y para la ronda del operador (pruebas 5 y 6). Escribir
+  las funciones, las fallas y los modos sigue siendo editar el JSON; evaluar
+  criticidad, armar la matriz y cerrar anomalías siguen siendo comandos.
 - **No hay MTTR ni disponibilidad.** Ver prueba 7.
 - **No hay costo-efectividad.** No existe un dato económico en el sistema.
 - **No puede crear un análisis por HTTP.** Ver prueba 9.

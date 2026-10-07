@@ -159,3 +159,19 @@ def test_la_pagina_publicada_manda_a_fixmate_y_no_a_la_app_de_actas():
     pagina = (raiz / "docs" / "fixmate" / "index.html").read_text(encoding="utf-8")
     assert 'href="../fixmate-app.html"' in pagina
     assert 'href="app/"' in pagina
+
+
+def test_la_pagina_lleva_a_las_dos_pantallas_y_a_sus_manuales(html):
+    """Las dos apps que no son la de diagnóstico, con su manual al lado.
+
+    Una app publicada que no se enlaza desde ninguna parte no existe: nadie
+    la encuentra escribiendo la ruta. Y un manual que no se enlaza desde la
+    página se queda sin leer justamente por quien lo necesita.
+    """
+    for destino in ('href="ronda/"', 'href="rcm/"',
+                    'href="../MANUAL-RONDA-CIL.md"',
+                    'href="../MANUAL-ANALISIS-RCM.md"'):
+        assert destino in html, f"la página ya no lleva a {destino}"
+    for ruta in ("docs/fixmate/ronda/index.html", "docs/fixmate/rcm/index.html",
+                 "docs/MANUAL-RONDA-CIL.md", "docs/MANUAL-ANALISIS-RCM.md"):
+        assert (RAIZ / ruta).exists(), f"falta {ruta}"
