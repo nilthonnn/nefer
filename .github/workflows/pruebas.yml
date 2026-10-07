@@ -52,6 +52,12 @@ jobs:
       - name: Instalar
         run: pip install -e ".[dev]"
 
+      # Los cruces de las dos pantallas espejadas corren su JavaScript con
+      # node, y sin node se saltan solos. Una suite que se salta sola pasa
+      # igual, asi que la falta se mira aqui y cuenta como fallo.
+      - name: Node, para los cruces de las pantallas
+        run: node --version
+
       - name: Probar
         run: |
           python -m pytest -q \
@@ -59,21 +65,35 @@ jobs:
             tests/test_build_extract.py \
             tests/test_codigos_qr.py \
             tests/test_demo_fixmate.py \
+            tests/test_fixmate_activos.py \
+            tests/test_fixmate_anomalia.py \
             tests/test_fixmate_api.py \
             tests/test_fixmate_aprendizaje.py \
             tests/test_fixmate_catalogo.py \
             tests/test_fixmate_cierre.py \
+            tests/test_fixmate_cli_rcm.py \
+            tests/test_fixmate_criticidad.py \
             tests/test_fixmate_cruce.py \
+            tests/test_fixmate_cruce_rcm.py \
+            tests/test_fixmate_cruce_ronda.py \
+            tests/test_fixmate_decision.py \
             tests/test_fixmate_documentos.py \
             tests/test_fixmate_espejo.py \
+            tests/test_fixmate_fmeca.py \
             tests/test_fixmate_historial_bloques.py \
+            tests/test_fixmate_indexado.py \
             tests/test_fixmate_indice.py \
             tests/test_fixmate_ingesta.py \
+            tests/test_fixmate_integracion_rcm_tpm.py \
             tests/test_fixmate_motor.py \
             tests/test_fixmate_pg.py \
+            tests/test_fixmate_plan.py \
             tests/test_fixmate_prediccion.py \
+            tests/test_fixmate_rcm.py \
             tests/test_fixmate_seguridad.py \
+            tests/test_fixmate_tablero.py \
             tests/test_fixmate_texto.py \
+            tests/test_fixmate_tpm.py \
             tests/test_layout.py \
             tests/test_publicacion_clon.py \
             tests/test_publicacion_fixmate.py \
@@ -226,6 +246,8 @@ jobs:
             tests/test_autoguardado.py \
             tests/test_entregables_app.py \
             tests/test_fixmate_app_navegador.py \
+            tests/test_fixmate_rcm_navegador.py \
+            tests/test_fixmate_ronda_navegador.py \
             tests/test_puente_android.py | tee salida.txt
 
       # Una prueba saltada aqui no es una prueba: deja pasar un fallo real sin
