@@ -255,3 +255,29 @@ def test_las_constantes_del_javascript_son_las_de_python():
     for sev in _an.SEVERIDADES:
         assert f'"{sev}"' in html, f"falta la severidad {sev} en la app"
     assert f"FRACCION_SOSPECHOSA = {_tpm.FRACCION_SOSPECHOSA}" in html
+
+
+def test_el_ejemplo_del_telefono_es_lo_que_el_telefono_produce(tmp_path):
+    """`ronda-ex220-telefono.json` es lo que sale del botón «Guardar», tal cual.
+
+    Lo usa la pantalla de análisis RCM para cruzar la ronda con el análisis,
+    y lo usa la guía de operación. Escrito a mano envejecería en silencio: si
+    la app cambiara un campo, el ejemplo seguiría enseñando el formato viejo
+    y el primero en descubrirlo sería un cliente.
+    """
+    import json as _json
+
+    ejemplo = _json.loads((EJEMPLOS / "ronda-ex220-telefono.json")
+                          .read_text(encoding="utf-8"))
+    pauta, ejecucion = _pauta(), _ronda("ronda-ex220-hallazgo.json")
+    js = _js(pauta, ejecucion, tmp_path)
+
+    assert ejemplo["estado"] == js["estado"]
+    resumen = [[a["id"], a["severidad"], a["descripcion"], a["componente"],
+                a["codigo_catalogo"], a["modo_falla_id"]]
+               for a in ejemplo["anomalias"]]
+    assert resumen == js["anomalias"], (
+        "el ejemplo del teléfono ya no coincide con lo que produce la app: "
+        "vuelva a generarlo")
+    # Y trae las tres partes que la oficina espera encontrar.
+    assert set(ejemplo) == {"ejecucion", "anomalias", "estado"}

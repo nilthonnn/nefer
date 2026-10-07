@@ -192,6 +192,12 @@ Ahí es donde pasan las dos cosas que el teléfono **no** hace:
 Las dos necesitan datos que viven en la oficina. El teléfono hereda el código
 sólo cuando la pauta ya lo declara.
 
+Y sin tocar la terminal: el mismo archivo se puede abrir en la
+[pantalla de análisis RCM](MANUAL-ANALISIS-RCM.md), en **Evidencia de campo**,
+y se ve en qué modo de falla cayó cada hallazgo —y cuáles no engancharon, con
+el motivo—. Ahí el enganche es el que no necesita catálogo: código exacto y
+mismo activo. Codificar el texto libre sigue siendo del comando.
+
 ## 7. Lo que esta app NO hace
 
 - **No clasifica contra el catálogo.** Ver arriba. El catálogo son 41

@@ -14,6 +14,11 @@ tendrian que ser la misma.
     python herramientas/espejo-ronda.py            # reescribe la app
     python herramientas/espejo-ronda.py --revisar  # solo dice si esta al dia
 
+Tambien se copia aqui LA PIEL —los tokens de color de la app de
+diagnostico y la capa comun de componentes—, para que las cuatro superficies
+de FixMate se vean como un solo producto y esta tenga modo claro: a 4.200 m
+al sol, una pantalla oscura no se lee. Ver `herramientas/piel.py`.
+
 Lo que se genera son los DATOS y los NUMEROS: las clases, los resultados,
 las severidades, la fraccion de sospecha y la pauta de ejemplo. El
 algoritmo sigue escrito a mano en los dos lenguajes, y de que hagan lo
@@ -29,6 +34,9 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import piel as _piel                              # noqa: E402
 
 from nefer.fixmate import anomalia as _anomalia  # noqa: E402
 from nefer.fixmate import tpm as _tpm            # noqa: E402
@@ -78,6 +86,8 @@ def construir(partes: Path) -> str:
     """La app entera, con los datos puestos."""
     trozos = [(partes / nombre).read_text(encoding="utf-8") for nombre in PARTES]
     html = "".join(trozos)
+    html = _reemplazar(html, "piel", _piel.estilos())
+    html = _reemplazar(html, "barra", _piel.barra_js())
     html = _reemplazar(html, "datos", datos())
     html = _reemplazar(html, "demo", demo())
     return html

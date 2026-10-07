@@ -12,16 +12,66 @@
 <link rel="icon" type="image/png" sizes="192x192" href="app/icono-192.png">
 <link rel="apple-touch-icon" href="app/apple-touch-icon.png">
 <style>
-  :root { color-scheme: light dark;
-          --papel:#F3F4F2; --tinta:#16191B; --tinta2:#4E5860; --tinta3:#7C878E;
-          --regla:#D6DCDA; --acento:#1E4B6B; --acento-suave:#E3ECF3;
-          --tarjeta:#FFFFFF; --alerta:#9A3B1B; --consola:#14181A;
-          --consola-tinta:#DCE3E1; --consola-tenue:#8A959B; --consola-regla:#2A3338; }
+  /* piel:inicio */
+    :root {
+    --paper:#F3F4F2; --card:#FFFFFF; --card-2:#EAEDEB;
+    --ink:#16191B; --ink-2:#4E5860; --ink-3:#5F6A72;
+    --rule:#D6DCDA; --rule-2:#E6EAE8;
+    --accent:#1E4B6B; --accent-soft:#E3ECF3;
+    --ok:#1F6B4C; --ok-soft:#E1F0E9;
+    --obs:#8A5A00; --obs-soft:#F8EFDB; --obs-rule:#E0C894;
+    --mal:#96341F; --mal-soft:#F7E6E0; --mal-rule:#E0B2A2;
+    --barra:#16191B; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(22,25,27,.05), 0 10px 26px -16px rgba(22,25,27,.28);
+    /* Barlow va alojada; detrás, siempre, la del sistema: si el archivo aún
+       no llegó o no está —el demo descargado como archivo suelto no lo
+       lleva—, el texto se lee igual desde el primer instante. */
+    --cond:"Barlow Condensed",ui-sans-serif,system-ui,-apple-system,
+           "Roboto Condensed","Arial Narrow",sans-serif;
+    --sans:"Barlow",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    /* La monoespaciada no se aloja: la del aparato es buena y cuesta 0 bytes. */
+    --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --papel:#14181A; --tinta:#E7ECEB; --tinta2:#A3AFB4; --tinta3:#7E8B92;
-            --regla:#2F383D; --acento:#6FA8CE; --acento-suave:#1E2B35;
-            --tarjeta:#1C2225; --alerta:#E0906C; --consola:#0E1113;
-            --consola-regla:#242C30; }
+    :root:not([data-theme="light"]) {
+      --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+      --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+      --rule:#2F383D; --rule-2:#262E32;
+      --accent:#6FA8CE; --accent-soft:#16303F;
+      --ok:#6FC49B; --ok-soft:#143024;
+      --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+      --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+      --barra:#0E1113; --barra-ink:#E7ECEB;
+      --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+    --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+    --rule:#2F383D; --rule-2:#262E32;
+    --accent:#6FA8CE; --accent-soft:#16303F;
+    --ok:#6FC49B; --ok-soft:#143024;
+    --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+    --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+    --barra:#0E1113; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+  }
+  
+  /* piel:fin */
+  :root { color-scheme: light dark;
+          /* Los nombres de esta página, apuntando a la piel. Son `var()`, así
+             que el modo oscuro de la piel llega solo: no hay una segunda
+             tabla de colores que mantener al día. */
+          --papel:var(--paper); --tinta:var(--ink); --tinta2:var(--ink-2);
+          --tinta3:var(--ink-3); --regla:var(--rule); --acento:var(--accent);
+          --acento-suave:var(--accent-soft); --tarjeta:var(--card);
+          --alerta:var(--mal);
+          /* La consola imita una terminal: es oscura en los dos temas a
+             propósito, porque eso es lo que se ve al correr los comandos. */
+          --consola:#14181A; --consola-tinta:#DCE3E1; --consola-tenue:#8A959B;
+          --consola-regla:#2A3338; }
+  @media (prefers-color-scheme: dark) {
+    :root { --consola:#0E1113; --consola-regla:#242C30; }
   }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--papel); color:var(--tinta);
@@ -374,6 +424,23 @@ EVIDENCIA
         <strong>Manual de la ronda</strong>
         <em>Para el operador y para quien escribe la pauta: qué significa cada
             botón y por qué «no pude ver» importa tanto como «OK»</em>
+      </div>
+    </a>
+    <a class="cta" href="rcm/">
+      <div>
+        <strong>Análisis RCM · la mesa de trabajo</strong>
+        <em>Para la oficina: se abre el análisis, el equipo contesta el árbol
+            de decisión de SAE JA1011 y la pantalla muestra a dónde lleva cada
+            respuesta, con el camino escrito. Las siete preguntas de la norma,
+            con lo que falta y en qué modos</em>
+      </div>
+    </a>
+    <a class="cta" href="../MANUAL-ANALISIS-RCM.md">
+      <div>
+        <strong>Manual del análisis RCM</strong>
+        <em>Qué significa cada pregunta del árbol, por qué «sin evaluar» no es
+            «no», y por qué con consecuencia de seguridad «operar hasta la
+            falla» no es una salida</em>
       </div>
     </a>
     <a class="cta" href="../MANUAL-FIXMATE.md">

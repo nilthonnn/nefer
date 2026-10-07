@@ -1,0 +1,97 @@
+/* La capa comun de las pantallas de FixMate: barra, botones, tarjetas,
+ * etiquetas y avisos. Encima van las reglas propias de cada pantalla.
+ *
+ * Esto NO define colores: los toma de la piel, que sale de la app de
+ * diagnostico. Un color escrito aqui a mano seria una tercera paleta, que es
+ * justo lo que esta capa existe para que no pase.
+ *
+ * Por que una capa comun y no que cada pantalla se pinte sola: el tecnico que
+ * diagnostica, el operador que hace la ronda y el ingeniero que decide la
+ * estrategia son tres personas que hablan entre ellas de la misma maquina. Si
+ * cada pantalla parece de otro programa, la primera pregunta de cada reunion
+ * es cual de los tres tiene el dato bueno.
+ */
+
+*, *::before, *::after { box-sizing:border-box; }
+/* Que los controles del sistema —barras de desplazamiento, campos, el
+   teclado del telefono— sigan el mismo tema que la pagina. */
+html { -webkit-text-size-adjust:100%; color-scheme:light dark; }
+body { margin:0; background:var(--paper); color:var(--ink);
+       font-family:var(--sans); font-size:16px; line-height:1.5;
+       padding:0 16px env(safe-area-inset-bottom); }
+
+/* ---------------------------------------------------------- la barra
+ * La misma de la app de diagnostico: el nombre del producto, y al lado, en
+ * chico, en que pantalla esta parado. Es lo unico que se ve igual en las tres
+ * antes de leer una sola palabra.
+ */
+.barra { background:var(--barra); color:var(--barra-ink); margin:0 -16px;
+         padding:.7rem 16px calc(.7rem + env(safe-area-inset-top));
+         display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap; }
+.barra b { font-family:var(--cond); font-size:1.15rem; letter-spacing:.04em;
+           text-transform:uppercase; }
+.barra span { font-family:var(--mono); font-size:.66rem; opacity:.7;
+              letter-spacing:.06em; text-transform:uppercase; }
+.barra .vinculos { margin-left:auto; display:flex; gap:.9rem; }
+.barra .vinculos a { color:var(--barra-ink); opacity:.65; text-decoration:none;
+                     font-family:var(--mono); font-size:.66rem;
+                     letter-spacing:.06em; text-transform:uppercase; }
+.barra .vinculos a:hover, .barra .vinculos a:focus-visible { opacity:1;
+                     text-decoration:underline; }
+
+/* ------------------------------------------------------- tipografia */
+h1 { font-family:var(--cond); font-size:1.6rem; letter-spacing:.01em;
+     margin:0 0 .25rem; text-wrap:balance; }
+h2 { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+     text-transform:uppercase; color:var(--ink-3); font-weight:700;
+     margin:1.6rem 0 .6rem; }
+h3 { font-size:1.05rem; margin:0 0 .3rem; text-wrap:balance; }
+p { margin:0 0 .6rem; }
+a { color:var(--accent); }
+code { font-family:var(--mono); font-size:.86em; background:var(--card-2);
+       padding:.05rem .3rem; border-radius:3px; }
+.tenue { color:var(--ink-2); font-size:.86rem; }
+.vacio { color:var(--ink-3); font-style:italic; }
+/* La etiqueta de un dato, en monoespaciada chica: la misma de la app. */
+.lb { font-family:var(--mono); font-size:.7rem; letter-spacing:.05em;
+      text-transform:uppercase; color:var(--ink-3); }
+
+/* ---------------------------------------------------------- botones */
+button { font:inherit; font-size:.9rem; cursor:pointer; color:var(--ink);
+         border:1px solid var(--rule); background:var(--card);
+         border-radius:6px; padding:.55rem .9rem; text-align:left;
+         touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+button:hover { border-color:var(--ink-3); }
+button.primary { background:var(--accent); color:var(--paper);
+                 border-color:var(--accent); font-weight:700; }
+button:disabled { opacity:.5; cursor:default; }
+:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+
+/* ----------------------------------------------- tarjetas y avisos */
+.tarjeta { background:var(--card); border:1px solid var(--rule);
+           border-radius:6px; padding:.9rem 1rem; margin-bottom:.8rem; }
+/* El aviso de la app: barra al costado y fondo suave, no un bloque de color.
+   Se lee con guantes y a contraluz. */
+.aviso { border-left:3px solid var(--obs); background:var(--obs-soft);
+         color:var(--ink); padding:.6rem .8rem; border-radius:0 4px 4px 0;
+         font-size:.88rem; margin:.6rem 0 0; }
+.aviso.peligro { border-left-color:var(--mal); background:var(--mal-soft); }
+.aviso.nota { border-left-color:var(--rule); background:var(--card-2);
+              color:var(--ink-2); }
+
+/* ------------------------------------------------------------ chips
+ * Rotulo corto con borde, no relleno: a tres por linea, el relleno convierte
+ * la ficha en una bolsa de colores y deja de distinguirse lo grave.
+ */
+.chip { display:inline-block; font-family:var(--mono); font-size:.6rem;
+        letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3);
+        border:1px solid var(--rule); border-radius:3px; padding:.08rem .35rem;
+        margin:0 .25rem .25rem 0; white-space:nowrap; }
+.chip.grave { color:var(--mal); border-color:var(--mal); }
+.chip.ok { color:var(--ok); border-color:var(--ok); }
+.chip.obs { color:var(--obs); border-color:var(--obs); }
+.chip.acento { color:var(--accent); border-color:var(--accent); }
+
+ul.lista { margin:.35rem 0 0; padding-left:1.1rem; }
+ul.lista li { margin-bottom:.2rem; font-size:.88rem; }
+.oculto { display:none; }

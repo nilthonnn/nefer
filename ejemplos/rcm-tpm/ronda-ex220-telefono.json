@@ -1,0 +1,75 @@
+{
+  "ejecucion": {
+    "id": "cil-ex220-2026-03-16-A",
+    "checklist_id": "cil-ex220",
+    "activo_codigo": "EX-220",
+    "operador": "(operador del turno A)",
+    "fecha": "2026-03-16",
+    "items": [
+      {
+        "punto_id": "cil-ex220.1",
+        "resultado": "nok",
+        "segundos": 11,
+        "observacion": "El panal esta tapado con tierra, no pasa la luz por el tercio inferior"
+      },
+      {
+        "punto_id": "cil-ex220.2",
+        "resultado": "ok",
+        "segundos": 5
+      },
+      {
+        "punto_id": "cil-ex220.3",
+        "resultado": "ok",
+        "segundos": 7
+      },
+      {
+        "punto_id": "cil-ex220.4",
+        "resultado": "sin_acceso",
+        "segundos": 4,
+        "observacion": "Guarda inferior soldada; no se puede ver sin levantar la maquina"
+      },
+      {
+        "punto_id": "cil-ex220.5",
+        "resultado": "ok",
+        "segundos": 6
+      }
+    ],
+    "anomalias": [
+      "cil-ex220-2026-03-16-A.cil-ex220.1"
+    ]
+  },
+  "anomalias": [
+    {
+      "id": "cil-ex220-2026-03-16-A.cil-ex220.1",
+      "activo_codigo": "EX-220",
+      "descripcion": "El panal esta tapado con tierra, no pasa la luz por el tercio inferior",
+      "severidad": "programable",
+      "ejecucion_id": "cil-ex220-2026-03-16-A",
+      "punto_id": "cil-ex220.1",
+      "componente": "Panal del radiador, lado admision",
+      "condicion_observada": "Se ve la luz a traves del panal; sin costra de tierra que tape celdas",
+      "detectada_por": "(operador del turno A)",
+      "fecha": "2026-03-16",
+      "codigo_catalogo": "TER.SOBRECALENTAMIENTO.RADIADOR",
+      "modo_falla_id": "F1.1.1",
+      "evidencia": [],
+      "estado": "abierta",
+      "responsable": "",
+      "accion": "",
+      "fecha_cierre": "",
+      "codigo_ot": ""
+    }
+  ],
+  "estado": {
+    "total": 5,
+    "respondidos": 5,
+    "ok": 3,
+    "nok": 1,
+    "sin_acceso": 1,
+    "pendientes": [],
+    "segundos": 33,
+    "presupuesto_seg": 31,
+    "completa": false,
+    "sospechosa_de_firma": false
+  }
+}

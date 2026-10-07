@@ -3,62 +3,242 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1220">
+<meta name="theme-color" content="#16191B">
 <title>Ronda CIL · FixMate</title>
 <link rel="icon" href="../app/icono-192.png">
 <link rel="apple-touch-icon" href="../app/apple-touch-icon.png">
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--fondo:#0b1220;--panel:#152033;--borde:#2a3a55;--texto:#e8eef7;--tenue:#93a4bd;
-      --ok:#1f9d55;--aviso:#d99100;--malo:#c3382f;--acento:#3987e5}
-html,body{margin:0;background:var(--fondo);color:var(--texto);
-  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-body{padding:env(safe-area-inset-top) env(safe-area-inset-right)
-      env(safe-area-inset-bottom) env(safe-area-inset-left)}
-.lam{max-width:560px;margin:0 auto;padding:16px;min-height:100dvh;display:flex;flex-direction:column}
-h1{font-size:22px;margin:0 0 4px;letter-spacing:-.02em}
-h2{font-size:15px;margin:20px 0 8px;color:var(--tenue);text-transform:uppercase;
-   letter-spacing:.08em;font-weight:700}
-p{margin:0 0 10px}
-.tenue{color:var(--tenue);font-size:13px;line-height:1.4}
-.tarjeta{background:var(--panel);border:2px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:12px}
-button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;
-  border-radius:12px;border:2px solid var(--borde);background:var(--panel);
-  min-height:56px;padding:10px 14px;width:100%;text-align:left;margin-bottom:10px}
-button:focus-visible{outline:4px solid var(--acento);outline-offset:2px}
-button.grande{font-size:19px;font-weight:800;text-align:center}
-.b-ok{background:var(--ok);border-color:#36c16f;color:#06220f}
-.b-mal{background:var(--aviso);border-color:#f0b429;color:#2a1e00}
-.b-sin{background:#2b3a52;border-color:#485e80}
-.b-acento{background:var(--acento);border-color:#6fb0ff;color:#04203f}
-.chip{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;
-  text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#24344d;color:var(--tenue)}
-.chip.tec{background:#4a2520;color:#ffc9c2}
-.barra{height:6px;background:#24344d;border-radius:4px;overflow:hidden;margin:10px 0 18px}
-.barra>i{display:block;height:100%;background:var(--acento);transition:width .2s}
-.punto{font-size:30px;font-weight:900;line-height:1.1;margin:6px 0 10px;letter-spacing:-.02em}
-.criterio{font-size:19px;background:#0f1a2b;border:2px solid var(--borde);
-  border-radius:10px;padding:12px;margin-bottom:10px}
-.crece{flex:1}
-.pie{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--tenue)}
-textarea,input[type=text]{width:100%;font:inherit;color:var(--texto);background:#0f1a2b;
-  border:2px solid var(--borde);border-radius:10px;padding:10px;min-height:52px}
-.velo{position:fixed;inset:0;background:rgba(5,10,20,.93);display:flex;align-items:flex-end;padding:14px;z-index:9}
-.velo>div{max-width:560px;margin:0 auto;width:100%;background:var(--panel);
-  border:2px solid var(--borde);border-radius:16px;padding:16px}
-.fila{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.fila button{margin:0}
-.res-ok{border-color:#36c16f;background:#0d2a19}
-.res-mal{border-color:#f0b429;background:#2e2306}
-.res-sin{border-color:#485e80;background:#1a2638}
-.aviso{border:2px solid var(--aviso);background:#2e2306;border-radius:10px;padding:12px;margin-bottom:12px;font-size:14px}
-.peligro{border-color:var(--malo);background:#2d110e}
-.oculto{display:none}
-ul{margin:6px 0 0;padding-left:20px}li{margin-bottom:4px}
-code{background:#0f1a2b;padding:1px 5px;border-radius:4px;font-size:13px}
+/* ronda:piel:inicio */
+/* Generado por herramientas/piel.py desde docs/fixmate/app/index.html.
+ * No editar aqui: se reescribe. */
+    :root {
+    --paper:#F3F4F2; --card:#FFFFFF; --card-2:#EAEDEB;
+    --ink:#16191B; --ink-2:#4E5860; --ink-3:#5F6A72;
+    --rule:#D6DCDA; --rule-2:#E6EAE8;
+    --accent:#1E4B6B; --accent-soft:#E3ECF3;
+    --ok:#1F6B4C; --ok-soft:#E1F0E9;
+    --obs:#8A5A00; --obs-soft:#F8EFDB; --obs-rule:#E0C894;
+    --mal:#96341F; --mal-soft:#F7E6E0; --mal-rule:#E0B2A2;
+    --barra:#16191B; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(22,25,27,.05), 0 10px 26px -16px rgba(22,25,27,.28);
+    /* Barlow va alojada; detrás, siempre, la del sistema: si el archivo aún
+       no llegó o no está —el demo descargado como archivo suelto no lo
+       lleva—, el texto se lee igual desde el primer instante. */
+    --cond:"Barlow Condensed",ui-sans-serif,system-ui,-apple-system,
+           "Roboto Condensed","Arial Narrow",sans-serif;
+    --sans:"Barlow",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    /* La monoespaciada no se aloja: la del aparato es buena y cuesta 0 bytes. */
+    --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+      --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+      --rule:#2F383D; --rule-2:#262E32;
+      --accent:#6FA8CE; --accent-soft:#16303F;
+      --ok:#6FC49B; --ok-soft:#143024;
+      --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+      --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+      --barra:#0E1113; --barra-ink:#E7ECEB;
+      --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+    --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+    --rule:#2F383D; --rule-2:#262E32;
+    --accent:#6FA8CE; --accent-soft:#16303F;
+    --ok:#6FC49B; --ok-soft:#143024;
+    --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+    --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+    --barra:#0E1113; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+  }
+  
+
+/* La capa comun de las pantallas de FixMate: barra, botones, tarjetas,
+ * etiquetas y avisos. Encima van las reglas propias de cada pantalla.
+ *
+ * Esto NO define colores: los toma de la piel, que sale de la app de
+ * diagnostico. Un color escrito aqui a mano seria una tercera paleta, que es
+ * justo lo que esta capa existe para que no pase.
+ *
+ * Por que una capa comun y no que cada pantalla se pinte sola: el tecnico que
+ * diagnostica, el operador que hace la ronda y el ingeniero que decide la
+ * estrategia son tres personas que hablan entre ellas de la misma maquina. Si
+ * cada pantalla parece de otro programa, la primera pregunta de cada reunion
+ * es cual de los tres tiene el dato bueno.
+ */
+
+*, *::before, *::after { box-sizing:border-box; }
+/* Que los controles del sistema —barras de desplazamiento, campos, el
+   teclado del telefono— sigan el mismo tema que la pagina. */
+html { -webkit-text-size-adjust:100%; color-scheme:light dark; }
+body { margin:0; background:var(--paper); color:var(--ink);
+       font-family:var(--sans); font-size:16px; line-height:1.5;
+       padding:0 16px env(safe-area-inset-bottom); }
+
+/* ---------------------------------------------------------- la barra
+ * La misma de la app de diagnostico: el nombre del producto, y al lado, en
+ * chico, en que pantalla esta parado. Es lo unico que se ve igual en las tres
+ * antes de leer una sola palabra.
+ */
+.barra { background:var(--barra); color:var(--barra-ink); margin:0 -16px;
+         padding:.7rem 16px calc(.7rem + env(safe-area-inset-top));
+         display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap; }
+.barra b { font-family:var(--cond); font-size:1.15rem; letter-spacing:.04em;
+           text-transform:uppercase; }
+.barra span { font-family:var(--mono); font-size:.66rem; opacity:.7;
+              letter-spacing:.06em; text-transform:uppercase; }
+.barra .vinculos { margin-left:auto; display:flex; gap:.9rem; }
+.barra .vinculos a { color:var(--barra-ink); opacity:.65; text-decoration:none;
+                     font-family:var(--mono); font-size:.66rem;
+                     letter-spacing:.06em; text-transform:uppercase; }
+.barra .vinculos a:hover, .barra .vinculos a:focus-visible { opacity:1;
+                     text-decoration:underline; }
+
+/* ------------------------------------------------------- tipografia */
+h1 { font-family:var(--cond); font-size:1.6rem; letter-spacing:.01em;
+     margin:0 0 .25rem; text-wrap:balance; }
+h2 { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+     text-transform:uppercase; color:var(--ink-3); font-weight:700;
+     margin:1.6rem 0 .6rem; }
+h3 { font-size:1.05rem; margin:0 0 .3rem; text-wrap:balance; }
+p { margin:0 0 .6rem; }
+a { color:var(--accent); }
+code { font-family:var(--mono); font-size:.86em; background:var(--card-2);
+       padding:.05rem .3rem; border-radius:3px; }
+.tenue { color:var(--ink-2); font-size:.86rem; }
+.vacio { color:var(--ink-3); font-style:italic; }
+/* La etiqueta de un dato, en monoespaciada chica: la misma de la app. */
+.lb { font-family:var(--mono); font-size:.7rem; letter-spacing:.05em;
+      text-transform:uppercase; color:var(--ink-3); }
+
+/* ---------------------------------------------------------- botones */
+button { font:inherit; font-size:.9rem; cursor:pointer; color:var(--ink);
+         border:1px solid var(--rule); background:var(--card);
+         border-radius:6px; padding:.55rem .9rem; text-align:left;
+         touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+button:hover { border-color:var(--ink-3); }
+button.primary { background:var(--accent); color:var(--paper);
+                 border-color:var(--accent); font-weight:700; }
+button:disabled { opacity:.5; cursor:default; }
+:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+
+/* ----------------------------------------------- tarjetas y avisos */
+.tarjeta { background:var(--card); border:1px solid var(--rule);
+           border-radius:6px; padding:.9rem 1rem; margin-bottom:.8rem; }
+/* El aviso de la app: barra al costado y fondo suave, no un bloque de color.
+   Se lee con guantes y a contraluz. */
+.aviso { border-left:3px solid var(--obs); background:var(--obs-soft);
+         color:var(--ink); padding:.6rem .8rem; border-radius:0 4px 4px 0;
+         font-size:.88rem; margin:.6rem 0 0; }
+.aviso.peligro { border-left-color:var(--mal); background:var(--mal-soft); }
+.aviso.nota { border-left-color:var(--rule); background:var(--card-2);
+              color:var(--ink-2); }
+
+/* ------------------------------------------------------------ chips
+ * Rotulo corto con borde, no relleno: a tres por linea, el relleno convierte
+ * la ficha en una bolsa de colores y deja de distinguirse lo grave.
+ */
+.chip { display:inline-block; font-family:var(--mono); font-size:.6rem;
+        letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3);
+        border:1px solid var(--rule); border-radius:3px; padding:.08rem .35rem;
+        margin:0 .25rem .25rem 0; white-space:nowrap; }
+.chip.grave { color:var(--mal); border-color:var(--mal); }
+.chip.ok { color:var(--ok); border-color:var(--ok); }
+.chip.obs { color:var(--obs); border-color:var(--obs); }
+.chip.acento { color:var(--accent); border-color:var(--accent); }
+
+ul.lista { margin:.35rem 0 0; padding-left:1.1rem; }
+ul.lista li { margin-bottom:.2rem; font-size:.88rem; }
+.oculto { display:none; }
+/* ronda:piel:fin */
+
+/* --------------------------------------------- lo propio de esta pantalla
+ * Un telefono, con guantes, al arranque del turno. Todo lo de aqui sale de
+ * eso: botones que se tocan sin mirar, un punto a la vez, y nada que
+ * obligue a desplazar la pantalla para contestar.
+ */
+.lam { max-width:560px; margin:0 auto; padding:14px 0 20px;
+       min-height:calc(100dvh - 3rem); display:flex; flex-direction:column; }
+.lam button { width:100%; margin-bottom:.6rem; }
+/* La segunda linea de un boton explica el primero: va debajo, no al lado. */
+.lam button .tenue { display:block; font-weight:400; margin-top:.15rem; }
+.crece { flex:1; }
+/* La lamina es una columna flexible: sin esto, un chip suelto se estira de
+   borde a borde y deja de leerse como etiqueta. */
+.lam > .chip { align-self:flex-start; }
+
+/* Durante un punto la barra se va. No es un descuido de identidad: la regla
+   de esta pantalla es un punto a la vez a pantalla completa, y en un
+   telefono de 844 px los tres botones de respuesta tienen que entrar sin
+   desplazar. La barra vuelve en todas las demas pantallas. */
+body.en-punto .barra { display:none; }
+body.en-punto .lam { min-height:100dvh; }
+
+/* Los tres botones de respuesta. «No pude ver» mide exactamente lo mismo que
+   «OK» y esta en la misma columna: si fuera mas chico o estuviera mas abajo,
+   el operador marcaria OK, y un OK falso contamina la ronda entera. */
+.grande { min-height:56px; font-size:1.15rem; font-weight:800;
+          text-align:center; padding:.7rem .9rem; }
+.b-ok { background:var(--ok); border-color:var(--ok); color:var(--paper); }
+.b-mal { background:var(--obs); border-color:var(--obs); color:var(--paper); }
+.b-sin { background:var(--ink-3); border-color:var(--ink-3); color:var(--paper); }
+.grande .tenue { color:inherit; opacity:.85; font-size:.8rem; }
+
+/* El punto y su criterio de aceptacion, que es lo unico que se lee de lejos. */
+.punto { font-family:var(--cond); font-size:2rem; line-height:1.1;
+         margin:.4rem 0 .6rem; }
+.criterio { font-size:1.15rem; background:var(--card); border:1px solid var(--rule);
+            border-left:4px solid var(--accent); border-radius:0 6px 6px 0;
+            padding:.8rem .9rem; margin-bottom:.6rem; }
+.pie { display:flex; justify-content:space-between; align-items:center;
+       font-family:var(--mono); font-size:.72rem; color:var(--ink-3); }
+.progreso { height:5px; background:var(--rule); border-radius:3px;
+            overflow:hidden; margin:.5rem 0 1rem; }
+.progreso > i { display:block; height:100%; background:var(--accent);
+                transition:width .2s; }
+
+/* El dialogo de la nota. */
+.velo { position:fixed; inset:0; background:color-mix(in srgb, var(--paper) 92%, transparent);
+        display:flex; align-items:flex-end; padding:14px; z-index:9; }
+.velo > div { max-width:560px; margin:0 auto; width:100%; background:var(--card);
+              border:1px solid var(--rule); border-radius:10px; padding:1rem;
+              box-shadow:var(--lift); }
+.fila { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
+.fila button { margin:0; }
+textarea, input[type=text] { width:100%; font:inherit; color:var(--ink);
+            background:var(--paper); border:1px solid var(--rule);
+            border-radius:6px; padding:.6rem; min-height:52px; }
+
+/* El resultado de la ronda. */
+.res-ok { border-left:4px solid var(--ok); background:var(--ok-soft); }
+.res-mal { border-left:4px solid var(--obs); background:var(--obs-soft); }
+.titular { font-family:var(--cond); font-size:1.4rem; }
 </style>
 </head>
 <body>
+<div class="barra">
+  <b>FixMate</b><span>Ronda CIL</span>
+  <nav class="vinculos">
+    <a href="../">Inicio</a>
+    <a href="../app/">Diagnóstico</a>
+    <a href="../rcm/">Análisis RCM</a>
+  </nav>
+</div>
+<script>
+/* ronda:barra:inicio */
+/* Los enlaces entre herramientas sólo sirven si la pantalla se abrió desde
+ * el sitio. Descargada como archivo suelto —que es como viaja por WhatsApp—
+ * apuntarían a carpetas que no existen en ese teléfono, y un enlace roto en
+ * la barra hace dudar del resto de la pantalla. Se quitan. */
+if (location.protocol === "file:") {
+  var vinculos = document.querySelector(".barra .vinculos");
+  if (vinculos) vinculos.remove();
+}
+/* ronda:barra:fin */
+</script>
 <div class="lam" id="app"></div>
 <script>
 /* ronda:reglas:inicio — ESPEJO de nefer/fixmate/tpm.py y anomalia.py.
@@ -294,6 +474,7 @@ function hoy() { return new Date().toISOString().slice(0, 10); }
 // ------------------------------------------------------------- pantallas
 
 function verInicio(error) {
+  document.body.classList.remove("en-punto");
   pauta = null; ejecucion = null;
   if (reloj) { clearInterval(reloj); reloj = null; }
   app.innerHTML =
@@ -303,11 +484,11 @@ function verInicio(error) {
     'flojo se ven cuando se quita la mugre, no antes.</p>' +
     (error ? '<div class="aviso peligro">' + esc(error) + '</div>' : '') +
     '<h2>Cargar la pauta</h2>' +
-    '<button id="archivo" class="grande b-acento">Abrir pauta del equipo</button>' +
+    '<button id="archivo" class="grande primary">Abrir pauta del equipo</button>' +
     '<p class="tenue">Un archivo <code>.json</code> que le pasa mantenimiento. ' +
     'No hace falta red.</p>' +
     (PAUTA_DEMO ? '<button id="demo">Probar con una pauta de ejemplo' +
-      '<span class="tenue" style="display:block;font-weight:400">' +
+      '<span class="tenue">' +
       'Es un taller inventado: la excavadora EX-220 no existe. Sirve para ' +
       'ver como funciona, no para registrar nada.</span></button>' : '') +
     '<div class="crece"></div>' +
@@ -361,7 +542,7 @@ function verOperador() {
     '<input type="text" id="op" placeholder="Nombre o ficha" autocomplete="name">' +
     '</label><p class="tenue" style="margin-top:8px">Una ronda sin responsable ' +
     'no se puede discutir despues.</p></div>' +
-    '<button id="ir" class="grande b-acento">Empezar la ronda</button>' +
+    '<button id="ir" class="grande primary">Empezar la ronda</button>' +
     '<div class="crece"></div>' +
     '<button id="volver">Cambiar de pauta</button>';
   document.getElementById("volver").onclick = function () { verInicio(); };
@@ -385,13 +566,14 @@ function verOperador() {
 
 function verPunto() {
   if (indice >= pauta.puntos.length) return verResumen();
+  document.body.classList.add("en-punto");
   var p = pauta.puntos[indice];
   var clase = CLASES[p.clase] || p.clase;
   app.innerHTML =
     '<div class="pie"><span>' + esc(pauta.activo_codigo) + ' · <b id="paso">' +
     (indice + 1) + ' / ' + pauta.puntos.length + '</b></span>' +
     '<span id="reloj">' + mmss((Date.now() - arranque) / 1000) + '</span></div>' +
-    '<div class="barra"><i style="width:' +
+    '<div class="progreso"><i style="width:' +
     (indice / pauta.puntos.length * 100) + '%"></i></div>' +
     '<span class="chip">' + esc(String(p.clase).toUpperCase()) + '</span>' +
     '<div class="punto">' + esc(p.punto) + '</div>' +
@@ -400,12 +582,9 @@ function verPunto() {
     ' · ' + (p.alcance_operador === false
       ? 'si hay algo, va el tecnico' : 'si hay algo, lo resuelve usted') + '</p>' +
     '<div class="crece"></div>' +
-    '<button class="grande b-ok" data-r="ok">OK<span class="tenue" ' +
-      'style="display:block;font-weight:400;color:#06220f">Cumple el criterio</span></button>' +
-    '<button class="grande b-mal" data-r="nok">ANOMALIA<span class="tenue" ' +
-      'style="display:block;font-weight:400;color:#2a1e00">Algo no esta como debe</span></button>' +
-    '<button class="grande b-sin" data-r="sin_acceso">NO PUDE VER<span class="tenue" ' +
-      'style="display:block;font-weight:400">Guarda, marcha, altura</span></button>';
+    '<button class="grande b-ok" data-r="ok">OK<span class="tenue">Cumple el criterio</span></button>' +
+    '<button class="grande b-mal" data-r="nok">ANOMALIA<span class="tenue">Algo no esta como debe</span></button>' +
+    '<button class="grande b-sin" data-r="sin_acceso">NO PUDE VER<span class="tenue">Guarda, marcha, altura</span></button>';
   Array.prototype.forEach.call(app.querySelectorAll("button[data-r]"), function (b) {
     b.onclick = function () { responder(b.getAttribute("data-r")); };
   });
@@ -436,7 +615,7 @@ function verNota(resultado, seg) {
   velo.className = "velo";
   velo.innerHTML = '<div>' +
     '<p class="tenue">' + (esAnomalia ? 'Anomalia en' : 'No se pudo ver') + '</p>' +
-    '<h1 style="font-size:20px">' + esc(p.punto) + '</h1>' +
+    '<h3>' + esc(p.punto) + '</h3>' +
     (esAnomalia
       ? '<label><span class="tenue">Que vio</span><textarea id="nota" rows="3" ' +
         'placeholder="En sus palabras. No se normaliza."></textarea></label>' +
@@ -475,6 +654,7 @@ function verNota(resultado, seg) {
 }
 
 function verResumen() {
+  document.body.classList.remove("en-punto");
   if (reloj) { clearInterval(reloj); reloj = null; }
   var e = estadoRonda(ejecucion, pauta);
   var anomalias = anomaliasDe(ejecucion, pauta);
@@ -486,7 +666,7 @@ function verResumen() {
     ' en maquina' + (e.presupuesto_seg ? ' · presupuesto ' + mmss(e.presupuesto_seg) : '') +
     '</p>' +
     '<div class="tarjeta ' + (e.completa ? 'res-ok' : 'res-mal') + '">' +
-    '<div style="font-size:21px;font-weight:900">' +
+    '<div class="titular">' +
     (e.completa ? 'Ronda completa' : 'Ronda incompleta') + '</div>' +
     '<p style="margin:6px 0 0">' + e.ok + ' OK · ' + e.nok + ' anomalia(s) · ' +
     e.sin_acceso + ' sin ver</p>' +
@@ -507,7 +687,7 @@ function verResumen() {
     anomalias.forEach(function (a) {
       var tec = a.severidad === "detiene";
       html += '<div class="tarjeta ' + (tec ? 'peligro' : '') + '">' +
-        '<span class="chip ' + (tec ? 'tec' : '') + '">' +
+        '<span class="chip ' + (tec ? 'grave' : 'obs') + '">' +
         esc(SEVERIDADES[a.severidad] || a.severidad) + '</span>' +
         '<div style="font-weight:800;margin-top:6px">' + esc(a.componente) + '</div>' +
         '<p style="margin:4px 0 0">' + esc(a.descripcion) + '</p></div>';
@@ -517,7 +697,7 @@ function verResumen() {
   }
 
   html += '<h2>Mandar a la oficina</h2>' +
-    '<button id="bajar" class="grande b-acento">Guardar el archivo de la ronda</button>' +
+    '<button id="bajar" class="grande primary">Guardar el archivo de la ronda</button>' +
     '<p class="tenue">Un <code>.json</code> que se manda por WhatsApp o correo. ' +
     'Ahi la oficina lo cruza con el analisis RCM: el telefono no lo hace porque ' +
     'el analisis no esta aqui.</p>' +
