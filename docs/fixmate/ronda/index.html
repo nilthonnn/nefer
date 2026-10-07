@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Ronda CIL · FixMate</title>
+<link rel="icon" href="../app/icono-192.png">
+<link rel="apple-touch-icon" href="../app/apple-touch-icon.png">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--fondo:#0b1220;--panel:#152033;--borde:#2a3a55;--texto:#e8eef7;--tenue:#93a4bd;
+      --ok:#1f9d55;--aviso:#d99100;--malo:#c3382f;--acento:#3987e5}
+html,body{margin:0;background:var(--fondo);color:var(--texto);
+  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.lam{max-width:560px;margin:0 auto;padding:16px;min-height:100dvh;display:flex;flex-direction:column}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:-.02em}
+h2{font-size:15px;margin:20px 0 8px;color:var(--tenue);text-transform:uppercase;
+   letter-spacing:.08em;font-weight:700}
+p{margin:0 0 10px}
+.tenue{color:var(--tenue);font-size:13px;line-height:1.4}
+.tarjeta{background:var(--panel);border:2px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:12px}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;
+  border-radius:12px;border:2px solid var(--borde);background:var(--panel);
+  min-height:56px;padding:10px 14px;width:100%;text-align:left;margin-bottom:10px}
+button:focus-visible{outline:4px solid var(--acento);outline-offset:2px}
+button.grande{font-size:19px;font-weight:800;text-align:center}
+.b-ok{background:var(--ok);border-color:#36c16f;color:#06220f}
+.b-mal{background:var(--aviso);border-color:#f0b429;color:#2a1e00}
+.b-sin{background:#2b3a52;border-color:#485e80}
+.b-acento{background:var(--acento);border-color:#6fb0ff;color:#04203f}
+.chip{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#24344d;color:var(--tenue)}
+.chip.tec{background:#4a2520;color:#ffc9c2}
+.barra{height:6px;background:#24344d;border-radius:4px;overflow:hidden;margin:10px 0 18px}
+.barra>i{display:block;height:100%;background:var(--acento);transition:width .2s}
+.punto{font-size:30px;font-weight:900;line-height:1.1;margin:6px 0 10px;letter-spacing:-.02em}
+.criterio{font-size:19px;background:#0f1a2b;border:2px solid var(--borde);
+  border-radius:10px;padding:12px;margin-bottom:10px}
+.crece{flex:1}
+.pie{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--tenue)}
+textarea,input[type=text]{width:100%;font:inherit;color:var(--texto);background:#0f1a2b;
+  border:2px solid var(--borde);border-radius:10px;padding:10px;min-height:52px}
+.velo{position:fixed;inset:0;background:rgba(5,10,20,.93);display:flex;align-items:flex-end;padding:14px;z-index:9}
+.velo>div{max-width:560px;margin:0 auto;width:100%;background:var(--panel);
+  border:2px solid var(--borde);border-radius:16px;padding:16px}
+.fila{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fila button{margin:0}
+.res-ok{border-color:#36c16f;background:#0d2a19}
+.res-mal{border-color:#f0b429;background:#2e2306}
+.res-sin{border-color:#485e80;background:#1a2638}
+.aviso{border:2px solid var(--aviso);background:#2e2306;border-radius:10px;padding:12px;margin-bottom:12px;font-size:14px}
+.peligro{border-color:var(--malo);background:#2d110e}
+.oculto{display:none}
+ul{margin:6px 0 0;padding-left:20px}li{margin-bottom:4px}
+code{background:#0f1a2b;padding:1px 5px;border-radius:4px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="lam" id="app"></div>
+<script>
+/* ronda:reglas:inicio — ESPEJO de nefer/fixmate/tpm.py y anomalia.py.
+ *
+ * Las constantes de abajo las escribe `herramientas/espejo-ronda.py`; el
+ * algoritmo esta escrito a mano en los dos lenguajes, igual que el motor de
+ * busqueda. Que hagan lo mismo lo responde `tests/test_fixmate_cruce_ronda.py`,
+ * que corre ESTE javascript y compara sus respuestas con las de Python.
+ *
+ * Dos copias que se separan no dan error en ninguna parte: el telefono dice
+ * que la ronda esta completa y la oficina dice que no, los dos se ven
+ * razonables, y nadie se entera. Por eso se genera y se cruza.
+ *
+ * LA UNICA DIFERENCIA DELIBERADA, Y ESTA PROBADA. El telefono NO codifica la
+ * anomalia contra el catalogo ISO 14224; la oficina si, al recibir el
+ * archivo. El catalogo son 41 entradas con sus pistas y su ponderacion, y
+ * meterlo aqui seria una tercera copia que mantener — la app de diagnostico
+ * ya lleva la suya. El telefono hereda el codigo SOLO cuando la pauta lo
+ * declara, que es un dato que ya viene escrito.
+ *
+ * El cruce compara todo lo demas campo por campo, y una prueba aparte fija
+ * esta diferencia: si el telefono empezara a codificar, o la oficina dejara
+ * de hacerlo, se pone roja.
+ */
+/* ronda:datos:inicio */
+var CLASES = {
+  "ajustar": "Apriete o regulacion dentro del alcance del operador",
+  "inspeccionar": "Mirar, oir o tocar en un punto fijo",
+  "limpiar": "La mugre esconde la fuga y la grieta: limpiar es inspeccionar",
+  "lubricar": "Nivel o engrase en el punto marcado",
+  "verificar": "Comprobar que una funcion responde"
+};
+var RESULTADOS = {
+  "nok": "No cumple: hay anomalia",
+  "ok": "Cumple el criterio",
+  "sin_acceso": "No se pudo ver"
+};
+var SEVERIDADES = {
+  "detiene": "Se detiene la maquina ahora",
+  "oportunidad": "Cuando se abra una ocasion",
+  "programable": "Se atiende en la proxima ventana"
+};
+var FRACCION_SOSPECHOSA = 0.4;
+/* ronda:datos:fin */
+
+/** Pone a cada punto el id que le pondria Python.
+ *
+ * No es cosmetica ni cosa de la pantalla: `Checklist.agregar()` numera
+ * «{id de la pauta}.{n}», 1-based, y si el telefono numerara distinto la
+ * oficina no podria casar cada anomalia con su punto al recibir el archivo.
+ * Por eso vive aqui dentro, con el resto de lo que se cruza, y no en la
+ * interfaz.
+ */
+function normalizarPauta(pauta) {
+  var base = pauta.id || "pauta";
+  pauta.puntos.forEach(function (p, i) {
+    if (!p.id) p.id = base + "." + (i + 1);
+    if (p.alcance_operador === undefined) p.alcance_operador = true;
+    if (p.segundos === undefined) p.segundos = 0;
+  });
+  return pauta;
+}
+
+/** Como quedo una ronda. Mismo contrato que `tpm.estado()`. */
+function estadoRonda(ejecucion, pauta) {
+  normalizarPauta(pauta);
+  var porId = {};
+  pauta.puntos.forEach(function (p) { porId[p.id] = p; });
+
+  var cuenta = { ok: 0, nok: 0, sin_acceso: 0 };
+  var segundos = 0;
+  var respondidos = {};
+  ejecucion.items.forEach(function (i) {
+    if (cuenta[i.resultado] === undefined) cuenta[i.resultado] = 0;
+    cuenta[i.resultado] += 1;
+    segundos += Math.max(0, Math.round(i.segundos || 0));
+    respondidos[i.punto_id] = true;
+  });
+
+  var presupuesto = 0;
+  pauta.puntos.forEach(function (p) { presupuesto += Math.max(0, p.segundos || 0); });
+  var todos = ejecucion.items.length === pauta.puntos.length;
+
+  return {
+    total: pauta.puntos.length,
+    respondidos: ejecucion.items.length,
+    ok: cuenta.ok, nok: cuenta.nok, sin_acceso: cuenta.sin_acceso,
+    pendientes: pauta.puntos.filter(function (p) { return !respondidos[p.id]; })
+                            .map(function (p) { return p.id; }),
+    segundos: segundos,
+    presupuesto_seg: presupuesto,
+    // Un punto sin ver no es una ronda completa con una nota: es una ronda
+    // incompleta. La alternativa real a «no pude ver» es un OK falso.
+    completa: todos && cuenta.sin_acceso === 0,
+    // Solo se juzga la velocidad de una ronda terminada, y solo si la pauta
+    // declaro presupuesto.
+    sospechosa_de_firma: todos && presupuesto > 0 &&
+                         segundos < presupuesto * FRACCION_SOSPECHOSA
+  };
+}
+
+/** La anomalia que sale de un punto NOK. `null` para cualquier otro caso.
+ *  Mismo contrato que `anomalia.desde_item()`. */
+function anomaliaDe(ejecucion, item, pauta) {
+  if (item.resultado !== "nok") return null;
+  var punto = null;
+  pauta.puntos.forEach(function (p) { if (p.id === item.punto_id) punto = p; });
+  if (punto === null) return null;
+
+  var texto = (item.observacion || "").trim();
+  return {
+    id: ejecucion.id + "." + punto.id,
+    activo_codigo: ejecucion.activo_codigo,
+    descripcion: texto || punto.punto,
+    // Fuera del alcance del operador significa que hace falta el tecnico: se
+    // decidio en frio al escribir la pauta, no en campo.
+    severidad: punto.alcance_operador ? "programable" : "detiene",
+    ejecucion_id: ejecucion.id,
+    punto_id: punto.id,
+    componente: punto.punto,
+    condicion_observada: punto.criterio,
+    detectada_por: ejecucion.operador,
+    fecha: ejecucion.fecha,
+    // El telefono NO clasifica contra el catalogo ni enlaza con RCM: eso lo
+    // hace la oficina al recibir el archivo, que es donde esta el analisis.
+    // Lo unico que se hereda es lo que la pauta ya declara.
+    codigo_catalogo: punto.codigo_catalogo || "",
+    modo_falla_id: punto.modo_falla_id || "",
+    evidencia: [],
+    estado: "abierta",
+    responsable: "", accion: "", fecha_cierre: "", codigo_ot: ""
+  };
+}
+
+function anomaliasDe(ejecucion, pauta) {
+  normalizarPauta(pauta);
+  var salida = [];
+  ejecucion.items.forEach(function (i) {
+    var a = anomaliaDe(ejecucion, i, pauta);
+    if (a) salida.push(a);
+  });
+  return salida;
+}
+/* ronda:reglas:fin */
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { estadoRonda: estadoRonda, anomaliaDe: anomaliaDe,
+                     anomaliasDe: anomaliasDe, normalizarPauta: normalizarPauta,
+                     CLASES: CLASES,
+                     RESULTADOS: RESULTADOS, SEVERIDADES: SEVERIDADES,
+                     FRACCION_SOSPECHOSA: FRACCION_SOSPECHOSA };
+}
+</script>
+<script>
+/* La pantalla. Tres decisiones que vienen del guante y del socavon:
+ *
+ * UN PUNTO A LA VEZ, A PANTALLA COMPLETA. Una lista de cinco filas con
+ * casillas chicas se despacha con cinco toques sin levantar la vista, que es
+ * lo contrario de una ronda. Un punto a la vez obliga a mirar la maquina.
+ *
+ * «NO PUDE VER» DEL MISMO TAMANO QUE «OK». Si es mas chico o esta mas
+ * abajo, el operador marca OK, y un OK falso contamina la ronda entera.
+ *
+ * EL RELOJ NO AMENAZA. Mide y se guarda, pero no hay cuenta atras ni aviso
+ * de «vas lento». Un reloj que castiga produce rondas rapidas, no rondas
+ * buenas. Lo que se detecta es lo contrario, y se le dice al supervisor al
+ * final, no al operador a mitad de la maquina.
+ */
+/* ronda:demo:inicio */
+var PAUTA_DEMO = {
+  "activo_codigo": "EX-220",
+  "frecuencia": "por_turno",
+  "id": "cil-ex220",
+  "nombre": "Ronda de arranque de turno",
+  "origen": "RCM 2026-03-15 + experiencia del taller",
+  "puntos": [
+    {
+      "alcance_operador": true,
+      "clase": "limpiar",
+      "codigo_catalogo": "TER.SOBRECALENTAMIENTO.RADIADOR",
+      "criterio": "Se ve la luz a traves del panal; sin costra de tierra que tape celdas",
+      "modo_falla_id": "F1.1.1",
+      "punto": "Panal del radiador, lado admision",
+      "segundos": 8
+    },
+    {
+      "alcance_operador": true,
+      "clase": "inspeccionar",
+      "criterio": "Entre las marcas MIN y MAX, liquido limpio y no lechoso",
+      "punto": "Visor de nivel de refrigerante",
+      "segundos": 5
+    },
+    {
+      "alcance_operador": false,
+      "clase": "verificar",
+      "criterio": "El pedal hace tope firme a media carrera y la maquina retiene en rampa",
+      "punto": "Pedal de freno, antes de salir del taller",
+      "segundos": 6
+    },
+    {
+      "alcance_operador": false,
+      "clase": "inspeccionar",
+      "criterio": "Sin rozadura ni abombamiento; las abrazaderas en su sitio",
+      "modo_falla_id": "F2.1.1",
+      "punto": "Mangueras del eje delantero",
+      "segundos": 6
+    },
+    {
+      "alcance_operador": true,
+      "clase": "lubricar",
+      "criterio": "Dos golpes de pistola hasta ver grasa fresca en el sello",
+      "punto": "Grasera del pasador de pluma, lado izquierdo",
+      "segundos": 6
+    }
+  ]
+};
+/* ronda:demo:fin */
+
+var app = document.getElementById("app");
+var pauta = null, ejecucion = null, indice = 0, entroEn = 0, arranque = 0, reloj = null;
+
+function esc(s) {
+  return String(s === undefined || s === null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+function mmss(s) {
+  s = Math.max(0, Math.floor(s));
+  return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+}
+function hoy() { return new Date().toISOString().slice(0, 10); }
+
+// ------------------------------------------------------------- pantallas
+
+function verInicio(error) {
+  pauta = null; ejecucion = null;
+  if (reloj) { clearInterval(reloj); reloj = null; }
+  app.innerHTML =
+    '<h1>Ronda CIL</h1>' +
+    '<p class="tenue">Limpiar · Inspeccionar · Lubricar. Medio minuto al ' +
+    'arranque del turno. Limpiar <em>es</em> inspeccionar: la fuga y el perno ' +
+    'flojo se ven cuando se quita la mugre, no antes.</p>' +
+    (error ? '<div class="aviso peligro">' + esc(error) + '</div>' : '') +
+    '<h2>Cargar la pauta</h2>' +
+    '<button id="archivo" class="grande b-acento">Abrir pauta del equipo</button>' +
+    '<p class="tenue">Un archivo <code>.json</code> que le pasa mantenimiento. ' +
+    'No hace falta red.</p>' +
+    (PAUTA_DEMO ? '<button id="demo">Probar con una pauta de ejemplo' +
+      '<span class="tenue" style="display:block;font-weight:400">' +
+      'Es un taller inventado: la excavadora EX-220 no existe. Sirve para ' +
+      'ver como funciona, no para registrar nada.</span></button>' : '') +
+    '<div class="crece"></div>' +
+    '<p class="tenue">FixMate · la ronda no sale de este telefono hasta que ' +
+    'usted la exporte.</p>';
+
+  var inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".json,application/json"; inp.className = "oculto";
+  document.body.appendChild(inp);
+  document.getElementById("archivo").onclick = function () { inp.click(); };
+  inp.onchange = function () {
+    var f = inp.files && inp.files[0];
+    if (!f) return;
+    var lector = new FileReader();
+    lector.onload = function () {
+      try { empezar(JSON.parse(lector.result)); }
+      catch (e) { verInicio("Ese archivo no es una pauta legible: " + e.message); }
+    };
+    lector.readAsText(f);
+  };
+  if (PAUTA_DEMO) {
+    document.getElementById("demo").onclick = function () {
+      empezar(JSON.parse(JSON.stringify(PAUTA_DEMO)));
+    };
+  }
+}
+
+function empezar(p) {
+  if (!p || !p.puntos || !p.puntos.length) {
+    return verInicio("La pauta no trae puntos.");
+  }
+  normalizarPauta(p);   // los ids los pone la regla, no la pantalla
+  for (var i = 0; i < p.puntos.length; i++) {
+    var q = p.puntos[i];
+    if (!q.criterio) {
+      return verInicio("El punto «" + (q.punto || q.id) + "» no tiene criterio " +
+                       "de aceptacion. Sin criterio, cada operador juzga otra " +
+                       "cosa y la pauta no mide nada.");
+    }
+  }
+  pauta = p;
+  verOperador();
+}
+
+function verOperador() {
+  app.innerHTML =
+    '<h1>' + esc(pauta.activo_codigo || "") + '</h1>' +
+    '<p class="tenue">' + esc(pauta.nombre || "") + ' · ' +
+    pauta.puntos.length + ' puntos</p>' +
+    '<div class="tarjeta"><label><span class="tenue">Quien ejecuta</span>' +
+    '<input type="text" id="op" placeholder="Nombre o ficha" autocomplete="name">' +
+    '</label><p class="tenue" style="margin-top:8px">Una ronda sin responsable ' +
+    'no se puede discutir despues.</p></div>' +
+    '<button id="ir" class="grande b-acento">Empezar la ronda</button>' +
+    '<div class="crece"></div>' +
+    '<button id="volver">Cambiar de pauta</button>';
+  document.getElementById("volver").onclick = function () { verInicio(); };
+  document.getElementById("ir").onclick = function () {
+    var nombre = (document.getElementById("op").value || "").trim();
+    if (!nombre) { document.getElementById("op").focus(); return; }
+    ejecucion = {
+      id: (pauta.id || "ronda") + "-" + hoy() + "-" +
+          Math.random().toString(36).slice(2, 7),
+      checklist_id: pauta.id || "", activo_codigo: pauta.activo_codigo || "",
+      operador: nombre, fecha: hoy(), items: [], anomalias: []
+    };
+    indice = 0; arranque = Date.now(); entroEn = Date.now();
+    reloj = setInterval(function () {
+      var e = document.getElementById("reloj");
+      if (e) e.textContent = mmss((Date.now() - arranque) / 1000);
+    }, 1000);
+    verPunto();
+  };
+}
+
+function verPunto() {
+  if (indice >= pauta.puntos.length) return verResumen();
+  var p = pauta.puntos[indice];
+  var clase = CLASES[p.clase] || p.clase;
+  app.innerHTML =
+    '<div class="pie"><span>' + esc(pauta.activo_codigo) + ' · <b id="paso">' +
+    (indice + 1) + ' / ' + pauta.puntos.length + '</b></span>' +
+    '<span id="reloj">' + mmss((Date.now() - arranque) / 1000) + '</span></div>' +
+    '<div class="barra"><i style="width:' +
+    (indice / pauta.puntos.length * 100) + '%"></i></div>' +
+    '<span class="chip">' + esc(String(p.clase).toUpperCase()) + '</span>' +
+    '<div class="punto">' + esc(p.punto) + '</div>' +
+    '<div class="criterio">' + esc(p.criterio) + '</div>' +
+    '<p class="tenue">' + esc(clase) + (p.segundos ? ' · ' + p.segundos + ' s previstos' : '') +
+    ' · ' + (p.alcance_operador === false
+      ? 'si hay algo, va el tecnico' : 'si hay algo, lo resuelve usted') + '</p>' +
+    '<div class="crece"></div>' +
+    '<button class="grande b-ok" data-r="ok">OK<span class="tenue" ' +
+      'style="display:block;font-weight:400;color:#06220f">Cumple el criterio</span></button>' +
+    '<button class="grande b-mal" data-r="nok">ANOMALIA<span class="tenue" ' +
+      'style="display:block;font-weight:400;color:#2a1e00">Algo no esta como debe</span></button>' +
+    '<button class="grande b-sin" data-r="sin_acceso">NO PUDE VER<span class="tenue" ' +
+      'style="display:block;font-weight:400">Guarda, marcha, altura</span></button>';
+  Array.prototype.forEach.call(app.querySelectorAll("button[data-r]"), function (b) {
+    b.onclick = function () { responder(b.getAttribute("data-r")); };
+  });
+}
+
+/** Los segundos se toman AL TOCAR el boton, antes de abrir el dialogo: lo
+ *  que tarda en escribir la nota no es tiempo de inspeccion. */
+function responder(resultado) {
+  var seg = Math.max(0, Math.round((Date.now() - entroEn) / 1000));
+  if (resultado === "ok") return anotar("ok", "", seg);
+  verNota(resultado, seg);
+}
+
+function anotar(resultado, observacion, segundos) {
+  var p = pauta.puntos[indice];
+  ejecucion.items.push({ punto_id: p.id, resultado: resultado,
+                         observacion: observacion, segundos: segundos });
+  indice += 1; entroEn = Date.now();
+  verPunto();
+}
+
+var MOTIVOS = ["Guarda cerrada", "Maquina en marcha", "Sin acceso fisico", "Falta andamio"];
+
+function verNota(resultado, seg) {
+  var p = pauta.puntos[indice];
+  var esAnomalia = resultado === "nok";
+  var velo = document.createElement("div");
+  velo.className = "velo";
+  velo.innerHTML = '<div>' +
+    '<p class="tenue">' + (esAnomalia ? 'Anomalia en' : 'No se pudo ver') + '</p>' +
+    '<h1 style="font-size:20px">' + esc(p.punto) + '</h1>' +
+    (esAnomalia
+      ? '<label><span class="tenue">Que vio</span><textarea id="nota" rows="3" ' +
+        'placeholder="En sus palabras. No se normaliza."></textarea></label>' +
+        '<p class="tenue" style="margin-top:8px">' +
+        (p.alcance_operador === false
+          ? 'Este punto esta fuera de su alcance en la pauta: la anomalia sale ' +
+            'marcada para que vaya el tecnico.'
+          : 'Este punto es de su alcance: resuelvalo y avise. Queda registrado igual.') +
+        '</p>'
+      : '<p class="tenue">Registrarlo vale. Un punto que nunca se puede ver no ' +
+        'es un descuido suyo: es un defecto de la maquina o de la pauta, y asi ' +
+        'se detecta.</p><div class="fila" id="motivos"></div>' +
+        '<input type="text" id="nota" placeholder="O escriba el motivo" ' +
+        'style="margin-top:10px">') +
+    '<div class="fila" style="margin-top:12px">' +
+    '<button id="atras">Volver</button>' +
+    '<button id="listo" class="' + (esAnomalia ? 'b-mal' : 'b-sin') + '">' +
+    (esAnomalia ? 'Etiquetar' : 'Registrar') + '</button></div></div>';
+  document.body.appendChild(velo);
+
+  if (!esAnomalia) {
+    var cont = velo.querySelector("#motivos");
+    MOTIVOS.forEach(function (m) {
+      var b = document.createElement("button");
+      b.textContent = m; b.style.fontSize = "14px";
+      b.onclick = function () { velo.querySelector("#nota").value = m; };
+      cont.appendChild(b);
+    });
+  }
+  velo.querySelector("#atras").onclick = function () { velo.remove(); };
+  velo.querySelector("#listo").onclick = function () {
+    var txt = (velo.querySelector("#nota").value || "").trim();
+    velo.remove();
+    anotar(resultado, txt, seg);
+  };
+}
+
+function verResumen() {
+  if (reloj) { clearInterval(reloj); reloj = null; }
+  var e = estadoRonda(ejecucion, pauta);
+  var anomalias = anomaliasDe(ejecucion, pauta);
+  ejecucion.anomalias = anomalias.map(function (a) { return a.id; });
+
+  var html =
+    '<h1>' + esc(pauta.activo_codigo) + '</h1>' +
+    '<p class="tenue">' + esc(ejecucion.operador) + ' · ' + mmss(e.segundos) +
+    ' en maquina' + (e.presupuesto_seg ? ' · presupuesto ' + mmss(e.presupuesto_seg) : '') +
+    '</p>' +
+    '<div class="tarjeta ' + (e.completa ? 'res-ok' : 'res-mal') + '">' +
+    '<div style="font-size:21px;font-weight:900">' +
+    (e.completa ? 'Ronda completa' : 'Ronda incompleta') + '</div>' +
+    '<p style="margin:6px 0 0">' + e.ok + ' OK · ' + e.nok + ' anomalia(s) · ' +
+    e.sin_acceso + ' sin ver</p>' +
+    (e.sin_acceso
+      ? '<p class="tenue" style="margin-top:6px">Un punto que no se pudo ver no ' +
+        'cuenta como visto. La ronda no vale como completa aunque esten los demas.</p>'
+      : '') + '</div>';
+
+  if (e.sospechosa_de_firma) {
+    html += '<div class="aviso peligro"><b>▲ Demasiado rapida para haber sido ' +
+      'ejecutada.</b> ' + e.segundos + ' s sobre un presupuesto de ' +
+      e.presupuesto_seg + ' s. Criterio configurable de la planta, no una norma ' +
+      '— pero conviene mirarlo antes de darla por buena.</div>';
+  }
+
+  if (anomalias.length) {
+    html += '<h2>Anomalias</h2>';
+    anomalias.forEach(function (a) {
+      var tec = a.severidad === "detiene";
+      html += '<div class="tarjeta ' + (tec ? 'peligro' : '') + '">' +
+        '<span class="chip ' + (tec ? 'tec' : '') + '">' +
+        esc(SEVERIDADES[a.severidad] || a.severidad) + '</span>' +
+        '<div style="font-weight:800;margin-top:6px">' + esc(a.componente) + '</div>' +
+        '<p style="margin:4px 0 0">' + esc(a.descripcion) + '</p></div>';
+    });
+  } else {
+    html += '<p class="tenue">Sin anomalias. Nada que etiquetar.</p>';
+  }
+
+  html += '<h2>Mandar a la oficina</h2>' +
+    '<button id="bajar" class="grande b-acento">Guardar el archivo de la ronda</button>' +
+    '<p class="tenue">Un <code>.json</code> que se manda por WhatsApp o correo. ' +
+    'Ahi la oficina lo cruza con el analisis RCM: el telefono no lo hace porque ' +
+    'el analisis no esta aqui.</p>' +
+    '<div class="crece"></div>' +
+    '<button id="otra">Otra maquina</button>';
+
+  app.innerHTML = html;
+  document.getElementById("otra").onclick = function () { verInicio(); };
+  document.getElementById("bajar").onclick = function () {
+    var datos = { ejecucion: ejecucion, anomalias: anomalias, estado: e };
+    var blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = ejecucion.id + ".json";
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  };
+}
+
+verInicio();
+</script>
+</body>
+</html>
