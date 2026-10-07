@@ -1,0 +1,37 @@
+{
+  "id": "cil-ex220",
+  "activo_codigo": "EX-220",
+  "nombre": "Ronda de arranque de turno",
+  "frecuencia": "por_turno",
+  "origen": "RCM 2026-03-15 + experiencia del taller",
+  "puntos": [
+    {
+      "clase": "limpiar", "punto": "Panal del radiador, lado admision",
+      "criterio": "Se ve la luz a traves del panal; sin costra de tierra que tape celdas",
+      "segundos": 8, "alcance_operador": true,
+      "codigo_catalogo": "TER.SOBRECALENTAMIENTO.RADIADOR",
+      "modo_falla_id": "F1.1.1"
+    },
+    {
+      "clase": "inspeccionar", "punto": "Visor de nivel de refrigerante",
+      "criterio": "Entre las marcas MIN y MAX, liquido limpio y no lechoso",
+      "segundos": 5, "alcance_operador": true
+    },
+    {
+      "clase": "verificar", "punto": "Pedal de freno, antes de salir del taller",
+      "criterio": "El pedal hace tope firme a media carrera y la maquina retiene en rampa",
+      "segundos": 6, "alcance_operador": false
+    },
+    {
+      "clase": "inspeccionar", "punto": "Mangueras del eje delantero",
+      "criterio": "Sin rozadura ni abombamiento; las abrazaderas en su sitio",
+      "segundos": 6, "alcance_operador": false,
+      "modo_falla_id": "F2.1.1"
+    },
+    {
+      "clase": "lubricar", "punto": "Grasera del pasador de pluma, lado izquierdo",
+      "criterio": "Dos golpes de pistola hasta ver grasa fresca en el sello",
+      "segundos": 6, "alcance_operador": true
+    }
+  ]
+}

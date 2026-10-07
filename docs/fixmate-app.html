@@ -2249,6 +2249,218 @@ var FIXMATE = (function () {
 
   var EXTENSIONES_MANUAL = ["md", "txt", "markdown", "text"];
 
+  // ---------------------------------------------------------------------
+  // El historial por bloques, como lo exporta el sistema del taller.
+  // Espejo de nefer/fixmate/historial_bloques.py: la oficina y el telefono
+  // tienen que leer el mismo archivo igual, y tests/test_fixmate_cruce.py lo
+  // compara fila por fila. Hasta que esto existio, la oficina leia el
+  // historial de un manlift con trece anos encima y el telefono lo rechazaba
+  // con «no se reconoce ninguna columna de falla ni de causa».
+  // ---------------------------------------------------------------------
+
+  var BLQ_ENCABEZADO_ORDEN = ["orden trabajo", "orden de trabajo",
+                              "control_extracciones", "nro orden", "n orden"];
+  var BLQ_ENCABEZADO_APOYO = ["horometro", "fecha", "suministros"];
+  var BLQ_RE_ORDEN = /^\d{2,4}-\d{3,}$/;
+  var BLQ_RE_FECHA_DELANTE = /^\s*((?:\d{2}\/\d{2}\/\d{4}\s*,?\s*)+)-\s*/;
+  var BLQ_RE_QUIEN = /\s+-\s{2,}([A-ZÁÉÍÓÚÑ][^-]{4,})$/;
+  var BLQ_RE_TITULO = /HISTORIAL\s+EQUIPO\s*:\s*([A-Z0-9][A-Z0-9/.-]*)/i;
+  var BLQ_RE_RELLENO = /^[\s.\-_·]*$/;
+  var BLQ_SIN_HALLAZGO = ["equipo operativo", "operativo", "sin observacion",
+                          "ninguna", "observacion", "conforme", "ok"];
+
+  function blqLimpio(v) {
+    return v === null || v === undefined ? "" : String(v).trim();
+  }
+
+  function blqVacio(v) { return !v || BLQ_RE_RELLENO.test(v); }
+
+  // «EQUIOPO OPERATIVO» —con la errata de la plantilla de verdad— sigue sin
+  // ser un hallazgo. Se busca «operativ» en cualquier parte: perseguir
+  // erratas una por una no acaba nunca. Y una celda de dos letras («OP») no
+  // alcanza para decir nada.
+  function blqEsPlantilla(v) {
+    var limpio = String(v).toLowerCase().replace(/[^a-z]+/g, " ").trim();
+    if (limpio.replace(/ /g, "").length < 4) return true;
+    if (limpio.indexOf("operativ") >= 0) return true;
+    for (var i = 0; i < BLQ_SIN_HALLAZGO.length; i++) {
+      if (limpio.indexOf(BLQ_SIN_HALLAZGO[i]) === 0) return true;
+    }
+    return false;
+  }
+
+  // Una linea de suministro en sus tres cosas: pieza, fecha y quien. El
+  // nombre del tecnico cierra cada linea tras DOS espacios; «- VISTONY», con
+  // uno solo, es la marca y se queda con la pieza.
+  function blqPartirLinea(linea) {
+    var resto = String(linea === null || linea === undefined ? "" : linea);
+    var fecha = "", quien = "";
+    var m = BLQ_RE_FECHA_DELANTE.exec(resto);
+    if (m) {
+      fecha = m[1].trim().replace(/,+$/, "").trim();
+      resto = resto.slice(m[0].length);
+    }
+    m = BLQ_RE_QUIEN.exec(resto);
+    if (m) {
+      quien = m[1].trim();
+      resto = resto.slice(0, m.index);
+    }
+    return [resto.trim(), fecha, quien];
+  }
+
+  // Se piden DOS cabeceras: una hoja normal cuya fila de titulos diga «orden
+  // de trabajo» no es esto, y tratarla como bloques le perderia todas las
+  // filas menos la primera.
+  function blqEsPorBloques(filas) {
+    var vistas = 0;
+    for (var i = 0; i < filas.length; i++) {
+      var bajas = filas[i].map(function (c) { return blqLimpio(c).toLowerCase(); });
+      var orden = bajas.some(function (c) { return BLQ_ENCABEZADO_ORDEN.indexOf(c) >= 0; });
+      var apoyo = bajas.some(function (c) { return BLQ_ENCABEZADO_APOYO.indexOf(c) >= 0; });
+      if (orden && apoyo && ++vistas >= 2) return true;
+    }
+    return false;
+  }
+
+  function blqColumnas(celdas) {
+    var donde = {};
+    celdas.forEach(function (c, i) {
+      var k = c.toLowerCase();
+      if (BLQ_ENCABEZADO_ORDEN.indexOf(k) >= 0) donde.orden = i;
+      else if (k === "horometro" || k === "horómetro") donde.horometro = i;
+      else if (k === "fecha") donde.fecha = i;
+      else if (k === "suministros" || k === "repuestos" || k === "materiales") donde.suministros = i;
+      else if (k === "servicios terceros" || k === "servicios de terceros" ||
+               k === "servicio terceros") donde.terceros = i;
+      else if (k === "observaciones" || k === "observacion" || k === "observación") donde.obs = i;
+      else if (k === "cantidad" || k === "cant") donde.cantidad = i;
+      else if (k === "codigo" || k === "código" || k === "cod") donde.codigo = i;
+      else if ((k === "trabajos realizados" || k === "trabajo realizado" ||
+                k === "estado") && donde.trabajos === undefined) donde.trabajos = i;
+    });
+    return donde;
+  }
+
+  function blqLeerFilas(filas, equipo, modelo) {
+    equipo = equipo || "";
+    var brutos = [], actual = null, donde = {};
+
+    filas.forEach(function (fila) {
+      var celdas = fila.map(blqLimpio);
+      if (!celdas.some(function (c) { return c; })) return;
+
+      if (!equipo) {
+        for (var i = 0; i < celdas.length; i++) {
+          var mt = BLQ_RE_TITULO.exec(celdas[i]);
+          if (mt) { equipo = mt[1].trim(); break; }
+        }
+      }
+
+      var bajas = celdas.map(function (c) { return c.toLowerCase(); });
+      var esOrden = bajas.some(function (c) { return BLQ_ENCABEZADO_ORDEN.indexOf(c) >= 0; });
+      var esApoyo = bajas.some(function (c) { return BLQ_ENCABEZADO_APOYO.indexOf(c) >= 0; });
+      if (esOrden && esApoyo) {
+        if (actual) brutos.push(actual);
+        donde = blqColumnas(celdas);
+        actual = { repuestos: [], terceros: [], hallazgos: [],
+                   fechasMaterial: [], quienes: [], codigos: [] };
+        return;
+      }
+      if (!actual) return;
+
+      function dato(nombre) {
+        var i = donde[nombre];
+        return (i !== undefined && i < celdas.length) ? celdas[i] : "";
+      }
+
+      var orden = dato("orden");
+      if (orden && BLQ_RE_ORDEN.test(orden)) {
+        actual.codigo_ot = orden;
+        if (dato("fecha")) actual.fecha = dato("fecha");
+        if (dato("horometro")) actual.horometro = dato("horometro");
+      }
+
+      var sumin = dato("suministros");
+      // Dentro del bloque el export repite «SUMINISTROS | CODIGO». Es
+      // cabecera, no material: colandose, salia como la pieza mas comprada.
+      var bajo = sumin.toLowerCase();
+      if (bajo === "suministros" || bajo === "repuestos" || bajo === "materiales") sumin = "";
+      if (sumin && !blqVacio(sumin)) {
+        var tr = blqPartirLinea(sumin);
+        var codigo = dato("codigo");
+        if (tr[0] && !blqVacio(tr[0])) {
+          actual.repuestos.push(codigo && !blqVacio(codigo)
+                                ? tr[0] + " (" + codigo + ")" : tr[0]);
+        }
+        if (tr[1]) actual.fechasMaterial.push(tr[1]);
+        if (tr[2] && actual.quienes.indexOf(tr[2]) < 0) actual.quienes.push(tr[2]);
+        if (codigo && !blqVacio(codigo) && actual.codigos.indexOf(codigo) < 0) {
+          actual.codigos.push(codigo);
+        }
+      }
+
+      var tercero = dato("terceros");
+      if (tercero && !blqVacio(tercero) && !blqEsPlantilla(tercero)) {
+        var t2 = blqPartirLinea(tercero);
+        if (t2[0] && actual.terceros.indexOf(t2[0]) < 0) actual.terceros.push(t2[0]);
+        if (t2[2] && actual.quienes.indexOf(t2[2]) < 0) actual.quienes.push(t2[2]);
+      }
+
+      var obs = dato("obs");
+      if (obs && !blqVacio(obs) && !blqEsPlantilla(obs) &&
+          actual.hallazgos.indexOf(obs) < 0) {
+        actual.hallazgos.push(obs);
+      }
+    });
+    if (actual) brutos.push(actual);
+
+    var salida = [];
+    brutos.forEach(function (b) {
+      var inf = blqArmar(b, equipo, modelo || "");
+      if (inf) salida.push(inf);
+    });
+    return salida;
+  }
+
+  function blqArmar(bruto, equipo, modelo) {
+    var repuestos = bruto.repuestos, terceros = bruto.terceros,
+        hallazgos = bruto.hallazgos;
+    var fechada = !!(bruto.fecha && bruto.horometro);
+    // Una orden en la que no se cambio nada no esta vacia: su fecha y su
+    // horometro son una lectura, y de las lecturas sale el ritmo de uso.
+    if (!repuestos.length && !terceros.length && !hallazgos.length && !fechada) {
+      return null;
+    }
+
+    var informe = {};
+    ["codigo_ot", "fecha", "horometro"].forEach(function (c) {
+      if (bruto[c]) informe[c] = bruto[c];
+    });
+    if (equipo) informe.codigo_equipo = equipo;
+    if (modelo) informe.modelo_equipo = modelo;
+    if (repuestos.length) informe.repuestos = repuestos;
+    if (hallazgos.length) informe.resumen_falla = hallazgos.join(" · ");
+    // Lo que hizo un tercero es lo que de verdad se hizo.
+    if (terceros.length) informe.solucion_aplicada = terceros.join(" · ");
+
+    var otros = {};
+    if (bruto.quienes.length) otros["Tecnicos"] = bruto.quienes.join(", ");
+    if (bruto.fechasMaterial.length) {
+      var unicas = bruto.fechasMaterial.slice().filter(function (f, i, a) {
+        return a.indexOf(f) === i;
+      }).sort();
+      otros["Material despachado"] = bruto.fechasMaterial.length + " lineas, " +
+        unicas[0] + " a " + unicas[unicas.length - 1];
+    }
+    otros["Alcance"] = (repuestos.length || terceros.length)
+      ? repuestos.length + " lineas de material, " + terceros.length +
+        " servicios de terceros"
+      : "revision sin cambio de material";
+    informe.otros_campos = otros;
+    // La causa raiz no se rellena: nadie la escribio.
+    return informe;
+  }
+
   function fragmentosDeArchivo(nombre, datos) {
     var ext = (String(nombre).split(".").pop() || "").toLowerCase();
 
@@ -2275,8 +2487,15 @@ var FIXMATE = (function () {
       return previo.then(function () {
         return contenidoZip(datos, entradas[hoja]);
       }).then(function (xml) {
-        var registros = registrosDeFilas(filasDeHoja(xml, compartidas));
-        var informes = informesDeRegistros(registros);
+        var crudas = filasDeHoja(xml, compartidas);
+        var informes = informesDeRegistros(registrosDeFilas(crudas));
+        // Igual que en la oficina: primero la hoja con titulos arriba y
+        // despues la que repite la cabecera por cada orden. Hasta que esto
+        // estuvo, el historial que exporta el sistema del taller se rechazaba
+        // aqui aunque la oficina si supiera leerlo.
+        if ((!informes || !informes.length) && blqEsPorBloques(crudas)) {
+          informes = blqLeerFilas(crudas, "", "");
+        }
         if (!informes || !informes.length) {
           throw new Error(nombre + ": no se reconoce ninguna columna de falla " +
                           "ni de causa. Renombre la columna, o use la plantilla.");

@@ -534,3 +534,91 @@ process.stdout.write(JSON.stringify(m));
         assert del_telefono[campo] == de_la_oficina[campo], campo
     assert round(del_telefono["precision"], 9) == round(de_la_oficina["precision"], 9)
     assert round(del_telefono["linea_base"], 9) == round(de_la_oficina["linea_base"], 9)
+
+
+# ------------------- el historial por bloques, leído en los dos lados
+
+# Una hoja como la que exporta el sistema del taller, con sus trampas: la
+# cabecera repetida, una cabecera interna en medio del bloque, una línea de
+# relleno, el horómetro con separador de millares y la frase hecha con su
+# errata. Si los dos lectores no coinciden aquí, el teléfono agrupa el
+# historial distinto que la oficina y nadie se entera.
+HOJA_POR_BLOQUES = [
+    ["", "", "HISTORIAL EQUIPO  :   MLAD041-02", "", "", "", "", "", "", "", ""],
+    ["", "ORDEN TRABAJO", "TRABAJOS REALIZADOS", "HOROMETRO", "FECHA", "MP",
+     "CANTIDAD", "SUMINISTROS", "CODIGO", "SERVICIOS TERCEROS", "OBSERVACIONES"],
+    ["", "031-0005135", "", "9,753.20", "24/02/2024", "", "1.00",
+     " 15/07/2024 - KIT DE SELLO DE CILINDRO  -  PEREZ GOMEZ, JUAN",
+     "KS-CD-MLAD", "MANTENIMIENTO DE CILINDRO PENDULAR", "EQUIPO OPERATIVO"],
+    ["", "", "", "", "", "", "2.00", "SUMINISTROS", "CODIGO", "", ""],
+    ["", "", "", "", "", "", "2.00",
+     " 18/06/2024 - SPRAY AFLOJATODO 10 ONZ - VISTONY  -  PEREZ GOMEZ, JUAN",
+     "006715", "", ""],
+    ["", "ORDEN TRABAJO", "TRABAJOS REALIZADOS", "HOROMETRO", "FECHA", "MP",
+     "CANTIDAD", "SUMINISTROS", "CODIGO", "SERVICIOS TERCEROS", "OBSERVACIONES"],
+    ["", "030-0000830", "", "4,854.00", "23/01/2017", "", "1.00", "-  -", "",
+     "", "EQUIOPO OPERATIVO"],
+]
+
+
+@pytest.mark.skipif(not NODE, reason="hace falta node para el motor JS")
+def test_los_dos_leen_igual_el_historial_por_bloques(tmp_path):
+    """La oficina y el teléfono, sobre la misma hoja, informe por informe.
+
+    Pasó de verdad: el lector por bloques se escribió primero en Python, y
+    durante un rato la oficina leía el historial de un manlift con trece años
+    encima mientras el teléfono lo rechazaba con «no se reconoce ninguna
+    columna de falla ni de causa». La herramienta promete que los dos lados
+    contestan lo mismo; un archivo que solo abre en uno rompe esa promesa
+    antes de contestar nada.
+    """
+    from nefer.fixmate import historial_bloques as hb
+
+    de_la_oficina = hb.leer_filas(HOJA_POR_BLOQUES)
+
+    guion = tmp_path / "bloques.js"
+    guion.write_text(motor_js() + """
+var fs = require("fs");
+var filas = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+process.stdout.write(JSON.stringify(blqLeerFilas(filas, "", "")));
+""", encoding="utf-8")
+    datos = tmp_path / "hoja.json"
+    datos.write_text(json.dumps(HOJA_POR_BLOQUES), encoding="utf-8")
+
+    proceso = subprocess.run([NODE, str(guion), str(datos)],
+                             capture_output=True, text=True, timeout=120)
+    if proceso.returncode != 0:
+        pytest.fail("el lector JS no corrió:\n" + proceso.stderr[-2000:])
+    del_telefono = json.loads(proceso.stdout)
+
+    assert len(del_telefono) == len(de_la_oficina) == 2
+    separados = []
+    for oficina, telefono in zip(de_la_oficina, del_telefono):
+        for clave in sorted(set(oficina) | set(telefono)):
+            if oficina.get(clave) != telefono.get(clave):
+                separados.append((oficina.get("codigo_ot"), clave,
+                                  oficina.get(clave), telefono.get(clave)))
+    assert not separados, "se separaron:\n" + "\n".join(
+        f"  OT {ot} · {c}\n    oficina : {x!r}\n    teléfono: {y!r}"
+        for ot, c, x, y in separados)
+
+
+@pytest.mark.skipif(not NODE, reason="hace falta node para el motor JS")
+def test_el_telefono_tampoco_confunde_una_hoja_normal_con_un_bloque(tmp_path):
+    """Con una sola cabecera arriba es una tabla, y tratarla como bloques le
+    perdería todas las filas menos la primera."""
+    normal = [["N° OT", "Fecha", "Equipo", "Falla", "Causa raiz"],
+              ["OT-1", "2026-01-01", "EX336-01", "gotea", "sello vencido"]]
+    guion = tmp_path / "detectar.js"
+    guion.write_text(motor_js() + """
+var fs = require("fs");
+var filas = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+process.stdout.write(JSON.stringify(blqEsPorBloques(filas)));
+""", encoding="utf-8")
+    datos = tmp_path / "normal.json"
+    datos.write_text(json.dumps(normal), encoding="utf-8")
+    salida = subprocess.run([NODE, str(guion), str(datos)], check=True,
+                            capture_output=True, text=True).stdout
+
+    from nefer.fixmate import historial_bloques as hb
+    assert json.loads(salida) is hb.es_por_bloques(normal) is False

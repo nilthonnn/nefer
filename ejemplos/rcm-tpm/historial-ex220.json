@@ -1,0 +1,66 @@
+{
+  "informes": [
+    {
+      "codigo_ot": "OT-2025-014", "fecha": "2025-11-10",
+      "codigo_equipo": "EX-220", "modelo_equipo": "PC220-8",
+      "categoria": "excavadora",
+      "resumen_falla": "Se recalienta en pendiente y pierde fuerza",
+      "causa_raiz": "Radiador obstruido por tierra",
+      "solucion_aplicada": "Lavado del panal a contraflujo y revision del ventilador",
+      "pasos": [
+        "Detener la maquina y dejar enfriar el sistema",
+        "Soplar el panal a contraflujo, de adentro hacia afuera",
+        "Lavar con agua a baja presion; nunca a presion directa sobre el panal",
+        "Verificar que el ventilador gire libre y la correa tenga tension"
+      ],
+      "herramientas": ["Hidrolavadora a baja presion", "Pistola de aire"],
+      "horometro": 10894.4, "horas_hombre": 2.5
+    },
+    {
+      "codigo_ot": "OT-2026-003", "fecha": "2026-01-15",
+      "codigo_equipo": "EX-220", "modelo_equipo": "PC220-8",
+      "categoria": "excavadora",
+      "resumen_falla": "Temperatura alta con carga continua",
+      "causa_raiz": "radiador tapado con tierra y polvo",
+      "solucion_aplicada": "Lavado del panal",
+      "horometro": 11340.0, "horas_hombre": 1.5
+    },
+    {
+      "codigo_ot": "OT-2026-009", "fecha": "2026-02-20",
+      "codigo_equipo": "EX-220", "modelo_equipo": "PC220-8",
+      "categoria": "excavadora",
+      "resumen_falla": "Aguja en rojo a media jornada",
+      "causa_raiz": "RADIADOR OBSTRUIDO POR INCRUSTACION",
+      "solucion_aplicada": "Desmontaje y limpieza quimica del panal",
+      "horometro": 11720.0, "horas_hombre": 6.0
+    },
+    {
+      "codigo_ot": "OT-2026-011", "fecha": "2026-02-28",
+      "codigo_equipo": "EX-220", "modelo_equipo": "PC220-8",
+      "categoria": "excavadora",
+      "resumen_falla": "Humo negro y pierde fuerza en la subida",
+      "causa_raiz": "Filtro de aire colmatado",
+      "solucion_aplicada": "Cambio de filtro primario y secundario",
+      "repuestos": ["Filtro primario P181050", "Filtro secundario P119374"],
+      "horometro": 11800.0, "horas_hombre": 1.0
+    },
+    {
+      "codigo_ot": "OT-2026-015", "fecha": "2026-03-05",
+      "codigo_equipo": "EX-220", "modelo_equipo": "PC220-8",
+      "categoria": "excavadora",
+      "resumen_falla": "Ruido raro al girar la torreta",
+      "causa_raiz": "se escucho algo suelto adentro, no se pudo precisar",
+      "solucion_aplicada": "Se reviso y se dejo en observacion",
+      "horometro": 11860.0, "horas_hombre": 0.5
+    },
+    {
+      "codigo_ot": "OT-2026-018", "fecha": "2026-03-12",
+      "codigo_equipo": "CA-310", "modelo_equipo": "CAT 320D",
+      "categoria": "excavadora",
+      "resumen_falla": "No arranca en la manana",
+      "causa_raiz": "Bornes sulfatados",
+      "solucion_aplicada": "Limpieza de bornes y engrase dielectrico",
+      "horometro": 7420.0, "horas_hombre": 0.5
+    }
+  ]
+}

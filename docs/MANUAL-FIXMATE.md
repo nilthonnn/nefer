@@ -103,6 +103,20 @@ reportada`, `Descripción de la falla`, `Causa raíz`, `Solución aplicada`,
 `Horómetro`, `Equipo`. Si su encabezado está dos filas abajo del membrete,
 igual lo encuentra.
 
+**Y lee el historial que exporta el sistema, no solo la plantilla.** Esos
+exports no traen una fila por orden: traen la cabecera repetida una vez por
+cada orden, con veinte o noventa filas de material debajo, la fecha de
+despacho delante de cada línea y el nombre del técnico detrás. Eso entra tal
+cual. El nombre del técnico se guarda aparte, para que `ACEITE 15W40 RIMULA
+R4X SHELL` no sean seis repuestos distintos, uno por quien lo pidió.
+
+**Si su historial no trae columna de causa raíz, igual sirve.** Muchos no la
+traen: lo que está escrito es lo que se cambió y lo que hizo el tercero. Con
+eso FixMate le da el ritmo de uso, el próximo servicio y dónde se va el dinero
+por sistema. Lo que **no** va a hacer es inventarle la causa: las órdenes sin
+causa salen contadas como «sin codificar», y ese número es exactamente lo que
+falta por escribir en el taller.
+
 Tres cosas que conviene saber:
 
 - **Lo que se agrega se suma.** El historial de otra faena no borra el
@@ -281,7 +295,61 @@ Otras órdenes:
 
 ---
 
-## 11. Lo que no hace, dicho aquí
+## 11. RCM y TPM
+
+FixMate hace ahora análisis de confiabilidad y mantenimiento autónomo, desde
+la línea de comandos. **No hay pantalla todavía**: se usa con `nefer fixmate
+rcm` y `nefer fixmate tpm`, o como biblioteca.
+
+```
+nefer fixmate rcm analizar  ejemplos/rcm-tpm/analisis-ex220.json [--indexar]
+nefer fixmate rcm matriz    ejemplos/rcm-tpm/analisis-ex220.json -o fmeca.csv
+nefer fixmate rcm tareas    ejemplos/rcm-tpm/analisis-ex220.json
+nefer fixmate tpm checklist ejemplos/rcm-tpm/pauta-ex220.json
+nefer fixmate tpm ejecutar  ejemplos/rcm-tpm/ronda-ex220-hallazgo.json \
+                            -p ejemplos/rcm-tpm/pauta-ex220.json \
+                            --rcm ejemplos/rcm-tpm/analisis-ex220.json
+nefer fixmate tablero
+```
+
+**Para probarlo**, los datos de ejemplo están en `ejemplos/rcm-tpm/` y la
+guía paso a paso en [OPERACION-RCM-TPM.md](OPERACION-RCM-TPM.md) — media
+hora, sin red. Para verlo de corrido:
+
+```
+python3 herramientas/demo-fixmate.py rcm
+python3 herramientas/demo-fixmate.py tpm
+```
+
+El diseño completo está en
+[ARQUITECTURA-RCM-TPM.md](ARQUITECTURA-RCM-TPM.md), cómo decide en
+[METODOLOGIA-FIXMATE.md](METODOLOGIA-FIXMATE.md), y los casos con su razón
+de ser en [CASOS-RCM-TPM-FIXMATE.md](CASOS-RCM-TPM-FIXMATE.md).
+
+**Lo que gana el técnico sin hacer nada.** Una vez indexado un análisis, una
+consulta normal lo recupera sola: preguntar por un síntoma devuelve, además
+de los antecedentes de siempre, el modo de falla RCM con su estrategia y la
+pauta autónoma que lo vigila. Cada cosa dice de dónde sale.
+
+**Lo que conviene saber antes de usarlo:**
+
+- **No marca «completo» por cortesía.** El criterio de JA1011 es binario:
+  faltando una de las siete preguntas el análisis no está completo, y
+  `rcm analizar` sale con código 2.
+- **No trae escala de criticidad.** La matriz es de su empresa. Sin método
+  configurado, la criticidad queda «no evaluada», que no es cero. El RPN
+  está disponible y viene con su advertencia pegada: multiplica escalas
+  ordinales, y por eso AIAG-VDA lo eliminó en 2019.
+- **Con consecuencia de seguridad nunca sale «operar hasta la falla».** Si
+  ninguna tarea proactiva sirve, la salida es rediseño, y es obligatorio.
+- **Las tareas nacen incompletas y lo dicen.** El intervalo y el límite no
+  se inventan: el análisis dice que existe un número, no cuál es.
+- **Una ronda con un punto que no se pudo ver no está completa**, aunque los
+  demás estén.
+- **La anomalía se engancha con RCM sola, o no se engancha y se ve.** Nunca
+  se elige el modo de falla «más parecido».
+
+## 12. Lo que no hace, dicho aquí
 
 - **La foto todavía no diagnostica.** La consulta es texto o dictado. Reconocer
   la avería en una imagen pide un modelo que necesita red, que es justo lo que
@@ -294,3 +362,14 @@ Otras órdenes:
 - **No es mantenimiento predictivo.** No hay sensores. Lo que hay es analítica
   sobre fechas y horómetro anotados a mano: útil y honesto, pero no es lo
   mismo.
+- **TPM es sólo el pilar 1.** Mantenimiento autónomo. Los otros siete
+  pilares no están, y la ronda todavía no se registra desde el teléfono.
+- **No calcula MTTR ni disponibilidad.** FixMate registra cuándo ocurrió una
+  falla, no cuánto duró la reparación. Un MTTR inventado se usa para
+  dimensionar un taller.
+- **No calcula costo-efectividad.** No hay un solo dato económico en el
+  sistema. Donde haría falta, dice «información económica insuficiente» y no
+  declara ningún ahorro.
+- **No garantiza que su RCM esté bien hecho.** Exige que las siete preguntas
+  estén respondidas; no puede juzgar si están bien respondidas. Eso pide un
+  facilitador y a los mantenedores en la sala, y eso no es software.

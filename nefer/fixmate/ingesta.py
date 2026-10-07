@@ -36,7 +36,10 @@ EXTENSIONES = EXTENSIONES_MANUAL | {".json"}
 
 CAMPOS_INFORME = ("codigo_ot", "fecha", "codigo_equipo", "modelo_equipo",
                   "categoria", "resumen_falla", "causa_raiz", "solucion_aplicada",
-                  "horas_hombre", "horometro")
+                  "horas_hombre", "horometro",
+                  # Trazabilidad hacia RCM y TPM. Opcionales siempre: un
+                  # historial viejo no los tiene y sigue siendo valido.
+                  "modo_falla_id", "codigo_catalogo", "anomalia_id")
 
 
 class ErrorIngesta(ValueError):

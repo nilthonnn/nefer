@@ -187,3 +187,124 @@ def test_salud_dice_tambien_que_aprendio(cliente):
     cuerpo = cliente.get("/salud").json()
     assert "clasificador" in cuerpo
     assert cuerpo["archivos"] >= 0
+
+
+# ═══════════════ RCM y TPM por HTTP (fase 12) ═══════════════
+#
+# Son endpoints de LECTURA. Crear o aprobar un análisis RCM por HTTP
+# exigiría autenticación y control de versiones, y FixMate no tiene ninguna
+# de las dos: un endpoint de escritura sin eso deja que cualquiera en la red
+# del taller reescriba el plan de mantenimiento sin dejar rastro.
+
+def _app_con_rcm():
+    from fastapi.testclient import TestClient
+
+    from nefer.fixmate import api as _api, embeddings, indexado, ingesta
+    from nefer.fixmate.activos import Activo
+    from nefer.fixmate.anomalia import Anomalia
+    from nefer.fixmate.decision import Decisiones, Respuestas
+    from nefer.fixmate.indice import Indice
+    from nefer.fixmate.motor import Motor
+    from nefer.fixmate.rcm import Analisis, Consecuencia, Efecto
+
+    a = Analisis(Activo("EX-220", "Excavadora", categoria="excavadora"))
+    f = a.agregar_funcion("Refrigerar", "80-95 °C con carga continua")
+    ff = a.agregar_falla(f.id, "Supera 95 °C")
+    m = a.agregar_modo(ff.id, "Radiador obstruido",
+                       codigo_catalogo="TER.SOBRECALENTAMIENTO.RADIADOR")
+    m.efecto = Efecto(local="Sube la temperatura")
+    m.consecuencias = (Consecuencia("produccion"),)
+    d = Decisiones()
+    d.registrar(m, Respuestas(detectable=True, viable=True))
+
+    informe = {"codigo_ot": "OT-1", "codigo_equipo": "EX-220",
+               "fecha": "2026-01-02", "resumen_falla": "radiador tapado",
+               "causa_raiz": "Radiador obstruido por tierra",
+               "solucion_aplicada": "Lavado"}
+    idx = Indice(embeddings.EmbebedorLocal())
+    idx.agregar(ingesta.de_historial({"informes": [informe]}, "h.json"))
+    indexado.indexar(idx, indexado.de_analisis(a, d))
+    indexado.indexar(idx, [indexado.de_anomalia(
+        Anomalia("an-1", "EX-220", "Panal tapado con tierra",
+                 codigo_catalogo="TER.SOBRECALENTAMIENTO.RADIADOR"))])
+    return TestClient(_api.crear_app(Motor(idx)))
+
+
+def test_get_rcm_lista_los_modos_con_su_estrategia():
+    r = _app_con_rcm().get("/rcm").json()
+    assert r["total"] == 1
+    assert r["modos"][0]["estrategia"] == "cbm"
+    assert r["modos"][0]["estrategia_rotulo"] == "Mantenimiento segun condicion"
+
+
+def test_get_rcm_filtra_por_equipo():
+    c = _app_con_rcm()
+    assert c.get("/rcm", params={"equipo": "EX-220"}).json()["total"] == 1
+    assert c.get("/rcm", params={"equipo": "CA-310"}).json()["total"] == 0
+
+
+def test_get_rcm_modos_por_codigo_de_catalogo():
+    # Es la llave que cose el diagnóstico con el análisis.
+    r = _app_con_rcm().get("/rcm/modos/TER.SOBRECALENTAMIENTO.RADIADOR").json()
+    assert r["total"] == 1
+    r2 = _app_con_rcm().get("/rcm/modos/ADM.RESTRICCION.FILTRO").json()
+    assert r2["total"] == 0
+
+
+def test_get_tpm_anomalias_filtra_abiertas_por_defecto():
+    r = _app_con_rcm().get("/tpm/anomalias").json()
+    assert r["total"] == 1 and r["filtro"] == "abiertas"
+
+
+def test_get_tablero_no_inventa_mttr_ni_disponibilidad():
+    r = _app_con_rcm().get("/tablero").json()
+    assert r["mttr_horas"] is None and r["disponibilidad"] is None
+    assert "no cuanto duro la reparacion" in r["nota"]
+
+
+def test_el_diagnostico_devuelve_el_contexto_rcm():
+    r = _app_con_rcm().post("/search-report-rag",
+                            json={"consulta_texto": "radiador tapado con tierra"})
+    assert r.status_code == 200
+    assert any(x["origen"] == "analisis RCM" for x in r.json()["contexto_rcm"])
+
+
+def test_el_contexto_rcm_esta_aunque_este_vacio():
+    # El campo está y dice que no hay, en vez de faltar.
+    from fastapi.testclient import TestClient
+
+    from nefer.fixmate import api as _api, embeddings, ingesta
+    from nefer.fixmate.indice import Indice
+    from nefer.fixmate.motor import Motor
+
+    idx = Indice(embeddings.EmbebedorLocal())
+    idx.agregar(ingesta.de_historial({"informes": [
+        {"codigo_ot": "OT-1", "resumen_falla": "radiador tapado",
+         "causa_raiz": "Radiador obstruido", "solucion_aplicada": "Lavado"}]},
+        "h.json"))
+    r = TestClient(_api.crear_app(Motor(idx))).post(
+        "/search-report-rag", json={"consulta_texto": "radiador tapado"})
+    assert r.json()["contexto_rcm"] == []
+
+
+def test_el_informe_acepta_la_trazabilidad_rcm_sin_exigirla(tmp_path):
+    from fastapi.testclient import TestClient
+
+    from nefer.fixmate import api as _api, embeddings
+    from nefer.fixmate.indice import Indice
+    from nefer.fixmate.motor import Motor
+
+    # Las DOS rutas van por argumento. `RUTA_HISTORIAL` y `RUTA_INDICE` se
+    # leen al importar el módulo, así que un monkeypatch posterior no las
+    # cambia; y al registrar un informe el endpoint escribe el historial Y
+    # guarda el índice. Sin esto, la prueba escribía sobre los dos archivos
+    # versionados de la raíz del repositorio y se contaminaba entre corridas.
+    c = TestClient(_api.crear_app(Motor(Indice(embeddings.EmbebedorLocal())),
+                                  ruta_indice=tmp_path / "i.json",
+                                  ruta_historial=tmp_path / "h.json"))
+    base = {"resumen_falla": "Se recalienta", "causa_raiz": "Radiador obstruido",
+            "solucion_aplicada": "Lavado del panal"}
+    assert c.post("/informes", json=base).status_code in (200, 201)
+    conysn = {**base, "codigo_ot": "OT-X", "modo_falla_id": "F1.1.1",
+              "anomalia_id": "an-1"}
+    assert c.post("/informes", json=conysn).status_code in (200, 201)

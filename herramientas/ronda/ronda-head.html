@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Ronda CIL · FixMate</title>
+<link rel="icon" href="../app/icono-192.png">
+<link rel="apple-touch-icon" href="../app/apple-touch-icon.png">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--fondo:#0b1220;--panel:#152033;--borde:#2a3a55;--texto:#e8eef7;--tenue:#93a4bd;
+      --ok:#1f9d55;--aviso:#d99100;--malo:#c3382f;--acento:#3987e5}
+html,body{margin:0;background:var(--fondo);color:var(--texto);
+  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right)
+      env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.lam{max-width:560px;margin:0 auto;padding:16px;min-height:100dvh;display:flex;flex-direction:column}
+h1{font-size:22px;margin:0 0 4px;letter-spacing:-.02em}
+h2{font-size:15px;margin:20px 0 8px;color:var(--tenue);text-transform:uppercase;
+   letter-spacing:.08em;font-weight:700}
+p{margin:0 0 10px}
+.tenue{color:var(--tenue);font-size:13px;line-height:1.4}
+.tarjeta{background:var(--panel);border:2px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:12px}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;
+  border-radius:12px;border:2px solid var(--borde);background:var(--panel);
+  min-height:56px;padding:10px 14px;width:100%;text-align:left;margin-bottom:10px}
+button:focus-visible{outline:4px solid var(--acento);outline-offset:2px}
+button.grande{font-size:19px;font-weight:800;text-align:center}
+.b-ok{background:var(--ok);border-color:#36c16f;color:#06220f}
+.b-mal{background:var(--aviso);border-color:#f0b429;color:#2a1e00}
+.b-sin{background:#2b3a52;border-color:#485e80}
+.b-acento{background:var(--acento);border-color:#6fb0ff;color:#04203f}
+.chip{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;
+  text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#24344d;color:var(--tenue)}
+.chip.tec{background:#4a2520;color:#ffc9c2}
+.barra{height:6px;background:#24344d;border-radius:4px;overflow:hidden;margin:10px 0 18px}
+.barra>i{display:block;height:100%;background:var(--acento);transition:width .2s}
+.punto{font-size:30px;font-weight:900;line-height:1.1;margin:6px 0 10px;letter-spacing:-.02em}
+.criterio{font-size:19px;background:#0f1a2b;border:2px solid var(--borde);
+  border-radius:10px;padding:12px;margin-bottom:10px}
+.crece{flex:1}
+.pie{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--tenue)}
+textarea,input[type=text]{width:100%;font:inherit;color:var(--texto);background:#0f1a2b;
+  border:2px solid var(--borde);border-radius:10px;padding:10px;min-height:52px}
+.velo{position:fixed;inset:0;background:rgba(5,10,20,.93);display:flex;align-items:flex-end;padding:14px;z-index:9}
+.velo>div{max-width:560px;margin:0 auto;width:100%;background:var(--panel);
+  border:2px solid var(--borde);border-radius:16px;padding:16px}
+.fila{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fila button{margin:0}
+.res-ok{border-color:#36c16f;background:#0d2a19}
+.res-mal{border-color:#f0b429;background:#2e2306}
+.res-sin{border-color:#485e80;background:#1a2638}
+.aviso{border:2px solid var(--aviso);background:#2e2306;border-radius:10px;padding:12px;margin-bottom:12px;font-size:14px}
+.peligro{border-color:var(--malo);background:#2d110e}
+.oculto{display:none}
+ul{margin:6px 0 0;padding-left:20px}li{margin-bottom:4px}
+code{background:#0f1a2b;padding:1px 5px;border-radius:4px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="lam" id="app"></div>

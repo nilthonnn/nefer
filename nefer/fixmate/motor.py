@@ -141,6 +141,11 @@ class Diagnostico:
     # Lo que el motor entendio que se le pregunto. Importa cuando la consulta
     # llego dictada: el tecnico tiene que poder leer que oyo la maquina.
     consulta_interpretada: str = ""
+    # Lo que aportan los analisis RCM y las pautas TPM que la busqueda
+    # recupero, si habia alguno. Vacio cuando no hay analisis cargado, que es
+    # el estado normal de un piloto recien empezado: el campo esta y dice que
+    # no hay, en vez de faltar y hacer creer que la pregunta no se hizo.
+    contexto_rcm: list[dict] = field(default_factory=list)
 
     def a_dict(self) -> dict:
         d = asdict(self)
@@ -183,6 +188,58 @@ def contexto(coincidencias: list[Coincidencia]) -> str:
             f"(parecido {c.puntaje * 100:.0f}%, fuente {c.fragmento.fuente or 'n/d'}) ---\n"
             f"{c.fragmento.texto}")
     return "\n\n".join(bloques)
+
+
+def contexto_rcm(coincidencias: list[Coincidencia]) -> list[dict]:
+    """Lo que los fragmentos RCM y TPM recuperados agregan al diagnostico.
+
+    No sale a buscar nada: lee lo que la misma busqueda ya trajo. Eso es
+    deliberado — un segundo viaje al indice con otra consulta devolveria
+    cosas que el tecnico no puede relacionar con lo que pregunto, y la
+    trazabilidad del §6 exige que cada recomendacion conserve su origen.
+
+    Cada entrada dice de que tipo de fragmento sale. Mezclar un modo de falla
+    de un analisis con un procedimiento de un manual sin decir cual es cual
+    es exactamente lo que la regla de evidencia prohibe.
+    """
+    salida: list[dict] = []
+    for c in coincidencias:
+        meta = c.fragmento.metadatos
+        tipo = c.fragmento.tipo
+        if tipo == "rcm":
+            salida.append({
+                "origen": "analisis RCM",
+                "fuente": c.fragmento.fuente,
+                "modo_falla_id": meta.get("modo_falla_id", ""),
+                "codigo_catalogo": meta.get("codigo_catalogo", ""),
+                "sistema": meta.get("sistema", ""),
+                "evidente": meta.get("evidente", True),
+                "consecuencias": list(meta.get("consecuencias") or []),
+                "criticidad": meta.get("criticidad", ""),
+                "estrategia": meta.get("estrategia", ""),
+                "estrategia_rotulo": meta.get("estrategia_rotulo", ""),
+                "estado_validacion": meta.get("estado_validacion", ""),
+            })
+        elif tipo == "tpm":
+            salida.append({
+                "origen": "pauta de mantenimiento autonomo",
+                "fuente": c.fragmento.fuente,
+                "checklist_id": meta.get("checklist_id", ""),
+                "frecuencia": meta.get("frecuencia", ""),
+                "puntos": list(meta.get("puntos") or []),
+                "modos_falla": list(meta.get("modos_falla") or []),
+            })
+        elif tipo == "anomalia":
+            salida.append({
+                "origen": "anomalia TPM",
+                "fuente": c.fragmento.fuente,
+                "anomalia_id": meta.get("anomalia_id", ""),
+                "severidad": meta.get("severidad", ""),
+                "estado": meta.get("estado", ""),
+                "abierta": meta.get("abierta", False),
+                "modo_falla_id": meta.get("modo_falla_id", ""),
+            })
+    return salida
 
 
 # ------------------------------------------------------ redactor sin LLM
@@ -543,4 +600,5 @@ class Motor:
             causas_probables=causas,
             precision_medida=medicion,
             consulta_interpretada=consulta.texto,
+            contexto_rcm=contexto_rcm(coincidencias),
         )
