@@ -33,6 +33,31 @@ Tres formas, todas sin red una vez abierta:
 pantalla de inicio». En iPhone: compartir → «Añadir a pantalla de inicio».
 Queda como una app y arranca sin señal.
 
+## 2b. Instalarla en el celular Android
+
+Es lo que conviene hacer una vez, en el taller, con señal. Después la ronda
+abre **sin cobertura**, que es la condición real: interior mina, y el turno
+no espera a que haya línea.
+
+1. Abra <https://nilthonnn.github.io/nefer/fixmate/ronda/> en **Chrome**.
+   También puede escanear el QR de `docs/fixmate/ronda/qr.svg`, que está
+   hecho para imprimirlo y pegarlo en la sala de máquinas.
+2. Toque **INSTALAR** en la barra de arriba. Si no aparece, el menú de tres
+   puntos de Chrome trae «Instalar aplicación» o «Agregar a pantalla de
+   inicio»; es lo mismo.
+3. Queda un icono propio —tres paradas unidas por un recorrido— junto a los
+   demás. Desde ahí abre a pantalla completa, sin la barra del navegador
+   comiéndose la mitad.
+
+Esa primera vez el teléfono se guarda la pantalla entera. A partir de ahí no
+vuelve a necesitar red: ni para abrir, ni para hacer la ronda, ni para
+guardar el archivo al terminar. Cuando haya señal y la pantalla cambie, se
+trae la versión nueva sola.
+
+**Si no quiere instalar nada**, la pantalla funciona igual dentro del
+navegador, y el archivo `.html` suelto —el que viaja por WhatsApp— también:
+ahí no hay copia automática, pero el archivo ya lo trae todo dentro.
+
 ## 3. Hacer la ronda
 
 **Primero, la pauta.** Toque **Abrir pauta del equipo** y elija el archivo
