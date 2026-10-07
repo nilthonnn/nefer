@@ -3,104 +3,273 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b1220">
+<meta name="theme-color" content="#16191B">
 <title>Análisis RCM · FixMate</title>
 <link rel="icon" href="../app/icono-192.png">
 <link rel="apple-touch-icon" href="../app/apple-touch-icon.png">
 <style>
-*{box-sizing:border-box}
-:root{--fondo:#0b1220;--panel:#152033;--hondo:#0f1a2b;--borde:#2a3a55;
-      --texto:#e8eef7;--tenue:#93a4bd;--ok:#1f9d55;--aviso:#d99100;
-      --malo:#c3382f;--acento:#3987e5;--oculta:#7a5cc4}
-html,body{margin:0;background:var(--fondo);color:var(--texto);
-  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.hoja{max-width:1140px;margin:0 auto;padding:20px 16px 48px}
-h1{font-size:24px;margin:0 0 4px;letter-spacing:-.02em}
-h2{font-size:13px;margin:26px 0 10px;color:var(--tenue);text-transform:uppercase;
-   letter-spacing:.09em;font-weight:700}
-h3{font-size:17px;margin:0 0 6px;letter-spacing:-.01em}
-p{margin:0 0 10px}
-a{color:var(--acento)}
-.tenue{color:var(--tenue);font-size:13px}
-.tarjeta{background:var(--panel);border:1px solid var(--borde);border-radius:10px;
-  padding:14px;margin-bottom:12px}
-button{font:inherit;color:inherit;cursor:pointer;border-radius:8px;
-  border:1px solid var(--borde);background:var(--panel);padding:8px 12px}
-button:hover{border-color:#44597e}
-button:focus-visible{outline:3px solid var(--acento);outline-offset:2px}
-button.ancho{width:100%;text-align:left}
-button.acento{background:var(--acento);border-color:#6fb0ff;color:#04203f;font-weight:700}
-.chip{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;
-  text-transform:uppercase;padding:2px 7px;border-radius:5px;background:#24344d;
-  color:var(--tenue);margin:0 4px 4px 0}
-.chip.grave{background:#4a2520;color:#ffc9c2}
-.chip.oculta{background:#2e2447;color:#d6c9ff}
-.chip.estr{background:#13324f;color:#a9d2ff}
-.chip.proa{background:#0d2a19;color:#95e3b4}
-.chip.def{background:#2e2306;color:#f7d98a}
-.rejilla{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
-@media (max-width:860px){.rejilla{grid-template-columns:1fr}}
-.arbol{background:var(--panel);border:1px solid var(--borde);border-radius:10px;padding:10px}
-.arbol .fn{font-weight:700;margin:10px 0 2px;font-size:14px}
-.arbol .ff{color:var(--tenue);font-size:13px;margin:4px 0 2px;padding-left:10px}
-.arbol button{display:block;width:100%;text-align:left;margin:4px 0 0;
-  background:var(--hondo);font-size:13px;line-height:1.35;padding:7px 9px}
-.arbol button.activo{border-color:var(--acento);background:#13243c}
-.campo{display:grid;grid-template-columns:200px 1fr;gap:4px 12px;font-size:14px;
-  padding:6px 0;border-top:1px solid #1e2c44}
-.campo>span:first-child{color:var(--tenue);font-size:13px}
-@media (max-width:620px){.campo{grid-template-columns:1fr}}
-.vacio{color:#5f6f8a;font-style:italic}
-.pregunta{border-top:1px solid #1e2c44;padding:10px 0}
-.pregunta>div:first-child{margin-bottom:6px}
-/* Los tres del mismo tamano, en la misma fila y en el mismo orden siempre:
-   si «sin evaluar» fuera mas chico o estuviera mas abajo, dejaria de usarse
-   y «no lo miramos» se registraria como «decidimos que no». */
-.opciones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
-  max-width:420px}
-.opciones button{text-align:center;padding:9px 6px}
-.op-si{background:#0d2a19;border-color:#2c6b45}
-.op-no{background:#2d110e;border-color:#7a3b34}
-.op-nd{background:#1a2638;border-color:#485e80}
-.opciones button[aria-pressed=true]{outline:2px solid var(--acento);outline-offset:1px;font-weight:800}
-.dictamen{border:1px solid var(--borde);border-left:4px solid var(--acento);
-  border-radius:8px;background:var(--hondo);padding:14px;margin-bottom:12px}
-.dictamen.proactiva{border-left-color:var(--ok)}
-.dictamen.defecto{border-left-color:var(--aviso)}
-.dictamen.bloqueada{border-left-color:var(--malo)}
-.camino{counter-reset:paso;margin:10px 0 0;padding:0;list-style:none}
-.camino li{counter-increment:paso;position:relative;padding:6px 0 6px 30px;
-  border-top:1px dashed #243550;font-size:13px}
-.camino li::before{content:counter(paso);position:absolute;left:0;top:7px;
-  width:20px;height:20px;border-radius:50%;background:#24344d;color:var(--tenue);
-  font-size:11px;font-weight:800;display:grid;place-items:center}
-.camino b{color:var(--texto)}
-.camino .resp{color:#a9d2ff;font-weight:700}
-.aviso{border:1px solid var(--aviso);background:#2e2306;border-radius:8px;
-  padding:10px 12px;margin:10px 0 0;font-size:13px}
-.aviso.peligro{border-color:var(--malo);background:#2d110e}
-.aviso.nota{border-color:var(--borde);background:var(--hondo);color:var(--tenue)}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #1e2c44;vertical-align:top}
-th{color:var(--tenue);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-tr.grave td{background:#1f1412}
-.q{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid #1e2c44}
-.q .marca{flex:0 0 22px;font-weight:900;text-align:center}
-.q.si .marca{color:var(--ok)}
-.q.no .marca{color:var(--aviso)}
-.barra{height:6px;background:#24344d;border-radius:4px;overflow:hidden;margin:8px 0 0}
-.barra>i{display:block;height:100%;background:var(--acento)}
-.numeros{display:flex;flex-wrap:wrap;gap:10px}
-.numeros>div{background:var(--hondo);border:1px solid var(--borde);border-radius:8px;
-  padding:8px 12px;min-width:112px}
-.numeros b{display:block;font-size:22px;letter-spacing:-.02em}
-.oculto{display:none}
-code{background:var(--hondo);padding:1px 5px;border-radius:4px;font-size:13px}
-ul.lista{margin:6px 0 0;padding-left:18px}ul.lista li{margin-bottom:3px;font-size:13px}
+/* rcm:piel:inicio */
+/* Generado por herramientas/piel.py desde docs/fixmate/app/index.html.
+ * No editar aqui: se reescribe. */
+    :root {
+    --paper:#F3F4F2; --card:#FFFFFF; --card-2:#EAEDEB;
+    --ink:#16191B; --ink-2:#4E5860; --ink-3:#5F6A72;
+    --rule:#D6DCDA; --rule-2:#E6EAE8;
+    --accent:#1E4B6B; --accent-soft:#E3ECF3;
+    --ok:#1F6B4C; --ok-soft:#E1F0E9;
+    --obs:#8A5A00; --obs-soft:#F8EFDB; --obs-rule:#E0C894;
+    --mal:#96341F; --mal-soft:#F7E6E0; --mal-rule:#E0B2A2;
+    --barra:#16191B; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(22,25,27,.05), 0 10px 26px -16px rgba(22,25,27,.28);
+    /* Barlow va alojada; detrás, siempre, la del sistema: si el archivo aún
+       no llegó o no está —el demo descargado como archivo suelto no lo
+       lleva—, el texto se lee igual desde el primer instante. */
+    --cond:"Barlow Condensed",ui-sans-serif,system-ui,-apple-system,
+           "Roboto Condensed","Arial Narrow",sans-serif;
+    --sans:"Barlow",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    /* La monoespaciada no se aloja: la del aparato es buena y cuesta 0 bytes. */
+    --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+      --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+      --rule:#2F383D; --rule-2:#262E32;
+      --accent:#6FA8CE; --accent-soft:#16303F;
+      --ok:#6FC49B; --ok-soft:#143024;
+      --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+      --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+      --barra:#0E1113; --barra-ink:#E7ECEB;
+      --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+    --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+    --rule:#2F383D; --rule-2:#262E32;
+    --accent:#6FA8CE; --accent-soft:#16303F;
+    --ok:#6FC49B; --ok-soft:#143024;
+    --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+    --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+    --barra:#0E1113; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+  }
+  
+
+/* La capa comun de las pantallas de FixMate: barra, botones, tarjetas,
+ * etiquetas y avisos. Encima van las reglas propias de cada pantalla.
+ *
+ * Esto NO define colores: los toma de la piel, que sale de la app de
+ * diagnostico. Un color escrito aqui a mano seria una tercera paleta, que es
+ * justo lo que esta capa existe para que no pase.
+ *
+ * Por que una capa comun y no que cada pantalla se pinte sola: el tecnico que
+ * diagnostica, el operador que hace la ronda y el ingeniero que decide la
+ * estrategia son tres personas que hablan entre ellas de la misma maquina. Si
+ * cada pantalla parece de otro programa, la primera pregunta de cada reunion
+ * es cual de los tres tiene el dato bueno.
+ */
+
+*, *::before, *::after { box-sizing:border-box; }
+/* Que los controles del sistema —barras de desplazamiento, campos, el
+   teclado del telefono— sigan el mismo tema que la pagina. */
+html { -webkit-text-size-adjust:100%; color-scheme:light dark; }
+body { margin:0; background:var(--paper); color:var(--ink);
+       font-family:var(--sans); font-size:16px; line-height:1.5;
+       padding:0 16px env(safe-area-inset-bottom); }
+
+/* ---------------------------------------------------------- la barra
+ * La misma de la app de diagnostico: el nombre del producto, y al lado, en
+ * chico, en que pantalla esta parado. Es lo unico que se ve igual en las tres
+ * antes de leer una sola palabra.
+ */
+.barra { background:var(--barra); color:var(--barra-ink); margin:0 -16px;
+         padding:.7rem 16px calc(.7rem + env(safe-area-inset-top));
+         display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap; }
+.barra b { font-family:var(--cond); font-size:1.15rem; letter-spacing:.04em;
+           text-transform:uppercase; }
+.barra span { font-family:var(--mono); font-size:.66rem; opacity:.7;
+              letter-spacing:.06em; text-transform:uppercase; }
+.barra .vinculos { margin-left:auto; display:flex; gap:.9rem; }
+.barra .vinculos a { color:var(--barra-ink); opacity:.65; text-decoration:none;
+                     font-family:var(--mono); font-size:.66rem;
+                     letter-spacing:.06em; text-transform:uppercase; }
+.barra .vinculos a:hover, .barra .vinculos a:focus-visible { opacity:1;
+                     text-decoration:underline; }
+
+/* ------------------------------------------------------- tipografia */
+h1 { font-family:var(--cond); font-size:1.6rem; letter-spacing:.01em;
+     margin:0 0 .25rem; text-wrap:balance; }
+h2 { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+     text-transform:uppercase; color:var(--ink-3); font-weight:700;
+     margin:1.6rem 0 .6rem; }
+h3 { font-size:1.05rem; margin:0 0 .3rem; text-wrap:balance; }
+p { margin:0 0 .6rem; }
+a { color:var(--accent); }
+code { font-family:var(--mono); font-size:.86em; background:var(--card-2);
+       padding:.05rem .3rem; border-radius:3px; }
+.tenue { color:var(--ink-2); font-size:.86rem; }
+.vacio { color:var(--ink-3); font-style:italic; }
+/* La etiqueta de un dato, en monoespaciada chica: la misma de la app. */
+.lb { font-family:var(--mono); font-size:.7rem; letter-spacing:.05em;
+      text-transform:uppercase; color:var(--ink-3); }
+
+/* ---------------------------------------------------------- botones */
+button { font:inherit; font-size:.9rem; cursor:pointer; color:var(--ink);
+         border:1px solid var(--rule); background:var(--card);
+         border-radius:6px; padding:.55rem .9rem; text-align:left;
+         touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+button:hover { border-color:var(--ink-3); }
+button.primary { background:var(--accent); color:var(--paper);
+                 border-color:var(--accent); font-weight:700; }
+button:disabled { opacity:.5; cursor:default; }
+:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+
+/* ----------------------------------------------- tarjetas y avisos */
+.tarjeta { background:var(--card); border:1px solid var(--rule);
+           border-radius:6px; padding:.9rem 1rem; margin-bottom:.8rem; }
+/* El aviso de la app: barra al costado y fondo suave, no un bloque de color.
+   Se lee con guantes y a contraluz. */
+.aviso { border-left:3px solid var(--obs); background:var(--obs-soft);
+         color:var(--ink); padding:.6rem .8rem; border-radius:0 4px 4px 0;
+         font-size:.88rem; margin:.6rem 0 0; }
+.aviso.peligro { border-left-color:var(--mal); background:var(--mal-soft); }
+.aviso.nota { border-left-color:var(--rule); background:var(--card-2);
+              color:var(--ink-2); }
+
+/* ------------------------------------------------------------ chips
+ * Rotulo corto con borde, no relleno: a tres por linea, el relleno convierte
+ * la ficha en una bolsa de colores y deja de distinguirse lo grave.
+ */
+.chip { display:inline-block; font-family:var(--mono); font-size:.6rem;
+        letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3);
+        border:1px solid var(--rule); border-radius:3px; padding:.08rem .35rem;
+        margin:0 .25rem .25rem 0; white-space:nowrap; }
+.chip.grave { color:var(--mal); border-color:var(--mal); }
+.chip.ok { color:var(--ok); border-color:var(--ok); }
+.chip.obs { color:var(--obs); border-color:var(--obs); }
+.chip.acento { color:var(--accent); border-color:var(--accent); }
+
+ul.lista { margin:.35rem 0 0; padding-left:1.1rem; }
+ul.lista li { margin-bottom:.2rem; font-size:.88rem; }
+.oculto { display:none; }
+/* rcm:piel:fin */
+
+/* ------------------------------------------- lo propio de esta pantalla
+ * Es trabajo de mesa: dos columnas, el arbol a la izquierda y el modo de
+ * falla abierto a la derecha. Lo demas lo pone la piel.
+ */
+.hoja { max-width:1140px; margin:0 auto; padding:1.2rem 0 3rem; }
+.rejilla { display:grid; grid-template-columns:330px 1fr; gap:1rem;
+           align-items:start; }
+@media (max-width:900px) { .rejilla { grid-template-columns:1fr; } }
+
+/* El arbol del analisis: funcion, falla funcional, modo. */
+.arbol { background:var(--card); border:1px solid var(--rule);
+         border-radius:6px; padding:.6rem; }
+.arbol .fn { font-weight:700; font-size:.9rem; margin:.8rem 0 .1rem; }
+.arbol .est { color:var(--ink-3); font-size:.78rem; padding-left:.1rem; }
+.arbol .ff { color:var(--ink-2); font-size:.82rem; margin:.4rem 0 .1rem;
+             padding-left:.5rem; }
+.arbol button { display:block; width:100%; margin:.3rem 0 0;
+                background:var(--paper); font-size:.84rem; line-height:1.35;
+                padding:.45rem .55rem; }
+.arbol button.activo { border-color:var(--accent); background:var(--accent-soft); }
+
+/* Una ficha de dato: etiqueta a la izquierda, valor a la derecha. */
+.campo { display:grid; grid-template-columns:190px 1fr; gap:.15rem .9rem;
+         font-size:.92rem; padding:.45rem 0; border-top:1px solid var(--rule-2); }
+.campo > span:first-child { font-family:var(--mono); font-size:.68rem;
+         letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); }
+@media (max-width:620px) { .campo { grid-template-columns:1fr; } }
+
+/* Las tres respuestas del arbol. Del mismo tamano, en la misma fila y en el
+   mismo orden siempre: si «sin evaluar» fuera mas chico o estuviera mas
+   abajo, dejaria de usarse y «no lo miramos» se registraria como
+   «decidimos que no». Sin elegir, los tres son neutros: el color aparece
+   cuando hay respuesta, no antes. */
+.pregunta { border-top:1px solid var(--rule-2); padding:.75rem 0; }
+.opciones { display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+            gap:.5rem; max-width:26rem; margin-top:.5rem; }
+.opciones button { text-align:center; padding:.5rem .4rem; }
+.op-si[aria-pressed="true"] { background:var(--ok); border-color:var(--ok);
+            color:var(--paper); font-weight:700; }
+.op-no[aria-pressed="true"] { background:var(--mal); border-color:var(--mal);
+            color:var(--paper); font-weight:700; }
+.op-nd[aria-pressed="true"] { background:var(--ink-3); border-color:var(--ink-3);
+            color:var(--paper); font-weight:700; }
+
+/* El dictamen, con el camino que lo produjo. El borde del costado dice de
+   que clase es sin leer: proactiva, por defecto, o bloqueada por la guarda. */
+.dictamen { background:var(--card); border:1px solid var(--rule);
+            border-left:4px solid var(--accent); border-radius:0 6px 6px 0;
+            padding:1rem 1.1rem; margin-bottom:.8rem; }
+.dictamen.proactiva { border-left-color:var(--ok); }
+.dictamen.defecto { border-left-color:var(--obs); }
+.dictamen.bloqueada { border-left-color:var(--mal); }
+.estrategia { font-family:var(--cond); font-size:1.5rem; letter-spacing:.01em;
+              line-height:1.1; }
+.camino { counter-reset:paso; margin:.8rem 0 0; padding:0; list-style:none; }
+.camino li { counter-increment:paso; position:relative; padding:.45rem 0 .45rem 1.9rem;
+             border-top:1px solid var(--rule-2); font-size:.86rem; }
+.camino li::before { content:counter(paso); position:absolute; left:0; top:.5rem;
+             width:1.25rem; height:1.25rem; border-radius:50%;
+             background:var(--card-2); color:var(--ink-3);
+             font-family:var(--mono); font-size:.66rem; display:grid;
+             place-items:center; }
+.camino .resp { color:var(--accent); font-weight:700; }
+
+/* El panel de las siete preguntas. */
+.q { display:flex; gap:.6rem; align-items:flex-start; padding:.5rem 0;
+     border-top:1px solid var(--rule-2); font-size:.92rem; }
+.q .marca { flex:0 0 1.1rem; font-weight:900; text-align:center; }
+.q.si .marca { color:var(--ok); }
+.q.no .marca { color:var(--obs); }
+.progreso { height:5px; background:var(--rule); border-radius:3px;
+            overflow:hidden; margin:.5rem 0 .2rem; }
+.progreso > i { display:block; height:100%; background:var(--accent); }
+
+/* El tablero y el resumen por modo. */
+.numeros { display:flex; flex-wrap:wrap; gap:.6rem; }
+.numeros > div { background:var(--card-2); border:1px solid var(--rule-2);
+                 border-radius:6px; padding:.5rem .8rem; min-width:7rem; }
+.numeros b { display:block; font-family:var(--cond); font-size:1.5rem;
+             letter-spacing:.01em; }
+table { width:100%; border-collapse:collapse; font-size:.86rem; }
+th, td { text-align:left; padding:.45rem .5rem; vertical-align:top;
+         border-bottom:1px solid var(--rule-2); }
+th { font-family:var(--mono); font-size:.66rem; letter-spacing:.06em;
+     text-transform:uppercase; color:var(--ink-3); font-weight:400; }
+tr.grave td { background:var(--mal-soft); }
+
+/* Un hallazgo de la ronda, dentro de la ficha del modo. */
+.hallazgo { border-left:3px solid var(--obs); background:var(--obs-soft);
+            padding:.4rem .6rem; border-radius:0 4px 4px 0; margin-bottom:.4rem;
+            font-size:.88rem; }
 </style>
 </head>
 <body>
-<div class="hoja" id="app"></div>
+<div class="barra">
+  <b>FixMate</b><span>Análisis RCM</span>
+  <nav class="vinculos">
+    <a href="../">Inicio</a>
+    <a href="../app/">Diagnóstico</a>
+    <a href="../ronda/">Ronda CIL</a>
+  </nav>
+</div>
+<script>
+/* rcm:barra:inicio */
+/* Los enlaces entre herramientas sólo sirven si la pantalla se abrió desde
+ * el sitio. Descargada como archivo suelto —que es como viaja por WhatsApp—
+ * apuntarían a carpetas que no existen en ese teléfono, y un enlace roto en
+ * la barra hace dudar del resto de la pantalla. Se quitan. */
+if (location.protocol === "file:") {
+  var vinculos = document.querySelector(".barra .vinculos");
+  if (vinculos) vinculos.remove();
+}
+/* rcm:barra:fin */
+</script>
+<main class="hoja" id="app"></main>
 <script>
 /* rcm:reglas:inicio — ESPEJO de nefer/fixmate/decision.py y rcm.py.
  *
@@ -564,6 +733,47 @@ function completitud(a, decisiones) {
   };
 }
 
+/* ------------------------------------- la evidencia que llega del campo */
+
+/** Une una anomalia de la ronda con el modo de falla que declara su mismo
+ *  codigo. Mismo contrato que `anomalia.enlazar()`, y el `motivo` de mas,
+ *  que es para la pantalla.
+ *
+ * Exige coincidencia EXACTA de codigo y de activo, y no elige entre dos
+ * candidatos: una anomalia enlazada al modo equivocado contamina la
+ * frecuencia por modo y la decision de estrategia que sale de ahi.
+ *
+ * Lo que aqui NO se hace, igual que en el telefono: deducir el codigo de un
+ * texto libre. Eso es el catalogo ISO 14224 —41 entradas con sus pistas— y
+ * lo hace la oficina con `fixmate tpm anomalias`. Una anomalia sin codigo se
+ * queda sin enganchar, y la pantalla dice por que.
+ */
+function enlazarAnomalia(a, analisis) {
+  if (a.modo_falla_id) {
+    return { modo_falla_id: a.modo_falla_id, motivo: "la pauta declara el modo" };
+  }
+  if (!a.codigo_catalogo) {
+    return { modo_falla_id: "",
+             motivo: "sin codigo de catalogo: el telefono no clasifica texto libre" };
+  }
+  if (!analisis || analisis.activo.codigo !== a.activo_codigo) {
+    return { modo_falla_id: "", motivo: "la anomalia es de otro activo" };
+  }
+  var candidatos = analisis.modos.filter(function (m) {
+    return m.codigo_catalogo === a.codigo_catalogo;
+  });
+  if (candidatos.length === 1) {
+    return { modo_falla_id: candidatos[0].id, motivo: "por codigo de catalogo" };
+  }
+  if (candidatos.length === 0) {
+    return { modo_falla_id: "",
+             motivo: "ningun modo del analisis declara ese codigo" };
+  }
+  return { modo_falla_id: "",
+           motivo: "dos modos declaran el mismo codigo: la ambiguedad se " +
+                   "resuelve en el analisis, no aqui a la suerte" };
+}
+
 /** Lo que un jefe de mantenimiento mira primero. Mismo contrato que
  *  `decision.resumen()`. */
 function resumenRCM(a, decisiones) {
@@ -590,6 +800,7 @@ function resumenRCM(a, decisiones) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     decidir: decidir, completitud: completitud, resumenRCM: resumenRCM,
+    enlazarAnomalia: enlazarAnomalia,
     normalizarAnalisis: normalizarAnalisis, esGrave: esGrave,
     fallasDe: fallasDe, modosDe: modosDe, efectoDescrito: efectoDescrito,
     ESTRATEGIAS: ESTRATEGIAS, POR_DEFECTO: POR_DEFECTO, PROACTIVAS: PROACTIVAS,
@@ -827,6 +1038,9 @@ var analisis = null;     // normalizado, con los ids de Python
 var respuestasPorModo = {};  // modo_id -> {campo: true|false|null}
 var decisiones = {};     // modo_id -> dictamen
 var seleccion = null;    // modo_id abierto en la ficha
+var ronda = null;        // la ronda CIL que se haya abierto encima
+var porModo = {};        // modo_id -> anomalias de campo enganchadas
+var sueltas = [];        // las que no engancharon, con el motivo
 
 function esc(s) {
   return String(s === undefined || s === null ? "" : s)
@@ -870,7 +1084,7 @@ function verInicio(error) {
     (error ? '<div class="aviso peligro">' + esc(error) + '</div>' : '') +
     '<h2>Abrir el análisis</h2>' +
     '<div class="tarjeta">' +
-    '<button id="archivo" class="acento">Abrir archivo de análisis (.json)</button>' +
+    '<button id="archivo" class="primary">Abrir archivo de análisis (.json)</button>' +
     '<p class="tenue" style="margin:10px 0 0">El mismo formato que lee ' +
     '<code>fixmate rcm analizar</code>. Se abre en este navegador: no se ' +
     'sube a ninguna parte.</p></div>' +
@@ -960,6 +1174,7 @@ function abrir(datos) {
 
   crudo = datos; analisis = a;
   respuestasPorModo = {}; decisiones = {};
+  ronda = null; porModo = {}; sueltas = [];
   // Las decisiones que ya vienen en el archivo se cargan tal como están. Un
   // modo sin «decision» no se decide: no se le inventa una respuesta
   // conservadora para que el análisis parezca completo.
@@ -985,6 +1200,7 @@ function render() {
     panelJA1011(c) +
     '<div class="rejilla"><div>' + arbol() + '</div><div id="ficha">' +
     ficha() + '</div></div>' +
+    evidencia_campo() +
     tablero(r) +
     resumenEnPantalla() +
     salida();
@@ -1001,7 +1217,7 @@ function encabezado(r) {
     (analisis.facilitador ? ' · facilita ' + esc(analisis.facilitador) : '') +
     '</p>' +
     (analisis.contexto
-      ? '<div class="tarjeta"><span class="tenue">Contexto operacional</span>' +
+      ? '<div class="tarjeta"><span class="lb">Contexto operacional</span>' +
         '<p style="margin:4px 0 0">' + esc(analisis.contexto) + '</p>' +
         '<p class="tenue" style="margin:8px 0 0">El análisis está amarrado a ' +
         'este contexto, no al equipo solo. La misma máquina en otro contexto ' +
@@ -1013,10 +1229,10 @@ function encabezado(r) {
 
 function panelJA1011(c) {
   var html = '<h2>Las siete preguntas de SAE JA1011</h2><div class="tarjeta">' +
-    '<div style="font-size:18px;font-weight:800">' +
+    '<div class="estrategia">' +
     (c.completo ? 'Las siete están contestadas.'
                 : c.contestadas + ' de 7 contestadas') + '</div>' +
-    '<div class="barra"><i style="width:' + (c.contestadas / 7 * 100) + '%"></i></div>';
+    '<div class="progreso"><i style="width:' + (c.contestadas / 7 * 100) + '%"></i></div>';
   if (!c.completo) {
     html += '<p class="tenue" style="margin-top:10px">' +
       (c.rompe_cadena
@@ -1042,12 +1258,12 @@ function panelJA1011(c) {
 }
 
 function arbol() {
-  var html = '<div class="arbol"><div class="tenue" style="padding:4px 6px">' +
+  var html = '<div class="arbol"><div class="lb" style="padding:4px 6px">' +
     analisis.funciones.length + ' funciones · ' + analisis.fallas.length +
     ' fallas funcionales · ' + analisis.modos.length + ' modos</div>';
   analisis.funciones.forEach(function (f) {
     html += '<div class="fn">' + esc(f.id) + ' · ' + esc(f.descripcion) + '</div>' +
-      '<div class="tenue" style="padding-left:2px;font-size:12px">' +
+      '<div class="est">' +
       esc(f.estandar) + '</div>';
     fallasDe(analisis, f.id).forEach(function (ff) {
       html += '<div class="ff">' + esc(ff.id) + ' · ' + esc(ff.descripcion) + '</div>';
@@ -1057,10 +1273,12 @@ function arbol() {
           (m.id === seleccion ? ' class="activo"' : '') + '>' +
           '<b>' + esc(m.id) + '</b> ' + esc(m.descripcion) +
           '<span style="display:block;margin-top:4px">' +
-          (m.evidente ? '' : '<span class="chip oculta">oculta</span>') +
+          (m.evidente ? '' : '<span class="chip obs">oculta</span>') +
           (esGrave(m) ? '<span class="chip grave">grave</span>' : '') +
-          (d ? '<span class="chip estr">' + esc(d.rotulo) + '</span>'
+          (d ? '<span class="chip acento">' + esc(d.rotulo) + '</span>'
              : '<span class="chip">sin decidir</span>') +
+          (porModo[m.id] ? '<span class="chip obs">' + porModo[m.id].length +
+             ' en campo</span>' : '') +
           '</span></button>';
       });
     });
@@ -1121,8 +1339,8 @@ function ficha() {
     esc(ff ? ff.descripcion : "") + '</p>' +
     (m.evidente
       ? '<span class="chip">pérdida evidente</span>'
-      : '<span class="chip oculta">falla oculta</span>') +
-    (m.estado === "validado" ? '<span class="chip proa">validado</span>'
+      : '<span class="chip obs">falla oculta</span>') +
+    (m.estado === "validado" ? '<span class="chip ok">validado</span>'
                              : '<span class="chip">' + esc(m.estado) + '</span>') +
     (m.consecuencias || []).map(function (c) {
       var clase = typeof c === "string" ? c : c.clase;
@@ -1149,7 +1367,7 @@ function ficha() {
     campo("Alarma o código", u.alarma) +
     campo("Componente afectado", u.componente_afectado) +
     campo("Cómo confirmarlo", u.como_detectarlo) +
-    criticidad(m) + evidencia(m) +
+    criticidad(m) + evidencia(m) + anomaliasDelModo(m) +
     '</div>';
   return html + decisionPanel(m);
 }
@@ -1209,15 +1427,14 @@ function decisionPanel(m) {
               : PROACTIVAS.indexOf(d.estrategia) >= 0 ? 'proactiva'
               : d.por_defecto ? 'defecto' : '';
     html += '<div class="dictamen ' + clase + '">' +
-      '<div style="font-size:20px;font-weight:900;letter-spacing:-.02em">' +
-      esc(d.rotulo) + '</div>' +
+      '<div class="estrategia">' + esc(d.rotulo) + '</div>' +
       '<div style="margin:6px 0 0">' +
       (PROACTIVAS.indexOf(d.estrategia) >= 0
-        ? '<span class="chip proa">tarea proactiva</span>' : '') +
-      (d.por_defecto ? '<span class="chip def">acción por defecto (Q7)</span>' : '') +
+        ? '<span class="chip ok">tarea proactiva</span>' : '') +
+      (d.por_defecto ? '<span class="chip obs">acción por defecto (Q7)</span>' : '') +
       (d.bloqueado_por_seguridad
         ? '<span class="chip grave">rediseño obligatorio</span>' : '') +
-      (d.incompleta ? '<span class="chip def">decisión incompleta</span>' : '') +
+      (d.incompleta ? '<span class="chip obs">decisión incompleta</span>' : '') +
       '</div>' +
       (d.incompleta
         ? '<p class="tenue" style="margin:8px 0 0">Queda incompleta mientras ' +
@@ -1248,7 +1465,7 @@ function decisionPanel(m) {
     html += '<div class="pregunta"' +
       (pertinente ? '' : ' style="opacity:.55"') + '>' +
       '<div><b>' + esc(et[0]) + '</b>' +
-      (usada(k, d) ? ' <span class="chip estr">la usó el árbol</span>' : '') +
+      (usada(k, d) ? ' <span class="chip acento">la usó el árbol</span>' : '') +
       (pertinente ? '' : ' <span class="chip">no aplica a este modo</span>') +
       '<span class="tenue" style="display:block">' + esc(et[1]) + '</span></div>' +
       '<div class="opciones">' +
@@ -1273,27 +1490,176 @@ function decisionPanel(m) {
   return html;
 }
 
+// ------------------------------------------------ la evidencia de campo
+
+var _entradaRonda = null;
+
+/** La entrada de archivo de la ronda, una sola para toda la sesión.
+ *  La pantalla se repinta entera a cada respuesta del árbol; crearla en cada
+ *  repintado dejaba una colgando del documento por cada clic. */
+function entradaRonda() {
+  if (_entradaRonda) return _entradaRonda;
+  var inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".json,application/json";
+  inp.className = "oculto"; inp.id = "entrada-ronda";
+  document.body.appendChild(inp);
+  inp.onchange = function () {
+    var f = inp.files && inp.files[0];
+    if (!f) return;
+    var lector = new FileReader();
+    lector.onload = function () {
+      var r;
+      try { r = abrirRonda(JSON.parse(lector.result)); }
+      catch (e) { r = { error: "Ese archivo no es una ronda legible: " + e.message }; }
+      inp.value = "";          // el mismo archivo se puede volver a abrir
+      render();
+      if (r.error) {
+        var caja = document.getElementById("abrir-ronda");
+        if (caja) caja.insertAdjacentHTML("afterend",
+          '<div class="aviso peligro">' + esc(r.error) + '</div>');
+      }
+    };
+    lector.readAsText(f);
+  };
+  _entradaRonda = inp;
+  return inp;
+}
+
+/** La ronda que hizo el operador, puesta encima del análisis.
+ *
+ * Es el circuito que justifica todo lo demás: el operador ve algo en el
+ * turno, la oficina abre el análisis y ve **en qué modo de falla** cayó eso
+ * que vio. Sin esto, la ronda es una lista de hallazgos y el análisis es un
+ * documento, y nadie los cruza nunca.
+ *
+ * El enganche es el mismo que hace la oficina —código exacto y mismo
+ * activo—, y lo que no engancha se muestra con el motivo, no se esconde.
+ */
+function abrirRonda(datos) {
+  var lista = (datos && datos.anomalias) || [];
+  if (!lista.length) {
+    return { error: "Ese archivo no trae anomalías. Una ronda sin hallazgos " +
+                    "no tiene nada que cruzar con el análisis — lo cual, " +
+                    "dicho sea de paso, es una buena noticia." };
+  }
+  ronda = datos;
+  porModo = {}; sueltas = [];
+  lista.forEach(function (a) {
+    var enlace = enlazarAnomalia(a, analisis);
+    if (enlace.modo_falla_id && modo(enlace.modo_falla_id)) {
+      if (!porModo[enlace.modo_falla_id]) porModo[enlace.modo_falla_id] = [];
+      porModo[enlace.modo_falla_id].push({ a: a, motivo: enlace.motivo });
+    } else {
+      sueltas.push({ a: a, motivo: enlace.modo_falla_id
+        ? "declara el modo " + enlace.modo_falla_id + ", que no está en este análisis"
+        : enlace.motivo });
+    }
+  });
+  return { error: "" };
+}
+
+function anomaliasDelModo(m) {
+  var lista = porModo[m.id];
+  if (!lista) return "";
+  return '<div class="campo"><span>Visto en campo</span><span>' +
+    lista.map(function (x) {
+      return '<div class="hallazgo"><b>' + esc(x.a.descripcion) + '</b>' +
+        '<span class="tenue"> · ' + esc(x.a.detectada_por || "sin firmar") +
+        ' · ' + esc(x.a.fecha || "sin fecha") + '</span>' +
+        (x.a.condicion_observada
+          ? '<div class="tenue">criterio: ' + esc(x.a.condicion_observada) + '</div>'
+          : '') +
+        '<div class="tenue">enganchado ' + esc(x.motivo) + '</div></div>';
+    }).join("") + '</span></div>';
+}
+
+function evidencia_campo() {
+  var html = '<h2>Evidencia de campo · ronda CIL</h2><div class="tarjeta">';
+  if (!ronda) {
+    html += '<button id="abrir-ronda">Abrir una ronda del operador (.json)</button>' +
+      '<p class="tenue" style="margin:10px 0 0">El archivo que sale del ' +
+      'teléfono al terminar la ronda. Se cruza con este análisis y se ve en ' +
+      'qué modo de falla cayó lo que el operador encontró. No se sube a ' +
+      'ninguna parte y no se guarda dentro del análisis: la ronda sigue ' +
+      'siendo la ronda.</p></div>';
+    return html;
+  }
+  var e = ronda.ejecucion || {};
+  var mismoActivo = !e.activo_codigo ||
+                    e.activo_codigo === analisis.activo.codigo;
+  var enganchadas = 0;
+  Object.keys(porModo).forEach(function (k) { enganchadas += porModo[k].length; });
+
+  html += '<div class="lb">' + esc(e.activo_codigo || "activo sin declarar") +
+    ' · ' + esc(e.operador || "sin firmar") + ' · ' + esc(e.fecha || "sin fecha") +
+    '</div>' +
+    '<div class="numeros" style="margin-top:10px">' +
+    '<div><span class="lb">Hallazgos</span><b>' +
+    (enganchadas + sueltas.length) + '</b></div>' +
+    '<div><span class="lb">En un modo</span><b>' + enganchadas + '</b></div>' +
+    '<div><span class="lb">Sin enganchar</span><b>' + sueltas.length + '</b></div>' +
+    '</div>';
+
+  if (!mismoActivo) {
+    html += '<div class="aviso peligro">La ronda es de <b>' +
+      esc(e.activo_codigo) + '</b> y este análisis es de <b>' +
+      esc(analisis.activo.codigo) + '</b>. No se engancha nada: una anomalía ' +
+      'puesta en el modo de otra máquina ensucia las dos.</div>';
+  }
+  if (ronda.estado && ronda.estado.completa === false) {
+    html += '<div class="aviso">La ronda llegó <b>incompleta</b>: ' +
+      (ronda.estado.sin_acceso || 0) + ' punto(s) no se pudieron ver. Lo que ' +
+      'no se vio no dice nada del modo de falla, ni a favor ni en contra.</div>';
+  }
+  if (ronda.estado && ronda.estado.sospechosa_de_firma) {
+    html += '<div class="aviso peligro">La ronda se marcó <b>demasiado ' +
+      'rápida</b> para haber sido ejecutada. Antes de usarla como evidencia, ' +
+      'conviene mirarla.</div>';
+  }
+
+  if (sueltas.length) {
+    html += '<h3 style="margin-top:14px">No engancharon, y por qué</h3>' +
+      '<table><tr><th>Hallazgo</th><th>Motivo</th></tr>' +
+      sueltas.map(function (x) {
+        return '<tr><td><b>' + esc(x.a.componente || "") + '</b><br>' +
+          esc(x.a.descripcion) + '</td><td>' + esc(x.motivo) + '</td></tr>';
+      }).join("") + '</table>' +
+      '<p class="tenue" style="margin:10px 0 0">Deducir el código desde el ' +
+      'texto libre es trabajo del catálogo ISO 14224, y lo hace ' +
+      '<code>fixmate tpm anomalias</code>. Esta pantalla no lo trae: ' +
+      'enganchar al modo «más parecido» es como se contamina la frecuencia ' +
+      'por modo.</p>';
+  } else {
+    html += '<p class="tenue" style="margin:10px 0 0">Todos los hallazgos ' +
+      'cayeron en un modo de falla del análisis.</p>';
+  }
+
+  html += '<div style="margin-top:12px"><button id="quitar-ronda">' +
+    'Quitar esta ronda</button></div>';
+  return html + '</div>';
+}
+
 // ------------------------------------------------------------- el tablero
 
 function tablero(r) {
   var html = '<h2>Tablero del análisis</h2><div class="tarjeta">' +
     '<div class="numeros">' +
-    '<div><span class="tenue">Modos</span><b>' + r.modos + '</b></div>' +
-    '<div><span class="tenue">Decididos</span><b>' + r.decididos + '</b></div>' +
-    '<div><span class="tenue">Graves</span><b>' + r.graves + '</b></div>' +
-    '<div><span class="tenue">Ocultos</span><b>' + r.ocultos + '</b></div>' +
-    '<div><span class="tenue">Rediseños obligatorios</span><b>' +
+    '<div><span class="lb">Modos</span><b>' + r.modos + '</b></div>' +
+    '<div><span class="lb">Decididos</span><b>' + r.decididos + '</b></div>' +
+    '<div><span class="lb">Graves</span><b>' + r.graves + '</b></div>' +
+    '<div><span class="lb">Ocultos</span><b>' + r.ocultos + '</b></div>' +
+    '<div><span class="lb">Rediseños obligatorios</span><b>' +
     r["rediseños_obligatorios"] + '</b></div>' +
-    '<div><span class="tenue">Decisiones incompletas</span><b>' +
+    '<div><span class="lb">Decisiones incompletas</span><b>' +
     r["decisiones_incompletas"] + '</b></div>' +
     '</div><table style="margin-top:14px"><tr><th>Estrategia</th>' +
     '<th>Modos</th><th></th></tr>';
   Object.keys(ESTRATEGIAS).forEach(function (k) {
     html += '<tr><td>' + esc(ESTRATEGIAS[k]) + '</td><td><b>' + r.reparto[k] +
       '</b></td><td>' +
-      (PROACTIVAS.indexOf(k) >= 0 ? '<span class="chip proa">proactiva</span>' : '') +
+      (PROACTIVAS.indexOf(k) >= 0 ? '<span class="chip ok">proactiva</span>' : '') +
       (POR_DEFECTO.indexOf(k) >= 0
-        ? '<span class="chip def">acción por defecto</span>' : '') +
+        ? '<span class="chip obs">acción por defecto</span>' : '') +
       '</td></tr>';
   });
   html += '</table>';
@@ -1369,7 +1735,7 @@ function exportar() {
 
 function salida() {
   return '<h2>Guardar</h2><div class="tarjeta">' +
-    '<button id="bajar" class="acento">Guardar el análisis con sus decisiones</button>' +
+    '<button id="bajar" class="primary">Guardar el análisis con sus decisiones</button>' +
     '<p class="tenue" style="margin:10px 0 0">Un <code>.json</code> con las ' +
     'respuestas del árbol dentro de cada modo. Vuelve a entrar por ' +
     '<code>fixmate rcm analizar</code>, <code>fixmate rcm tareas</code> y ' +
@@ -1399,6 +1765,14 @@ function conectar() {
       delete decisiones[seleccion];
       respuestasPorModo[seleccion] = respuestas(null);
       render();
+    };
+  }
+  var abrirR = document.getElementById("abrir-ronda");
+  if (abrirR) abrirR.onclick = function () { entradaRonda().click(); };
+  var quitarR = document.getElementById("quitar-ronda");
+  if (quitarR) {
+    quitarR.onclick = function () {
+      ronda = null; porModo = {}; sueltas = []; render();
     };
   }
   var otro = document.getElementById("otro");

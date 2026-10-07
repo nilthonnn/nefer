@@ -34,6 +34,7 @@ function hoy() { return new Date().toISOString().slice(0, 10); }
 // ------------------------------------------------------------- pantallas
 
 function verInicio(error) {
+  document.body.classList.remove("en-punto");
   pauta = null; ejecucion = null;
   if (reloj) { clearInterval(reloj); reloj = null; }
   app.innerHTML =
@@ -43,11 +44,11 @@ function verInicio(error) {
     'flojo se ven cuando se quita la mugre, no antes.</p>' +
     (error ? '<div class="aviso peligro">' + esc(error) + '</div>' : '') +
     '<h2>Cargar la pauta</h2>' +
-    '<button id="archivo" class="grande b-acento">Abrir pauta del equipo</button>' +
+    '<button id="archivo" class="grande primary">Abrir pauta del equipo</button>' +
     '<p class="tenue">Un archivo <code>.json</code> que le pasa mantenimiento. ' +
     'No hace falta red.</p>' +
     (PAUTA_DEMO ? '<button id="demo">Probar con una pauta de ejemplo' +
-      '<span class="tenue" style="display:block;font-weight:400">' +
+      '<span class="tenue">' +
       'Es un taller inventado: la excavadora EX-220 no existe. Sirve para ' +
       'ver como funciona, no para registrar nada.</span></button>' : '') +
     '<div class="crece"></div>' +
@@ -101,7 +102,7 @@ function verOperador() {
     '<input type="text" id="op" placeholder="Nombre o ficha" autocomplete="name">' +
     '</label><p class="tenue" style="margin-top:8px">Una ronda sin responsable ' +
     'no se puede discutir despues.</p></div>' +
-    '<button id="ir" class="grande b-acento">Empezar la ronda</button>' +
+    '<button id="ir" class="grande primary">Empezar la ronda</button>' +
     '<div class="crece"></div>' +
     '<button id="volver">Cambiar de pauta</button>';
   document.getElementById("volver").onclick = function () { verInicio(); };
@@ -125,13 +126,14 @@ function verOperador() {
 
 function verPunto() {
   if (indice >= pauta.puntos.length) return verResumen();
+  document.body.classList.add("en-punto");
   var p = pauta.puntos[indice];
   var clase = CLASES[p.clase] || p.clase;
   app.innerHTML =
     '<div class="pie"><span>' + esc(pauta.activo_codigo) + ' · <b id="paso">' +
     (indice + 1) + ' / ' + pauta.puntos.length + '</b></span>' +
     '<span id="reloj">' + mmss((Date.now() - arranque) / 1000) + '</span></div>' +
-    '<div class="barra"><i style="width:' +
+    '<div class="progreso"><i style="width:' +
     (indice / pauta.puntos.length * 100) + '%"></i></div>' +
     '<span class="chip">' + esc(String(p.clase).toUpperCase()) + '</span>' +
     '<div class="punto">' + esc(p.punto) + '</div>' +
@@ -140,12 +142,9 @@ function verPunto() {
     ' · ' + (p.alcance_operador === false
       ? 'si hay algo, va el tecnico' : 'si hay algo, lo resuelve usted') + '</p>' +
     '<div class="crece"></div>' +
-    '<button class="grande b-ok" data-r="ok">OK<span class="tenue" ' +
-      'style="display:block;font-weight:400;color:#06220f">Cumple el criterio</span></button>' +
-    '<button class="grande b-mal" data-r="nok">ANOMALIA<span class="tenue" ' +
-      'style="display:block;font-weight:400;color:#2a1e00">Algo no esta como debe</span></button>' +
-    '<button class="grande b-sin" data-r="sin_acceso">NO PUDE VER<span class="tenue" ' +
-      'style="display:block;font-weight:400">Guarda, marcha, altura</span></button>';
+    '<button class="grande b-ok" data-r="ok">OK<span class="tenue">Cumple el criterio</span></button>' +
+    '<button class="grande b-mal" data-r="nok">ANOMALIA<span class="tenue">Algo no esta como debe</span></button>' +
+    '<button class="grande b-sin" data-r="sin_acceso">NO PUDE VER<span class="tenue">Guarda, marcha, altura</span></button>';
   Array.prototype.forEach.call(app.querySelectorAll("button[data-r]"), function (b) {
     b.onclick = function () { responder(b.getAttribute("data-r")); };
   });
@@ -176,7 +175,7 @@ function verNota(resultado, seg) {
   velo.className = "velo";
   velo.innerHTML = '<div>' +
     '<p class="tenue">' + (esAnomalia ? 'Anomalia en' : 'No se pudo ver') + '</p>' +
-    '<h1 style="font-size:20px">' + esc(p.punto) + '</h1>' +
+    '<h3>' + esc(p.punto) + '</h3>' +
     (esAnomalia
       ? '<label><span class="tenue">Que vio</span><textarea id="nota" rows="3" ' +
         'placeholder="En sus palabras. No se normaliza."></textarea></label>' +
@@ -215,6 +214,7 @@ function verNota(resultado, seg) {
 }
 
 function verResumen() {
+  document.body.classList.remove("en-punto");
   if (reloj) { clearInterval(reloj); reloj = null; }
   var e = estadoRonda(ejecucion, pauta);
   var anomalias = anomaliasDe(ejecucion, pauta);
@@ -226,7 +226,7 @@ function verResumen() {
     ' en maquina' + (e.presupuesto_seg ? ' · presupuesto ' + mmss(e.presupuesto_seg) : '') +
     '</p>' +
     '<div class="tarjeta ' + (e.completa ? 'res-ok' : 'res-mal') + '">' +
-    '<div style="font-size:21px;font-weight:900">' +
+    '<div class="titular">' +
     (e.completa ? 'Ronda completa' : 'Ronda incompleta') + '</div>' +
     '<p style="margin:6px 0 0">' + e.ok + ' OK · ' + e.nok + ' anomalia(s) · ' +
     e.sin_acceso + ' sin ver</p>' +
@@ -247,7 +247,7 @@ function verResumen() {
     anomalias.forEach(function (a) {
       var tec = a.severidad === "detiene";
       html += '<div class="tarjeta ' + (tec ? 'peligro' : '') + '">' +
-        '<span class="chip ' + (tec ? 'tec' : '') + '">' +
+        '<span class="chip ' + (tec ? 'grave' : 'obs') + '">' +
         esc(SEVERIDADES[a.severidad] || a.severidad) + '</span>' +
         '<div style="font-weight:800;margin-top:6px">' + esc(a.componente) + '</div>' +
         '<p style="margin:4px 0 0">' + esc(a.descripcion) + '</p></div>';
@@ -257,7 +257,7 @@ function verResumen() {
   }
 
   html += '<h2>Mandar a la oficina</h2>' +
-    '<button id="bajar" class="grande b-acento">Guardar el archivo de la ronda</button>' +
+    '<button id="bajar" class="grande primary">Guardar el archivo de la ronda</button>' +
     '<p class="tenue">Un <code>.json</code> que se manda por WhatsApp o correo. ' +
     'Ahi la oficina lo cruza con el analisis RCM: el telefono no lo hace porque ' +
     'el analisis no esta aqui.</p>' +

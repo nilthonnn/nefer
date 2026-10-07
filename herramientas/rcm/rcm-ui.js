@@ -28,6 +28,9 @@ var analisis = null;     // normalizado, con los ids de Python
 var respuestasPorModo = {};  // modo_id -> {campo: true|false|null}
 var decisiones = {};     // modo_id -> dictamen
 var seleccion = null;    // modo_id abierto en la ficha
+var ronda = null;        // la ronda CIL que se haya abierto encima
+var porModo = {};        // modo_id -> anomalias de campo enganchadas
+var sueltas = [];        // las que no engancharon, con el motivo
 
 function esc(s) {
   return String(s === undefined || s === null ? "" : s)
@@ -71,7 +74,7 @@ function verInicio(error) {
     (error ? '<div class="aviso peligro">' + esc(error) + '</div>' : '') +
     '<h2>Abrir el análisis</h2>' +
     '<div class="tarjeta">' +
-    '<button id="archivo" class="acento">Abrir archivo de análisis (.json)</button>' +
+    '<button id="archivo" class="primary">Abrir archivo de análisis (.json)</button>' +
     '<p class="tenue" style="margin:10px 0 0">El mismo formato que lee ' +
     '<code>fixmate rcm analizar</code>. Se abre en este navegador: no se ' +
     'sube a ninguna parte.</p></div>' +
@@ -161,6 +164,7 @@ function abrir(datos) {
 
   crudo = datos; analisis = a;
   respuestasPorModo = {}; decisiones = {};
+  ronda = null; porModo = {}; sueltas = [];
   // Las decisiones que ya vienen en el archivo se cargan tal como están. Un
   // modo sin «decision» no se decide: no se le inventa una respuesta
   // conservadora para que el análisis parezca completo.
@@ -186,6 +190,7 @@ function render() {
     panelJA1011(c) +
     '<div class="rejilla"><div>' + arbol() + '</div><div id="ficha">' +
     ficha() + '</div></div>' +
+    evidencia_campo() +
     tablero(r) +
     resumenEnPantalla() +
     salida();
@@ -202,7 +207,7 @@ function encabezado(r) {
     (analisis.facilitador ? ' · facilita ' + esc(analisis.facilitador) : '') +
     '</p>' +
     (analisis.contexto
-      ? '<div class="tarjeta"><span class="tenue">Contexto operacional</span>' +
+      ? '<div class="tarjeta"><span class="lb">Contexto operacional</span>' +
         '<p style="margin:4px 0 0">' + esc(analisis.contexto) + '</p>' +
         '<p class="tenue" style="margin:8px 0 0">El análisis está amarrado a ' +
         'este contexto, no al equipo solo. La misma máquina en otro contexto ' +
@@ -214,10 +219,10 @@ function encabezado(r) {
 
 function panelJA1011(c) {
   var html = '<h2>Las siete preguntas de SAE JA1011</h2><div class="tarjeta">' +
-    '<div style="font-size:18px;font-weight:800">' +
+    '<div class="estrategia">' +
     (c.completo ? 'Las siete están contestadas.'
                 : c.contestadas + ' de 7 contestadas') + '</div>' +
-    '<div class="barra"><i style="width:' + (c.contestadas / 7 * 100) + '%"></i></div>';
+    '<div class="progreso"><i style="width:' + (c.contestadas / 7 * 100) + '%"></i></div>';
   if (!c.completo) {
     html += '<p class="tenue" style="margin-top:10px">' +
       (c.rompe_cadena
@@ -243,12 +248,12 @@ function panelJA1011(c) {
 }
 
 function arbol() {
-  var html = '<div class="arbol"><div class="tenue" style="padding:4px 6px">' +
+  var html = '<div class="arbol"><div class="lb" style="padding:4px 6px">' +
     analisis.funciones.length + ' funciones · ' + analisis.fallas.length +
     ' fallas funcionales · ' + analisis.modos.length + ' modos</div>';
   analisis.funciones.forEach(function (f) {
     html += '<div class="fn">' + esc(f.id) + ' · ' + esc(f.descripcion) + '</div>' +
-      '<div class="tenue" style="padding-left:2px;font-size:12px">' +
+      '<div class="est">' +
       esc(f.estandar) + '</div>';
     fallasDe(analisis, f.id).forEach(function (ff) {
       html += '<div class="ff">' + esc(ff.id) + ' · ' + esc(ff.descripcion) + '</div>';
@@ -258,10 +263,12 @@ function arbol() {
           (m.id === seleccion ? ' class="activo"' : '') + '>' +
           '<b>' + esc(m.id) + '</b> ' + esc(m.descripcion) +
           '<span style="display:block;margin-top:4px">' +
-          (m.evidente ? '' : '<span class="chip oculta">oculta</span>') +
+          (m.evidente ? '' : '<span class="chip obs">oculta</span>') +
           (esGrave(m) ? '<span class="chip grave">grave</span>' : '') +
-          (d ? '<span class="chip estr">' + esc(d.rotulo) + '</span>'
+          (d ? '<span class="chip acento">' + esc(d.rotulo) + '</span>'
              : '<span class="chip">sin decidir</span>') +
+          (porModo[m.id] ? '<span class="chip obs">' + porModo[m.id].length +
+             ' en campo</span>' : '') +
           '</span></button>';
       });
     });
@@ -322,8 +329,8 @@ function ficha() {
     esc(ff ? ff.descripcion : "") + '</p>' +
     (m.evidente
       ? '<span class="chip">pérdida evidente</span>'
-      : '<span class="chip oculta">falla oculta</span>') +
-    (m.estado === "validado" ? '<span class="chip proa">validado</span>'
+      : '<span class="chip obs">falla oculta</span>') +
+    (m.estado === "validado" ? '<span class="chip ok">validado</span>'
                              : '<span class="chip">' + esc(m.estado) + '</span>') +
     (m.consecuencias || []).map(function (c) {
       var clase = typeof c === "string" ? c : c.clase;
@@ -350,7 +357,7 @@ function ficha() {
     campo("Alarma o código", u.alarma) +
     campo("Componente afectado", u.componente_afectado) +
     campo("Cómo confirmarlo", u.como_detectarlo) +
-    criticidad(m) + evidencia(m) +
+    criticidad(m) + evidencia(m) + anomaliasDelModo(m) +
     '</div>';
   return html + decisionPanel(m);
 }
@@ -410,15 +417,14 @@ function decisionPanel(m) {
               : PROACTIVAS.indexOf(d.estrategia) >= 0 ? 'proactiva'
               : d.por_defecto ? 'defecto' : '';
     html += '<div class="dictamen ' + clase + '">' +
-      '<div style="font-size:20px;font-weight:900;letter-spacing:-.02em">' +
-      esc(d.rotulo) + '</div>' +
+      '<div class="estrategia">' + esc(d.rotulo) + '</div>' +
       '<div style="margin:6px 0 0">' +
       (PROACTIVAS.indexOf(d.estrategia) >= 0
-        ? '<span class="chip proa">tarea proactiva</span>' : '') +
-      (d.por_defecto ? '<span class="chip def">acción por defecto (Q7)</span>' : '') +
+        ? '<span class="chip ok">tarea proactiva</span>' : '') +
+      (d.por_defecto ? '<span class="chip obs">acción por defecto (Q7)</span>' : '') +
       (d.bloqueado_por_seguridad
         ? '<span class="chip grave">rediseño obligatorio</span>' : '') +
-      (d.incompleta ? '<span class="chip def">decisión incompleta</span>' : '') +
+      (d.incompleta ? '<span class="chip obs">decisión incompleta</span>' : '') +
       '</div>' +
       (d.incompleta
         ? '<p class="tenue" style="margin:8px 0 0">Queda incompleta mientras ' +
@@ -449,7 +455,7 @@ function decisionPanel(m) {
     html += '<div class="pregunta"' +
       (pertinente ? '' : ' style="opacity:.55"') + '>' +
       '<div><b>' + esc(et[0]) + '</b>' +
-      (usada(k, d) ? ' <span class="chip estr">la usó el árbol</span>' : '') +
+      (usada(k, d) ? ' <span class="chip acento">la usó el árbol</span>' : '') +
       (pertinente ? '' : ' <span class="chip">no aplica a este modo</span>') +
       '<span class="tenue" style="display:block">' + esc(et[1]) + '</span></div>' +
       '<div class="opciones">' +
@@ -474,27 +480,176 @@ function decisionPanel(m) {
   return html;
 }
 
+// ------------------------------------------------ la evidencia de campo
+
+var _entradaRonda = null;
+
+/** La entrada de archivo de la ronda, una sola para toda la sesión.
+ *  La pantalla se repinta entera a cada respuesta del árbol; crearla en cada
+ *  repintado dejaba una colgando del documento por cada clic. */
+function entradaRonda() {
+  if (_entradaRonda) return _entradaRonda;
+  var inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".json,application/json";
+  inp.className = "oculto"; inp.id = "entrada-ronda";
+  document.body.appendChild(inp);
+  inp.onchange = function () {
+    var f = inp.files && inp.files[0];
+    if (!f) return;
+    var lector = new FileReader();
+    lector.onload = function () {
+      var r;
+      try { r = abrirRonda(JSON.parse(lector.result)); }
+      catch (e) { r = { error: "Ese archivo no es una ronda legible: " + e.message }; }
+      inp.value = "";          // el mismo archivo se puede volver a abrir
+      render();
+      if (r.error) {
+        var caja = document.getElementById("abrir-ronda");
+        if (caja) caja.insertAdjacentHTML("afterend",
+          '<div class="aviso peligro">' + esc(r.error) + '</div>');
+      }
+    };
+    lector.readAsText(f);
+  };
+  _entradaRonda = inp;
+  return inp;
+}
+
+/** La ronda que hizo el operador, puesta encima del análisis.
+ *
+ * Es el circuito que justifica todo lo demás: el operador ve algo en el
+ * turno, la oficina abre el análisis y ve **en qué modo de falla** cayó eso
+ * que vio. Sin esto, la ronda es una lista de hallazgos y el análisis es un
+ * documento, y nadie los cruza nunca.
+ *
+ * El enganche es el mismo que hace la oficina —código exacto y mismo
+ * activo—, y lo que no engancha se muestra con el motivo, no se esconde.
+ */
+function abrirRonda(datos) {
+  var lista = (datos && datos.anomalias) || [];
+  if (!lista.length) {
+    return { error: "Ese archivo no trae anomalías. Una ronda sin hallazgos " +
+                    "no tiene nada que cruzar con el análisis — lo cual, " +
+                    "dicho sea de paso, es una buena noticia." };
+  }
+  ronda = datos;
+  porModo = {}; sueltas = [];
+  lista.forEach(function (a) {
+    var enlace = enlazarAnomalia(a, analisis);
+    if (enlace.modo_falla_id && modo(enlace.modo_falla_id)) {
+      if (!porModo[enlace.modo_falla_id]) porModo[enlace.modo_falla_id] = [];
+      porModo[enlace.modo_falla_id].push({ a: a, motivo: enlace.motivo });
+    } else {
+      sueltas.push({ a: a, motivo: enlace.modo_falla_id
+        ? "declara el modo " + enlace.modo_falla_id + ", que no está en este análisis"
+        : enlace.motivo });
+    }
+  });
+  return { error: "" };
+}
+
+function anomaliasDelModo(m) {
+  var lista = porModo[m.id];
+  if (!lista) return "";
+  return '<div class="campo"><span>Visto en campo</span><span>' +
+    lista.map(function (x) {
+      return '<div class="hallazgo"><b>' + esc(x.a.descripcion) + '</b>' +
+        '<span class="tenue"> · ' + esc(x.a.detectada_por || "sin firmar") +
+        ' · ' + esc(x.a.fecha || "sin fecha") + '</span>' +
+        (x.a.condicion_observada
+          ? '<div class="tenue">criterio: ' + esc(x.a.condicion_observada) + '</div>'
+          : '') +
+        '<div class="tenue">enganchado ' + esc(x.motivo) + '</div></div>';
+    }).join("") + '</span></div>';
+}
+
+function evidencia_campo() {
+  var html = '<h2>Evidencia de campo · ronda CIL</h2><div class="tarjeta">';
+  if (!ronda) {
+    html += '<button id="abrir-ronda">Abrir una ronda del operador (.json)</button>' +
+      '<p class="tenue" style="margin:10px 0 0">El archivo que sale del ' +
+      'teléfono al terminar la ronda. Se cruza con este análisis y se ve en ' +
+      'qué modo de falla cayó lo que el operador encontró. No se sube a ' +
+      'ninguna parte y no se guarda dentro del análisis: la ronda sigue ' +
+      'siendo la ronda.</p></div>';
+    return html;
+  }
+  var e = ronda.ejecucion || {};
+  var mismoActivo = !e.activo_codigo ||
+                    e.activo_codigo === analisis.activo.codigo;
+  var enganchadas = 0;
+  Object.keys(porModo).forEach(function (k) { enganchadas += porModo[k].length; });
+
+  html += '<div class="lb">' + esc(e.activo_codigo || "activo sin declarar") +
+    ' · ' + esc(e.operador || "sin firmar") + ' · ' + esc(e.fecha || "sin fecha") +
+    '</div>' +
+    '<div class="numeros" style="margin-top:10px">' +
+    '<div><span class="lb">Hallazgos</span><b>' +
+    (enganchadas + sueltas.length) + '</b></div>' +
+    '<div><span class="lb">En un modo</span><b>' + enganchadas + '</b></div>' +
+    '<div><span class="lb">Sin enganchar</span><b>' + sueltas.length + '</b></div>' +
+    '</div>';
+
+  if (!mismoActivo) {
+    html += '<div class="aviso peligro">La ronda es de <b>' +
+      esc(e.activo_codigo) + '</b> y este análisis es de <b>' +
+      esc(analisis.activo.codigo) + '</b>. No se engancha nada: una anomalía ' +
+      'puesta en el modo de otra máquina ensucia las dos.</div>';
+  }
+  if (ronda.estado && ronda.estado.completa === false) {
+    html += '<div class="aviso">La ronda llegó <b>incompleta</b>: ' +
+      (ronda.estado.sin_acceso || 0) + ' punto(s) no se pudieron ver. Lo que ' +
+      'no se vio no dice nada del modo de falla, ni a favor ni en contra.</div>';
+  }
+  if (ronda.estado && ronda.estado.sospechosa_de_firma) {
+    html += '<div class="aviso peligro">La ronda se marcó <b>demasiado ' +
+      'rápida</b> para haber sido ejecutada. Antes de usarla como evidencia, ' +
+      'conviene mirarla.</div>';
+  }
+
+  if (sueltas.length) {
+    html += '<h3 style="margin-top:14px">No engancharon, y por qué</h3>' +
+      '<table><tr><th>Hallazgo</th><th>Motivo</th></tr>' +
+      sueltas.map(function (x) {
+        return '<tr><td><b>' + esc(x.a.componente || "") + '</b><br>' +
+          esc(x.a.descripcion) + '</td><td>' + esc(x.motivo) + '</td></tr>';
+      }).join("") + '</table>' +
+      '<p class="tenue" style="margin:10px 0 0">Deducir el código desde el ' +
+      'texto libre es trabajo del catálogo ISO 14224, y lo hace ' +
+      '<code>fixmate tpm anomalias</code>. Esta pantalla no lo trae: ' +
+      'enganchar al modo «más parecido» es como se contamina la frecuencia ' +
+      'por modo.</p>';
+  } else {
+    html += '<p class="tenue" style="margin:10px 0 0">Todos los hallazgos ' +
+      'cayeron en un modo de falla del análisis.</p>';
+  }
+
+  html += '<div style="margin-top:12px"><button id="quitar-ronda">' +
+    'Quitar esta ronda</button></div>';
+  return html + '</div>';
+}
+
 // ------------------------------------------------------------- el tablero
 
 function tablero(r) {
   var html = '<h2>Tablero del análisis</h2><div class="tarjeta">' +
     '<div class="numeros">' +
-    '<div><span class="tenue">Modos</span><b>' + r.modos + '</b></div>' +
-    '<div><span class="tenue">Decididos</span><b>' + r.decididos + '</b></div>' +
-    '<div><span class="tenue">Graves</span><b>' + r.graves + '</b></div>' +
-    '<div><span class="tenue">Ocultos</span><b>' + r.ocultos + '</b></div>' +
-    '<div><span class="tenue">Rediseños obligatorios</span><b>' +
+    '<div><span class="lb">Modos</span><b>' + r.modos + '</b></div>' +
+    '<div><span class="lb">Decididos</span><b>' + r.decididos + '</b></div>' +
+    '<div><span class="lb">Graves</span><b>' + r.graves + '</b></div>' +
+    '<div><span class="lb">Ocultos</span><b>' + r.ocultos + '</b></div>' +
+    '<div><span class="lb">Rediseños obligatorios</span><b>' +
     r["rediseños_obligatorios"] + '</b></div>' +
-    '<div><span class="tenue">Decisiones incompletas</span><b>' +
+    '<div><span class="lb">Decisiones incompletas</span><b>' +
     r["decisiones_incompletas"] + '</b></div>' +
     '</div><table style="margin-top:14px"><tr><th>Estrategia</th>' +
     '<th>Modos</th><th></th></tr>';
   Object.keys(ESTRATEGIAS).forEach(function (k) {
     html += '<tr><td>' + esc(ESTRATEGIAS[k]) + '</td><td><b>' + r.reparto[k] +
       '</b></td><td>' +
-      (PROACTIVAS.indexOf(k) >= 0 ? '<span class="chip proa">proactiva</span>' : '') +
+      (PROACTIVAS.indexOf(k) >= 0 ? '<span class="chip ok">proactiva</span>' : '') +
       (POR_DEFECTO.indexOf(k) >= 0
-        ? '<span class="chip def">acción por defecto</span>' : '') +
+        ? '<span class="chip obs">acción por defecto</span>' : '') +
       '</td></tr>';
   });
   html += '</table>';
@@ -570,7 +725,7 @@ function exportar() {
 
 function salida() {
   return '<h2>Guardar</h2><div class="tarjeta">' +
-    '<button id="bajar" class="acento">Guardar el análisis con sus decisiones</button>' +
+    '<button id="bajar" class="primary">Guardar el análisis con sus decisiones</button>' +
     '<p class="tenue" style="margin:10px 0 0">Un <code>.json</code> con las ' +
     'respuestas del árbol dentro de cada modo. Vuelve a entrar por ' +
     '<code>fixmate rcm analizar</code>, <code>fixmate rcm tareas</code> y ' +
@@ -600,6 +755,14 @@ function conectar() {
       delete decisiones[seleccion];
       respuestasPorModo[seleccion] = respuestas(null);
       render();
+    };
+  }
+  var abrirR = document.getElementById("abrir-ronda");
+  if (abrirR) abrirR.onclick = function () { entradaRonda().click(); };
+  var quitarR = document.getElementById("quitar-ronda");
+  if (quitarR) {
+    quitarR.onclick = function () {
+      ronda = null; porModo = {}; sueltas = []; render();
     };
   }
   var otro = document.getElementById("otro");

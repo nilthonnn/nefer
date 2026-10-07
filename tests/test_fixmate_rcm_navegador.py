@@ -249,8 +249,10 @@ def test_quitar_la_decision_devuelve_la_Q6_a_pendiente(pagina):
 def test_el_tablero_cuenta_los_redisenos_obligatorios(pagina):
     pag, _ = pagina
     _abrir(pag)
-    texto = pag.inner_text("#app")
-    assert "Rediseños obligatorios" in texto
+    # Las etiquetas del tablero van en versalitas por CSS, y `inner_text`
+    # devuelve lo que se ve.
+    texto = pag.inner_text("#app").lower()
+    assert "rediseños obligatorios" in texto
     assert "no es una salida legal" in texto
 
 
@@ -299,3 +301,110 @@ def test_un_archivo_que_no_es_un_analisis_lo_dice_sin_romperse(pagina, tmp_path)
     assert "estándar de desempeño" in texto
     assert "no se puede fallar de forma verificable" in texto
     assert not errores, errores
+
+
+# ═══════════ la ronda del operador, encima del análisis ═══════════
+
+RONDA = RAIZ / "ejemplos" / "rcm-tpm" / "ronda-ex220-telefono.json"
+
+
+def _abrir_ronda(pag, ruta):
+    pag.click("#abrir-ronda")
+    pag.set_input_files("#entrada-ronda", str(ruta))
+    pag.wait_for_selector("#quitar-ronda, .aviso.peligro")
+
+
+def test_la_ronda_del_operador_cae_sobre_su_modo_de_falla(pagina):
+    """El circuito que justifica todo lo demás.
+
+    El operador ve algo en el turno; la oficina abre el análisis y ve **en
+    qué modo de falla** cayó eso que vio. Sin esto, la ronda es una lista de
+    hallazgos y el análisis es un documento, y nadie los cruza nunca.
+    """
+    pag, errores = pagina
+    _abrir(pag)
+    _abrir_ronda(pag, RONDA)
+    texto = pag.inner_text("#app").lower()
+    assert "evidencia de campo" in texto
+    assert "(operador del turno a)" in texto
+    assert "todos los hallazgos" in texto     # ninguno quedó suelto
+    # El modo queda marcado en el árbol, y el hallazgo se ve en su ficha.
+    assert "1 en campo" in pag.inner_text(".arbol").lower()
+    pag.click('button[data-modo="F1.1.1"]')
+    ficha = pag.inner_text("#ficha").lower()
+    assert "visto en campo" in ficha
+    assert "panal esta tapado con tierra" in ficha
+    assert "la pauta declara el modo" in ficha
+    assert not errores, errores
+
+
+def test_la_ronda_incompleta_se_dice_antes_de_usarla_como_evidencia(pagina):
+    pag, _ = pagina
+    _abrir(pag)
+    _abrir_ronda(pag, RONDA)
+    texto = pag.inner_text("#app")
+    assert "incompleta" in texto
+    assert "no dice nada del modo de falla" in texto
+
+
+def test_un_hallazgo_sin_codigo_no_se_engancha_al_mas_parecido(pagina, tmp_path):
+    pag, _ = pagina
+    _abrir(pag)
+    suelto = tmp_path / "ronda-suelta.json"
+    suelto.write_text(json.dumps({
+        "ejecucion": {"id": "r", "activo_codigo": "EX-220", "operador": "X",
+                      "fecha": "2026-03-20"},
+        "anomalias": [
+            {"id": "r.1", "activo_codigo": "EX-220", "componente": "Manguera",
+             "descripcion": "Gotea por la union", "codigo_catalogo": "",
+             "modo_falla_id": ""},
+            {"id": "r.2", "activo_codigo": "EX-220", "componente": "Panal",
+             "descripcion": "Tapado", "modo_falla_id": "",
+             "codigo_catalogo": "TER.SOBRECALENTAMIENTO.RADIADOR"},
+        ]}), encoding="utf-8")
+    _abrir_ronda(pag, suelto)
+    texto = pag.inner_text("#app")
+    assert "No engancharon, y por qué" in texto
+    assert "el telefono no clasifica texto libre" in texto
+    assert "fixmate tpm anomalias" in texto
+    # El que sí trae código engancha por código, y lo dice.
+    pag.click('button[data-modo="F1.1.1"]')
+    assert "por codigo de catalogo" in pag.inner_text("#ficha")
+
+
+def test_una_ronda_de_otra_maquina_no_se_mezcla(pagina, tmp_path):
+    pag, _ = pagina
+    _abrir(pag)
+    ajena = tmp_path / "ronda-ajena.json"
+    ajena.write_text(json.dumps({
+        "ejecucion": {"id": "r", "activo_codigo": "CA-740", "operador": "X",
+                      "fecha": "2026-03-20"},
+        "anomalias": [{"id": "r.1", "activo_codigo": "CA-740", "descripcion": "x",
+                       "codigo_catalogo": "TER.SOBRECALENTAMIENTO.RADIADOR",
+                       "modo_falla_id": ""}]}), encoding="utf-8")
+    _abrir_ronda(pag, ajena)
+    texto = pag.inner_text("#app")
+    assert "La ronda es de" in texto and "CA-740" in texto
+    assert "ensucia las dos" in texto
+    assert "1 en campo" not in pag.inner_text(".arbol")
+
+
+def test_la_ronda_no_se_guarda_dentro_del_analisis(pagina, tmp_path):
+    """La ronda sigue siendo la ronda.
+
+    Meterla dentro del archivo del análisis obligaría a inventar un campo que
+    el cargador no lee, y el primer cliente que lo abriera con el comando
+    perdería la evidencia sin enterarse.
+    """
+    from nefer.fixmate import cargador
+
+    pag, _ = pagina
+    _abrir(pag)
+    _abrir_ronda(pag, RONDA)
+    with pag.expect_download() as esperando:
+        pag.click("#bajar")
+    destino = tmp_path / "exportado.json"
+    esperando.value.save_as(destino)
+    datos = json.loads(destino.read_text(encoding="utf-8"))
+    assert "anomalias" not in datos and "ronda" not in datos
+    cargador.analisis_de_dict(datos)     # sigue entrando por el cargador

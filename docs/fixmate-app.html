@@ -21,6 +21,11 @@
      rotulado como inventado; lo suyo se carga desde «Agregar historiales
      y manuales», se lee en este mismo aparato y queda guardado. -->
 <style>
+  /* fixmate:piel:inicio — LA PIEL DEL PRODUCTO. De aqui la copian
+     las demas pantallas (la ronda CIL y el analisis RCM) con
+     `herramientas/espejo-ronda.py` y `espejo-rcm.py`: esta es la
+     superficie que mas gente mira, asi que el color manda aqui y
+     se obedece alla. No editar el bloque en las otras: se genera. */
     :root {
     --paper:#F3F4F2; --card:#FFFFFF; --card-2:#EAEDEB;
     --ink:#16191B; --ink-2:#4E5860; --ink-3:#5F6A72;
@@ -64,6 +69,7 @@
     --barra:#0E1113; --barra-ink:#E7ECEB;
     --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
   }
+  /* fixmate:piel:fin */
 
   * { box-sizing: border-box; }
   html, body { height: 100%; }

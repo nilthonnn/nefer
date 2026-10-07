@@ -3,60 +3,88 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1220">
+<meta name="theme-color" content="#16191B">
 <title>Ronda CIL · FixMate</title>
 <link rel="icon" href="../app/icono-192.png">
 <link rel="apple-touch-icon" href="../app/apple-touch-icon.png">
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--fondo:#0b1220;--panel:#152033;--borde:#2a3a55;--texto:#e8eef7;--tenue:#93a4bd;
-      --ok:#1f9d55;--aviso:#d99100;--malo:#c3382f;--acento:#3987e5}
-html,body{margin:0;background:var(--fondo);color:var(--texto);
-  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-body{padding:env(safe-area-inset-top) env(safe-area-inset-right)
-      env(safe-area-inset-bottom) env(safe-area-inset-left)}
-.lam{max-width:560px;margin:0 auto;padding:16px;min-height:100dvh;display:flex;flex-direction:column}
-h1{font-size:22px;margin:0 0 4px;letter-spacing:-.02em}
-h2{font-size:15px;margin:20px 0 8px;color:var(--tenue);text-transform:uppercase;
-   letter-spacing:.08em;font-weight:700}
-p{margin:0 0 10px}
-.tenue{color:var(--tenue);font-size:13px;line-height:1.4}
-.tarjeta{background:var(--panel);border:2px solid var(--borde);border-radius:12px;padding:14px;margin-bottom:12px}
-button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation;
-  border-radius:12px;border:2px solid var(--borde);background:var(--panel);
-  min-height:56px;padding:10px 14px;width:100%;text-align:left;margin-bottom:10px}
-button:focus-visible{outline:4px solid var(--acento);outline-offset:2px}
-button.grande{font-size:19px;font-weight:800;text-align:center}
-.b-ok{background:var(--ok);border-color:#36c16f;color:#06220f}
-.b-mal{background:var(--aviso);border-color:#f0b429;color:#2a1e00}
-.b-sin{background:#2b3a52;border-color:#485e80}
-.b-acento{background:var(--acento);border-color:#6fb0ff;color:#04203f}
-.chip{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;
-  text-transform:uppercase;padding:3px 8px;border-radius:6px;background:#24344d;color:var(--tenue)}
-.chip.tec{background:#4a2520;color:#ffc9c2}
-.barra{height:6px;background:#24344d;border-radius:4px;overflow:hidden;margin:10px 0 18px}
-.barra>i{display:block;height:100%;background:var(--acento);transition:width .2s}
-.punto{font-size:30px;font-weight:900;line-height:1.1;margin:6px 0 10px;letter-spacing:-.02em}
-.criterio{font-size:19px;background:#0f1a2b;border:2px solid var(--borde);
-  border-radius:10px;padding:12px;margin-bottom:10px}
-.crece{flex:1}
-.pie{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--tenue)}
-textarea,input[type=text]{width:100%;font:inherit;color:var(--texto);background:#0f1a2b;
-  border:2px solid var(--borde);border-radius:10px;padding:10px;min-height:52px}
-.velo{position:fixed;inset:0;background:rgba(5,10,20,.93);display:flex;align-items:flex-end;padding:14px;z-index:9}
-.velo>div{max-width:560px;margin:0 auto;width:100%;background:var(--panel);
-  border:2px solid var(--borde);border-radius:16px;padding:16px}
-.fila{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.fila button{margin:0}
-.res-ok{border-color:#36c16f;background:#0d2a19}
-.res-mal{border-color:#f0b429;background:#2e2306}
-.res-sin{border-color:#485e80;background:#1a2638}
-.aviso{border:2px solid var(--aviso);background:#2e2306;border-radius:10px;padding:12px;margin-bottom:12px;font-size:14px}
-.peligro{border-color:var(--malo);background:#2d110e}
-.oculto{display:none}
-ul{margin:6px 0 0;padding-left:20px}li{margin-bottom:4px}
-code{background:#0f1a2b;padding:1px 5px;border-radius:4px;font-size:13px}
+/* ronda:piel:inicio */
+/* ronda:piel:fin */
+
+/* --------------------------------------------- lo propio de esta pantalla
+ * Un telefono, con guantes, al arranque del turno. Todo lo de aqui sale de
+ * eso: botones que se tocan sin mirar, un punto a la vez, y nada que
+ * obligue a desplazar la pantalla para contestar.
+ */
+.lam { max-width:560px; margin:0 auto; padding:14px 0 20px;
+       min-height:calc(100dvh - 3rem); display:flex; flex-direction:column; }
+.lam button { width:100%; margin-bottom:.6rem; }
+/* La segunda linea de un boton explica el primero: va debajo, no al lado. */
+.lam button .tenue { display:block; font-weight:400; margin-top:.15rem; }
+.crece { flex:1; }
+/* La lamina es una columna flexible: sin esto, un chip suelto se estira de
+   borde a borde y deja de leerse como etiqueta. */
+.lam > .chip { align-self:flex-start; }
+
+/* Durante un punto la barra se va. No es un descuido de identidad: la regla
+   de esta pantalla es un punto a la vez a pantalla completa, y en un
+   telefono de 844 px los tres botones de respuesta tienen que entrar sin
+   desplazar. La barra vuelve en todas las demas pantallas. */
+body.en-punto .barra { display:none; }
+body.en-punto .lam { min-height:100dvh; }
+
+/* Los tres botones de respuesta. «No pude ver» mide exactamente lo mismo que
+   «OK» y esta en la misma columna: si fuera mas chico o estuviera mas abajo,
+   el operador marcaria OK, y un OK falso contamina la ronda entera. */
+.grande { min-height:56px; font-size:1.15rem; font-weight:800;
+          text-align:center; padding:.7rem .9rem; }
+.b-ok { background:var(--ok); border-color:var(--ok); color:var(--paper); }
+.b-mal { background:var(--obs); border-color:var(--obs); color:var(--paper); }
+.b-sin { background:var(--ink-3); border-color:var(--ink-3); color:var(--paper); }
+.grande .tenue { color:inherit; opacity:.85; font-size:.8rem; }
+
+/* El punto y su criterio de aceptacion, que es lo unico que se lee de lejos. */
+.punto { font-family:var(--cond); font-size:2rem; line-height:1.1;
+         margin:.4rem 0 .6rem; }
+.criterio { font-size:1.15rem; background:var(--card); border:1px solid var(--rule);
+            border-left:4px solid var(--accent); border-radius:0 6px 6px 0;
+            padding:.8rem .9rem; margin-bottom:.6rem; }
+.pie { display:flex; justify-content:space-between; align-items:center;
+       font-family:var(--mono); font-size:.72rem; color:var(--ink-3); }
+.progreso { height:5px; background:var(--rule); border-radius:3px;
+            overflow:hidden; margin:.5rem 0 1rem; }
+.progreso > i { display:block; height:100%; background:var(--accent);
+                transition:width .2s; }
+
+/* El dialogo de la nota. */
+.velo { position:fixed; inset:0; background:color-mix(in srgb, var(--paper) 92%, transparent);
+        display:flex; align-items:flex-end; padding:14px; z-index:9; }
+.velo > div { max-width:560px; margin:0 auto; width:100%; background:var(--card);
+              border:1px solid var(--rule); border-radius:10px; padding:1rem;
+              box-shadow:var(--lift); }
+.fila { display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
+.fila button { margin:0; }
+textarea, input[type=text] { width:100%; font:inherit; color:var(--ink);
+            background:var(--paper); border:1px solid var(--rule);
+            border-radius:6px; padding:.6rem; min-height:52px; }
+
+/* El resultado de la ronda. */
+.res-ok { border-left:4px solid var(--ok); background:var(--ok-soft); }
+.res-mal { border-left:4px solid var(--obs); background:var(--obs-soft); }
+.titular { font-family:var(--cond); font-size:1.4rem; }
 </style>
 </head>
 <body>
+<div class="barra">
+  <b>FixMate</b><span>Ronda CIL</span>
+  <nav class="vinculos">
+    <a href="../">Inicio</a>
+    <a href="../app/">Diagnóstico</a>
+    <a href="../rcm/">Análisis RCM</a>
+  </nav>
+</div>
+<script>
+/* ronda:barra:inicio */
+/* ronda:barra:fin */
+</script>
 <div class="lam" id="app"></div>

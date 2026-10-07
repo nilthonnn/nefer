@@ -388,6 +388,47 @@ function completitud(a, decisiones) {
   };
 }
 
+/* ------------------------------------- la evidencia que llega del campo */
+
+/** Une una anomalia de la ronda con el modo de falla que declara su mismo
+ *  codigo. Mismo contrato que `anomalia.enlazar()`, y el `motivo` de mas,
+ *  que es para la pantalla.
+ *
+ * Exige coincidencia EXACTA de codigo y de activo, y no elige entre dos
+ * candidatos: una anomalia enlazada al modo equivocado contamina la
+ * frecuencia por modo y la decision de estrategia que sale de ahi.
+ *
+ * Lo que aqui NO se hace, igual que en el telefono: deducir el codigo de un
+ * texto libre. Eso es el catalogo ISO 14224 —41 entradas con sus pistas— y
+ * lo hace la oficina con `fixmate tpm anomalias`. Una anomalia sin codigo se
+ * queda sin enganchar, y la pantalla dice por que.
+ */
+function enlazarAnomalia(a, analisis) {
+  if (a.modo_falla_id) {
+    return { modo_falla_id: a.modo_falla_id, motivo: "la pauta declara el modo" };
+  }
+  if (!a.codigo_catalogo) {
+    return { modo_falla_id: "",
+             motivo: "sin codigo de catalogo: el telefono no clasifica texto libre" };
+  }
+  if (!analisis || analisis.activo.codigo !== a.activo_codigo) {
+    return { modo_falla_id: "", motivo: "la anomalia es de otro activo" };
+  }
+  var candidatos = analisis.modos.filter(function (m) {
+    return m.codigo_catalogo === a.codigo_catalogo;
+  });
+  if (candidatos.length === 1) {
+    return { modo_falla_id: candidatos[0].id, motivo: "por codigo de catalogo" };
+  }
+  if (candidatos.length === 0) {
+    return { modo_falla_id: "",
+             motivo: "ningun modo del analisis declara ese codigo" };
+  }
+  return { modo_falla_id: "",
+           motivo: "dos modos declaran el mismo codigo: la ambiguedad se " +
+                   "resuelve en el analisis, no aqui a la suerte" };
+}
+
 /** Lo que un jefe de mantenimiento mira primero. Mismo contrato que
  *  `decision.resumen()`. */
 function resumenRCM(a, decisiones) {
@@ -414,6 +455,7 @@ function resumenRCM(a, decisiones) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     decidir: decidir, completitud: completitud, resumenRCM: resumenRCM,
+    enlazarAnomalia: enlazarAnomalia,
     normalizarAnalisis: normalizarAnalisis, esGrave: esGrave,
     fallasDe: fallasDe, modosDe: modosDe, efectoDescrito: efectoDescrito,
     ESTRATEGIAS: ESTRATEGIAS, POR_DEFECTO: POR_DEFECTO, PROACTIVAS: PROACTIVAS,

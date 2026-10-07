@@ -77,6 +77,11 @@ if (entrada.job === "arbol") {
   salida = entrada.casos.map(function (c) {
     return plano(decidir(c.modo, c.respuestas));
   });
+} else if (entrada.job === "enlace") {
+  salida = entrada.casos.map(function (c) {
+    var a = normalizarAnalisis(c.analisis);
+    return enlazarAnomalia(c.anomalia, a).modo_falla_id;
+  });
 } else {
   salida = entrada.casos.map(function (doc) {
     var a = normalizarAnalisis(doc);
@@ -396,3 +401,68 @@ def test_las_constantes_del_javascript_son_las_de_python():
         assert aviso in html
     # Y «oculta» no es una clase de consecuencia en ninguno de los dos lados.
     assert "oculta" not in rcm.CLASES_CONSECUENCIA
+
+
+# ═══════════ el enganche de la ronda con el análisis ═══════════
+
+def _anomalia(**kw):
+    base = {"id": "a1", "activo_codigo": "EX-220", "descripcion": "algo",
+            "codigo_catalogo": "", "modo_falla_id": ""}
+    base.update(kw)
+    return base
+
+
+def _casos_enlace() -> list[dict]:
+    """Los cinco caminos del enganche, y los dos que no enganchan a propósito.
+
+    Es la regla que decide si un hallazgo del operador cuenta como evidencia
+    de un modo de falla. Enganchar al modo equivocado contamina la frecuencia
+    por modo y la decisión de estrategia que sale de ahí, así que los dos
+    lenguajes tienen que negarse en los mismos casos.
+    """
+    doc = _ejemplo()
+    dos_veces = _ejemplo()
+    # Dos modos con el mismo código: una ambigüedad del análisis.
+    dos_veces["funciones"][0]["fallas"][0]["modos"][1]["codigo_catalogo"] = \
+        "TER.SOBRECALENTAMIENTO.RADIADOR"
+    return [
+        # La pauta declaró el modo: no se toca.
+        {"analisis": doc, "anomalia": _anomalia(modo_falla_id="F1.1.2",
+                                                codigo_catalogo="TER.SOBRECALENTAMIENTO.RADIADOR")},
+        # Por código exacto, con un solo candidato.
+        {"analisis": doc, "anomalia": _anomalia(codigo_catalogo="TER.SOBRECALENTAMIENTO.RADIADOR")},
+        # Sin código: el teléfono no clasifica texto libre.
+        {"analisis": doc, "anomalia": _anomalia()},
+        # Código que ningún modo declara.
+        {"analisis": doc, "anomalia": _anomalia(codigo_catalogo="HID.FUGA.MANGUERA")},
+        # Otro activo.
+        {"analisis": doc, "anomalia": _anomalia(activo_codigo="EX-999",
+                                                codigo_catalogo="TER.SOBRECALENTAMIENTO.RADIADOR")},
+        # Dos modos con el mismo código: no se elige.
+        {"analisis": dos_veces, "anomalia": _anomalia(codigo_catalogo="TER.SOBRECALENTAMIENTO.RADIADOR")},
+    ]
+
+
+def test_los_dos_enganchan_la_ronda_con_el_analisis_igual(tmp_path):
+    from nefer.fixmate.anomalia import Anomalia, enlazar
+
+    casos = _casos_enlace()
+    js = _node("enlace", casos, tmp_path)
+    py = []
+    for caso in casos:
+        a = Anomalia(**{k: v for k, v in caso["anomalia"].items()})
+        py.append(enlazar(a, cargador.analisis_de_dict(caso["analisis"])).modo_falla_id)
+    assert js == py
+    # Y lo que tiene que salir: engancha por declaración y por código, y se
+    # niega en los otros cuatro.
+    assert py == ["F1.1.2", "F1.1.1", "", "", "", ""]
+
+
+def test_la_pantalla_no_engancha_al_modo_mas_parecido(tmp_path):
+    """La negativa que importa: dos modos con el mismo código no se resuelven
+    a la suerte, y un código que nadie declara no se aproxima."""
+    doc = _ejemplo()
+    casi = _anomalia(codigo_catalogo="TER.SOBRECALENTAMIENTO.VENTILADOR")
+    doc["funciones"][0]["fallas"][0]["modos"][1]["codigo_catalogo"] = ""
+    js = _node("enlace", [{"analisis": doc, "anomalia": casi}], tmp_path)
+    assert js == [""], "se enganchó con un modo que ya no declara ese código"

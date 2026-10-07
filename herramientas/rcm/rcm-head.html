@@ -3,101 +3,118 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0b1220">
+<meta name="theme-color" content="#16191B">
 <title>Análisis RCM · FixMate</title>
 <link rel="icon" href="../app/icono-192.png">
 <link rel="apple-touch-icon" href="../app/apple-touch-icon.png">
 <style>
-*{box-sizing:border-box}
-:root{--fondo:#0b1220;--panel:#152033;--hondo:#0f1a2b;--borde:#2a3a55;
-      --texto:#e8eef7;--tenue:#93a4bd;--ok:#1f9d55;--aviso:#d99100;
-      --malo:#c3382f;--acento:#3987e5;--oculta:#7a5cc4}
-html,body{margin:0;background:var(--fondo);color:var(--texto);
-  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.hoja{max-width:1140px;margin:0 auto;padding:20px 16px 48px}
-h1{font-size:24px;margin:0 0 4px;letter-spacing:-.02em}
-h2{font-size:13px;margin:26px 0 10px;color:var(--tenue);text-transform:uppercase;
-   letter-spacing:.09em;font-weight:700}
-h3{font-size:17px;margin:0 0 6px;letter-spacing:-.01em}
-p{margin:0 0 10px}
-a{color:var(--acento)}
-.tenue{color:var(--tenue);font-size:13px}
-.tarjeta{background:var(--panel);border:1px solid var(--borde);border-radius:10px;
-  padding:14px;margin-bottom:12px}
-button{font:inherit;color:inherit;cursor:pointer;border-radius:8px;
-  border:1px solid var(--borde);background:var(--panel);padding:8px 12px}
-button:hover{border-color:#44597e}
-button:focus-visible{outline:3px solid var(--acento);outline-offset:2px}
-button.ancho{width:100%;text-align:left}
-button.acento{background:var(--acento);border-color:#6fb0ff;color:#04203f;font-weight:700}
-.chip{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.06em;
-  text-transform:uppercase;padding:2px 7px;border-radius:5px;background:#24344d;
-  color:var(--tenue);margin:0 4px 4px 0}
-.chip.grave{background:#4a2520;color:#ffc9c2}
-.chip.oculta{background:#2e2447;color:#d6c9ff}
-.chip.estr{background:#13324f;color:#a9d2ff}
-.chip.proa{background:#0d2a19;color:#95e3b4}
-.chip.def{background:#2e2306;color:#f7d98a}
-.rejilla{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
-@media (max-width:860px){.rejilla{grid-template-columns:1fr}}
-.arbol{background:var(--panel);border:1px solid var(--borde);border-radius:10px;padding:10px}
-.arbol .fn{font-weight:700;margin:10px 0 2px;font-size:14px}
-.arbol .ff{color:var(--tenue);font-size:13px;margin:4px 0 2px;padding-left:10px}
-.arbol button{display:block;width:100%;text-align:left;margin:4px 0 0;
-  background:var(--hondo);font-size:13px;line-height:1.35;padding:7px 9px}
-.arbol button.activo{border-color:var(--acento);background:#13243c}
-.campo{display:grid;grid-template-columns:200px 1fr;gap:4px 12px;font-size:14px;
-  padding:6px 0;border-top:1px solid #1e2c44}
-.campo>span:first-child{color:var(--tenue);font-size:13px}
-@media (max-width:620px){.campo{grid-template-columns:1fr}}
-.vacio{color:#5f6f8a;font-style:italic}
-.pregunta{border-top:1px solid #1e2c44;padding:10px 0}
-.pregunta>div:first-child{margin-bottom:6px}
-/* Los tres del mismo tamano, en la misma fila y en el mismo orden siempre:
-   si «sin evaluar» fuera mas chico o estuviera mas abajo, dejaria de usarse
-   y «no lo miramos» se registraria como «decidimos que no». */
-.opciones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
-  max-width:420px}
-.opciones button{text-align:center;padding:9px 6px}
-.op-si{background:#0d2a19;border-color:#2c6b45}
-.op-no{background:#2d110e;border-color:#7a3b34}
-.op-nd{background:#1a2638;border-color:#485e80}
-.opciones button[aria-pressed=true]{outline:2px solid var(--acento);outline-offset:1px;font-weight:800}
-.dictamen{border:1px solid var(--borde);border-left:4px solid var(--acento);
-  border-radius:8px;background:var(--hondo);padding:14px;margin-bottom:12px}
-.dictamen.proactiva{border-left-color:var(--ok)}
-.dictamen.defecto{border-left-color:var(--aviso)}
-.dictamen.bloqueada{border-left-color:var(--malo)}
-.camino{counter-reset:paso;margin:10px 0 0;padding:0;list-style:none}
-.camino li{counter-increment:paso;position:relative;padding:6px 0 6px 30px;
-  border-top:1px dashed #243550;font-size:13px}
-.camino li::before{content:counter(paso);position:absolute;left:0;top:7px;
-  width:20px;height:20px;border-radius:50%;background:#24344d;color:var(--tenue);
-  font-size:11px;font-weight:800;display:grid;place-items:center}
-.camino b{color:var(--texto)}
-.camino .resp{color:#a9d2ff;font-weight:700}
-.aviso{border:1px solid var(--aviso);background:#2e2306;border-radius:8px;
-  padding:10px 12px;margin:10px 0 0;font-size:13px}
-.aviso.peligro{border-color:var(--malo);background:#2d110e}
-.aviso.nota{border-color:var(--borde);background:var(--hondo);color:var(--tenue)}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #1e2c44;vertical-align:top}
-th{color:var(--tenue);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-tr.grave td{background:#1f1412}
-.q{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid #1e2c44}
-.q .marca{flex:0 0 22px;font-weight:900;text-align:center}
-.q.si .marca{color:var(--ok)}
-.q.no .marca{color:var(--aviso)}
-.barra{height:6px;background:#24344d;border-radius:4px;overflow:hidden;margin:8px 0 0}
-.barra>i{display:block;height:100%;background:var(--acento)}
-.numeros{display:flex;flex-wrap:wrap;gap:10px}
-.numeros>div{background:var(--hondo);border:1px solid var(--borde);border-radius:8px;
-  padding:8px 12px;min-width:112px}
-.numeros b{display:block;font-size:22px;letter-spacing:-.02em}
-.oculto{display:none}
-code{background:var(--hondo);padding:1px 5px;border-radius:4px;font-size:13px}
-ul.lista{margin:6px 0 0;padding-left:18px}ul.lista li{margin-bottom:3px;font-size:13px}
+/* rcm:piel:inicio */
+/* rcm:piel:fin */
+
+/* ------------------------------------------- lo propio de esta pantalla
+ * Es trabajo de mesa: dos columnas, el arbol a la izquierda y el modo de
+ * falla abierto a la derecha. Lo demas lo pone la piel.
+ */
+.hoja { max-width:1140px; margin:0 auto; padding:1.2rem 0 3rem; }
+.rejilla { display:grid; grid-template-columns:330px 1fr; gap:1rem;
+           align-items:start; }
+@media (max-width:900px) { .rejilla { grid-template-columns:1fr; } }
+
+/* El arbol del analisis: funcion, falla funcional, modo. */
+.arbol { background:var(--card); border:1px solid var(--rule);
+         border-radius:6px; padding:.6rem; }
+.arbol .fn { font-weight:700; font-size:.9rem; margin:.8rem 0 .1rem; }
+.arbol .est { color:var(--ink-3); font-size:.78rem; padding-left:.1rem; }
+.arbol .ff { color:var(--ink-2); font-size:.82rem; margin:.4rem 0 .1rem;
+             padding-left:.5rem; }
+.arbol button { display:block; width:100%; margin:.3rem 0 0;
+                background:var(--paper); font-size:.84rem; line-height:1.35;
+                padding:.45rem .55rem; }
+.arbol button.activo { border-color:var(--accent); background:var(--accent-soft); }
+
+/* Una ficha de dato: etiqueta a la izquierda, valor a la derecha. */
+.campo { display:grid; grid-template-columns:190px 1fr; gap:.15rem .9rem;
+         font-size:.92rem; padding:.45rem 0; border-top:1px solid var(--rule-2); }
+.campo > span:first-child { font-family:var(--mono); font-size:.68rem;
+         letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); }
+@media (max-width:620px) { .campo { grid-template-columns:1fr; } }
+
+/* Las tres respuestas del arbol. Del mismo tamano, en la misma fila y en el
+   mismo orden siempre: si «sin evaluar» fuera mas chico o estuviera mas
+   abajo, dejaria de usarse y «no lo miramos» se registraria como
+   «decidimos que no». Sin elegir, los tres son neutros: el color aparece
+   cuando hay respuesta, no antes. */
+.pregunta { border-top:1px solid var(--rule-2); padding:.75rem 0; }
+.opciones { display:grid; grid-template-columns:repeat(3,minmax(0,1fr));
+            gap:.5rem; max-width:26rem; margin-top:.5rem; }
+.opciones button { text-align:center; padding:.5rem .4rem; }
+.op-si[aria-pressed="true"] { background:var(--ok); border-color:var(--ok);
+            color:var(--paper); font-weight:700; }
+.op-no[aria-pressed="true"] { background:var(--mal); border-color:var(--mal);
+            color:var(--paper); font-weight:700; }
+.op-nd[aria-pressed="true"] { background:var(--ink-3); border-color:var(--ink-3);
+            color:var(--paper); font-weight:700; }
+
+/* El dictamen, con el camino que lo produjo. El borde del costado dice de
+   que clase es sin leer: proactiva, por defecto, o bloqueada por la guarda. */
+.dictamen { background:var(--card); border:1px solid var(--rule);
+            border-left:4px solid var(--accent); border-radius:0 6px 6px 0;
+            padding:1rem 1.1rem; margin-bottom:.8rem; }
+.dictamen.proactiva { border-left-color:var(--ok); }
+.dictamen.defecto { border-left-color:var(--obs); }
+.dictamen.bloqueada { border-left-color:var(--mal); }
+.estrategia { font-family:var(--cond); font-size:1.5rem; letter-spacing:.01em;
+              line-height:1.1; }
+.camino { counter-reset:paso; margin:.8rem 0 0; padding:0; list-style:none; }
+.camino li { counter-increment:paso; position:relative; padding:.45rem 0 .45rem 1.9rem;
+             border-top:1px solid var(--rule-2); font-size:.86rem; }
+.camino li::before { content:counter(paso); position:absolute; left:0; top:.5rem;
+             width:1.25rem; height:1.25rem; border-radius:50%;
+             background:var(--card-2); color:var(--ink-3);
+             font-family:var(--mono); font-size:.66rem; display:grid;
+             place-items:center; }
+.camino .resp { color:var(--accent); font-weight:700; }
+
+/* El panel de las siete preguntas. */
+.q { display:flex; gap:.6rem; align-items:flex-start; padding:.5rem 0;
+     border-top:1px solid var(--rule-2); font-size:.92rem; }
+.q .marca { flex:0 0 1.1rem; font-weight:900; text-align:center; }
+.q.si .marca { color:var(--ok); }
+.q.no .marca { color:var(--obs); }
+.progreso { height:5px; background:var(--rule); border-radius:3px;
+            overflow:hidden; margin:.5rem 0 .2rem; }
+.progreso > i { display:block; height:100%; background:var(--accent); }
+
+/* El tablero y el resumen por modo. */
+.numeros { display:flex; flex-wrap:wrap; gap:.6rem; }
+.numeros > div { background:var(--card-2); border:1px solid var(--rule-2);
+                 border-radius:6px; padding:.5rem .8rem; min-width:7rem; }
+.numeros b { display:block; font-family:var(--cond); font-size:1.5rem;
+             letter-spacing:.01em; }
+table { width:100%; border-collapse:collapse; font-size:.86rem; }
+th, td { text-align:left; padding:.45rem .5rem; vertical-align:top;
+         border-bottom:1px solid var(--rule-2); }
+th { font-family:var(--mono); font-size:.66rem; letter-spacing:.06em;
+     text-transform:uppercase; color:var(--ink-3); font-weight:400; }
+tr.grave td { background:var(--mal-soft); }
+
+/* Un hallazgo de la ronda, dentro de la ficha del modo. */
+.hallazgo { border-left:3px solid var(--obs); background:var(--obs-soft);
+            padding:.4rem .6rem; border-radius:0 4px 4px 0; margin-bottom:.4rem;
+            font-size:.88rem; }
 </style>
 </head>
 <body>
-<div class="hoja" id="app"></div>
+<div class="barra">
+  <b>FixMate</b><span>Análisis RCM</span>
+  <nav class="vinculos">
+    <a href="../">Inicio</a>
+    <a href="../app/">Diagnóstico</a>
+    <a href="../ronda/">Ronda CIL</a>
+  </nav>
+</div>
+<script>
+/* rcm:barra:inicio */
+/* rcm:barra:fin */
+</script>
+<main class="hoja" id="app"></main>

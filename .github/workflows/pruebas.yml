@@ -87,6 +87,7 @@ jobs:
             tests/test_fixmate_integracion_rcm_tpm.py \
             tests/test_fixmate_motor.py \
             tests/test_fixmate_pg.py \
+            tests/test_fixmate_piel.py \
             tests/test_fixmate_plan.py \
             tests/test_fixmate_prediccion.py \
             tests/test_fixmate_rcm.py \
