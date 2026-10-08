@@ -300,3 +300,29 @@ def test_una_fecha_ambigua_se_rechaza_nombrando_el_archivo(tmp_path):
         cargador.analisis(ruta)
     assert "ISO 8601" in str(exc.value)
     assert "fecha-mala.json" in str(exc.value)
+
+
+# ═══════════ la taxonomía de ISO 14224 ═══════════
+
+def test_taxonomia_dice_qué_llena_cada_nivel_y_qué_no(tmp_path, capsys):
+    codigo, salida = _correr(["rcm", "taxonomia",
+                              _escribir(tmp_path, "a.json", ANALISIS),
+                              "--industria", "mineria"], capsys)
+    assert codigo == 0
+    assert "Taxonomia ISO 14224" in salida
+    # Los dos niveles que la norma señala.
+    assert "(nivel comun de reporte)" in salida
+    assert "(donde cae el mantenimiento)" in salida
+    # Y las tres ausencias, con su motivo al lado.
+    assert "no se modela: una flota movil no tiene planta estable" in salida
+    assert "no se modela: RCM decide en el item mantenible" in salida
+
+
+def test_taxonomia_saca_una_fila_por_modo_para_el_intercambio(tmp_path, capsys):
+    _, salida = _correr(["rcm", "taxonomia",
+                         _escribir(tmp_path, "a.json", ANALISIS),
+                         "--industria", "mineria", "--csv"], capsys)
+    lineas = [l for l in salida.strip().splitlines() if l]
+    assert len(lineas) == 3                      # cabecera y dos modos
+    assert lineas[0].startswith("modo_falla_id;modo_falla;n1_industria")
+    assert "EX-220" in lineas[1]

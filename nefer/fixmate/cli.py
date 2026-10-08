@@ -423,6 +423,65 @@ def _cargar(fn, ruta):
         return None
 
 
+def cmd_rcm_taxonomia(args) -> int:
+    """La taxonomia de ISO 14224 de un analisis, nivel por nivel.
+
+    Es lo que hay que entregar el dia que un cliente pide «datos conformes
+    con la norma», y es lo que cerro la OBS-02 de la auditoria: el mapeo
+    existe, se puede mirar, y los niveles que FixMate no modela salen
+    vacios y dichos en vez de quedar como una duda.
+    """
+    from . import cargador, taxonomia
+
+    analisis = _cargar(cargador.analisis, args.archivo)
+    if analisis is None:
+        return 1
+    contexto = taxonomia.Contexto(args.industria or "",
+                                  args.categoria_negocio or "")
+
+    if args.csv:
+        import csv as _csv
+        import io
+
+        filas = taxonomia.filas(analisis, contexto)
+        buffer = io.StringIO()
+        w = _csv.DictWriter(buffer, fieldnames=list(filas[0]), delimiter=";",
+                            lineterminator="\n")
+        w.writeheader()
+        for fila in filas:
+            w.writerow(fila)
+        print(buffer.getvalue(), end="")
+        return 0
+
+    cob = taxonomia.cobertura(analisis.activo, contexto=contexto)
+    print(f"Activo: {analisis.activo.descripcion()}")
+    print(f"\nTaxonomia ISO 14224 · {cob.resumen()}\n")
+    for n in taxonomia.NIVELES:
+        valor = cob.valores[n.numero] or "—"
+        marca = " " if n.modelado else "·"
+        aparte = ""
+        if n.numero == taxonomia.NIVEL_DE_REPORTE:
+            aparte = "   (nivel comun de reporte)"
+        elif n.numero == taxonomia.NIVEL_DE_MANTENIMIENTO:
+            aparte = "   (donde cae el mantenimiento)"
+        print(f" {marca} {n.numero}  {n.nombre:30} {valor:38}{aparte}")
+        if not n.modelado:
+            print(f"        {n.origen}")
+
+    # El nivel 8 cambia con cada modo de falla: es el unico que no es del
+    # activo sino de donde esta la falla.
+    componentes = sorted({m.ubicacion.componente for m in analisis.modos
+                          if m.ubicacion.componente})
+    print(f"\nNivel 8, por modo de falla ({len(componentes)} items mantenibles):")
+    for comp in componentes:
+        print(f"    {comp}")
+    sin = [m.id for m in analisis.modos if not m.ubicacion.componente]
+    if sin:
+        print(f"    {len(sin)} modo(s) sin componente declarado: "
+              + ", ".join(sin))
+    return 0
+
+
 def cmd_rcm_analizar(args) -> int:
     """Valida un analisis RCM contra las siete preguntas de JA1011."""
     from . import cargador
@@ -778,6 +837,18 @@ def agregar_subcomando(sub) -> None:
     ra.add_argument("--hoy", default="", metavar="AAAA-MM-DD",
                     help="comprobar tambien si la revision esta vencida")
     ra.set_defaults(func=cmd_rcm_analizar)
+
+    rt = rcm_sub.add_parser(
+        "taxonomia", help="los nueve niveles de ISO 14224 del analisis")
+    rt.add_argument("archivo", help="el analisis en JSON")
+    # Los dos primeros niveles son constantes de la instalacion entera: los
+    # pone quien exporta, no el programa.
+    rt.add_argument("--industria", default="", help="nivel 1 de la taxonomia")
+    rt.add_argument("--categoria-negocio", default="", dest="categoria_negocio",
+                    help="nivel 2 de la taxonomia")
+    rt.add_argument("--csv", action="store_true",
+                    help="una fila por modo de falla, para el intercambio")
+    rt.set_defaults(func=cmd_rcm_taxonomia)
 
     rl = con_pg(rcm_sub.add_parser("listar", help="los modos de falla del indice"))
     rl.set_defaults(func=cmd_rcm_listar)

@@ -397,6 +397,10 @@ Dicho antes de que alguien lo suponga:
   generados de Python y cruzados por pruebas. Lo que **no** tienen pantalla:
   crear o editar el análisis —se edita el JSON—, evaluar criticidad, armar la
   matriz FMECA y cerrar anomalías. Eso sigue siendo línea de comandos.
+- **La jerarquía mapea a la taxonomía de ISO 14224.** `taxonomia.py` declara
+  los nueve niveles y de qué campo sale cada uno; tres no se modelan y dicen
+  por qué. `fixmate rcm taxonomia --csv` saca el archivo de intercambio. Ver
+  [la auditoría](AUDITORIA-RCM-TPM.md), OBS-02.
 - **Las cuatro superficies comparten una sola piel.** Los tokens de color
   salen de la app de diagnóstico (`herramientas/piel.py`) y se copian a la
   página de entrada, a la ronda y al análisis; la capa común de componentes
@@ -446,6 +450,7 @@ Dicho antes de que alguien lo suponga:
 | `test_fixmate_cruce_rcm.py` | 18 | El árbol en las 729 combinaciones × 7 consecuencias × evidente/oculta: 10.206 dictámenes comparados |
 | `test_fixmate_rcm_navegador.py` | 21 | La guarda de seguridad en pantalla; la ronda encima del análisis; que lo exportado vuelva a entrar |
 | `test_fixmate_instalable.py` | 15 | Que se instalen en Android y que la ronda entera se haga sin señal |
+| `test_fixmate_taxonomia.py` | 11 | Los nueve niveles de ISO 14224, lo que llena cada uno y por qué tres no se modelan |
 | `test_fixmate_piel.py` | 15 | Que las cuatro superficies sean el mismo producto, y que la capa común no declare color |
 
 ## 8. Fases pendientes

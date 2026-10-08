@@ -1,6 +1,9 @@
 # Auditoría de conformidad · RCM + TPM en FixMate
 
-**Fecha:** 2026-10-08 · **Revisión:** 1 · **Alcance auditado:** `commit ee0229c`
+**Fecha:** 2026-10-08 · **Revisión:** 2 · **Alcance auditado:** `commit ee0229c`
+
+> **Revisión 2** — cerrada OBS-02 con la taxonomía implementada. La revisión 1
+> la dejaba abierta y documentada.
 
 Esta auditoría no pregunta si FixMate funciona —de eso responden 970 pruebas—
 sino algo distinto: **si lo que declara cumplir, lo cumple**, y si lo que
@@ -58,7 +61,7 @@ se auditan.
 | NC-04 | El análisis no se identifica: ni versión, ni aprobación, ni vigencia | Menor | Subsanada |
 | NC-05 | Ambigüedad de códigos detectada en uso, no en revisión | Menor | Subsanada |
 | OBS-01 | Seis clases de consecuencia frente a cuatro de la norma, sin mapeo declarado | Observación | Subsanada |
-| OBS-02 | Jerarquía de activos de tres niveles frente a la taxonomía de la norma | Observación | Documentada, abierta |
+| OBS-02 | Jerarquía de activos de tres niveles frente a la taxonomía de la norma | Observación | Subsanada en rev. 2 |
 
 ---
 
@@ -181,14 +184,48 @@ seis, y `rcm.OCULTA_JA1011` deja constancia de que la cuarta categoría de la
 norma no es una clase aquí sino el booleano `evidente` del modo de falla —la
 primera bifurcación del análisis—. El mapeo viaja también a la pantalla.
 
-### OBS-02 · La jerarquía de activos no es la taxonomía de la norma · **abierta**
+### OBS-02 · La jerarquía de activos frente a la taxonomía de la norma
 
-ISO 14224 define una taxonomía de equipo de varios niveles, con una frontera
-precisa en la *equipment unit*. FixMate tiene tres: sistema / subsistema /
-componente, más el activo. Para una flota de maquinaria pesada alcanza, y
-ampliarla sin una necesidad real sólo haría que se rellene con cualquier
-cosa. **Queda abierta y documentada**: si un cliente pide intercambio de
-datos conforme a la norma, hay que mapear la jerarquía además de los códigos.
+**Evidencia.** ISO 14224 define una taxonomía de **nueve niveles**: los cinco
+primeros dicen dónde está el equipo y a qué operación pertenece; los cuatro
+últimos lo desarman. FixMate tenía el activo más sistema / subsistema /
+componente, sin decir en ningún sitio a qué nivel correspondía cada uno.
+
+**Análisis.** Lo que estaba abierto no era «faltan niveles». Era que **nadie
+podía responder si la jerarquía mapea a la norma sin abrir el código**, y que
+el día que un cliente pidiera intercambio conforme, alguien tendría que
+inventar el mapeo contra reloj. Ampliar la jerarquía «por si acaso» habría
+sido peor: un nivel que nadie necesita se rellena con cualquier cosa, que es
+el problema de «Otro» por otro camino.
+
+**Subsanación.** `nefer/fixmate/taxonomia.py` declara los nueve niveles y, en
+cada uno, **de qué campo sale o por qué no se modela**:
+
+| | Nivel | De dónde sale |
+|---|---|---|
+| 1 | industria | constante de la instalación, la pone quien exporta |
+| 2 | categoría de negocio | ídem |
+| 3 | instalación | `Activo.instalacion` — **nuevo**: es el único de los cinco de localización que cambia por activo en una flota que se mueve |
+| 4 | planta o unidad | **no se modela**: una flota móvil no tiene planta estable |
+| 5 | sección o sistema | **no se modela**: el frente cambia de turno a turno |
+| 6 | **unidad de equipo** | `Activo.codigo` — es el *nivel común de reporte* de la norma, y es donde FixMate cuenta el MTBF |
+| 7 | subunidad | `Ubicacion.sistema`, con `subsistema` como refinamiento propio |
+| 8 | **componente / ítem mantenible** | `Ubicacion.componente` — es *donde cae el mantenimiento* según la norma, y donde RCM decide la estrategia |
+| 9 | parte | **no se modela**: RCM decide en el ítem mantenible |
+
+Que los dos niveles con nombre propio en la norma —el 6 y el 8— coincidan
+con cómo ya trabajaba FixMate no es casualidad: es la razón de que el mapeo
+salga limpio sin tocar el modelo.
+
+`fixmate rcm taxonomia` lo imprime nivel por nivel, y con `--csv` saca una
+fila por modo de falla con su taxonomía entera, que es la forma que tiene un
+archivo de intercambio. Los niveles que no se modelan salen **vacíos y
+dichos**, no omitidos.
+
+**Lo que sigue sin estar, y es una decisión, no un olvido:** los niveles 4, 5
+y 9. Si el cliente es una planta fija en vez de una flota, el 4 y el 5 pasan
+a tener sentido y hay que agregarlos; está escrito en el encabezado del
+módulo para que quien llegue a esa necesidad lo encuentre.
 
 ---
 
@@ -206,9 +243,9 @@ datos conforme a la norma, hay que mapear la jerarquía además de los códigos.
 
 ## 5. Conclusión
 
-Seis de los siete hallazgos quedaron subsanados en esta misma revisión, con
-pruebas que los fijan. El único abierto —OBS-02— está documentado con su
-condición de disparo.
+Los siete hallazgos quedaron subsanados, con pruebas que los fijan: seis en
+la revisión 1 y OBS-02 en la revisión 2, con la taxonomía de los nueve
+niveles implementada y el mapeo probado.
 
 El hallazgo que importa es NC-01, y conviene decir por qué: **el sistema era
 honesto en su comportamiento y no en su etiqueta**. El catálogo nunca

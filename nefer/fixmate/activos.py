@@ -62,6 +62,10 @@ class Activo:
     # Donde y como trabaja. Texto libre a proposito: ningun enum captura
     # «turno continuo en interior mina, 4.200 m, con polvo de silice».
     contexto: str = ""
+    # La obra o unidad minera donde esta hoy. Es el nivel 3 de la taxonomia
+    # de ISO 14224 —instalacion— y el unico de los cinco de localizacion que
+    # cambia por activo en una flota que se mueve. Ver `taxonomia.py`.
+    instalacion: str = ""
     criticidad: str = ""   # "" = no evaluada. Ver `criticidad.py`.
 
     def __post_init__(self):
@@ -74,6 +78,7 @@ class Activo:
         return {"codigo": self.codigo, "nombre": self.nombre,
                 "marca": self.marca, "modelo": self.modelo, "serie": self.serie,
                 "categoria": self.categoria, "contexto": self.contexto,
+                "instalacion": self.instalacion,
                 "criticidad": self.criticidad or "no evaluada"}
 
     @classmethod
@@ -86,6 +91,7 @@ class Activo:
             serie=str(d.get("serie") or ""),
             categoria=str(d.get("categoria") or ""),
             contexto=str(d.get("contexto") or ""),
+            instalacion=str(d.get("instalacion") or ""),
             criticidad=str(d.get("criticidad") or ""),
         )
 
