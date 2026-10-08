@@ -412,9 +412,18 @@ def test_camara_recorre_las_casillas_y_cada_foto_cae_en_la_suya(servidor):
 
         esperados = []
         for _ in range(4):
-            esperados.append(pg.inner_text("#cam-rotulo"))
+            rotulo = pg.inner_text("#cam-rotulo")
+            esperados.append(rotulo)
             pg.click("#cam-disparar")
-            pg.wait_for_timeout(1200)
+            # La foto se codifica y la casilla avanza sola. Se espera a que el
+            # panel CAMBIE de rotulo, no un tiempo fijo: con 1,2 s, en una
+            # maquina cargada la cuarta foto no habia terminado y el bucle
+            # leia el rotulo anterior. Una prueba que falla segun lo ocupada
+            # que este la maquina deja de decir nada sobre el programa.
+            pg.wait_for_function(
+                "anterior => document.querySelector('#cam-rotulo')"
+                ".innerText !== anterior",
+                arg=rotulo, timeout=15000)
 
         assert esperados == ["VISTA FRONTAL", "VISTA POSTERIOR",
                              "VISTA LATERAL IZQUIERDA", "VISTA LATERAL DERECHA"]
