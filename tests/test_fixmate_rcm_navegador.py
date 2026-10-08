@@ -309,9 +309,22 @@ RONDA = RAIZ / "ejemplos" / "rcm-tpm" / "ronda-ex220-telefono.json"
 
 
 def _abrir_ronda(pag, ruta):
+    """Carga una ronda y espera a que la pantalla la haya procesado.
+
+    Se espera por algo que SÓLO existe después de cargarla: el botón de
+    quitarla, o el aviso de error pegado al de abrir. Esperar por
+    `.aviso.peligro` a secas no servía —el tablero ya trae uno, el de los
+    rediseños obligatorios—, así que la espera se cumplía al instante y la
+    comprobación corría antes de que el lector terminara el archivo. En
+    local ganaba la carrera; en un runner cargado, no.
+    """
+    espera = "#quitar-ronda, #abrir-ronda + .aviso.peligro"
+    assert pag.locator(espera).count() == 0, (
+        "la espera ya se cumple antes de cargar la ronda: volvería a ser una "
+        "carrera, y sólo se vería en una máquina cargada")
     pag.click("#abrir-ronda")
     pag.set_input_files("#entrada-ronda", str(ruta))
-    pag.wait_for_selector("#quitar-ronda, .aviso.peligro")
+    pag.wait_for_selector(espera)
 
 
 def test_la_ronda_del_operador_cae_sobre_su_modo_de_falla(pagina):
