@@ -426,7 +426,7 @@ def _cargar(fn, ruta):
 def cmd_rcm_analizar(args) -> int:
     """Valida un analisis RCM contra las siete preguntas de JA1011."""
     from . import cargador
-    from .rcm import completitud
+    from .rcm import calidad, completitud
 
     par = _cargar(cargador.analisis_y_decisiones, args.archivo)
     if par is None:
@@ -458,6 +458,15 @@ def cmd_rcm_analizar(args) -> int:
         if bloqueados:
             print(f"  {len(bloqueados)} con rediseño OBLIGATORIO: ninguna tarea "
                   "proactiva alcanza y la falla puede herir a alguien.")
+
+    # El analisis como REGISTRO, que no es lo mismo que su completitud. Las
+    # siete preguntas dicen si esta terminado; esto, si se puede auditar
+    # dentro de dos años. El codigo de salida sigue hablando solo de JA1011
+    # para no cambiarle el contrato a quien ya lo use en un guion.
+    reg = calidad(analisis, hoy=args.hoy or "")
+    print(f"\nRegistro: {reg.resumen()}")
+    for h in reg.hallazgos:
+        print(f"  [{h.gravedad}] {h.detalle}")
 
     if args.indexar:
         indice = _indice(args)
@@ -764,6 +773,10 @@ def agregar_subcomando(sub) -> None:
     ra.add_argument("archivo", help="el analisis en JSON")
     ra.add_argument("--indexar", action="store_true",
                     help="meterlo al indice para que el motor lo recupere")
+    # La vigencia solo se mira si se dice contra que dia. Una salida que
+    # cambia sola con el calendario no se puede comparar ni probar.
+    ra.add_argument("--hoy", default="", metavar="AAAA-MM-DD",
+                    help="comprobar tambien si la revision esta vencida")
     ra.set_defaults(func=cmd_rcm_analizar)
 
     rl = con_pg(rcm_sub.add_parser("listar", help="los modos de falla del indice"))

@@ -134,7 +134,7 @@ def test_lo_que_el_catalogo_hereda_no_se_ve_como_un_hueco(pagina):
     pag.click('button[data-modo="F1.1.1"]')
     con_codigo = pag.inner_text("#ficha")
     assert "TER.SOBRECALENTAMIENTO.RADIADOR" in con_codigo
-    assert "lo hereda del catálogo ISO 14224" in con_codigo
+    assert "lo hereda del catálogo de fallas" in con_codigo
 
     pag.click(f'button[data-modo="{FRENO}"]')
     sin_codigo = pag.inner_text("#ficha")
@@ -309,9 +309,22 @@ RONDA = RAIZ / "ejemplos" / "rcm-tpm" / "ronda-ex220-telefono.json"
 
 
 def _abrir_ronda(pag, ruta):
+    """Carga una ronda y espera a que la pantalla la haya procesado.
+
+    Se espera por algo que SÓLO existe después de cargarla: el botón de
+    quitarla, o el aviso de error pegado al de abrir. Esperar por
+    `.aviso.peligro` a secas no servía —el tablero ya trae uno, el de los
+    rediseños obligatorios—, así que la espera se cumplía al instante y la
+    comprobación corría antes de que el lector terminara el archivo. En
+    local ganaba la carrera; en un runner cargado, no.
+    """
+    espera = "#quitar-ronda, #abrir-ronda + .aviso.peligro"
+    assert pag.locator(espera).count() == 0, (
+        "la espera ya se cumple antes de cargar la ronda: volvería a ser una "
+        "carrera, y sólo se vería en una máquina cargada")
     pag.click("#abrir-ronda")
     pag.set_input_files("#entrada-ronda", str(ruta))
-    pag.wait_for_selector("#quitar-ronda, .aviso.peligro")
+    pag.wait_for_selector(espera)
 
 
 def test_la_ronda_del_operador_cae_sobre_su_modo_de_falla(pagina):
@@ -408,3 +421,68 @@ def test_la_ronda_no_se_guarda_dentro_del_analisis(pagina, tmp_path):
     datos = json.loads(destino.read_text(encoding="utf-8"))
     assert "anomalias" not in datos and "ronda" not in datos
     cargador.analisis_de_dict(datos)     # sigue entrando por el cargador
+
+
+# ═══════════ el análisis como registro, en pantalla ═══════════
+
+def test_el_ejemplo_se_ve_como_un_registro_identificado(pagina):
+    pag, _ = pagina
+    _abrir(pag)
+    texto = pag.inner_text("#app")
+    # El encabezado va en versalitas por CSS.
+    assert "el análisis como registro" in texto.lower()
+    assert "Identificado y auditable" in texto
+    assert "Revisión 1" in texto
+    assert "(jefe de mantenimiento)" in texto
+    assert "se revisa el 2027-03-15" in texto
+
+
+def test_un_analisis_completo_puede_no_ser_un_registro_valido(pagina, tmp_path):
+    """Las siete contestadas y aun así sin dueño.
+
+    Es la diferencia que nadie ve hasta que llega la auditoría: la
+    completitud dice si el análisis está terminado; el registro, si se puede
+    saber dentro de dos años quién responde por él.
+    """
+    import json as _json
+
+    pag, _ = pagina
+    doc = _json.loads((RAIZ / "ejemplos" / "rcm-tpm" / "analisis-ex220.json")
+                      .read_text(encoding="utf-8"))
+    for campo in ("revision", "aprobado_por", "proxima_revision"):
+        doc.pop(campo, None)
+    sin_firma = tmp_path / "sin-firma.json"
+    sin_firma.write_text(_json.dumps(doc), encoding="utf-8")
+
+    pag.set_input_files("input[type=file]", str(sin_firma))
+    pag.wait_for_selector(".arbol")
+    texto = pag.inner_text("#app")
+    assert "Las siete están contestadas" in texto
+    assert "1 no conformidad(es) de registro" in texto
+    assert "no declara numero de revision, quien lo aprobo" in texto
+    assert "Sin revisión · sin aprobar" in texto
+
+
+def test_dos_modos_con_el_mismo_codigo_se_denuncian_al_revisar(pagina, tmp_path):
+    """La ambigüedad que impide enganchar una anomalía de campo.
+
+    `anomalia.enlazar` se niega a elegir entre dos modos con el mismo código
+    —y hace bien—, pero si nadie lo dice al revisar, el análisis se da por
+    bueno y el enganche falla en silencio meses después.
+    """
+    import json as _json
+
+    pag, _ = pagina
+    doc = _json.loads((RAIZ / "ejemplos" / "rcm-tpm" / "analisis-ex220.json")
+                      .read_text(encoding="utf-8"))
+    doc["funciones"][0]["fallas"][0]["modos"][1]["codigo_catalogo"] = \
+        "TER.SOBRECALENTAMIENTO.RADIADOR"
+    repetido = tmp_path / "repetido.json"
+    repetido.write_text(_json.dumps(doc), encoding="utf-8")
+
+    pag.set_input_files("input[type=file]", str(repetido))
+    pag.wait_for_selector(".arbol")
+    texto = pag.inner_text("#app")
+    assert "declaran el mismo codigo" in texto
+    assert "F1.1.1, F1.1.2" in texto
+    assert "la ambiguedad se resuelve aqui" in texto

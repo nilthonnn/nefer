@@ -8,6 +8,9 @@
   "facilitador": "(nombre del facilitador)",
   "participantes": ["(mantenedor 1)", "(mantenedor 2)", "(operador)"],
   "fecha": "2026-03-15",
+  "revision": "1",
+  "aprobado_por": "(jefe de mantenimiento)",
+  "proxima_revision": "2027-03-15",
   "metodo_criticidad": "Prioridad de accion (EJEMPLO)",
 
   "funciones": [

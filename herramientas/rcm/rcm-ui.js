@@ -188,6 +188,7 @@ function render() {
   app.innerHTML =
     encabezado(r) +
     panelJA1011(c) +
+    panelRegistro(calidadRCM(analisis, hoyISO())) +
     '<div class="rejilla"><div>' + arbol() + '</div><div id="ficha">' +
     ficha() + '</div></div>' +
     evidencia_campo() +
@@ -243,6 +244,40 @@ function panelJA1011(c) {
             return '<li>' + esc(f) + '</li>'; }).join("") + '</ul>'
         : '') +
       '</div></div>';
+  });
+  return html + '</div>';
+}
+
+/** El análisis como REGISTRO, que no es lo mismo que su completitud.
+ *
+ * Las siete preguntas dicen si está terminado. Esto dice si se puede
+ * auditar dentro de dos años: quién lo aprobó, qué versión es, cuándo toca
+ * revisarlo, y si los códigos de adentro son inequívocos. Un análisis puede
+ * tener las siete contestadas y no ser un registro válido, y esa diferencia
+ * es justo la que nadie ve hasta que llega la auditoría.
+ */
+function hoyISO() { return new Date().toISOString().slice(0, 10); }
+
+function panelRegistro(q) {
+  var nc = q.hallazgos.filter(function (h) {
+    return h.gravedad === "no conformidad"; });
+  var html = '<h2>El análisis como registro</h2><div class="tarjeta">' +
+    '<div class="estrategia">' +
+    (q.conforme ? 'Identificado y auditable'
+                : nc.length + ' no conformidad(es) de registro') + '</div>' +
+    '<p class="tenue" style="margin:6px 0 0">' +
+    esc(analisis.revision ? 'Revisión ' + analisis.revision : 'Sin revisión') +
+    ' · ' + esc(analisis.aprobado_por || 'sin aprobar') +
+    ' · ' + esc(analisis.fecha || 'sin fecha') +
+    (analisis.proxima_revision
+      ? ' · se revisa el ' + esc(analisis.proxima_revision) : '') + '</p>';
+  if (!q.hallazgos.length) {
+    html += '<p class="tenue" style="margin:8px 0 0">Nada que anotar.</p>';
+  }
+  q.hallazgos.forEach(function (h) {
+    html += '<div class="aviso' +
+      (h.gravedad === "no conformidad" ? ' peligro' : ' nota') + '">' +
+      '<b>' + esc(h.gravedad) + '</b> · ' + esc(h.detalle) + '</div>';
   });
   return html + '</div>';
 }
@@ -347,7 +382,7 @@ function ficha() {
       : '') +
     campo("Ubicación", [(m.ubicacion || {}).sistema, (m.ubicacion || {}).subsistema,
                         (m.ubicacion || {}).componente].filter(Boolean).join(" · ")) +
-    campo("Código de catálogo", m.codigo_catalogo, "sin codificar (ISO 14224)") +
+    campo("Código de catálogo", m.codigo_catalogo, "sin codificar") +
     campo("Causa", m.causa, heredado(m)) +
     campo("Mecanismo", m.mecanismo, heredado(m)) +
     campo("Efecto local", u.local,
@@ -372,7 +407,7 @@ function ficha() {
  */
 function heredado(m) {
   return m.codigo_catalogo
-    ? "lo hereda del catálogo ISO 14224 en la oficina"
+    ? "lo hereda del catálogo de fallas en la oficina"
     : "sin declarar";
 }
 
@@ -615,7 +650,7 @@ function evidencia_campo() {
           esc(x.a.descripcion) + '</td><td>' + esc(x.motivo) + '</td></tr>';
       }).join("") + '</table>' +
       '<p class="tenue" style="margin:10px 0 0">Deducir el código desde el ' +
-      'texto libre es trabajo del catálogo ISO 14224, y lo hace ' +
+      'texto libre es trabajo del catálogo de fallas, y lo hace ' +
       '<code>fixmate tpm anomalias</code>. Esta pantalla no lo trae: ' +
       'enganchar al modo «más parecido» es como se contamina la frecuencia ' +
       'por modo.</p>';

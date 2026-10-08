@@ -78,7 +78,8 @@ def datos() -> str:
         "var SIN_DATOS_ECONOMICOS = %s;\n"
         "var AVISO_SIN_EVALUAR = %s;\n"
         "var AVISO_89 = %s;\n"
-        "var ADVERTENCIA_RPN = %s;"
+        "var ADVERTENCIA_RPN = %s;\n"
+        "var CONSECUENCIAS_JA1011 = %s;"
     ) % (
         _js(dict(_decision.ESTRATEGIAS)),
         _js(sorted(_decision.POR_DEFECTO)),
@@ -92,6 +93,7 @@ def datos() -> str:
         _js(_decision.AVISO_SIN_EVALUAR),
         _js(_decision.AVISO_89),
         _js(_criticidad.ADVERTENCIA_RPN),
+        _js(dict(_rcm.CONSECUENCIAS_JA1011)),
     )
 
 

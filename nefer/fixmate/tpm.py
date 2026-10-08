@@ -43,6 +43,8 @@ sin que nadie tenga que escribir dos veces «radiador obstruido».
 from __future__ import annotations
 
 import datetime as _dt
+
+from . import registro as _registro
 from dataclasses import dataclass, field
 
 from . import catalogo as _catalogo
@@ -99,7 +101,8 @@ class PuntoChecklist:
     # Presupuesto en segundos. Opcional: sin el no se puede juzgar si la
     # ejecucion fue demasiado rapida, y eso se declara en vez de suponerse.
     segundos: int = 0
-    # La llave hacia el catalogo ISO 14224 y, por el, hacia RCM.
+    # La llave hacia el catalogo de fallas —estructura de ISO 14224,
+    # codigos propios de FixMate— y, por el, hacia RCM.
     codigo_catalogo: str = ""
     # El modo de falla concreto del analisis, cuando se sabe cual es.
     modo_falla_id: str = ""
@@ -199,7 +202,8 @@ class Ejecucion:
     anomalias: list[str] = field(default_factory=list)
 
     def __post_init__(self):
-        self.fecha = self.fecha or _dt.date.today().isoformat()
+        self.fecha = _registro.fecha(
+            self.fecha, "la ejecucion", ErrorTPM) or _dt.date.today().isoformat()
         if not str(self.operador).strip():
             raise ErrorTPM(
                 "la ejecucion necesita responsable. Una ronda sin responsable "

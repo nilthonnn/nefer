@@ -256,3 +256,121 @@ def test_el_analisis_serializa_entero_y_vuelve_legible():
     assert d["modos"][0]["ubicacion"]["sistema"] == "termico"
     assert d["modos"][0]["criticidad"]["etiqueta"] == NO_EVALUADA
     assert d["funciones"][0]["estandar"]
+
+
+# ═══════════ el análisis como registro auditable ═══════════
+
+def test_una_fecha_ambigua_no_entra_en_un_registro():
+    """«03/04/2026» es el 3 de abril en Lima y el 4 de marzo en Houston.
+
+    Dos años después, nadie puede decir cuál era. Un dato faltante se ve; uno
+    ambiguo parece bueno.
+    """
+    from nefer.fixmate.rcm import fecha_valida
+
+    assert fecha_valida("2026-03-15", "el análisis") == "2026-03-15"
+    assert fecha_valida("", "el análisis") == ""          # no declarada, legítimo
+    for mala in ("03/04/2026", "15-03-2026", "2026-3-5", "marzo 2026"):
+        with pytest.raises(ErrorRCM, match="ISO 8601"):
+            fecha_valida(mala, "el análisis")
+
+
+def test_una_fecha_que_no_existe_se_rechaza():
+    from nefer.fixmate.rcm import fecha_valida
+
+    with pytest.raises(ErrorRCM, match="no existe"):
+        fecha_valida("2026-02-30", "el análisis")
+
+
+def _analisis_identificado():
+    a = Analisis(Activo("EX-1", "Excavadora"), contexto="mina",
+                 participantes=("operador", "mantenedor"),
+                 fecha="2026-03-15", revision="1",
+                 aprobado_por="jefe de mantenimiento",
+                 proxima_revision="2027-03-15")
+    f = a.agregar_funcion("Mover tierra", "30 m³/h")
+    ff = a.agregar_falla(f.id, "No mueve tierra")
+    a.agregar_modo(ff.id, "Bomba gastada",
+                   codigo_catalogo="HID.BAJA_PRESION.BOMBA")
+    return a
+
+
+def test_un_analisis_sin_aprobar_no_es_un_registro():
+    from nefer.fixmate.rcm import calidad
+
+    a = _analisis_identificado()
+    a.revision = ""
+    a.aprobado_por = ""
+    q = calidad(a)
+    assert q.conforme is False
+    assert [h.clave for h in q.no_conformidades] == ["identificacion"]
+    assert "numero de revision" in q.hallazgos[0].detalle
+
+
+def test_un_analisis_sin_participantes_no_tiene_contexto_operacional():
+    # RCM no lo hace una persona: el contexto lo tiene quien opera la máquina.
+    from nefer.fixmate.rcm import calidad
+
+    a = _analisis_identificado()
+    a.participantes = ()
+    assert "participantes" in [h.clave for h in calidad(a).no_conformidades]
+
+
+def test_la_revisión_vencida_solo_se_mira_si_se_dice_contra_qué_día():
+    """Una función que cambia de respuesta con el calendario no se puede
+    probar ni comparar con el espejo de la pantalla."""
+    from nefer.fixmate.rcm import calidad
+
+    a = _analisis_identificado()
+    assert calidad(a).conforme is True                    # sin «hoy», no se mira
+    assert calidad(a, hoy="2026-10-08").conforme is True  # aún vigente
+    vencido = calidad(a, hoy="2028-01-01")
+    assert vencido.conforme is False
+    assert "vencio el 2027-03-15" in vencido.hallazgos[0].detalle
+
+
+def test_dos_modos_con_el_mismo_código_se_denuncian_al_revisar():
+    """Es la ambigüedad que impide enganchar una anomalía de campo.
+
+    `anomalia.enlazar()` se niega a elegir entre dos candidatos —y hace
+    bien—, pero si nadie lo dice al revisar, el análisis se da por bueno y
+    el enganche falla en silencio meses después.
+    """
+    from nefer.fixmate.rcm import calidad
+
+    a = _analisis_identificado()
+    a.agregar_modo(a.fallas[0].id, "Otra cosa",
+                   codigo_catalogo="HID.BAJA_PRESION.BOMBA")
+    q = calidad(a)
+    hallazgo = [h for h in q.no_conformidades if h.clave == "codigo_repetido"][0]
+    assert hallazgo.ids == ("F1.1.1", "F1.1.2")
+    assert "HID.BAJA_PRESION.BOMBA" in hallazgo.detalle
+
+
+def test_la_cobertura_de_codificación_se_mide_y_no_se_castiga():
+    # Un modo sin código no es un defecto del análisis: es la medida de hasta
+    # dónde alcanza el catálogo, y lo que dice si hay que agrandarlo.
+    from nefer.fixmate.rcm import calidad
+
+    a = _analisis_identificado()
+    a.agregar_modo(a.fallas[0].id, "Algo que el catálogo no cubre")
+    q = calidad(a)
+    assert q.conforme is True
+    assert q.codificados == 1 and q.modos == 2
+    observación = [h for h in q.hallazgos if h.clave == "sin_codificar"][0]
+    assert observación.gravedad == "observacion"
+    assert observación.ids == ("F1.1.2",)
+
+
+def test_estar_completo_y_ser_un_registro_válido_son_cosas_distintas():
+    """La diferencia que nadie ve hasta que llega la auditoría."""
+    from nefer.fixmate.rcm import calidad, completitud
+
+    a = _analisis_identificado()
+    a.revision = ""
+    a.aprobado_por = ""
+    # Las siete no están contestadas aquí (falta decidir), pero el punto es
+    # que las dos medidas son independientes: una mira el método, la otra el
+    # documento.
+    assert completitud(a).contestadas >= 3
+    assert calidad(a).conforme is False

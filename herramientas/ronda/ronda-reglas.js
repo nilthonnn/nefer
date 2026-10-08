@@ -11,7 +11,7 @@
  * razonables, y nadie se entera. Por eso se genera y se cruza.
  *
  * LA UNICA DIFERENCIA DELIBERADA, Y ESTA PROBADA. El telefono NO codifica la
- * anomalia contra el catalogo ISO 14224; la oficina si, al recibir el
+ * anomalia contra el catalogo de fallas; la oficina si, al recibir el
  * archivo. El catalogo son 41 entradas con sus pistas y su ponderacion, y
  * meterlo aqui seria una tercera copia que mantener — la app de diagnostico
  * ya lleva la suya. El telefono hereda el codigo SOLO cuando la pauta lo

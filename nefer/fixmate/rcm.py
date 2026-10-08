@@ -50,6 +50,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from . import catalogo as _catalogo
+from . import registro as _registro
 from .activos import Activo, Ubicacion
 from .criticidad import Criticidad, Metodo, SIN_EVALUAR, evaluar
 
@@ -75,6 +76,28 @@ CONSECUENCIAS_GRAVES = frozenset({"seguridad", "ambiental"})
 FUENTES = ("historial", "manual", "catalogo", "operador", "analisis", "inferencia")
 
 ESTADOS_VALIDACION = ("propuesto", "validado", "descartado")
+
+# Las clases de consecuencia de FixMate son seis; las de JA1011, cuatro. No
+# es una discrepancia: la norma agrupa, y aqui se separa «produccion» de
+# «operacional» y «economica» de «no significativa» porque el taller las
+# distingue al decidir. Lo que NO puede faltar es el mapeo declarado: sin
+# el, nadie puede auditar este analisis contra la norma, y una clase propia
+# sin equivalencia es una clase que el auditor no sabe donde poner.
+CONSECUENCIAS_JA1011 = {
+    "seguridad": "seguridad o medio ambiente",
+    "ambiental": "seguridad o medio ambiente",
+    "operacional": "operacional",
+    "produccion": "operacional",
+    "economica": "no operacional",
+    "no-significativa": "no operacional",
+}
+# La cuarta categoria de la norma —oculta— no esta aqui a proposito: es el
+# booleano `evidente` del modo de falla. Ver el encabezado.
+OCULTA_JA1011 = "oculta"
+
+def fecha_valida(valor: str, donde: str) -> str:
+    """La fecha de un registro RCM, en ISO 8601. Ver `registro.py`."""
+    return _registro.fecha(valor, donde, ErrorRCM)
 
 
 class ErrorRCM(ValueError):
@@ -201,8 +224,8 @@ class Consecuencia:
 class ModoFalla:
     """Lo que produce la falla funcional. El nivel donde se decide la tarea.
 
-    `codigo_catalogo` es la llave hacia el catalogo ISO 14224 que FixMate ya
-    tiene, y es lo que cose RCM con el motor de diagnostico, con el historial
+    `codigo_catalogo` es la llave hacia el catalogo de fallas que FixMate ya
+    tiene —con la estructura de ISO 14224 y codigos propios—, y es lo que cose RCM con el motor de diagnostico, con el historial
     y —mas adelante— con las anomalias TPM. Cuando esta puesto, el modo
     hereda sistema, modo observable, mecanismo y causa de ahi en vez de
     repetirlos escritos distinto.
@@ -306,9 +329,25 @@ class Analisis:
     participantes: tuple[str, ...] = ()
     fecha: str = ""
     metodo_criticidad: Metodo | None = None
+    # --- identificacion del documento -------------------------------------
+    # Un analisis sin revision ni aprobacion es un borrador que alguien va a
+    # usar como si fuera definitivo. JA1011 pide que el analisis sea
+    # revisable, y revisable quiere decir saber QUE version se esta mirando,
+    # QUIEN la aprobo y CUANDO toca volver a mirarla —el contexto operacional
+    # cambia, y con el cambian las consecuencias—.
+    #
+    # Van opcionales a proposito: exigirlas rompería los analisis que ya
+    # existen, y un campo obligatorio que la gente rellena con «-» no
+    # registra nada. Lo que hace el sistema es DECIRLO: ver `calidad()`.
+    revision: str = ""
+    aprobado_por: str = ""
+    proxima_revision: str = ""
 
     def __post_init__(self):
         self.contexto = self.contexto or self.activo.contexto
+        self.fecha = fecha_valida(self.fecha, "el analisis")
+        self.proxima_revision = fecha_valida(
+            self.proxima_revision, "la proxima revision del analisis")
 
     # -- altas, con las llaves cosidas para que no queden huerfanos
 
@@ -362,6 +401,8 @@ class Analisis:
             "activo": self.activo.a_dict(), "contexto": self.contexto,
             "facilitador": self.facilitador,
             "participantes": list(self.participantes), "fecha": self.fecha,
+            "revision": self.revision, "aprobado_por": self.aprobado_por,
+            "proxima_revision": self.proxima_revision,
             "metodo_criticidad": (self.metodo_criticidad.a_dict()
                                   if self.metodo_criticidad else None),
             "funciones": [f.a_dict() for f in self.funciones],
@@ -463,6 +504,133 @@ class Completitud:
         return {"completo": self.completo, "contestadas": self.contestadas,
                 "rompe_cadena": self.rompe_cadena,
                 "respuestas": [r.a_dict() for r in self.respuestas]}
+
+
+# ------------------------------------------- la calidad del documento
+
+@dataclass(frozen=True)
+class Hallazgo:
+    """Algo que una auditoria anotaria del analisis como documento."""
+
+    clave: str
+    # «no conformidad» cuando falta algo que hace el analisis no auditable;
+    # «observacion» cuando es una medida o un riesgo, no un incumplimiento.
+    gravedad: str
+    detalle: str
+    ids: tuple[str, ...] = ()
+
+    def a_dict(self) -> dict:
+        return {"clave": self.clave, "gravedad": self.gravedad,
+                "detalle": self.detalle, "ids": list(self.ids)}
+
+
+@dataclass(frozen=True)
+class Calidad:
+    """El estado del analisis COMO REGISTRO, que no es lo mismo que su
+    completitud frente a JA1011.
+
+    Las siete preguntas dicen si el analisis esta terminado. Esto dice si se
+    puede auditar dentro de dos años: quien lo aprobo, que version es, cuando
+    toca revisarlo, y si los codigos de adentro son inequivocos. Un analisis
+    puede tener las siete contestadas y no ser un registro valido.
+    """
+
+    hallazgos: tuple[Hallazgo, ...]
+    modos: int
+    codificados: int
+
+    @property
+    def conforme(self) -> bool:
+        return not any(h.gravedad == "no conformidad" for h in self.hallazgos)
+
+    @property
+    def no_conformidades(self) -> tuple[Hallazgo, ...]:
+        return tuple(h for h in self.hallazgos if h.gravedad == "no conformidad")
+
+    def resumen(self) -> str:
+        if self.conforme:
+            return "El analisis esta identificado y es auditable."
+        cuantas = len(self.no_conformidades)
+        return (f"{cuantas} no conformidad(es) de registro: el analisis esta "
+                "contestado pero no queda claro quien responde por el.")
+
+    def a_dict(self) -> dict:
+        return {"conforme": self.conforme, "modos": self.modos,
+                "codificados": self.codificados,
+                "hallazgos": [h.a_dict() for h in self.hallazgos]}
+
+
+def calidad(analisis: Analisis, hoy: str = "") -> Calidad:
+    """Audita el analisis como documento, no como metodo.
+
+    `hoy` en ISO 8601 activa la comprobacion de vigencia; sin el no se mira,
+    porque una funcion que cambia de respuesta segun el dia no se puede
+    probar ni comparar entre dos lados.
+    """
+    hallazgos: list[Hallazgo] = []
+
+    # -- identificacion. Sin esto el documento no tiene dueño ni version.
+    faltan = [nombre for nombre, valor in (
+        ("numero de revision", analisis.revision),
+        ("quien lo aprobo", analisis.aprobado_por),
+        ("fecha", analisis.fecha),
+    ) if not str(valor).strip()]
+    if faltan:
+        hallazgos.append(Hallazgo(
+            "identificacion", "no conformidad",
+            "el analisis no declara " + ", ".join(faltan) + ". Un analisis "
+            "sin version ni aprobacion es un borrador que alguien va a usar "
+            "como si fuera definitivo."))
+
+    # -- el equipo. RCM no lo hace una persona: la norma pide el contexto
+    # operacional, y ese lo tiene quien opera la maquina, no quien la
+    # mantiene.
+    if not analisis.participantes:
+        hallazgos.append(Hallazgo(
+            "participantes", "no conformidad",
+            "el analisis no declara participantes. Un analisis RCM hecho por "
+            "una sola persona no tiene el contexto operacional de quien opera."))
+
+    # -- vigencia. El contexto operacional cambia, y con el las consecuencias.
+    if not analisis.proxima_revision:
+        hallazgos.append(Hallazgo(
+            "vigencia", "observacion",
+            "no se declara cuando toca revisarlo. El contexto operacional "
+            "cambia, y una consecuencia evaluada en otro contexto ya no vale."))
+    elif hoy and analisis.proxima_revision < hoy:
+        hallazgos.append(Hallazgo(
+            "vigencia", "no conformidad",
+            f"la revision vencio el {analisis.proxima_revision}."))
+
+    # -- ambiguedad de codigo. Es la que impide enganchar una anomalia de
+    # campo: `anomalia.enlazar()` se niega a elegir entre dos modos con el
+    # mismo codigo, y hace bien. Pero si nadie lo dice al revisar, el
+    # analisis se da por bueno y el enganche falla en silencio meses despues.
+    porcodigo: dict[str, list[str]] = {}
+    for m in analisis.modos:
+        if m.codigo_catalogo:
+            porcodigo.setdefault(m.codigo_catalogo, []).append(m.id)
+    repetidos = {c: ids for c, ids in porcodigo.items() if len(ids) > 1}
+    for codigo in sorted(repetidos):
+        hallazgos.append(Hallazgo(
+            "codigo_repetido", "no conformidad",
+            f"los modos {', '.join(repetidos[codigo])} declaran el mismo "
+            f"codigo «{codigo}». Una anomalia de campo con ese codigo no se "
+            "puede enganchar: la ambiguedad se resuelve aqui, no al recibirla.",
+            tuple(repetidos[codigo])))
+
+    # -- cobertura. No es un defecto: es la medida de cuanto alcanza el
+    # catalogo, y lo que dice si hay que agrandarlo.
+    codificados = sum(1 for m in analisis.modos if m.codigo_catalogo)
+    sin_codigo = [m.id for m in analisis.modos if not m.codigo_catalogo]
+    if sin_codigo:
+        hallazgos.append(Hallazgo(
+            "sin_codificar", "observacion",
+            f"{len(sin_codigo)} de {len(analisis.modos)} modos no tienen "
+            "codigo de catalogo: no se agregan con los de la flota ni se "
+            "enganchan con la ronda.", tuple(sin_codigo)))
+
+    return Calidad(tuple(hallazgos), len(analisis.modos), codificados)
 
 
 def completitud(analisis: Analisis, decisiones: dict | None = None) -> Completitud:

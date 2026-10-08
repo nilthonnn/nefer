@@ -363,3 +363,47 @@ def test_el_nombre_de_una_pieza_no_es_una_causa():
                   "SERVICIO DE VULCANIZADO DE LLANTAS 445/65D22.5",
                   "KIT DE ORINES DE MANGUERAS HIDRAULICAS"):
         assert POR_DEFECTO.clasificar(linea) is None, linea
+
+
+def test_no_se_vuelve_a_declarar_que_los_codigos_son_de_la_norma():
+    """NC-01 de la auditoría: estaba dicho en nueve sitios.
+
+    De ISO 14224 se toma la **estructura** —modo / mecanismo / causa, sin
+    «Otro»—; los códigos son de FixMate. La diferencia importa el día que un
+    cliente pida «datos en formato ISO 14224»: con el texto anterior, alguien
+    habría contestado que sí.
+
+    Esta prueba vigila el rótulo, que es lo que falló. El comportamiento
+    siempre fue honesto.
+    """
+    import re
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parents[1]
+    prohibido = re.compile(r"c[oó]digo\s+ISO\s*14224|cat[aá]logo\s+ISO\s*14224",
+                           re.IGNORECASE)
+    miradas = [p for carpeta in ("nefer/fixmate", "herramientas", "docs")
+               for p in (raiz / carpeta).rglob("*")
+               if p.suffix in (".py", ".js", ".md", ".html") and p.is_file()]
+    assert miradas, "no se encontró nada que mirar"
+
+    culpables = []
+    for ruta in miradas:
+        # La auditoría cita la frase para explicar qué se corrigió.
+        if ruta.name == "AUDITORIA-RCM-TPM.md":
+            continue
+        for n, linea in enumerate(ruta.read_text(encoding="utf-8").splitlines(), 1):
+            if prohibido.search(linea):
+                culpables.append(f"{ruta.relative_to(raiz)}:{n}")
+    assert not culpables, (
+        "vuelve a atribuirse a la norma un catálogo que es propio: "
+        + ", ".join(culpables[:6]))
+
+
+def test_una_entrada_puede_mapearse_a_la_norma_y_de_fabrica_no_lo_esta():
+    # Vacío es la verdad: nadie ha mapeado estas 41 entradas contra el texto
+    # de ISO 14224, y rellenarlo a ojo sería peor que dejarlo vacío.
+    from nefer.fixmate.catalogo import DE_FABRICA
+
+    assert all(e.codigo_iso == "" for e in DE_FABRICA)
+    assert "codigo_iso" in DE_FABRICA[0].a_dict()

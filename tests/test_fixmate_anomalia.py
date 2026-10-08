@@ -234,3 +234,22 @@ def test_la_reincidencia_sale_por_codigo_cuando_lo_hay():
     dos = Anomalia("a2", "EX-220", "y", codigo_catalogo=CODIGO_RADIADOR)
     otro = Anomalia("a3", "EX-220", "z", codigo_catalogo="ADM.RESTRICCION.FILTRO")
     assert salud([uno, dos, otro], hoy=HOY).reincidentes == ((CODIGO_RADIADOR, 2),)
+
+
+def test_una_fecha_ilegible_ya_no_borra_la_anomalía_de_la_cuenta_de_atrasos():
+    """Antes se aceptaba y `dias_abierta()` devolvía `None`.
+
+    Una anomalía con fecha «15/03/2026» entraba al sistema, no daba error en
+    ninguna parte, y desaparecía de la cuenta de días abiertos: justo la
+    anomalía mal registrada era la que dejaba de pedir atención.
+    """
+    with pytest.raises(ErrorAnomalia, match="ISO 8601"):
+        Anomalia(id="a1", activo_codigo="EX-220", descripcion="algo",
+                 fecha="15/03/2026")
+    with pytest.raises(ErrorAnomalia, match="ISO 8601"):
+        Anomalia(id="a1", activo_codigo="EX-220", descripcion="algo",
+                 fecha="2026-03-16", fecha_cierre="16/03/2026")
+
+    buena = Anomalia(id="a1", activo_codigo="EX-220", descripcion="algo",
+                     fecha="2026-03-16")
+    assert buena.dias_abierta(hoy=dt.date(2026, 3, 20)) == 4

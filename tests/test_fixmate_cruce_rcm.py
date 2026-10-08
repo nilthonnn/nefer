@@ -96,6 +96,7 @@ if (entrada.job === "arbol") {
         modos: a.modos.map(function (m) { return m.id; })
       },
       completitud: completitud(a, decisiones),
+      calidad: calidadRCM(a, entrada.hoy || ""),
       resumen: resumenRCM(a, decisiones),
       dictamenes: Object.keys(decisiones).map(function (mid) {
         return [mid, plano(decisiones[mid])];
@@ -107,11 +108,11 @@ process.stdout.write(JSON.stringify(salida));
 """
 
 
-def _node(job: str, casos: list, tmp_path: Path) -> list:
+def _node(job: str, casos: list, tmp_path: Path, hoy: str = "") -> list:
     guion = tmp_path / "cruce-rcm.js"
     guion.write_text(CONDUCTOR % {"reglas": reglas_js()}, encoding="utf-8")
     entrada = tmp_path / "casos.json"
-    entrada.write_text(json.dumps({"job": job, "casos": casos},
+    entrada.write_text(json.dumps({"job": job, "casos": casos, "hoy": hoy},
                                   ensure_ascii=False), encoding="utf-8")
     salida = subprocess.run(["node", str(guion), str(entrada)],
                             capture_output=True, text=True, check=True)
@@ -265,7 +266,7 @@ def _casos_analisis() -> list[dict]:
     return casos
 
 
-def _python_analisis(doc: dict) -> dict:
+def _python_analisis(doc: dict, hoy: str = "") -> dict:
     a = cargador.analisis_de_dict(doc)
     d = cargador.decisiones_de_dict(doc, a)
     return {
@@ -273,6 +274,7 @@ def _python_analisis(doc: dict) -> dict:
                 "fallas": [f.id for f in a.fallas],
                 "modos": [m.id for m in a.modos]},
         "completitud": rcm.completitud(a, d.por_modo).a_dict(),
+        "calidad": rcm.calidad(a, hoy=hoy).a_dict(),
         "resumen": decision.resumen(a, d),
         "dictamenes": [[mid, dic.a_dict()] for mid, dic in d.por_modo.items()],
     }
@@ -287,6 +289,7 @@ def test_los_dos_leen_el_mismo_analisis_igual(i, tmp_path):
     # distinto, las decisiones no casarían con sus modos al volver.
     assert js["ids"] == py["ids"]
     assert js["completitud"] == py["completitud"]
+    assert js["calidad"] == py["calidad"]
     assert js["resumen"] == py["resumen"]
     assert js["dictamenes"] == py["dictamenes"]
 
@@ -466,3 +469,97 @@ def test_la_pantalla_no_engancha_al_modo_mas_parecido(tmp_path):
     doc["funciones"][0]["fallas"][0]["modos"][1]["codigo_catalogo"] = ""
     js = _node("enlace", [{"analisis": doc, "anomalia": casi}], tmp_path)
     assert js == [""], "se enganchó con un modo que ya no declara ese código"
+
+
+# ═══════════ el analisis como registro auditable ═══════════
+
+def _sin_identificacion(doc: dict) -> dict:
+    for campo in ("revision", "aprobado_por", "proxima_revision"):
+        doc.pop(campo, None)
+    return doc
+
+
+def _casos_calidad() -> list[dict]:
+    """Las cinco maneras de que un análisis esté contestado y no sea un
+    registro válido, más el que sí lo es."""
+    casos = [_ejemplo(), _sin_identificacion(_ejemplo())]
+
+    sin_gente = _ejemplo()
+    sin_gente["participantes"] = []
+    casos.append(sin_gente)
+
+    vencido = _ejemplo()
+    vencido["proxima_revision"] = "2020-01-01"
+    casos.append(vencido)
+
+    repetido = _ejemplo()
+    # Dos modos con el mismo código: `anomalia.enlazar` no elige, y hace
+    # bien; lo que faltaba era decirlo al revisar.
+    repetido["funciones"][0]["fallas"][0]["modos"][1]["codigo_catalogo"] = \
+        "TER.SOBRECALENTAMIENTO.RADIADOR"
+    casos.append(repetido)
+
+    # Todo codificado: desaparece la observación de cobertura. Los códigos
+    # son del catálogo de verdad — inventar uno lo rechaza el cargador, y
+    # hace bien.
+    todo_codificado = _ejemplo()
+    todo_codificado["funciones"][0]["fallas"][0]["modos"][2]["codigo_catalogo"] = \
+        "TER.FUGA.REFRIGERANTE"
+    todo_codificado["funciones"][1]["fallas"][0]["modos"][0]["codigo_catalogo"] = \
+        "HID.FUGA.MANGUERA"
+    casos.append(todo_codificado)
+    return casos
+
+
+@pytest.mark.parametrize("i", range(len(_casos_calidad())))
+def test_los_dos_auditan_el_registro_igual(i, tmp_path):
+    doc = _casos_calidad()[i]
+    hoy = "2026-10-08"
+    js = _node("analisis", [doc], tmp_path, hoy=hoy)[0]["calidad"]
+    py = _python_analisis(doc, hoy=hoy)["calidad"]
+    assert js == py
+
+
+def test_el_ejemplo_es_un_registro_valido(tmp_path):
+    """El ejemplo es lo que todo el mundo copia.
+
+    Si el que se reparte como modelo no declara quién lo aprobó, lo que se
+    enseña es a no declararlo.
+    """
+    js = _node("analisis", [_ejemplo()], tmp_path, hoy="2026-10-08")[0]["calidad"]
+    assert js["conforme"] is True, js["hallazgos"]
+    claves = [h["clave"] for h in js["hallazgos"]]
+    # Queda la observación de cobertura, que es una medida y no un defecto.
+    assert claves == ["sin_codificar"]
+
+
+def test_un_analisis_sin_aprobar_no_es_un_registro(tmp_path):
+    doc = _sin_identificacion(_ejemplo())
+    js = _node("analisis", [doc], tmp_path)[0]
+    assert js["calidad"]["conforme"] is False
+    # Y sigue estando completo frente a JA1011: son dos cosas distintas.
+    assert js["completitud"]["completo"] is True
+    nc = [h for h in js["calidad"]["hallazgos"] if h["gravedad"] == "no conformidad"]
+    assert [h["clave"] for h in nc] == ["identificacion"]
+
+
+def test_las_seis_clases_de_consecuencia_mapean_a_las_cuatro_de_la_norma():
+    """JA1011 agrupa las consecuencias en cuatro; FixMate usa seis.
+
+    No es una discrepancia —la norma agrupa y aquí se separa lo que el taller
+    distingue al decidir—, pero sin el mapeo declarado nadie puede auditar
+    este análisis contra la norma.
+    """
+    assert set(rcm.CONSECUENCIAS_JA1011) == set(rcm.CLASES_CONSECUENCIA), (
+        "hay una clase de consecuencia sin equivalencia declarada")
+    assert set(rcm.CONSECUENCIAS_JA1011.values()) == {
+        "seguridad o medio ambiente", "operacional", "no operacional"}
+    # La cuarta de la norma es «oculta», y aquí es el booleano del modo de
+    # falla: es la primera bifurcación, no una categoría más.
+    assert rcm.OCULTA_JA1011 == "oculta"
+    assert "oculta" not in rcm.CLASES_CONSECUENCIA
+
+    html = APP.read_text(encoding="utf-8")
+    for clase, equivalente in rcm.CONSECUENCIAS_JA1011.items():
+        assert f'"{clase}": "{equivalente}"' in html, (
+            f"la pantalla no lleva el mapeo de «{clase}»")
