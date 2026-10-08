@@ -62,11 +62,21 @@ def analisis_de_dict(datos: dict, donde: str = "el analisis") -> Analisis:
         raise ErrorCargador(f"{donde}: activo invalido ({exc}).") from exc
 
     metodo = _metodo(datos.get("metodo_criticidad"), donde)
-    a = Analisis(activo, contexto=str(datos.get("contexto") or ""),
-                 facilitador=str(datos.get("facilitador") or ""),
-                 participantes=tuple(datos.get("participantes") or ()),
-                 fecha=str(datos.get("fecha") or ""),
-                 metodo_criticidad=metodo)
+    try:
+        a = Analisis(activo, contexto=str(datos.get("contexto") or ""),
+                     facilitador=str(datos.get("facilitador") or ""),
+                     participantes=tuple(datos.get("participantes") or ()),
+                     fecha=str(datos.get("fecha") or ""),
+                     metodo_criticidad=metodo,
+                     # La identificacion del documento: que version es, quien
+                     # la aprobo y cuando toca volver a mirarla. Opcionales
+                     # para no romper lo que ya existe; lo que falte lo dice
+                     # `rcm.calidad()` en vez de callarlo.
+                     revision=str(datos.get("revision") or ""),
+                     aprobado_por=str(datos.get("aprobado_por") or ""),
+                     proxima_revision=str(datos.get("proxima_revision") or ""))
+    except ErrorRCM as exc:
+        raise ErrorCargador(f"{donde}: {exc}") from exc
 
     for i, fd in enumerate(_lista(datos, "funciones", donde), 1):
         donde_f = f"{donde}, funcion {i}"

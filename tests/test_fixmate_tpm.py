@@ -199,3 +199,11 @@ def test_lo_que_no_se_pudo_ver_no_cuenta_como_ejecutado_en_su_clase():
     c = _pauta()
     r = cumplimiento([_ronda(c, ["sin_acceso", "ok", "ok", "ok"])], c)
     assert r.por_clase["limpiar"] == 0
+
+
+def test_una_ronda_con_fecha_ambigua_no_entra():
+    # El teléfono siempre manda ISO 8601; una ejecución escrita a mano, no.
+    # Y una ronda mal fechada no se puede cruzar con el historial después.
+    with pytest.raises(ErrorTPM, match="ISO 8601"):
+        Ejecucion(id="r1", checklist_id="c1", activo_codigo="EX-220",
+                  operador="J. Quispe", fecha="16/03/2026")

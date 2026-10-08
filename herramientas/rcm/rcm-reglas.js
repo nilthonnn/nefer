@@ -25,7 +25,7 @@
  *   - No arma la matriz FMECA. Sus treinta columnas las define `fmeca.py` y
  *     salen del comando `fixmate rcm matriz`. Lo que hay en pantalla es un
  *     resumen para mirar, no el archivo que se entrega.
- *   - No clasifica contra el catalogo ISO 14224 ni toca el historial.
+ *   - No clasifica contra el catalogo de fallas ni toca el historial.
  *
  * Las tres son decisiones de donde vive cada cosa, no funciones a medio
  * hacer, y cada una esta dicha tambien en la pantalla.
@@ -42,6 +42,7 @@ var SIN_DATOS_ECONOMICOS = "";
 var AVISO_SIN_EVALUAR = "";
 var AVISO_89 = "";
 var ADVERTENCIA_RPN = "";
+var CONSECUENCIAS_JA1011 = {};
 /* rcm:datos:fin */
 
 /* Los campos del arbol, en el orden en que los nombra `Respuestas`. El orden
@@ -252,6 +253,11 @@ function normalizarAnalisis(datos) {
     participantes: datos.participantes || [],
     fecha: datos.fecha || "",
     metodo_criticidad: datos.metodo_criticidad || "",
+    // La identificacion del documento: que version es, quien la aprobo y
+    // cuando toca volver a mirarla.
+    revision: datos.revision || "",
+    aprobado_por: datos.aprobado_por || "",
+    proxima_revision: datos.proxima_revision || "",
     funciones: [], fallas: [], modos: []
   };
   if (!a.contexto) a.contexto = a.activo.contexto || "";
@@ -399,7 +405,7 @@ function completitud(a, decisiones) {
  * frecuencia por modo y la decision de estrategia que sale de ahi.
  *
  * Lo que aqui NO se hace, igual que en el telefono: deducir el codigo de un
- * texto libre. Eso es el catalogo ISO 14224 —41 entradas con sus pistas— y
+ * texto libre. Eso es el catalogo de fallas —41 entradas con sus pistas— y
  * lo hace la oficina con `fixmate tpm anomalias`. Una anomalia sin codigo se
  * queda sin enganchar, y la pantalla dice por que.
  */
@@ -429,6 +435,86 @@ function enlazarAnomalia(a, analisis) {
                    "resuelve en el analisis, no aqui a la suerte" };
 }
 
+/* ------------------------------- el analisis como registro auditable */
+
+/** Audita el analisis como documento, no como metodo. Mismo contrato que
+ *  `rcm.calidad()`.
+ *
+ * Las siete preguntas dicen si el analisis esta terminado. Esto dice si se
+ * puede auditar dentro de dos años: quien lo aprobo, que version es, cuando
+ * toca revisarlo, y si los codigos de adentro son inequivocos. Un analisis
+ * puede tener las siete contestadas y no ser un registro valido.
+ *
+ * `hoy` en ISO 8601 activa la comprobacion de vigencia; sin el no se mira,
+ * porque una funcion que cambia de respuesta segun el dia no se puede
+ * probar ni comparar con el otro lado.
+ */
+function calidadRCM(a, hoy) {
+  hoy = hoy || "";
+  var hallazgos = [];
+
+  var faltan = [];
+  if (!String(a.revision || "").trim()) faltan.push("numero de revision");
+  if (!String(a.aprobado_por || "").trim()) faltan.push("quien lo aprobo");
+  if (!String(a.fecha || "").trim()) faltan.push("fecha");
+  if (faltan.length) {
+    hallazgos.push({ clave: "identificacion", gravedad: "no conformidad",
+      detalle: "el analisis no declara " + faltan.join(", ") + ". Un analisis " +
+        "sin version ni aprobacion es un borrador que alguien va a usar " +
+        "como si fuera definitivo.", ids: [] });
+  }
+
+  if (!(a.participantes || []).length) {
+    hallazgos.push({ clave: "participantes", gravedad: "no conformidad",
+      detalle: "el analisis no declara participantes. Un analisis RCM hecho por " +
+        "una sola persona no tiene el contexto operacional de quien opera.",
+      ids: [] });
+  }
+
+  if (!a.proxima_revision) {
+    hallazgos.push({ clave: "vigencia", gravedad: "observacion",
+      detalle: "no se declara cuando toca revisarlo. El contexto operacional " +
+        "cambia, y una consecuencia evaluada en otro contexto ya no vale.",
+      ids: [] });
+  } else if (hoy && a.proxima_revision < hoy) {
+    hallazgos.push({ clave: "vigencia", gravedad: "no conformidad",
+      detalle: "la revision vencio el " + a.proxima_revision + ".", ids: [] });
+  }
+
+  // La ambiguedad que impide enganchar una anomalia de campo. Si nadie la
+  // dice al revisar, el analisis se da por bueno y el enganche falla en
+  // silencio meses despues.
+  var porcodigo = {};
+  a.modos.forEach(function (m) {
+    if (!m.codigo_catalogo) return;
+    if (!porcodigo[m.codigo_catalogo]) porcodigo[m.codigo_catalogo] = [];
+    porcodigo[m.codigo_catalogo].push(m.id);
+  });
+  Object.keys(porcodigo).filter(function (c) { return porcodigo[c].length > 1; })
+    .sort().forEach(function (codigo) {
+      hallazgos.push({ clave: "codigo_repetido", gravedad: "no conformidad",
+        detalle: "los modos " + porcodigo[codigo].join(", ") + " declaran el mismo " +
+          "codigo «" + codigo + "». Una anomalia de campo con ese codigo no se " +
+          "puede enganchar: la ambiguedad se resuelve aqui, no al recibirla.",
+        ids: porcodigo[codigo] });
+    });
+
+  var codificados = a.modos.filter(function (m) { return !!m.codigo_catalogo; }).length;
+  var sinCodigo = a.modos.filter(function (m) { return !m.codigo_catalogo; })
+                         .map(function (m) { return m.id; });
+  if (sinCodigo.length) {
+    hallazgos.push({ clave: "sin_codificar", gravedad: "observacion",
+      detalle: sinCodigo.length + " de " + a.modos.length + " modos no tienen " +
+        "codigo de catalogo: no se agregan con los de la flota ni se " +
+        "enganchan con la ronda.", ids: sinCodigo });
+  }
+
+  var conforme = !hallazgos.some(function (h) {
+    return h.gravedad === "no conformidad"; });
+  return { hallazgos: hallazgos, modos: a.modos.length,
+           codificados: codificados, conforme: conforme };
+}
+
 /** Lo que un jefe de mantenimiento mira primero. Mismo contrato que
  *  `decision.resumen()`. */
 function resumenRCM(a, decisiones) {
@@ -455,7 +541,8 @@ function resumenRCM(a, decisiones) {
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
     decidir: decidir, completitud: completitud, resumenRCM: resumenRCM,
-    enlazarAnomalia: enlazarAnomalia,
+    enlazarAnomalia: enlazarAnomalia, calidadRCM: calidadRCM,
+    CONSECUENCIAS_JA1011: CONSECUENCIAS_JA1011,
     normalizarAnalisis: normalizarAnalisis, esGrave: esGrave,
     fallasDe: fallasDe, modosDe: modosDe, efectoDescrito: efectoDescrito,
     ESTRATEGIAS: ESTRATEGIAS, POR_DEFECTO: POR_DEFECTO, PROACTIVAS: PROACTIVAS,

@@ -50,7 +50,7 @@ alguien haga bien:
 |---|---|
 | No evalúa criticidad | El método es configurable y cada planta tiene el suyo, con sus matrices. La pantalla muestra los valores tal como los declara el archivo y el nombre del método; la evaluación la hace el lado de la oficina (`nefer/fixmate/criticidad.py`) |
 | No arma la matriz FMECA | Son treinta columnas definidas en un solo sitio. Salen de `fixmate rcm matriz`. Lo que hay en pantalla es un resumen para mirar, no el archivo que se entrega |
-| No codifica contra el catálogo ISO 14224 ni mira el historial | Eso lo hace la oficina al recibir el archivo, que es donde está el catálogo y donde está el historial |
+| No codifica contra el catálogo de fallas ni mira el historial | Eso lo hace la oficina al recibir el archivo, que es donde está el catálogo y donde está el historial |
 
 Si el método declarado en el archivo es un RPN, la pantalla lo advierte: el
 RPN multiplica escalas ordinales, que es estadísticamente indefendible, y
@@ -123,7 +123,7 @@ consecuencias, la criticidad declarada y la **evidencia**.
 Lo que no está declarado se ve como *sin declarar*, en gris. No se rellena con
 nada — salvo una distinción que importa: si el modo declara un **código de
 catálogo**, causa y mecanismo en blanco no son un hueco, porque la oficina los
-hereda del catálogo ISO 14224 al cargar el archivo. La pantalla lo dice así en
+hereda del catálogo de fallas al cargar el archivo. La pantalla lo dice así en
 vez de mandar a alguien a rellenar algo que ya está. Un modo sin evidencia no puede marcarse validado: queda como
 **propuesto**, que es un estado legítimo y visible.
 
@@ -236,7 +236,7 @@ catálogo **exacto**, mismo activo, y un solo candidato. Si dos modos del
 análisis declaran el mismo código, no se elige: la ambigüedad se resuelve en
 el análisis. Y hay una cosa que esta pantalla **no** hace, igual que el
 teléfono: deducir el código a partir de un texto libre. Eso es el catálogo
-ISO 14224 —41 entradas con sus pistas— y lo hace `fixmate tpm anomalias`.
+de fallas —41 entradas con sus pistas— y lo hace `fixmate tpm anomalias`.
 
 Tres avisos que aparecen solos: si la ronda es **de otra máquina**, no se
 engancha nada; si llegó **incompleta**, se dice, porque lo que no se vio no

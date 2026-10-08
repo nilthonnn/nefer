@@ -230,7 +230,7 @@ nefer fixmate tpm ejecutar ronda-recibida.json \
 
 Ahí es donde pasan las dos cosas que el teléfono **no** hace:
 
-1. **Codificar el texto libre** contra el catálogo ISO 14224.
+1. **Codificar el texto libre** contra el catálogo de fallas.
 2. **Enganchar** la anomalía con el modo de falla del análisis RCM.
 
 Las dos necesitan datos que viven en la oficina. El teléfono hereda el código

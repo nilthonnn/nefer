@@ -75,6 +75,14 @@ causa           la condición raíz      «sello vencido»
 Confundirlas es el error de datos más común del rubro. Sin separarlas no hay
 MTBF por modo.
 
+**De la norma se toma la estructura, no los códigos.** `ADM.RESTRICCION.FILTRO`
+es de FixMate. ISO 14224 publica sus propias listas —del estilo de `FTS`,
+`ELP`, `VIB`, `OHE`—, que son material con licencia y están hechas para
+equipo de proceso de petróleo y gas, no para una excavadora en un socavón.
+Cada entrada admite un `codigo_iso` opcional para que una planta que tenga la
+norma mapee las suyas; vacío de fábrica, porque un mapeo inventado viaja como
+si fuera bueno.
+
 **No existe la categoría «Otro».** Es recomendación explícita de la norma, y
 la razón es empírica: «Otro» termina siendo el código más usado de cualquier
 base mal llevada. Aquí lo que no casa queda **sin codificar y se cuenta**, y

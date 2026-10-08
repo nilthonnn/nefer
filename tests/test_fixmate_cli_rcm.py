@@ -249,3 +249,54 @@ def test_tpm_ejecutar_avisa_cuando_la_ronda_quedo_incompleta(tmp_path, capsys):
     assert "Ronda INCOMPLETA" in salida
     assert "no cuenta como visto" in salida
     assert "Sin anomalias" in salida     # sin_acceso no genera anomalía
+
+
+# ═══════════ el análisis como registro ═══════════
+
+def test_analizar_informa_el_registro_además_de_las_siete(tmp_path, capsys):
+    """Dos medidas distintas, y las dos se dicen.
+
+    Las siete preguntas dicen si el análisis está terminado. El registro
+    dice si dentro de dos años se puede saber quién responde por él.
+    """
+    codigo, salida = _correr(["rcm", "analizar",
+                              _escribir(tmp_path, "a.json", ANALISIS)], capsys)
+    assert "Registro:" in salida
+    assert "no declara numero de revision, quien lo aprobo, fecha" in salida
+    # El código de salida sigue hablando sólo de JA1011: no se le cambia el
+    # contrato a quien ya lo use en un guion.
+    assert codigo in (0, 2)
+
+
+def test_analizar_no_anota_nada_cuando_el_registro_está_identificado(tmp_path, capsys):
+    bueno = json.loads(json.dumps(ANALISIS))
+    bueno.update({"fecha": "2026-03-15", "revision": "2",
+                  "aprobado_por": "jefa de confiabilidad",
+                  "participantes": ["operador", "mantenedor"],
+                  "proxima_revision": "2027-03-15"})
+    _, salida = _correr(["rcm", "analizar",
+                         _escribir(tmp_path, "b.json", bueno)], capsys)
+    assert "El analisis esta identificado y es auditable" in salida
+    assert "[no conformidad]" not in salida
+
+
+def test_analizar_avisa_si_la_revisión_está_vencida(tmp_path, capsys):
+    viejo = json.loads(json.dumps(ANALISIS))
+    viejo.update({"fecha": "2020-01-10", "revision": "1",
+                  "aprobado_por": "quien fuera",
+                  "participantes": ["operador"],
+                  "proxima_revision": "2021-01-10"})
+    _, salida = _correr(["rcm", "analizar",
+                         _escribir(tmp_path, "c.json", viejo),
+                         "--hoy", "2026-10-08"], capsys)
+    assert "la revision vencio el 2021-01-10" in salida
+
+
+def test_una_fecha_ambigua_se_rechaza_nombrando_el_archivo(tmp_path):
+    malo = json.loads(json.dumps(ANALISIS))
+    malo["fecha"] = "15/03/2026"
+    ruta = _escribir(tmp_path, "fecha-mala.json", malo)
+    with pytest.raises(cargador.ErrorCargador) as exc:
+        cargador.analisis(ruta)
+    assert "ISO 8601" in str(exc.value)
+    assert "fecha-mala.json" in str(exc.value)

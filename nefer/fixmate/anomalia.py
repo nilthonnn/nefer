@@ -12,7 +12,7 @@ El encargo pide que la conexion sea automatica «cuando exista suficiente
 informacion». La frase importante es la ultima, y aqui define el diseño.
 
 El enganche usa lo que FixMate ya sabe hacer: el texto de la anomalia pasa
-por `catalogo.clasificar()`, que devuelve un codigo ISO 14224 o nada. Si
+por `catalogo.clasificar()`, que devuelve un codigo del catalogo o nada. Si
 devuelve codigo y algun modo de falla del analisis RCM declara ese mismo
 codigo, se enlazan. Si el catalogo no alcanza, o si ningun modo declara ese
 codigo, la anomalia queda SIN ENLAZAR y eso se ve.
@@ -39,6 +39,8 @@ acerca a hacerlo; la foto es un adjunto para que un humano la mire.
 from __future__ import annotations
 
 import datetime as _dt
+
+from . import registro as _registro
 from dataclasses import dataclass, field
 
 from . import catalogo as _catalogo
@@ -95,7 +97,12 @@ class Anomalia:
                 f"use {', '.join(SEVERIDADES)}.")
         if self.estado not in ESTADOS:
             raise ErrorAnomalia(f"estado «{self.estado}» desconocido.")
-        self.fecha = self.fecha or _dt.date.today().isoformat()
+        self.fecha = _registro.fecha(
+            self.fecha, f"la anomalia {self.id}", ErrorAnomalia
+        ) or _dt.date.today().isoformat()
+        self.fecha_cierre = _registro.fecha(
+            self.fecha_cierre, f"el cierre de la anomalia {self.id}",
+            ErrorAnomalia)
 
     @property
     def abierta(self) -> bool:

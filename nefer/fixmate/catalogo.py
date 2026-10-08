@@ -15,6 +15,23 @@ confundirla es el error de datos mas comun del rubro:
 - **mecanismo**: el proceso fisico que lo produjo  («desgaste»)
 - **causa**: la condicion raiz que lo disparo      («sello vencido»)
 
+QUE SE TOMA DE LA NORMA Y QUE NO. Conviene decirlo exacto, porque confundir
+las dos cosas es afirmar una conformidad que no se tiene:
+
+- **De la norma**: la separacion en esos tres niveles, la recomendacion de
+  no tener una categoria «Otro», y la de conservar el texto libre al lado
+  del codigo.
+- **NO de la norma**: los codigos. `ADM.RESTRICCION.FILTRO` es de FixMate.
+  ISO 14224 publica sus propias listas de codigos de modo y de mecanismo
+  —del estilo de `FTS`, `ELP`, `VIB`, `OHE`— y este catalogo no las usa:
+  son material con licencia y, sobre todo, estan hechas para equipo de
+  proceso de petroleo y gas, no para una excavadora en un socavon.
+
+Cada entrada puede llevar ademas `codigo_iso`, vacio de fabrica, para que
+una planta que tenga la norma mapee sus entradas a los codigos de ella y
+pueda entregar datos en ese formato. Lo que no se hace es rellenarlo a ojo:
+un mapeo inventado es peor que ninguno, porque viaja como si fuera bueno.
+
 Tres decisiones que este catalogo toma, y por que:
 
 **No existe «Otro».** Es la recomendacion explicita de la norma y la razon
@@ -117,11 +134,16 @@ class Entrada:
     mecanismo: str      # el proceso fisico
     causa: str          # la condicion raiz
     pistas: tuple[str, ...]
+    # El codigo de la norma, si la planta lo tiene y lo mapeo. Vacio de
+    # fabrica: los codigos de ISO 14224 son material con licencia y estan
+    # hechos para equipo de proceso, no para maquinaria pesada. Inventarlos
+    # seria entregar datos que dicen ser de la norma y no lo son.
+    codigo_iso: str = ""
 
     def a_dict(self) -> dict:
         return {"codigo": self.codigo, "sistema": self.sistema,
                 "modo": self.modo, "mecanismo": self.mecanismo,
-                "causa": self.causa}
+                "causa": self.causa, "codigo_iso": self.codigo_iso}
 
 
 def _casa(pista: str, palabras: set) -> bool:
@@ -463,6 +485,10 @@ def cargar(ruta: str | Path, base: Catalogo | None = None) -> Catalogo:
         [{"codigo": "HID.FUGA.CILINDRO_GIRO", "sistema": "hidraulico",
           "modo": "Fuga externa", "mecanismo": "Desgaste",
           "causa": "Sello del cilindro de giro", "pistas": ["giro", "sello"]}]
+
+    `codigo_iso` es opcional: el codigo de ISO 14224 al que la planta mapea
+    esta entrada, si lo tiene. Vacio significa «sin mapear», que es la
+    verdad de fabrica y se cuenta como tal.
     """
     ruta = Path(ruta)
     try:
@@ -491,7 +517,8 @@ def cargar(ruta: str | Path, base: Catalogo | None = None) -> Catalogo:
         catalogo.agregar(Entrada(
             codigo=str(cruda["codigo"]).strip(), sistema=str(cruda["sistema"]).strip(),
             modo=str(cruda["modo"]).strip(), mecanismo=str(cruda["mecanismo"]).strip(),
-            causa=str(cruda["causa"]).strip(), pistas=tuple(pistas)))
+            causa=str(cruda["causa"]).strip(), pistas=tuple(pistas),
+            codigo_iso=str(cruda.get("codigo_iso") or "").strip()))
     return catalogo
 
 
