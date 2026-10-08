@@ -1,0 +1,20 @@
+// Los dos repositorios de siempre: Google publica el plugin de Android y
+// androidx; Maven Central, lo demas. No hay mas dependencias que esas.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "fixmate-ronda"
+include ":app"

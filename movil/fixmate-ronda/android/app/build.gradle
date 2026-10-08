@@ -1,0 +1,105 @@
+plugins {
+    id 'com.android.application'
+}
+
+// La pantalla web es la fuente y el APK solo la transporta. Se copia a los
+// assets antes de compilar para que un APK no pueda salir con una version
+// vieja dentro: el dia que eso pase, nadie lo va a notar hasta el socavon.
+def pantalla = rootProject.file("../../../docs/fixmate/ronda")
+
+// La version la pone quien compila: en CI, el numero de ejecucion, para que
+// dos APK distintos nunca digan ser el mismo.
+def codigo = (project.findProperty('codigoVersion') ?: '1') as Integer
+def nombre = project.findProperty('nombreVersion') ?: '1.0'
+
+// La llave llega por propiedades, nunca versionada. Sin ella se compila igual
+// —Gradle firma con la de depuracion— pero entonces una version nueva no se
+// puede instalar encima de la anterior sin desinstalarla antes.
+def almacen = project.findProperty('almacenLlaves')
+
+android {
+    namespace 'pe.fixmate.ronda'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'pe.fixmate.ronda'
+        minSdk 24          // Android 7, de 2016: cubre lo que hay en uso en mina
+        targetSdk 34
+        versionCode codigo
+        versionName nombre
+    }
+
+    if (almacen) {
+        signingConfigs {
+            propia {
+                storeFile file(almacen)
+                storePassword project.findProperty('claveAlmacen')
+                keyAlias project.findProperty('aliasLlave')
+                keyPassword project.findProperty('claveLlave')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (almacen) {
+                signingConfig signingConfigs.propia
+            }
+        }
+    }
+
+    // Desde el plugin 8 hay que pedirlo: sin esto no se genera BuildConfig, y
+    // la app no sabria decir que version es.
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // El nombre del archivo dice que es y que version, para no acabar con
+    // cinco «app-release.apk» en la carpeta de descargas.
+    applicationVariants.configureEach { variante ->
+        variante.outputs.configureEach {
+            outputFileName = "fixmate-ronda-${variante.versionName}-${variante.buildType.name}.apk"
+        }
+    }
+}
+
+dependencies {
+    // Para servir los assets por https en vez de file://, que es lo que hace
+    // que el almacenamiento del navegador sea estable. Nada mas.
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
+
+tasks.register('copiarPantalla', Copy) {
+    description = 'Trae la ronda desde docs/fixmate/ronda a los assets del APK.'
+    from(pantalla) {
+        // El QR es de la pagina, no de la app: dentro del APK llevaria al
+        // operador a instalar lo que ya tiene instalado.
+        exclude 'qr.svg'
+        // Dentro del APK los archivos ya son locales, asi que el trabajador
+        // de servicio no tiene nada que guardar. Y como sus peticiones no
+        // pasan por el cargador de assets, intentaria salir a una red que la
+        // app no tiene permiso de usar: registrarlo fallaria en cada arranque.
+        // La pantalla ya no lo registra cuando detecta el puente, y ademas no
+        // viaja: las dos cosas, porque una sola se puede deshacer de un
+        // descuido.
+        exclude 'sw.js'
+    }
+    into layout.projectDirectory.dir('src/main/assets/www')
+    doFirst {
+        if (!pantalla.exists()) {
+            throw new GradleException(
+                "No esta ${pantalla}: corre antes python3 herramientas/espejo-ronda.py")
+        }
+    }
+}
+
+tasks.named('preBuild') {
+    dependsOn 'copiarPantalla'
+}

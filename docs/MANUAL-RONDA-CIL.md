@@ -58,6 +58,25 @@ trae la versión nueva sola.
 navegador, y el archivo `.html` suelto —el que viaja por WhatsApp— también:
 ahí no hay copia automática, pero el archivo ya lo trae todo dentro.
 
+### Si la mina no deja instalar desde el navegador
+
+Hay un `.apk`, y hace exactamente lo mismo: la misma pantalla envuelta en una
+aplicación. Existe para cuando la política del cliente no permite instalar
+desde Chrome, o cuando los teléfonos se entregan configurados y la ronda
+tiene que venir dentro.
+
+Está en las publicaciones del repositorio, buscando `fixmate-ronda`:
+<https://github.com/nilthonnn/nefer/releases?q=fixmate-ronda&expanded=true>
+
+1. Descargue **`fixmate-ronda.apk`** desde el teléfono.
+2. Ábralo desde Archivos o Descargas.
+3. Android pedirá permitir instalar desde esa fuente: acepte.
+
+No pide permiso de INTERNET —no puede salir a la red aunque quisiera— y el
+archivo de la ronda se guarda en **Descargas** al tocar «Guardar». Cómo está
+hecho, y por qué de esa manera, está en
+[`movil/fixmate-ronda/LEEME.md`](../movil/fixmate-ronda/LEEME.md).
+
 ## 3. Hacer la ronda
 
 **Primero, la pauta.** Toque **Abrir pauta del equipo** y elija el archivo

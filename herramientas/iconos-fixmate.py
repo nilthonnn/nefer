@@ -29,6 +29,11 @@ from PIL import Image, ImageDraw
 
 RAIZ = pathlib.Path(__file__).resolve().parents[1]
 DESTINO = RAIZ / "docs" / "fixmate" / "app"
+# Los del APK de la ronda: otros tamaños, por densidad, y con un primer plano
+# transparente —Android recorta el icono a la forma del lanzador y lo que
+# quede fuera del 60 % central se pierde—.
+ANDROID = RAIZ / "movil" / "fixmate-ronda" / "android" / "app" / "src" / "main" / "res"
+DENSIDADES = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
 
 FONDO = (22, 25, 27)        # --barra
 MARCA = (231, 236, 235)     # --barra-ink
@@ -39,13 +44,18 @@ ACENTO = (111, 168, 206)    # --accent del tema oscuro, que resalta sobre el fon
 SEGURO = 0.60
 
 
-def dibujar(lado: int, maskable: bool = False, marca: str = "llave") -> Image.Image:
-    """Un icono cuadrado de `lado` px. `maskable` deja mas aire alrededor."""
+def dibujar(lado: int, maskable: bool = False, marca: str = "llave",
+            fondo: bool = True) -> Image.Image:
+    """Un icono cuadrado de `lado` px. `maskable` deja mas aire alrededor.
+
+    Sin `fondo` el lienzo sale transparente: es lo que pide el primer plano
+    del icono adaptable de Android, que va encima de un color liso.
+    """
     # Se dibuja al cuadruple y se reduce: los bordes salen suaves sin tener
     # que calcular el antialias a mano.
     escala = 4
     n = lado * escala
-    img = Image.new("RGBA", (n, n), FONDO + (255,))
+    img = Image.new("RGBA", (n, n), FONDO + (255,) if fondo else (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
     radio = n * (SEGURO if maskable else 0.72) / 2
@@ -122,6 +132,28 @@ JUEGOS = [(DESTINO, "llave"),
           (RAIZ / "docs" / "fixmate" / "rcm", "rcm")]
 
 
+def para_android(marca: str = "ronda") -> list:
+    """Los del APK: el clasico por densidad y el primer plano adaptable."""
+    if not ANDROID.exists():
+        return []
+    escritos = []
+    for densidad, factor in DENSIDADES.items():
+        carpeta = ANDROID / f"mipmap-{densidad}"
+        carpeta.mkdir(parents=True, exist_ok=True)
+
+        clasico = dibujar(int(48 * factor), marca=marca)
+        for nombre in ("ic_launcher.png", "ic_launcher_round.png"):
+            ruta = carpeta / nombre
+            clasico.save(ruta, "PNG", optimize=True)
+            escritos.append(ruta)
+
+        ruta = carpeta / "ic_launcher_foreground.png"
+        dibujar(int(108 * factor), maskable=True, marca=marca, fondo=False).save(
+            ruta, "PNG", optimize=True)
+        escritos.append(ruta)
+    return escritos
+
+
 def main() -> None:
     for carpeta, marca in JUEGOS:
         carpeta.mkdir(parents=True, exist_ok=True)
@@ -131,6 +163,11 @@ def main() -> None:
             dibujar(lado, maskable, marca).save(ruta, "PNG", optimize=True)
             hechos.append(f"{nombre} ({ruta.stat().st_size / 1024:.0f} KB)")
         print(f"{carpeta.relative_to(RAIZ)} · {marca}:  " + "  ·  ".join(hechos))
+
+    android = para_android("ronda")
+    if android:
+        print(f"{ANDROID.relative_to(RAIZ)} · ronda:  {len(android)} archivos "
+              f"en {len(DENSIDADES)} densidades")
 
 
 if __name__ == "__main__":

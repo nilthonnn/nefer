@@ -246,6 +246,7 @@ jobs:
             tests/test_app_navegador.py \
             tests/test_autoguardado.py \
             tests/test_entregables_app.py \
+            tests/test_android_fixmate.py \
             tests/test_fixmate_app_navegador.py \
             tests/test_fixmate_instalable.py \
             tests/test_fixmate_rcm_navegador.py \
