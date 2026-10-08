@@ -403,6 +403,11 @@ Dicho antes de que alguien lo suponga:
   (`herramientas/piel/base.css`) no declara un solo color, y una prueba lo
   comprueba. Las dos pantallas nuevas eran oscuras y punto; ahora siguen al
   aparato, que es lo que hace falta a 4.200 m al sol.
+- **Las dos pantallas se instalan en Android y abren sin señal.** Manifiesto,
+  trabajador de servicio e iconos propios, generados junto con la página
+  —el nombre del caché lleva su huella, así que un teléfono no se queda con
+  la versión vieja—. Hay una prueba que levanta un servidor, registra el
+  trabajador, corta la red y hace la ronda entera offline.
 - **El cruce ronda → análisis se puede hacer sin terminal.** La pantalla de
   RCM abre el archivo del teléfono y pone cada hallazgo sobre su modo de
   falla, con el mismo enganche que `anomalia.enlazar` —código exacto, mismo
@@ -440,6 +445,7 @@ Dicho antes de que alguien lo suponga:
 | `test_fixmate_ronda_navegador.py` | 13 | «No pude ver» igual de fácil de tocar que «OK», en un navegador real |
 | `test_fixmate_cruce_rcm.py` | 18 | El árbol en las 729 combinaciones × 7 consecuencias × evidente/oculta: 10.206 dictámenes comparados |
 | `test_fixmate_rcm_navegador.py` | 21 | La guarda de seguridad en pantalla; la ronda encima del análisis; que lo exportado vuelva a entrar |
+| `test_fixmate_instalable.py` | 15 | Que se instalen en Android y que la ronda entera se haga sin señal |
 | `test_fixmate_piel.py` | 15 | Que las cuatro superficies sean el mismo producto, y que la capa común no declare color |
 
 ## 8. Fases pendientes

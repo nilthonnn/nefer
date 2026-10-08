@@ -116,10 +116,23 @@ def construir(partes: Path) -> str:
     trozos = [(partes / nombre).read_text(encoding="utf-8") for nombre in PARTES]
     html = "".join(trozos)
     html = _reemplazar(html, "piel", _piel.estilos())
-    html = _reemplazar(html, "barra", _piel.barra_js())
+    html = _reemplazar(html, "arranque", _piel.arranque_js())
     html = _reemplazar(html, "datos", datos())
     html = _reemplazar(html, "demo", demo())
     return html
+
+
+def _instalable(html: str) -> dict:
+    """Los tres archivos de la pantalla: la pagina, el manifiesto y el
+    trabajador de servicio. Los tres se generan juntos porque el nombre del
+    cache lleva la huella de la pagina: sueltos, el telefono se quedaria con
+    una version y el sitio serviria otra."""
+    return {
+        SALIDA: html,
+        SALIDA.parent / "manifest.webmanifest": _piel.manifiesto(
+            'FixMate · Análisis RCM', 'Análisis RCM', 'Recorre el árbol de decisión de SAE JA1011 sobre un análisis RCM y escribe el camino que llevó a cada estrategia.', 'any'),
+        SALIDA.parent / "sw.js": _piel.trabajador('Análisis RCM', html),
+    }
 
 
 def main(argv=None) -> int:
@@ -129,17 +142,21 @@ def main(argv=None) -> int:
 
     nuevo = construir(partes)
     if revisar:
-        actual = SALIDA.read_text(encoding="utf-8") if SALIDA.exists() else ""
-        if actual == nuevo:
-            print(f"{SALIDA.relative_to(RAIZ)} esta al dia.")
+        atrasados = [r for r, c in _instalable(nuevo).items()
+                     if (r.read_text(encoding="utf-8") if r.exists() else "") != c]
+        if not atrasados:
+            print(f"{SALIDA.parent.relative_to(RAIZ)} esta al dia.")
             return 0
-        print(f"{SALIDA.relative_to(RAIZ)} NO esta al dia: corra "
-              "`python herramientas/espejo-rcm.py`.", file=sys.stderr)
+        print("NO estan al dia (%s): corra `python herramientas/espejo-rcm.py`."
+              % ", ".join(str(r.relative_to(RAIZ)) for r in atrasados),
+              file=sys.stderr)
         return 1
 
     SALIDA.parent.mkdir(parents=True, exist_ok=True)
-    SALIDA.write_text(nuevo, encoding="utf-8")
-    print(f"{SALIDA.relative_to(RAIZ)} · {len(nuevo) / 1024:.1f} KB")
+    for ruta, contenido in _instalable(nuevo).items():
+        ruta.write_text(contenido, encoding="utf-8")
+    print(f"{SALIDA.relative_to(RAIZ)} · {len(nuevo) / 1024:.1f} KB · "
+          "con manifiesto y trabajador de servicio")
     return 0
 
 

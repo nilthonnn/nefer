@@ -42,6 +42,15 @@ CODIGOS = [
     ("https://nilthonnn.github.io/nefer/fixmate/",
      "docs/fixmate/qr-fixmate.svg",
      "la demo de FixMate publicada"),
+    # Estos dos si se imprimen y se pegan: en la sala de maquinas el uno, en
+    # la oficina de mantenimiento el otro. Llevan a la pantalla que se
+    # instala en el telefono, no a la pagina que habla de ella.
+    ("https://nilthonnn.github.io/nefer/fixmate/ronda/",
+     "docs/fixmate/ronda/qr.svg",
+     "la ronda CIL, para instalarla en el telefono del operador"),
+    ("https://nilthonnn.github.io/nefer/fixmate/rcm/",
+     "docs/fixmate/rcm/qr.svg",
+     "el analisis RCM, para abrirlo en la tableta de la oficina"),
 ]
 
 

@@ -13,6 +13,12 @@ un icono de 48 px no se lee, ocupa el lugar de lo que si se ve y encima hay
 que traducirlo.
 
 Los colores son los de la casa: el fondo de la barra y el acento.
+
+TRES HERRAMIENTAS, TRES MARCAS DENTRO DEL MISMO DISCO. En la pantalla de
+inicio de un telefono las tres quedan juntas, y tres iconos identicos no se
+eligen: se tantean. El disco y los colores son los mismos —es el mismo
+producto— y dentro cambia el gesto: la llave del diagnostico, el recorrido
+de la ronda, la bifurcacion del arbol de decision.
 """
 
 from __future__ import annotations
@@ -33,7 +39,7 @@ ACENTO = (111, 168, 206)    # --accent del tema oscuro, que resalta sobre el fon
 SEGURO = 0.60
 
 
-def dibujar(lado: int, maskable: bool = False) -> Image.Image:
+def dibujar(lado: int, maskable: bool = False, marca: str = "llave") -> Image.Image:
     """Un icono cuadrado de `lado` px. `maskable` deja mas aire alrededor."""
     # Se dibuja al cuadruple y se reduce: los bordes salen suaves sin tener
     # que calcular el antialias a mano.
@@ -49,36 +55,82 @@ def dibujar(lado: int, maskable: bool = False) -> Image.Image:
     d.ellipse([centro - radio, centro - radio, centro + radio, centro + radio],
               outline=ACENTO, width=int(n * 0.055))
 
-    # La llave: un trazo diagonal con la boca abierta arriba a la izquierda.
     grueso = int(n * 0.085)
     largo = radio * 1.05
-    x0, y0 = centro - largo * 0.62, centro + largo * 0.62
-    x1, y1 = centro + largo * 0.50, centro - largo * 0.50
-    d.line([x0, y0, x1, y1], fill=MARCA, width=grueso)
 
-    # La boca de la llave: un arco abierto en la punta de arriba.
-    boca = grueso * 1.5
-    d.arc([x1 - boca, y1 - boca, x1 + boca, y1 + boca],
-          start=200, end=110, fill=MARCA, width=int(grueso * 0.8))
+    if marca == "llave":
+        # El diagnostico: un trazo diagonal con la boca abierta arriba a la
+        # izquierda.
+        x0, y0 = centro - largo * 0.62, centro + largo * 0.62
+        x1, y1 = centro + largo * 0.50, centro - largo * 0.50
+        d.line([x0, y0, x1, y1], fill=MARCA, width=grueso)
 
-    # El punto del mango: cierra el trazo y da peso abajo.
-    punta = grueso * 0.55
-    d.ellipse([x0 - punta, y0 - punta, x0 + punta, y0 + punta], fill=MARCA)
+        # La boca de la llave: un arco abierto en la punta de arriba.
+        boca = grueso * 1.5
+        d.arc([x1 - boca, y1 - boca, x1 + boca, y1 + boca],
+              start=200, end=110, fill=MARCA, width=int(grueso * 0.8))
+
+        # El punto del mango: cierra el trazo y da peso abajo.
+        punta = grueso * 0.55
+        d.ellipse([x0 - punta, y0 - punta, x0 + punta, y0 + punta], fill=MARCA)
+
+    elif marca == "ronda":
+        # La ronda: tres paradas unidas por un recorrido. Tres y no cinco
+        # porque a 48 px, cinco puntos son una linea punteada.
+        paradas = [(centro - largo * 0.55, centro + largo * 0.45),
+                   (centro, centro - largo * 0.15),
+                   (centro + largo * 0.55, centro + largo * 0.45)]
+        d.line([paradas[0], paradas[1]], fill=MARCA, width=int(grueso * 0.7))
+        d.line([paradas[1], paradas[2]], fill=MARCA, width=int(grueso * 0.7))
+        r = grueso * 0.85
+        for i, (x, y) in enumerate(paradas):
+            caja = [x - r, y - r, x + r, y + r]
+            # La primera va hueca: es donde se empieza.
+            if i == 0:
+                d.ellipse(caja, outline=MARCA, width=int(grueso * 0.55))
+            else:
+                d.ellipse(caja, fill=MARCA)
+
+    elif marca == "rcm":
+        # El analisis: un tronco que se bifurca. Es literalmente el arbol de
+        # decision, y es lo unico que esta pantalla hace que las otras no.
+        pie = (centro, centro + largo * 0.62)
+        nudo = (centro, centro - largo * 0.02)
+        d.line([pie, nudo], fill=MARCA, width=grueso)
+        izq = (centro - largo * 0.52, centro - largo * 0.58)
+        der = (centro + largo * 0.52, centro - largo * 0.58)
+        d.line([nudo, izq], fill=MARCA, width=int(grueso * 0.8))
+        d.line([nudo, der], fill=MARCA, width=int(grueso * 0.8))
+        r = grueso * 0.8
+        for x, y in (izq, der):
+            d.ellipse([x - r, y - r, x + r, y + r], fill=MARCA)
+
+    else:
+        raise SystemExit(f"marca «{marca}» desconocida")
 
     return img.resize((lado, lado), Image.LANCZOS)
 
 
+TAMANOS = [("icono-192.png", 192, False),
+           ("icono-512.png", 512, False),
+           ("icono-512-recortable.png", 512, True),
+           ("apple-touch-icon.png", 180, False)]
+
+# Cada herramienta instalable, con su marca. El diagnostico conserva la suya.
+JUEGOS = [(DESTINO, "llave"),
+          (RAIZ / "docs" / "fixmate" / "ronda", "ronda"),
+          (RAIZ / "docs" / "fixmate" / "rcm", "rcm")]
+
+
 def main() -> None:
-    DESTINO.mkdir(parents=True, exist_ok=True)
-    hechos = []
-    for nombre, lado, maskable in [("icono-192.png", 192, False),
-                                   ("icono-512.png", 512, False),
-                                   ("icono-512-recortable.png", 512, True),
-                                   ("apple-touch-icon.png", 180, False)]:
-        ruta = DESTINO / nombre
-        dibujar(lado, maskable).save(ruta, "PNG", optimize=True)
-        hechos.append(f"{nombre} ({ruta.stat().st_size / 1024:.0f} KB)")
-    print("  ·  ".join(hechos))
+    for carpeta, marca in JUEGOS:
+        carpeta.mkdir(parents=True, exist_ok=True)
+        hechos = []
+        for nombre, lado, maskable in TAMANOS:
+            ruta = carpeta / nombre
+            dibujar(lado, maskable, marca).save(ruta, "PNG", optimize=True)
+            hechos.append(f"{nombre} ({ruta.stat().st_size / 1024:.0f} KB)")
+        print(f"{carpeta.relative_to(RAIZ)} · {marca}:  " + "  ·  ".join(hechos))
 
 
 if __name__ == "__main__":

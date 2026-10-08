@@ -247,6 +247,7 @@ jobs:
             tests/test_autoguardado.py \
             tests/test_entregables_app.py \
             tests/test_fixmate_app_navegador.py \
+            tests/test_fixmate_instalable.py \
             tests/test_fixmate_rcm_navegador.py \
             tests/test_fixmate_ronda_navegador.py \
             tests/test_puente_android.py | tee salida.txt

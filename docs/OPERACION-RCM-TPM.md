@@ -420,6 +420,33 @@ hay 10.206 dictámenes comparados uno por uno en
 
 ---
 
+## 11. Instalarla en un Android · 4 min
+
+Es la prueba que no se puede hacer en la laptop: hace falta un teléfono.
+
+**11a. Instalar la ronda.** Abra
+<https://nilthonnn.github.io/nefer/fixmate/ronda/> en **Chrome** y toque
+**INSTALAR** en la barra. Tiene que quedar un icono propio —tres paradas
+unidas por un recorrido, distinto del de diagnóstico— y abrir a pantalla
+completa, sin la barra del navegador.
+
+**11b. Sin señal, que es lo que importa.** Ponga el teléfono en **modo
+avión** y abra la ronda desde su icono. Tiene que abrir igual, dejarle cargar
+la pauta, hacer los cinco puntos y guardar el archivo al terminar. Si en modo
+avión aparece el dinosaurio de Chrome, la instalación no sirvió de nada:
+avise, porque es exactamente el caso para el que se hizo.
+
+**11c. Las tres juntas.** Instale también el diagnóstico y el análisis RCM.
+En la pantalla de inicio los tres iconos comparten el disco y el color —es el
+mismo producto— y se distinguen por el gesto de adentro: la llave, el
+recorrido, la bifurcación. Tres iconos idénticos no se eligen: se tantean.
+
+**Qué mirar.** La instalación es lo que separa «una página que abrí una vez»
+de «la aplicación que uso en el turno». Sin instalar queda un marcador dentro
+del navegador, sin copia local: el día sin cobertura no abre.
+
+---
+
 ## Hoja de resultados
 
 | # | Prueba | Esperado | ¿Pasó? |
@@ -442,6 +469,8 @@ hay 10.206 dictámenes comparados uno por uno en
 | 10i | Pantalla RCM · ida y vuelta | Lo exportado lo lee `rcm analizar` sin convertir | |
 | 10j | Pantalla RCM · ronda encima | 1 hallazgo en F1.1.1, con quién y cuándo | |
 | 10k | Claro y oscuro | Las cuatro pantallas siguen al aparato | |
+| 11a | Instalar en Android | Icono propio, a pantalla completa | |
+| 11b | Modo avión | La ronda entera se hace sin señal | |
 
 ---
 

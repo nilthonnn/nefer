@@ -24,13 +24,16 @@ Encima de los tokens va `piel/base.css`, la capa comun de componentes
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
 APP = RAIZ / "docs" / "fixmate" / "app" / "index.html"
 BASE = Path(__file__).resolve().parent / "piel" / "base.css"
-BARRA_JS = Path(__file__).resolve().parent / "piel" / "barra.js"
+ARRANQUE_JS = Path(__file__).resolve().parent / "piel" / "arranque.js"
+SW = Path(__file__).resolve().parent / "piel" / "sw.js"
 
 INICIO = "/* fixmate:piel:inicio"
 FIN = "/* fixmate:piel:fin */"
@@ -60,8 +63,64 @@ def estilos() -> str:
     )
 
 
-def barra_js() -> str:
-    return BARRA_JS.read_text(encoding="utf-8").strip("\n")
+def arranque_js() -> str:
+    return ARRANQUE_JS.read_text(encoding="utf-8").strip("\n")
+
+
+def token(nombre: str) -> str:
+    """El valor de un token del tema claro. Sirve para que el color de la
+    barra del telefono no se escriba dos veces."""
+    m = re.search(re.escape(nombre) + r":\s*(#[0-9A-Fa-f]{3,8})", tokens())
+    if not m:
+        raise SystemExit(f"el token {nombre} ya no esta en la piel")
+    return m.group(1)
+
+
+def manifiesto(nombre: str, corto: str, descripcion: str,
+               orientacion: str = "any") -> str:
+    """El manifiesto que hace instalable una pantalla en Android.
+
+    Con esto, Chrome ofrece «Instalar app» y la pantalla queda en el inicio
+    del telefono, a pantalla completa y sin barra de navegador. Sin esto es
+    un marcador: se abre dentro del navegador, con su barra encima comiendo
+    la pantalla, y no hay copia local si no hay señal.
+
+    Los colores salen de la piel, no escritos de nuevo: la barra del sistema
+    del telefono tiene que ser la misma barra que se ve en la pantalla.
+    """
+    barra = token("--barra")
+    return json.dumps({
+        "name": nombre, "short_name": corto, "description": descripcion,
+        "start_url": "./", "scope": "./", "display": "standalone",
+        "orientation": orientacion,
+        "background_color": barra, "theme_color": barra,
+        "lang": "es", "dir": "ltr",
+        "icons": [
+            {"src": "icono-192.png", "sizes": "192x192", "type": "image/png",
+             "purpose": "any"},
+            {"src": "icono-512.png", "sizes": "512x512", "type": "image/png",
+             "purpose": "any"},
+            {"src": "icono-512-recortable.png", "sizes": "512x512",
+             "type": "image/png", "purpose": "maskable"},
+        ],
+    }, ensure_ascii=False, indent=2) + "\n"
+
+
+def trabajador(nombre: str, html: str) -> str:
+    """El trabajador de servicio de una pantalla, con la huella de ESA pantalla.
+
+    El nombre del cache lleva el resumen del html: si no cambiara con la
+    pantalla, el telefono que ya la guardo se quedaria con la version vieja
+    para siempre, y nadie se enteraria —la pantalla abre, sólo que es la de
+    antes—.
+    """
+    huella = hashlib.sha256(html.encode("utf-8")).hexdigest()[:12]
+    plantilla = SW.read_text(encoding="utf-8")
+    return plantilla % {"nombre": nombre, "cache": f"{corto_id(nombre)}-{huella}"}
+
+
+def corto_id(nombre: str) -> str:
+    return "".join(c if c.isalnum() else "-" for c in nombre.lower()).strip("-")
 
 
 # Las pantallas generadas reciben la piel al armarse (`espejo-ronda.py`,

@@ -16,6 +16,12 @@ de las tres tiene el dato bueno.
 
 Sigue el tema del aparato, claro u oscuro, como la app de diagnóstico.
 
+También se instala: en Chrome aparece **INSTALAR** en la barra, y queda como
+aplicación propia —con su icono, la bifurcación del árbol de decisión— que
+abre a pantalla completa y funciona sin red. En una tableta, en la sala de
+reuniones donde el wifi va y viene, eso es la diferencia entre seguir el
+taller y esperar.
+
 Se abre en el navegador, no se instala y no sube nada: el archivo del análisis
 se lee en su computadora y lo que se guarda, se guarda en su computadora.
 Funciona igual sin red una vez abierta la página.
