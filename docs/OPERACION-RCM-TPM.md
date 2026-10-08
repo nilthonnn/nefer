@@ -447,6 +447,32 @@ del navegador, sin copia local: el día sin cobertura no abre.
 
 ---
 
+## 12. La taxonomía de ISO 14224 · 2 min
+
+Es lo que hay que poder enseñar el día que un cliente pida «datos conformes
+con la norma».
+
+```bash
+python3 -m nefer fixmate rcm taxonomia ejemplos/rcm-tpm/analisis-ex220.json \
+  --industria mineria --categoria-negocio "contratista de equipo"
+```
+
+**Tiene que salir** la tabla de los nueve niveles, con el 6 marcado como
+*nivel común de reporte* y el 8 como *donde cae el mantenimiento* —los dos
+que la norma señala—, y los niveles 4, 5 y 9 **vacíos y con el motivo
+escrito al lado**. No omitidos: dichos.
+
+Con `--csv` sale una fila por modo de falla con su taxonomía entera, que es
+la forma que tiene un archivo de intercambio.
+
+**Qué mirar.** Que las ausencias estén justificadas. Una flota que se mueve
+no tiene planta ni sección estables, y anotar la de hoy como si fuera suya
+es anotar algo falso; la parte está por debajo de donde RCM decide. Si el
+cliente es una planta fija, el 4 y el 5 pasan a tener sentido y hay que
+agregarlos — está dicho en el encabezado del módulo.
+
+---
+
 ## Hoja de resultados
 
 | # | Prueba | Esperado | ¿Pasó? |
@@ -471,6 +497,7 @@ del navegador, sin copia local: el día sin cobertura no abre.
 | 10k | Claro y oscuro | Las cuatro pantallas siguen al aparato | |
 | 11a | Instalar en Android | Icono propio, a pantalla completa | |
 | 11b | Modo avión | La ronda entera se hace sin señal | |
+| 12 | Taxonomía ISO 14224 | Nueve niveles; 4, 5 y 9 vacíos con su motivo | |
 
 ---
 
