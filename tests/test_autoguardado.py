@@ -64,6 +64,38 @@ def _apunte(pg):
     return pg.evaluate("localStorage.getItem('rdrenta.sesion')")
 
 
+# Las dos esperas de esta suite. Antes eran relojes —500 ms para que arrancara
+# la app, 600 para que cerrara la escritura— y un reloj es una apuesta: en una
+# máquina cargada se pierde, y entonces la prueba falla por lo ocupado que
+# estaba el runner y no por lo que hace el programa. Una prueba así deja de
+# decir nada sobre el código.
+def _lista(pg):
+    """Espera a que la app esté montada. Es la precondición real de todo lo
+    que sigue: las pruebas llaman a `RDRENTA.proyectos` en la línea
+    siguiente."""
+    pg.wait_for_function(
+        "() => typeof RDRENTA !== 'undefined' && !!RDRENTA.proyectos",
+        timeout=30000)
+
+
+def _escritura_cerrada(pg, cuantos=1):
+    """Espera a que el acta esté DE VERDAD en el almacén.
+
+    El apunte en localStorage aparece antes que la escritura en IndexedDB, y
+    `volcar()` ni siquiera escribe si hay otra escritura en vuelo: anota
+    `repetir` y vuelve más tarde por su cuenta. Un reloj fijo apuesta a que
+    esa segunda vuelta entre a tiempo; esto espera a que las actas estén.
+
+    Medido en esta máquina con los cuatro núcleos saturados: la app arranca
+    en 60 ms y la escritura cierra 9 ms después del apunte. Los relojes que
+    había —500 y 600 ms— tenían margen de sobra, así que no eran ellos; el
+    que apostaba de verdad era el de 800 ms tras el segundo `volcar()`, que
+    es el único que esperaba una escritura diferida."""
+    pg.wait_for_function(
+        "async (n) => (await RDRENTA.proyectos.listar()).length >= n",
+        arg=cuantos, timeout=30000)
+
+
 def test_el_acta_se_guarda_sola_sin_que_nadie_toque_guardar(servida):
     """Nadie pulsa «Guardar» en ningun momento de esta prueba."""
     if not HAY_CHROMIUM:
@@ -77,7 +109,7 @@ def test_el_acta_se_guarda_sola_sin_que_nadie_toque_guardar(servida):
         pg = ctx.new_page()
         pg.on("pageerror", lambda e: fallos.append(str(e)))
         pg.goto(servida)
-        pg.wait_for_timeout(500)
+        _lista(pg)
 
         assert _apunte(pg) is None, "había una sesión apuntada antes de trabajar"
         _acta_de_ejemplo(pg)
@@ -113,7 +145,7 @@ def test_el_acta_a_medias_vuelve_despues_de_que_el_sistema_descarte_la_app(servi
         pg = ctx.new_page()
         pg.on("pageerror", lambda e: fallos.append(str(e)))
         pg.goto(servida)
-        pg.wait_for_timeout(500)
+        _lista(pg)
         _acta_de_ejemplo(pg)
         pg.fill("#d-cliente", "MINERA DEL SUR S.A.C.")
 
@@ -125,7 +157,7 @@ def test_el_acta_a_medias_vuelve_despues_de_que_el_sistema_descarte_la_app(servi
         }""")
         pg.wait_for_function("localStorage.getItem('rdrenta.sesion') !== null",
                              timeout=15000)
-        pg.wait_for_timeout(600)          # que la escritura cierre
+        _escritura_cerrada(pg)             # ...de verdad, no por reloj
         pg.close()                         # ...y Android se lleva la app
 
         # Vuelve al rato y la abre otra vez.
@@ -162,12 +194,13 @@ def test_abrir_la_app_y_no_hacer_nada_no_deja_un_proyecto_vacio(servida):
                               has_touch=True, is_mobile=True)
         pg = ctx.new_page()
         pg.goto(servida)
-        pg.wait_for_timeout(500)
+        _lista(pg)
 
         # Se fuerza el volcado en vez de esperar: si hubiera algo que guardar,
         # aquí saldría.
+        # `volcar()` devuelve una promesa que se resuelve con la escritura
+        # hecha, y `evaluate` la espera: no hay nada que cronometrar.
         pg.evaluate("RDRENTA.proyectos.volcar()")
-        pg.wait_for_timeout(600)
         apunte = _apunte(pg)
         guardados = pg.evaluate("RDRENTA.proyectos.listar().then(l => l.length)")
         nav.close()
@@ -191,11 +224,11 @@ def test_empezar_una_nueva_no_arrastra_el_acta_recuperada(servida):
                               has_touch=True, is_mobile=True)
         pg = ctx.new_page()
         pg.goto(servida)
-        pg.wait_for_timeout(500)
+        _lista(pg)
         _acta_de_ejemplo(pg)
         pg.wait_for_function("localStorage.getItem('rdrenta.sesion') !== null",
                              timeout=15000)
-        pg.wait_for_timeout(600)
+        _escritura_cerrada(pg)
         pg.close()
 
         otra = ctx.new_page()
@@ -231,12 +264,12 @@ def test_pasarse_a_la_otra_hoja_no_escribe_encima_del_acta_anterior(servida):
         pg = ctx.new_page()
         pg.on("pageerror", lambda e: fallos.append(str(e)))
         pg.goto(servida)
-        pg.wait_for_timeout(500)
+        _lista(pg)
 
         _acta_de_ejemplo(pg)
         pg.wait_for_function("localStorage.getItem('rdrenta.sesion') !== null",
                              timeout=15000)
-        pg.wait_for_timeout(600)
+        _escritura_cerrada(pg)
 
         # Se pasa a recepción y teclea. Se manda el evento en vez de escribir a
         # mano porque el campo vive en un panel plegado; el que escucha es el
@@ -248,7 +281,7 @@ def test_pasarse_a_la_otra_hoja_no_escribe_encima_del_acta_anterior(servida):
           n.dispatchEvent(new Event('input', { bubbles: true }));
         }""")
         pg.evaluate("RDRENTA.proyectos.volcar()")
-        pg.wait_for_timeout(800)
+        _escritura_cerrada(pg, 2)          # el despacho y la recepción
 
         guardados = pg.evaluate("""RDRENTA.proyectos.listar().then(
           l => l.map(p => ({ vista: p.vista, fotos: (p.datos.fotos || []).length })))""")
