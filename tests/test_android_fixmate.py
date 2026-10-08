@@ -195,6 +195,23 @@ def test_el_icono_del_apk_es_el_mismo_de_la_ronda_publicada():
         "`python3 herramientas/iconos-fixmate.py`")
 
 
+def test_todos_los_recursos_xml_se_pueden_leer():
+    """Un XML que no parsea tumba la compilación entera, y tarde.
+
+    Esto ya pasó: un comentario con `--` dentro —el nombre de un token de la
+    piel— hizo fallar `mergeReleaseResources` después de bajar el SDK, cinco
+    minutos adentro. La comprobación cuesta milisegundos y lo dice antes de
+    empujar.
+    """
+    xmls = sorted(PROYECTO.rglob("*.xml"))
+    assert xmls, "no hay recursos XML en el proyecto"
+    for ruta in xmls:
+        try:
+            ET.parse(ruta)
+        except ET.ParseError as exc:
+            pytest.fail(f"{ruta.relative_to(RAIZ)} no se puede leer: {exc}")
+
+
 # ---------- la cadena de publicación ----------
 
 def test_la_direccion_de_descarga_es_la_misma_en_todos_los_sitios():
