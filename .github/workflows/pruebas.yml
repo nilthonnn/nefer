@@ -100,6 +100,7 @@ jobs:
             tests/test_publicacion_clon.py \
             tests/test_publicacion_fixmate.py \
             tests/test_schema.py \
+            tests/test_skill_espejo.py \
             tests/test_textos.py
 
   clon-rd-renta:
