@@ -21,7 +21,7 @@ peor de lo que haría falta:
 
 | Capacidad | Antes | Nota |
 |---|---|---|
-| Taxonomía de fallas ISO 14224 | **Sí** | `catalogo.py`: 41 entradas, 14 sistemas, 32 modos observables, 19 mecanismos. Sin categoría «Otro», por recomendación de la norma |
+| Taxonomía de fallas con la **estructura** de ISO 14224 | **Sí** | `catalogo.py`: 41 entradas, 14 sistemas, 32 modos observables, 19 mecanismos. Sin categoría «Otro», por recomendación de la norma. Los **códigos son propios**, no los de la norma: ver [la auditoría](AUDITORIA-RCM-TPM.md), NC-01 |
 | Precauciones de seguridad con fuente | **Sí** | `seguridad.py`: distingue lo que dice el manual indexado de la regla fija de la herramienta |
 | Cierre → historial → aprendizaje | **Sí** | `cierre.py` + `aprendizaje.py`, con precisión medida y publicada |
 | MTBF, recurrencia, ritmo de uso | **Sí** | `prediccion.py`, rotulado explícitamente como *no* predictivo |
