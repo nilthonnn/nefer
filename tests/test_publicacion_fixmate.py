@@ -119,11 +119,22 @@ def test_la_pagina_de_descarga_lleva_a_la_demo():
 
 
 def test_la_pagina_no_pide_nada_a_un_tercero(html):
-    # La misma regla que la app: ninguna llamada fuera. Aquí no es por la
-    # señal, es porque cada visita le contaría a un tercero quién la mira.
-    externos = re.findall(r'(?:src|href)="(https?://[^"]+)"', html)
-    permitidos = {"https://github.com/nilthonnn/nefer"}
-    assert not (set(externos) - permitidos), f"llama fuera: {externos}"
+    """Ninguna llamada fuera al abrir la página.
+
+    No es por la señal: es porque cada visita le contaría a un tercero quién
+    la mira. Lo que cuesta una petición es lo que el navegador trae solo
+    —`src`, hojas de estilo, tipografías—; un enlace sólo se sigue si alguien
+    lo toca, y los de aquí van al propio repositorio, que es de donde salió
+    todo esto.
+    """
+    traidos = re.findall(r'(?:src|rel="stylesheet"[^>]*href)="(https?://[^"]+)"',
+                         html)
+    assert not traidos, f"la página trae algo de fuera al abrirse: {traidos}"
+
+    enlaces = set(re.findall(r'href="(https?://[^"]+)"', html))
+    ajenos = {e for e in enlaces
+              if not e.startswith("https://github.com/nilthonnn/nefer")}
+    assert not ajenos, f"enlaza fuera del proyecto: {sorted(ajenos)}"
 
 
 def test_el_fixmate_descargable_no_puede_envejecer(tmp_path):

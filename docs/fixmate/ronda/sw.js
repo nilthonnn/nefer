@@ -14,7 +14,7 @@
    linea, el telefono se trae la nueva en vez de quedarse con la vieja para
    siempre. */
 
-var CACHE = "ronda-cil-d0d9d75048cc";
+var CACHE = "ronda-cil-ffda8d21ef2f";
 var PIEZAS = [
   "./",
   "./index.html",

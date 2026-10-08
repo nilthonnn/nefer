@@ -213,6 +213,67 @@ function verNota(resultado, seg) {
   };
 }
 
+/* ------------------------------------------------- sacar el archivo
+ *
+ * Dentro del APK hay un puente nativo, y hace falta: en un WebView una
+ * descarga que la propia pagina inicia —un enlace con `download` y una URL
+ * `blob:`— no llega a ninguna parte, y ni siquiera dispara el escuchador de
+ * descargas de Android. El boton pareceria funcionar y la ronda del turno no
+ * se guardaria en ningun sitio. Asi que ahi los bytes se entregan y los
+ * escribe Java en Descargas; en un navegador, el camino de siempre.
+ */
+var puente = (typeof window.PuenteFixMate !== "undefined" && window.PuenteFixMate)
+             || null;
+
+/** El puente habla base64, que es lo unico que cruza limpio de JavaScript a
+ *  Java. Se trocea: `apply` con medio millon de argumentos tumba la pila. */
+function aBase64(texto) {
+  var bytes = new TextEncoder().encode(texto);
+  var binario = "";
+  var trozo = 0x8000;
+  for (var i = 0; i < bytes.length; i += trozo) {
+    binario += String.fromCharCode.apply(null, bytes.subarray(i, i + trozo));
+  }
+  return btoa(binario);
+}
+
+function avisarGuardado(texto, mal) {
+  var caja = document.getElementById("aviso-guardado");
+  if (!caja) return;
+  caja.className = mal ? "aviso peligro" : "aviso";
+  caja.textContent = texto;
+  caja.style.display = "";
+}
+
+function guardarRonda(nombre, contenido) {
+  if (puente) {
+    var fallo = puente.guardar(nombre, aBase64(contenido), "application/json");
+    // Cadena vacia es que salio bien. Cualquier otra cosa es el motivo, y se
+    // dice: un operador mirando un boton que no hizo nada vuelve a tocarlo.
+    if (fallo) return avisarGuardado(fallo, true);
+    return avisarGuardado("Guardado en Descargas: " + nombre, false);
+  }
+  var blob = new Blob([contenido], { type: "application/json" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nombre;
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  avisarGuardado("Archivo generado: " + nombre, false);
+}
+
+/** El boton de atras del telefono, cuando la ronda corre dentro del APK.
+ *
+ * Devuelve cierto si habia algo que cerrar. Falso deja que Android aplique su
+ * regla de dos toques para salir: cerrar de un toque a mitad de una ronda
+ * seria perder el turno entero, y el operador no tiene como recuperarlo.
+ */
+function atras() {
+  var velo = document.querySelector(".velo");
+  if (velo) { velo.remove(); return true; }
+  return false;
+}
+
 function verResumen() {
   document.body.classList.remove("en-punto");
   if (reloj) { clearInterval(reloj); reloj = null; }
@@ -258,6 +319,7 @@ function verResumen() {
 
   html += '<h2>Mandar a la oficina</h2>' +
     '<button id="bajar" class="grande primary">Guardar el archivo de la ronda</button>' +
+    '<div id="aviso-guardado" class="aviso" style="display:none"></div>' +
     '<p class="tenue">Un <code>.json</code> que se manda por WhatsApp o correo. ' +
     'Ahi la oficina lo cruza con el analisis RCM: el telefono no lo hace porque ' +
     'el analisis no esta aqui.</p>' +
@@ -268,12 +330,7 @@ function verResumen() {
   document.getElementById("otra").onclick = function () { verInicio(); };
   document.getElementById("bajar").onclick = function () {
     var datos = { ejecucion: ejecucion, anomalias: anomalias, estado: e };
-    var blob = new Blob([JSON.stringify(datos, null, 2)], { type: "application/json" });
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = ejecucion.id + ".json";
-    document.body.appendChild(a); a.click();
-    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    guardarRonda(ejecucion.id + ".json", JSON.stringify(datos, null, 2));
   };
 }
 

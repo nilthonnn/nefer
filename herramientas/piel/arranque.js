@@ -1,12 +1,23 @@
-/* Lo que hace cada pantalla al abrirse, antes de pintar nada. Son dos cosas,
- * y las dos dependen de COMO llegó la pantalla al aparato.
+/* Lo que hace cada pantalla al abrirse, antes de pintar nada. Todo depende de
+ * CÓMO llegó la pantalla al aparato, que son tres formas distintas:
+ *
+ *   - servida por el sitio, en un navegador;
+ *   - como archivo suelto, bajado por WhatsApp (`file:`);
+ *   - dentro del APK, servida por el cargador de assets de Android, que
+ *     también habla https pero no tiene ni red ni carpetas hermanas.
+ *
+ * La tercera engaña: el protocolo dice `https` y parece el sitio. Se reconoce
+ * por el puente nativo, que sólo existe ahí dentro.
  */
+var EN_APK = typeof window.PuenteFixMate !== "undefined" && !!window.PuenteFixMate;
 
 /* 1. Los enlaces entre herramientas sólo sirven si se abrió desde el sitio.
  *    Descargada como archivo suelto —que es como viaja por WhatsApp—
  *    apuntarían a carpetas que no existen en ese teléfono, y un enlace roto
  *    en la barra hace dudar del resto de la pantalla. Se quitan. */
-if (location.protocol === "file:") {
+/*    Dentro del APK pasa lo mismo por otro motivo: lo único que viaja es
+ *    esta pantalla, así que las carpetas hermanas tampoco están. */
+if (location.protocol === "file:" || EN_APK) {
   var vinculos = document.querySelector(".barra .vinculos");
   if (vinculos) vinculos.remove();
 }
@@ -16,7 +27,11 @@ if (location.protocol === "file:") {
  *    turno no espera a que haya línea. Si el navegador no lo permite —modo
  *    privado, versión vieja—, la pantalla sigue funcionando igual: el
  *    trabajador de servicio es una mejora, no un requisito. */
-if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+/*    Dentro del APK no se registra: los archivos ya son locales, no hay nada
+ *    que guardar, y como sus peticiones no pasan por el cargador de assets
+ *    intentaría salir a una red que la app no tiene permiso de usar. */
+if (!EN_APK && "serviceWorker" in navigator &&
+    location.protocol.indexOf("http") === 0) {
   navigator.serviceWorker.register("sw.js").catch(function () {
     /* Sin registro no hay copia local, y ya está: no se le dice nada al
        operador, porque no hay nada que pueda hacer al respecto. */
