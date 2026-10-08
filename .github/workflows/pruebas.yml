@@ -93,6 +93,7 @@ jobs:
             tests/test_fixmate_rcm.py \
             tests/test_fixmate_seguridad.py \
             tests/test_fixmate_tablero.py \
+            tests/test_fixmate_taxonomia.py \
             tests/test_fixmate_texto.py \
             tests/test_fixmate_tpm.py \
             tests/test_layout.py \
