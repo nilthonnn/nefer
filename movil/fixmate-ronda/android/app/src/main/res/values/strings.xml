@@ -2,4 +2,7 @@
 <resources>
     <string name="nombre_app">Ronda CIL</string>
     <string name="salir_dos_veces">Toca atrás otra vez para salir</string>
+    <!-- Un teléfono de faena puede no traer ninguna aplicación que atienda
+         el selector de archivos. Se dice qué hacer, no sólo que falló. -->
+    <string name="sin_selector">No hay con qué abrir archivos en este teléfono. Pida la pauta por WhatsApp y guárdela en Descargas, o instale un explorador de archivos.</string>
 </resources>

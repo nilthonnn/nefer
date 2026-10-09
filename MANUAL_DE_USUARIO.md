@@ -917,6 +917,19 @@ corrige después, a propósito.
 honesto que detecta un defecto de la máquina o de la pauta. Un OK falso
 contamina la ronda entera y se arrastra meses.
 
+**Toco «Abrir pauta del equipo» y no pasa nada.**
+Si está usando el **`.apk`**, actualícelo: hasta la versión 1.7 inclusive, el
+botón no abría el selector de archivos. No era un fallo del teléfono ni de la
+pauta — la aplicación no implementaba el selector, así que no abría nada y
+tampoco avisaba. Descargue la versión más reciente desde los
+[releases](https://github.com/nilthonnn/nefer/releases?q=fixmate-ronda&expanded=true).
+En el navegador el botón siempre funcionó.
+
+**Elegí mi Excel y me dice que no es la pauta.**
+Correcto: la pauta es un archivo **`.json`** que le pasa mantenimiento, y lo
+genera la pantalla **Armar**. El Excel es el historial, y ése va en la app de
+diagnóstico, no en la ronda.
+
 **Me pide el nombre y no quiero firmar.**
 La ronda necesita responsable porque sin él no se puede discutir después. No es
 para culpar a nadie: es para que cuando usted encuentre algo, conste que usted

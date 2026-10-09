@@ -242,3 +242,66 @@ def test_una_pauta_sin_criterio_se_rechaza_y_lo_explica(pagina):
 def test_sin_errores_de_consola(pagina):
     pag, errores = pagina
     assert errores == []
+
+
+# ------------------------- «Abrir pauta del equipo»: lo que puede elegir
+
+def test_elegir_el_excel_por_error_dice_que_hacer(pagina, tmp_path):
+    """Es el error más probable: el Excel es lo que el taller tiene a mano.
+
+    Lo que decía antes era el error del parser de JavaScript —«Unexpected
+    token 'P', "PK"... is not valid JSON»—, que a un operador en un socavón
+    no le dice nada y, sobre todo, no le dice qué hacer.
+    """
+    pag, _ = pagina
+    # Un .xlsx de verdad empieza por «PK»: es un zip.
+    falso = tmp_path / "historial.xlsx"
+    falso.write_bytes(b"PK\x03\x04" + b"\x00" * 64)
+    with pag.expect_file_chooser() as elector:
+        pag.click("#archivo")
+    elector.value.set_files(str(falso))
+    aviso = pag.wait_for_selector(".aviso.peligro").inner_text()
+    assert "planilla" in aviso.lower() or "office" in aviso.lower(), aviso
+    # Y dice de dónde sale la pauta, que es lo que resuelve el problema.
+    assert "armar" in aviso.lower() and ".json" in aviso.lower(), aviso
+
+
+def test_un_json_que_no_es_pauta_no_se_confunde_con_una_pauta_vacia(pagina, tmp_path):
+    """Decirle «no trae puntos» manda a agregarle puntos a un archivo que
+    nunca fue una pauta."""
+    import json
+
+    pag, _ = pagina
+    otro = tmp_path / "cualquiera.json"
+    otro.write_text(json.dumps({"hola": "mundo"}), encoding="utf-8")
+    with pag.expect_file_chooser() as elector:
+        pag.click("#archivo")
+    elector.value.set_files(str(otro))
+    aviso = pag.wait_for_selector(".aviso.peligro").inner_text()
+    assert "no es una pauta" in aviso.lower(), aviso
+
+
+def test_una_pauta_sin_puntos_nombra_el_equipo_y_a_quien_le_toca(pagina, tmp_path):
+    import json
+
+    pag, _ = pagina
+    vacia = tmp_path / "pauta.json"
+    vacia.write_text(json.dumps(
+        {"id": "p1", "activo_codigo": "MLAD041-02", "puntos": []}), encoding="utf-8")
+    with pag.expect_file_chooser() as elector:
+        pag.click("#archivo")
+    elector.value.set_files(str(vacia))
+    aviso = pag.wait_for_selector(".aviso.peligro").inner_text()
+    assert "MLAD041-02" in aviso, aviso
+    assert "armar" in aviso.lower(), aviso
+
+
+def test_la_pauta_buena_arranca_sin_avisos(pagina):
+    """El control de que los avisos nuevos no se disparen de más."""
+    pag, errores = pagina
+    with pag.expect_file_chooser() as elector:
+        pag.click("#archivo")
+    elector.value.set_files(str(RAIZ / "ejemplos" / "rcm-tpm" / "pauta-ex220.json"))
+    pag.wait_for_selector("#op")
+    assert pag.locator(".aviso.peligro").count() == 0
+    assert not errores, errores
