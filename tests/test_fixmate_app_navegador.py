@@ -622,3 +622,73 @@ def test_el_archivo_suelto_tambien_se_puede_instalar():
                        for i in man["icons"])
         finally:
             navegador.close()
+
+
+# --------------------------------- la vuelta desde el diagnóstico a las otras
+
+def test_servida_la_barra_lleva_a_las_otras_pantallas():
+    """Las otras tres enlazaban aquí y ésta no enlazaba a ninguna.
+
+    Quedó fuera del grupo cuando las demás se volvieron un conjunto: desde el
+    diagnóstico no había vuelta, y la única salida era el botón de atrás del
+    navegador —que no existe cuando la pantalla está instalada—.
+
+    No se comprueba que los enlaces estén: se comprueba que **lleven a algo
+    que el sitio sirve**. Un enlace en la barra que da 404 hace dudar del
+    resto de la pantalla, que es justamente lo que se quería evitar.
+    """
+    import functools
+    import http.server
+    import threading
+    import urllib.request
+
+    # Servido desde `docs/fixmate/`, que es la raíz real del sitio: con la
+    # carpeta de la app por raíz, `../ronda/` se saldría de ella y la prueba
+    # no mediría nada.
+    raiz = (RAIZ / "docs" / "fixmate").resolve()
+    srv = http.server.ThreadingHTTPServer(
+        ("127.0.0.1", 0),
+        functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(raiz)))
+    puerto = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        with sync_playwright() as pw:
+            navegador = pw.chromium.launch(**opciones())
+            pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+            try:
+                pg.goto(f"http://127.0.0.1:{puerto}/app/")
+                enlaces = pg.locator(".barra .vinculos a")
+                destinos = [enlaces.nth(i).get_attribute("href")
+                            for i in range(enlaces.count())]
+                assert destinos == ["../", "../ronda/", "../rcm/", "../armar/"], \
+                    destinos
+                for destino in destinos:
+                    url = pg.evaluate("d => new URL(d, location.href).href", destino)
+                    assert urllib.request.urlopen(url).getcode() == 200, url
+            finally:
+                navegador.close()
+    finally:
+        srv.shutdown()
+
+
+def test_suelta_la_barra_no_deja_enlaces_rotos():
+    """Bajada por WhatsApp se abre con `file:` y esas carpetas no están.
+
+    Dejar los enlaces ahí sería peor que no tenerlos: cuatro enlaces muertos
+    en la barra de la pantalla que se usa en el patio.
+    """
+    # Que estén en el archivo es lo que vuelve esta prueba no vacía: sin
+    # esto pasaría igual el día que alguien borre la barra entera.
+    assert ".barra .vinculos" in APP.read_text(encoding="utf-8")
+
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(APP.as_uri())
+            assert pg.locator(".barra .vinculos").count() == 0
+            # Y la barra sigue nombrando la pantalla: se quitan los enlaces,
+            # no la identidad.
+            assert "FIXMATE" in pg.inner_text(".barra").upper()
+        finally:
+            navegador.close()
