@@ -558,6 +558,37 @@ HOJA_POR_BLOQUES = [
      "CANTIDAD", "SUMINISTROS", "CODIGO", "SERVICIOS TERCEROS", "OBSERVACIONES"],
     ["", "030-0000830", "", "4,854.00", "23/01/2017", "", "1.00", "-  -", "",
      "", "EQUIOPO OPERATIVO"],
+
+    # Los cuatro documentos que el lector descartaba. El INFORME TECNICO
+    # CAMPO es el que más pesa: lleva la falla en «OBSERVACIONES» y era el
+    # más numeroso del archivo real, 114 de 245 bloques.
+    ["", "INFORME TECNICO CAMPO", "CLIENTE / OBRA", "HOROMETRO", "FECHA", "MP",
+     "CANTIDAD", "SUMINISTROS", "CODIGO", "OBSERVACIONES", ""],
+    ["", "031-0024384", "CONSTRUCTORA DEL SUR S.A. / U.M. EL EJEMPLO",
+     "10,891.00", "02/02/2026", "", "3.00", "ACEITE HIDRAULICO TELLUS S2 MX 46",
+     "TELLUS 46",
+     "RETENES Y SELLOS DE CILINDROS EN MAL ESTADO. SE PROBO EL EQUIPO",
+     ""],
+    # La HOJA DE SERVICIO, con el técnico rotulado dentro del texto: el
+    # nombre tiene que salir del síntoma y acabar en su propio campo.
+    ["", "HOJA DE SERVICIO", "TRABAJOS REALIZADOS", "HOROMETRO", "FECHA", "MP",
+     "CANTIDAD", "SUMINISTROS", "CODIGO", "OBSERVACIONES", ""],
+    ["", "032-0001234", "16/10/2024 - PINTADO GENERAL DE CANASTO TECNICO : "
+     "PICHA CALCINA, ANDRE", "10,900.00", "16/10/2024", "", "", "", "",
+     "", ""],
+    # Logística: la máquina entrando. No es una avería, y su fecha y
+    # horómetro valen como lectura.
+    ["", "ACTA DE RECEPCION", "CLIENTE / OBRA", "HOROMETRO", "FECHA"],
+    ["", "032-0001886", "CONSTRUCTORA DEL SUR S.A. / U.M. EL EJEMPLO",
+     "10,894.40", "25/02/2026"],
+    ["", "GUIA DE REMISION", "CLIENTE / OBRA", "HOROMETRO", "FECHA"],
+    ["", "001-0009999", "CONSTRUCTORA DEL SUR S.A. / U.M. EL EJEMPLO",
+     "10,894.40", "26/02/2026"],
+    # Y el estado del documento, que no es un hallazgo.
+    ["", "CONTROL_EXTRACCIONES", "ESTADO", "HOROMETRO", "FECHA", "MP",
+     "CANTIDAD", "SUMINISTROS", "CODIGO"],
+    ["", "001-9000467", "CERRADO", "10,894.40", "19/05/2026", "", "1.00",
+     "SENSOR INDUCTIVO DE CANASTILLA", "SIC-01"],
 ]
 
 
@@ -591,7 +622,9 @@ process.stdout.write(JSON.stringify(blqLeerFilas(filas, "", "")));
         pytest.fail("el lector JS no corrió:\n" + proceso.stderr[-2000:])
     del_telefono = json.loads(proceso.stdout)
 
-    assert len(del_telefono) == len(de_la_oficina) == 2
+    # Seis tipos de documento: los dos que el lector ya conocía más los cuatro
+    # que descartaba. Siete bloques en total.
+    assert len(del_telefono) == len(de_la_oficina) == 7
     separados = []
     for oficina, telefono in zip(de_la_oficina, del_telefono):
         for clave in sorted(set(oficina) | set(telefono)):
@@ -601,6 +634,46 @@ process.stdout.write(JSON.stringify(blqLeerFilas(filas, "", "")));
     assert not separados, "se separaron:\n" + "\n".join(
         f"  OT {ot} · {c}\n    oficina : {x!r}\n    teléfono: {y!r}"
         for ot, c, x, y in separados)
+
+    # Y que lo leído sea lo correcto, no sólo igual en los dos lados: dos
+    # lectores de acuerdo en algo mal siguen estando mal.
+    por_ot = {i["codigo_ot"]: i for i in de_la_oficina}
+    documentos = {i["codigo_ot"]: i["otros_campos"]["Documento"]
+                  for i in de_la_oficina}
+    assert documentos == {
+        "031-0005135": "orden de trabajo",
+        "030-0000830": "orden de trabajo",
+        "031-0024384": "informe tecnico de campo",
+        "032-0001234": "hoja de servicio",
+        "032-0001886": "acta de recepcion",
+        "001-0009999": "guia de remision",
+        "001-9000467": "control de extracciones",
+    }, documentos
+
+    # El informe técnico de campo trae la falla en «OBSERVACIONES», que es
+    # justo lo que se perdía: 114 documentos así en el archivo real.
+    campo = por_ot["031-0024384"]
+    assert campo["resumen_falla"].startswith("RETENES Y SELLOS DE CILINDROS")
+    # El cliente y la obra van a su campo, nunca dentro del síntoma: es dato
+    # del documento, y además se indexaría como si fuera un sintoma.
+    assert "CONSTRUCTORA" not in campo["resumen_falla"]
+    assert campo["otros_campos"]["Cliente / obra"].startswith("CONSTRUCTORA")
+
+    # El nombre del técnico sale del texto y acaba en su propio campo.
+    hoja = por_ot["032-0001234"]
+    assert hoja["resumen_falla"] == "PINTADO GENERAL DE CANASTO"
+    assert hoja["otros_campos"]["Tecnicos"] == "PICHA CALCINA, ANDRE"
+
+    # «CERRADO» es el estado del documento, no una falla de la máquina.
+    control = por_ot["001-9000467"]
+    assert "resumen_falla" not in control
+    assert control["otros_campos"]["Estado"] == "CERRADO"
+
+    # La logística no finge ser una avería, y conserva su lectura: de la
+    # fecha y el horómetro salen el ritmo de uso y el próximo servicio.
+    acta = por_ot["032-0001886"]
+    assert "resumen_falla" not in acta
+    assert acta["fecha"] == "25/02/2026" and acta["horometro"] == "10,894.40"
 
 
 @pytest.mark.skipif(not NODE, reason="hace falta node para el motor JS")

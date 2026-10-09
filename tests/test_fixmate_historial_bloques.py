@@ -169,3 +169,131 @@ def test_el_excel_por_bloques_se_indexa_sin_banderas(tmp_path):
     # Y el horómetro llega entero al índice, con su separador de millares.
     uno = next(f for f in fragmentos if f.metadatos["codigo_ot"] == "031-0005135")
     assert uno.metadatos["horometro"] == "9,753.20"
+
+
+# ---------------------------------------- los seis documentos del export
+
+# El export del taller no trae un tipo de documento: trae seis, cada uno con
+# su cabecera repetida. Este lector conocía dos. Medido sobre el historial de
+# trece años de un manlift real: de 245 bloques leía 40 y descartaba 205 en
+# silencio —el 84 %—, y entre lo descartado los 114 INFORME TECNICO CAMPO,
+# que es el documento donde el técnico escribe qué encontró.
+#
+# No dio error en ninguna parte. El síntoma era la app diciendo «40
+# fragmentos, 0 casos con causa confirmada» sobre un archivo de 1.674 filas,
+# y contestando una consulta de ese manlift con el manual de otra máquina.
+SEIS_DOCUMENTOS = [
+    ["", "", "HISTORIAL EQUIPO  :   MLAD041-02"],
+    ["", "ORDEN TRABAJO", "TRABAJOS REALIZADOS", "HOROMETRO", "FECHA", "MP",
+     "CANTIDAD", "SUMINISTROS", "CODIGO", "SERVICIOS TERCEROS", "OBSERVACIONES"],
+    ["", "031-0005135", "", "9,753.20", "24/02/2024", "", "1.00",
+     "KIT DE SELLO DE CILINDRO", "KS-CD-MLAD",
+     "MANTENIMIENTO DE CILINDRO PENDULAR", "EQUIPO OPERATIVO"],
+
+    ["", "INFORME TECNICO CAMPO", "CLIENTE / OBRA", "HOROMETRO", "FECHA", "MP",
+     "CANTIDAD", "SUMINISTROS", "CODIGO", "OBSERVACIONES"],
+    ["", "031-0024384", "CONSTRUCTORA DEL SUR S.A. / U.M. EL EJEMPLO",
+     "10,891.00", "02/02/2026", "", "3.00", "ACEITE HIDRAULICO TELLUS",
+     "TELLUS 46", "RETENES Y SELLOS DE CILINDROS EN MAL ESTADO"],
+
+    ["", "HOJA DE SERVICIO", "TRABAJOS REALIZADOS", "HOROMETRO", "FECHA"],
+    ["", "032-0001234",
+     "16/10/2024 - PINTADO GENERAL DE CANASTO TECNICO : PICHA CALCINA, ANDRE",
+     "10,900.00", "16/10/2024"],
+
+    ["", "ACTA DE RECEPCION", "CLIENTE / OBRA", "HOROMETRO", "FECHA"],
+    ["", "032-0001886", "CONSTRUCTORA DEL SUR S.A. / U.M. EL EJEMPLO",
+     "10,894.40", "25/02/2026"],
+
+    ["", "GUIA DE REMISION", "CLIENTE / OBRA", "HOROMETRO", "FECHA"],
+    ["", "001-0009999", "CONSTRUCTORA DEL SUR S.A. / U.M. EL EJEMPLO",
+     "10,894.40", "26/02/2026"],
+
+    ["", "CONTROL_EXTRACCIONES", "ESTADO", "HOROMETRO", "FECHA", "MP",
+     "CANTIDAD", "SUMINISTROS", "CODIGO"],
+    ["", "001-9000467", "CERRADO", "10,894.40", "19/05/2026", "", "1.00",
+     "SENSOR INDUCTIVO DE CANASTILLA", "SIC-01"],
+]
+
+
+@pytest.fixture
+def seis():
+    return {i["codigo_ot"]: i
+            for i in hb.leer_filas(SEIS_DOCUMENTOS)}
+
+
+def test_los_seis_documentos_se_leen_y_se_distinguen(seis):
+    """Leerlos todos no basta: hay que saber de cuál salió cada informe."""
+    assert {ot: i["otros_campos"]["Documento"] for ot, i in seis.items()} == {
+        "031-0005135": "orden de trabajo",
+        "031-0024384": "informe tecnico de campo",
+        "032-0001234": "hoja de servicio",
+        "032-0001886": "acta de recepcion",
+        "001-0009999": "guia de remision",
+        "001-9000467": "control de extracciones",
+    }
+
+
+def test_el_informe_tecnico_de_campo_trae_la_falla(seis):
+    """Era el documento más numeroso del archivo real, y el que se perdía."""
+    assert seis["031-0024384"]["resumen_falla"] == \
+        "RETENES Y SELLOS DE CILINDROS EN MAL ESTADO"
+
+
+def test_el_cliente_y_la_obra_no_entran_en_el_sintoma(seis):
+    """Ocupan, en los documentos de logística, la misma columna que
+    «TRABAJOS REALIZADOS» en una orden. Sin nombrarla, el nombre del cliente
+    se indexa como si fuera un síntoma de la máquina."""
+    campo = seis["031-0024384"]
+    assert "CONSTRUCTORA" not in campo.get("resumen_falla", "")
+    assert campo["otros_campos"]["Cliente / obra"].startswith("CONSTRUCTORA")
+
+
+def test_el_nombre_del_tecnico_sale_del_sintoma(seis):
+    """«... TECNICO : PICHA CALCINA, ANDRE» venía pegado al hallazgo.
+
+    Medido en el archivo real: 27 de 83 hallazgos lo llevaban dentro. Un
+    nombre no es un síntoma —no ayuda a recuperar nada— y es dato personal
+    de la gente del taller.
+    """
+    hoja = seis["032-0001234"]
+    assert hoja["resumen_falla"] == "PINTADO GENERAL DE CANASTO"
+    assert hoja["otros_campos"]["Tecnicos"] == "PICHA CALCINA, ANDRE"
+
+
+def test_el_estado_del_documento_no_es_una_falla(seis):
+    """«CERRADO» estaba mapeado como «trabajos realizados»: habría entrado
+    como descripción de la falla, y el historial se habría llenado de averías
+    llamadas «cerrado»."""
+    control = seis["001-9000467"]
+    assert "resumen_falla" not in control
+    assert control["otros_campos"]["Estado"] == "CERRADO"
+
+
+def test_la_logistica_no_finge_ser_una_averia_pero_conserva_su_lectura(seis):
+    """Un acta de recepción es la máquina llegando, no una falla.
+
+    Contarla como avería diría «245 fallas» de un equipo de alquiler que se
+    despacha varias veces al año sin que se le rompa nada. Pero su fecha y su
+    horómetro son una LECTURA, y de las lecturas salen el ritmo de uso y el
+    próximo servicio: por eso se leen en vez de descartarse.
+    """
+    for ot in ("032-0001886", "001-0009999"):
+        assert "resumen_falla" not in seis[ot]
+        assert seis[ot]["fecha"] and seis[ot]["horometro"]
+
+
+def test_el_tablero_no_cuenta_la_logistica_como_falla():
+    """El efecto en el indicador, que es donde se habría notado el daño."""
+    from nefer.fixmate import embeddings, ingesta, tablero
+    from nefer.fixmate.indice import Indice
+
+    informes = hb.leer_filas(SEIS_DOCUMENTOS)
+    i = Indice(embeddings.EmbebedorLocal())
+    i.agregar(ingesta.de_historial({"informes": informes}, "h.json"))
+    t = tablero.confiabilidad(i)
+    # Ninguno de estos informes trae causa raíz confirmada —nadie la
+    # escribió—, así que no hay fallas que contar; lo que sí hay son
+    # lecturas fechadas.
+    assert t.fallas == 0, "la logística se está contando como avería"
+    assert t.lecturas == len(informes)

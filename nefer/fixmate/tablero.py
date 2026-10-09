@@ -193,13 +193,24 @@ class TableroConfiabilidad:
     mtbf_dias: dict[str, int] = field(default_factory=dict)
     mttr_horas: float | None = None
     disponibilidad: float | None = None
+    # Hechos fechados CON CAUSA. No todo lo fechado es una falla: un historial
+    # de verdad trae actas de recepcion y guias de remision, que son la
+    # maquina entrando y saliendo. Contarlas como fallas decia «245 fallas»
+    # de una maquina de alquiler que se despacha varias veces al año sin que
+    # se le rompa nada. `mtbf()` ya filtraba por causa; esta cuenta no, y las
+    # dos se leian juntas en el mismo tablero.
     fallas: int = 0
+    # Lo fechado sin causa: no son averias, pero son LECTURAS, y de ellas
+    # salen el ritmo de uso y el proximo servicio. Se cuentan aparte en vez
+    # de descartarse, porque «no es una falla» no es «no sirve».
+    lecturas: int = 0
     reincidencias_vencidas: int = 0
 
     def a_dict(self) -> dict:
         return {"equipos": self.equipos, "mtbf_dias": dict(self.mtbf_dias),
                 "mttr_horas": self.mttr_horas,
                 "disponibilidad": self.disponibilidad, "fallas": self.fallas,
+                "lecturas": self.lecturas,
                 "reincidencias_vencidas": self.reincidencias_vencidas}
 
 
@@ -226,7 +237,8 @@ def confiabilidad(indice, equipos=None, hoy=None) -> TableroConfiabilidad:
         if not eventos:
             continue
         t.equipos += 1
-        t.fallas += len(eventos)
+        t.fallas += sum(1 for e in eventos if e.causa)
+        t.lecturas += sum(1 for e in eventos if not e.causa)
         m = _prediccion.mtbf(eventos)
         if m is not None:
             t.mtbf_dias[codigo] = m

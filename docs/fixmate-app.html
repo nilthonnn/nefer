@@ -119,6 +119,19 @@
   ol.pasos .n { font-family:var(--mono); font-size:.72rem; color:var(--ink-3); }
 
     /* ---------- DIAGNÓSTICO: consulta y respuesta ---------- */
+  /* `hidden` tiene que ganarle a cualquier `display` de aqui.
+     La hoja del navegador trae `[hidden] { display:none }` con prioridad
+     baja, y cualquier regla de autor que fije `display` se la lleva por
+     delante. Pasaba en dos sitios a la vez, y los dos eran visibles:
+     `.dx-cargar` y `.dx-ejemplo` son `display:flex`, asi que al cargar el
+     historial el JavaScript ponia `hidden = true` y la pantalla seguia
+     diciendo «todavia no hay nada cargado» encima de 244 informes ya
+     cargados — y seguia ofreciendo el taller INVENTADO, que es justo lo que
+     no puede mezclarse con el historial de verdad.
+     Va aqui arriba y con `!important` a proposito: la alternativa es
+     acordarse, en cada clase nueva que fije `display`, de que ese elemento
+     quizas lleve `hidden`. */
+  [hidden] { display:none !important; }
   .dx-cargar { display:flex; gap:1rem; align-items:center; flex-wrap:wrap;
                background:var(--card); border:1px solid var(--rule);
                border-left:4px solid var(--accent); border-radius:0 8px 8px 0;
@@ -2294,8 +2307,29 @@ var FIXMATE = (function () {
   // con «no se reconoce ninguna columna de falla ni de causa».
   // ---------------------------------------------------------------------
 
-  var BLQ_ENCABEZADO_ORDEN = ["orden trabajo", "orden de trabajo",
-                              "control_extracciones", "nro orden", "n orden"];
+  // SEIS DOCUMENTOS, NO UNO. Medido sobre el historial de trece anos de un
+  // manlift real: de 245 bloques solo 40 eran «ORDEN TRABAJO», y los otros
+  // 205 se descartaban en silencio —el 84 % del historial—, entre ellos los
+  // 114 INFORME TECNICO CAMPO, que es donde el tecnico escribe que encontro.
+  // El sintoma era «40 fragmentos, 0 casos con causa» sobre 1.674 filas.
+  var BLQ_DOCUMENTOS = {
+    "orden trabajo": "orden de trabajo",
+    "orden de trabajo": "orden de trabajo",
+    "nro orden": "orden de trabajo",
+    "n orden": "orden de trabajo",
+    "control_extracciones": "control de extracciones",
+    "informe tecnico campo": "informe tecnico de campo",
+    "informe tecnico de campo": "informe tecnico de campo",
+    "hoja de servicio": "hoja de servicio",
+    "acta de recepcion": "acta de recepcion",
+    "guia de remision": "guia de remision"
+  };
+  // Los cuatro que pueden traer una falla descrita. Los otros dos son
+  // logistica —la maquina entrando y saliendo— y valen por su lectura de
+  // horometro, no como averia.
+  var BLQ_INTERVENCION = ["orden de trabajo", "control de extracciones",
+                          "informe tecnico de campo", "hoja de servicio"];
+  var BLQ_ENCABEZADO_ORDEN = Object.keys(BLQ_DOCUMENTOS);
   var BLQ_ENCABEZADO_APOYO = ["horometro", "fecha", "suministros"];
   var BLQ_RE_ORDEN = /^\d{2,4}-\d{3,}$/;
   var BLQ_RE_FECHA_DELANTE = /^\s*((?:\d{2}\/\d{2}\/\d{4}\s*,?\s*)+)-\s*/;
@@ -2303,7 +2337,16 @@ var FIXMATE = (function () {
   var BLQ_RE_TITULO = /HISTORIAL\s+EQUIPO\s*:\s*([A-Z0-9][A-Z0-9/.-]*)/i;
   var BLQ_RE_RELLENO = /^[\s.\-_·]*$/;
   var BLQ_SIN_HALLAZGO = ["equipo operativo", "operativo", "sin observacion",
-                          "ninguna", "observacion", "conforme", "ok"];
+                          "ninguna", "observacion", "conforme", "ok",
+                          // El estado del documento: «CERRADO» no dice nada
+                          // de la maquina.
+                          "cerrado", "abierto", "pendiente", "anulado",
+                          "atendido"];
+  // «... TECNICO : PICHA CALCINA, ANDRE». El nombre va rotulado, no al final
+  // tras dos espacios. Medido: 27 de 83 hallazgos lo llevaban pegado, y asi
+  // el nombre de un tecnico se indexaba como si fuera un sintoma. Puede venir
+  // vacio —«TECNICO : » y nada mas—, y la etiqueta suelta tambien se quita.
+  var BLQ_RE_TECNICO = /\s*T[EÉ]CNICOS?\s*:\s*(.*)$/i;
 
   function blqLimpio(v) {
     return v === null || v === undefined ? "" : String(v).trim();
@@ -2340,6 +2383,12 @@ var FIXMATE = (function () {
     if (m) {
       quien = m[1].trim();
       resto = resto.slice(0, m.index);
+    } else {
+      m = BLQ_RE_TECNICO.exec(resto);
+      if (m) {
+        quien = m[1].trim().split(/\s+/).join(" ");
+        resto = resto.slice(0, m.index);
+      }
     }
     return [resto.trim(), fecha, quien];
   }
@@ -2371,8 +2420,17 @@ var FIXMATE = (function () {
       else if (k === "observaciones" || k === "observacion" || k === "observación") donde.obs = i;
       else if (k === "cantidad" || k === "cant") donde.cantidad = i;
       else if (k === "codigo" || k === "código" || k === "cod") donde.codigo = i;
-      else if ((k === "trabajos realizados" || k === "trabajo realizado" ||
-                k === "estado") && donde.trabajos === undefined) donde.trabajos = i;
+      else if ((k === "trabajos realizados" || k === "trabajo realizado") &&
+               donde.trabajos === undefined) donde.trabajos = i;
+      // «ESTADO» es el estado del documento, no lo que se hizo. Estaba
+      // mapeado como «trabajos realizados», y «CERRADO» habria entrado como
+      // descripcion de la falla.
+      else if (k === "estado") donde.estado = i;
+      // El cliente y la obra ocupan, en los documentos de logistica, la
+      // misma columna que «TRABAJOS REALIZADOS» en una orden. Sin nombrarla,
+      // el nombre del cliente acaba dentro del sintoma y se indexa.
+      else if (k === "cliente / obra" || k === "cliente/obra" ||
+               k === "cliente" || k === "obra") donde.cliente = i;
     });
     return donde;
   }
@@ -2393,13 +2451,17 @@ var FIXMATE = (function () {
       }
 
       var bajas = celdas.map(function (c) { return c.toLowerCase(); });
-      var esOrden = bajas.some(function (c) { return BLQ_ENCABEZADO_ORDEN.indexOf(c) >= 0; });
+      var documento = "";
+      for (var d = 0; d < bajas.length; d++) {
+        if (BLQ_DOCUMENTOS[bajas[d]]) { documento = BLQ_DOCUMENTOS[bajas[d]]; break; }
+      }
       var esApoyo = bajas.some(function (c) { return BLQ_ENCABEZADO_APOYO.indexOf(c) >= 0; });
-      if (esOrden && esApoyo) {
+      if (documento && esApoyo) {
         if (actual) brutos.push(actual);
         donde = blqColumnas(celdas);
         actual = { repuestos: [], terceros: [], hallazgos: [],
-                   fechasMaterial: [], quienes: [], codigos: [] };
+                   fechasMaterial: [], quienes: [], codigos: [],
+                   documento: documento, cliente: "" };
         return;
       }
       if (!actual) return;
@@ -2442,10 +2504,31 @@ var FIXMATE = (function () {
         if (t2[2] && actual.quienes.indexOf(t2[2]) < 0) actual.quienes.push(t2[2]);
       }
 
-      var obs = dato("obs");
-      if (obs && !blqVacio(obs) && !blqEsPlantilla(obs) &&
-          actual.hallazgos.indexOf(obs) < 0) {
-        actual.hallazgos.push(obs);
+      // El cliente y la obra: dato del documento, nunca parte de la falla.
+      var cliente = dato("cliente");
+      if (cliente && !blqVacio(cliente) && !actual.cliente) {
+        actual.cliente = cliente;
+      }
+      if (dato("estado") && !blqVacio(dato("estado")) && !actual.estado) {
+        actual.estado = dato("estado");
+      }
+
+      // «TRABAJOS REALIZADOS» se mapeaba y NO SE LEIA: la columna con la
+      // descripcion de lo que se hizo se descartaba despues de localizarla.
+      // En el INFORME TECNICO CAMPO, «OBSERVACIONES» es la unica que
+      // describe la falla, y son 114 de esos en el archivo real.
+      if (BLQ_INTERVENCION.indexOf(actual.documento) >= 0) {
+        [dato("trabajos"), dato("obs")].forEach(function (h) {
+          if (!h || blqVacio(h)) return;
+          // El mismo separador que una linea de material: la fecha de
+          // delante y el nombre del tecnico salen del texto.
+          var tr = blqPartirLinea(h);
+          if (tr[2] && actual.quienes.indexOf(tr[2]) < 0) actual.quienes.push(tr[2]);
+          if (tr[0] && !blqVacio(tr[0]) && !blqEsPlantilla(tr[0]) &&
+              actual.hallazgos.indexOf(tr[0]) < 0) {
+            actual.hallazgos.push(tr[0]);
+          }
+        });
       }
     });
     if (actual) brutos.push(actual);
@@ -2480,6 +2563,12 @@ var FIXMATE = (function () {
     if (terceros.length) informe.solucion_aplicada = terceros.join(" · ");
 
     var otros = {};
+    // De que documento salio. Sin esto, un acta de recepcion y un informe
+    // tecnico de campo se ven iguales en el indice, y no son lo mismo: el
+    // primero dice que la maquina llego, el segundo que algo le pasaba.
+    if (bruto.documento) otros["Documento"] = bruto.documento;
+    if (bruto.cliente) otros["Cliente / obra"] = bruto.cliente;
+    if (bruto.estado) otros["Estado"] = bruto.estado;
     if (bruto.quienes.length) otros["Tecnicos"] = bruto.quienes.join(", ");
     if (bruto.fechasMaterial.length) {
       var unicas = bruto.fechasMaterial.slice().filter(function (f, i, a) {
@@ -3191,6 +3280,14 @@ var FIXMATE = (function () {
         if (caja) caja.hidden = false;
         return null;
       }
+      // Servida por el sitio, al lado de la app puede haber un indice ya
+      // armado. Como archivo suelto —que es como viaja por WhatsApp— no hay
+      // «al lado», y pedirlo deja dos errores rojos en la consola que no
+      // significan nada: el navegador bloquea el fetch de un file:// vecino
+      // por politica de origen. La app funciona igual, pero quien abre la
+      // consola para ver por que «no carga» encuentra dos errores y concluye
+      // que esta roto. No se pide lo que no puede existir.
+      if (location.protocol.indexOf("http") !== 0) return null;
       return fetch("indice.json").then(function (r) {
         return r.ok ? r.text() : null;
       }).then(function (servido) {

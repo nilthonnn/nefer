@@ -39,11 +39,47 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-# La cabecera que se repite. Hace falta la de orden y al menos una de las que
-# fechan el bloque: con solo una palabra, cualquier hoja con la columna
+# SEIS DOCUMENTOS, NO UNO.
+#
+# Esto se escribio creyendo que el export traia ordenes de trabajo y nada mas.
+# Medido sobre el historial de trece anos de un manlift real: de 245 bloques,
+# solo 40 eran «ORDEN TRABAJO» o «CONTROL_EXTRACCIONES». Los otros 205 se
+# descartaban en silencio —el 84 % del historial de la maquina—, y entre ellos
+# los 114 INFORME TECNICO CAMPO, que es justamente el documento donde el
+# tecnico escribe que encontro.
+#
+# El sintoma no era un error: era la app diciendo «40 fragmentos, 0 casos con
+# causa confirmada» sobre un archivo de 1.674 filas, y respondiendo una
+# consulta del manlift con el manual de un grupo electrogeno. Un lector que
+# descarta cuatro de cada cinco documentos no da error en ninguna parte.
+_DOCUMENTOS = {
+    "orden trabajo": "orden de trabajo",
+    "orden de trabajo": "orden de trabajo",
+    "nro orden": "orden de trabajo",
+    "n orden": "orden de trabajo",
+    "control_extracciones": "control de extracciones",
+    "informe tecnico campo": "informe tecnico de campo",
+    "informe tecnico de campo": "informe tecnico de campo",
+    "hoja de servicio": "hoja de servicio",
+    "acta de recepcion": "acta de recepcion",
+    "guia de remision": "guia de remision",
+}
+
+# Los cuatro que pueden traer una falla descrita. Los otros dos son logistica
+# —la maquina entrando o saliendo— y se leen igual, pero por otra razon: su
+# fecha y su horometro son una LECTURA, y de las lecturas sale el ritmo de uso
+# y el proximo servicio. Tratar un acta de recepcion como una averia inflaria
+# la cuenta de fallas de una flota de alquiler, que se despacha y se recibe
+# varias veces al ano sin que se le rompa nada.
+_DOCUMENTOS_DE_INTERVENCION = frozenset({
+    "orden de trabajo", "control de extracciones",
+    "informe tecnico de campo", "hoja de servicio",
+})
+
+# La cabecera que se repite. Hace falta la del documento y al menos una de las
+# que fechan el bloque: con solo una palabra, cualquier hoja con la columna
 # «fecha» pasaria por un historial por bloques.
-_ENCABEZADO_ORDEN = ("orden trabajo", "orden de trabajo", "control_extracciones",
-                     "nro orden", "n orden")
+_ENCABEZADO_ORDEN = tuple(_DOCUMENTOS)
 _ENCABEZADO_APOYO = ("horometro", "fecha", "suministros")
 
 # El numero de orden tal como lo escribe el sistema: 001-0042245, 031-0022835.
@@ -57,6 +93,18 @@ _RE_FECHA_DELANTE = re.compile(r"^\s*((?:\d{2}/\d{2}/\d{4}\s*,?\s*)+)-\s*")
 # uno solo, y VISTONY es el fabricante, no quien lo instalo.
 _RE_QUIEN = re.compile(r"\s+-\s{2,}([A-ZÁÉÍÓÚÑ][^-]{4,})$")
 
+# «... TECNICO : PICHA CALCINA, ANDRE». En la columna de trabajos realizados
+# el nombre no va al final tras dos espacios —como en una linea de material—
+# sino rotulado, y a veces seguido de otro texto. Medido: 27 de los 83
+# hallazgos del archivo real lo llevaban pegado, y asi el nombre de un tecnico
+# se indexaba como si fuera parte del sintoma. Un nombre no es un sintoma: no
+# ayuda a recuperar nada y es dato personal de su gente.
+# El nombre puede venir VACIO —«... TECNICO : » y nada mas—, y entonces hay
+# que quitar igual la etiqueta suelta: deja «TECNICO :» dentro del sintoma.
+# Sin re.S a proposito: en una celda de varias lineas, el rotulo se quita de
+# la ultima y no se arrastra el resto del texto con el.
+_RE_TECNICO = re.compile(r"\s*T[EÉ]CNICOS?\s*:\s*(.*)$", re.I)
+
 # «HISTORIAL EQUIPO : MLAD041-02»
 _RE_TITULO = re.compile(r"HISTORIAL\s+EQUIPO\s*:\s*([A-Z0-9][A-Z0-9/.-]*)", re.I)
 
@@ -64,7 +112,11 @@ _RE_TITULO = re.compile(r"HISTORIAL\s+EQUIPO\s*:\s*([A-Z0-9][A-Z0-9/.-]*)", re.I
 # el principio, no por la celda entera: la plantilla del taller escribe «EQUIPO
 # OPERATIVO POR EL TECNICO FULANO Y MENGANO», que sigue sin ser un hallazgo.
 _SIN_HALLAZGO = ("equipo operativo", "operativo", "sin observacion", "ninguna",
-                 "observacion", "conforme", "ok")
+                 "observacion", "conforme", "ok",
+                 # El estado del documento. «CERRADO» no dice nada de la
+                 # maquina, y colarlo como hallazgo llenaria el historial de
+                 # fallas llamadas «cerrado».
+                 "cerrado", "abierto", "pendiente", "anulado", "atendido")
 
 # Celdas de relleno: guiones y espacios, nada mas.
 _RE_RELLENO = re.compile(r"^[\s.\-_·]*$")
@@ -118,6 +170,11 @@ def partir_linea(linea: str) -> tuple[str, str, str]:
     if m:
         quien = m.group(1).strip()
         resto = resto[:m.start()]
+    else:
+        m = _RE_TECNICO.search(resto)
+        if m:
+            quien = " ".join(m.group(1).split())
+            resto = resto[:m.start()]
     return resto.strip(), fecha, quien
 
 
@@ -160,8 +217,19 @@ def _columnas(celdas: list[str]) -> dict[str, int]:
             donde["cantidad"] = i
         elif clave in ("codigo", "código", "cod"):
             donde["codigo"] = i
-        elif clave in ("trabajos realizados", "trabajo realizado", "estado"):
+        elif clave in ("trabajos realizados", "trabajo realizado"):
             donde.setdefault("trabajos", i)
+        # «ESTADO» es el estado del documento, no lo que se hizo. Estaba
+        # mapeado como «trabajos realizados» y por eso «CERRADO» habria
+        # entrado como descripcion de la falla.
+        elif clave == "estado":
+            donde["estado"] = i
+        # El cliente y la obra ocupan, en los documentos de logistica, la
+        # misma columna que «TRABAJOS REALIZADOS» en una orden. Si no se
+        # nombra, el nombre del cliente acaba dentro de la descripcion de la
+        # falla y se indexa como si fuera un sintoma.
+        elif clave in ("cliente / obra", "cliente/obra", "cliente", "obra"):
+            donde["cliente"] = i
     return donde
 
 
@@ -188,13 +256,14 @@ def leer_filas(filas, equipo: str = "", modelo: str = "") -> list[dict]:
                     break
 
         bajas = [c.lower() for c in celdas]
-        if any(c in _ENCABEZADO_ORDEN for c in bajas) and \
-           any(c in _ENCABEZADO_APOYO for c in bajas):
+        documento = next((_DOCUMENTOS[c] for c in bajas if c in _DOCUMENTOS), "")
+        if documento and any(c in _ENCABEZADO_APOYO for c in bajas):
             if actual is not None:
                 informes.append(actual)
             donde = _columnas(celdas)
             actual = {"repuestos": [], "terceros": [], "hallazgos": [],
-                      "fechas_material": [], "quienes": [], "codigos": []}
+                      "fechas_material": [], "quienes": [], "codigos": [],
+                      "documento": documento, "cliente": ""}
             continue
 
         if actual is None:
@@ -239,12 +308,38 @@ def leer_filas(filas, equipo: str = "", modelo: str = "") -> list[dict]:
             if quien and quien not in actual["quienes"]:
                 actual["quienes"].append(quien)
 
-        obs = dato("obs")
-        # «EQUIPO OPERATIVO» no es un hallazgo; lo que no es eso, si lo es, y
-        # es lo unico parecido a una falla reportada que trae el archivo.
-        if obs and not _vacio(obs) and not _es_plantilla(obs) \
-                and obs not in actual["hallazgos"]:
-            actual["hallazgos"].append(obs)
+        # El cliente y la obra: dato del documento, nunca parte de la falla.
+        # La obra es, ademas, el nivel 3 de la taxonomia de ISO 14224.
+        cliente = dato("cliente")
+        if cliente and not _vacio(cliente) and not actual["cliente"]:
+            actual["cliente"] = cliente
+
+        if dato("estado") and not _vacio(dato("estado")):
+            actual.setdefault("estado", dato("estado"))
+
+        # «TRABAJOS REALIZADOS» se mapeaba y NO SE LEIA: la columna que lleva
+        # la descripcion de lo que se hizo se descartaba despues de haberla
+        # localizado. Solo cuenta en los documentos de intervencion.
+        hallazgos_aqui = []
+        if actual["documento"] in _DOCUMENTOS_DE_INTERVENCION:
+            hallazgos_aqui.append(dato("trabajos"))
+            # «EQUIPO OPERATIVO» no es un hallazgo; lo que no es eso, si lo
+            # es. En el INFORME TECNICO CAMPO esta columna es la unica que
+            # describe la falla, y son 114 de esos en el archivo real.
+            hallazgos_aqui.append(dato("obs"))
+
+        for h in hallazgos_aqui:
+            if not h or _vacio(h):
+                continue
+            # El mismo separador que una linea de material: la fecha de
+            # delante y el nombre del tecnico salen del texto y van a su
+            # campo. Lo que queda es la descripcion de lo que pasó.
+            texto, _, quien = partir_linea(h)
+            if quien and quien not in actual["quienes"]:
+                actual["quienes"].append(quien)
+            if texto and not _vacio(texto) and not _es_plantilla(texto) \
+                    and texto not in actual["hallazgos"]:
+                actual["hallazgos"].append(texto)
 
     if actual is not None:
         informes.append(actual)
@@ -284,6 +379,15 @@ def _armar(bruto: dict, equipo: str, modelo: str) -> dict | None:
         informe["solucion_aplicada"] = " · ".join(terceros)
 
     otros: dict[str, str] = {}
+    # De que documento salio. Sin esto, un acta de recepcion y un informe
+    # tecnico de campo se ven iguales en el indice, y no son lo mismo: el
+    # primero dice que la maquina llego, el segundo que algo le pasaba.
+    if bruto.get("documento"):
+        otros["Documento"] = bruto["documento"]
+    if bruto.get("cliente"):
+        otros["Cliente / obra"] = bruto["cliente"]
+    if bruto.get("estado"):
+        otros["Estado"] = bruto["estado"]
     if bruto["quienes"]:
         otros["Tecnicos"] = ", ".join(bruto["quienes"])
     if bruto["fechas_material"]:

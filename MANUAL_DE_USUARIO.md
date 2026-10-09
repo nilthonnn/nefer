@@ -749,7 +749,7 @@ python3 -m nefer fixmate -i indice.json tablero
 
 | Tablero | Quién lo mira | Qué contiene |
 |---|---|---|
-| **Confiabilidad** | Jefe de mantenimiento | MTBF por equipo, fallas, reincidencias vencidas |
+| **Confiabilidad** | Jefe de mantenimiento | MTBF por equipo, fallas, lecturas fechadas, reincidencias vencidas |
 | **RCM** | Jefe de confiabilidad | Activos analizados, modos, modos graves, ocultos, validados, completitud, tareas por estrategia |
 | **TPM** | Supervisor de producción | Pautas, ejecuciones, completas, sospechosas, cumplimiento, anomalías abiertas/cerradas, días medios de cierre |
 
@@ -780,6 +780,18 @@ un taller, asi que no se calcula.
 
 Reincidencias vencidas: 2
 ```
+
+> [!IMPORTANT]
+> **«Fallas registradas» cuenta sólo lo que tiene causa.** Un historial de
+> verdad trae, además de órdenes de trabajo, actas de recepción y guías de
+> remisión: la máquina entrando y saliendo. Eso no es una avería, y contarlo
+> como tal diría «245 fallas» de un equipo de alquiler que se despacha varias
+> veces al año sin que se le rompa nada.
+>
+> Lo fechado sin causa sale aparte, como **«Otras lecturas fechadas»**: no son
+> averías, pero su fecha y su horómetro son una **lectura**, y de las lecturas
+> salen el ritmo de uso y la fecha del próximo servicio. «No es una falla» no
+> es «no sirve».
 
 | Cómo leerlo | |
 |---|---|
@@ -964,9 +976,31 @@ exige además de las descripciones.
 en el campo «¿La falla se nota cuando ocurre?». El mensaje de error se lo
 indica.
 
+**Cargué el Excel del taller y salen muy pocos fragmentos.**
+El export del sistema del taller trae **seis** tipos de documento, cada uno
+con su cabecera repetida: `ORDEN TRABAJO`, `INFORME TECNICO CAMPO`,
+`HOJA DE SERVICIO`, `ACTA DE RECEPCION`, `GUIA DE REMISION` y
+`CONTROL_EXTRACCIONES`. FixMate lee los seis y dice de cuál salió cada
+informe, en `otros_campos.Documento`. Si su export trae un séptimo con otro
+rótulo, se descartará en silencio: avísenos con el nombre exacto de la
+cabecera y se agrega.
+
+**El historial cargó pero dice «0 casos con causa confirmada».**
+Es correcto y es honesto: ese export no trae una columna de causa raíz —en
+trece años de historia de una máquina, nadie la escribió—. Lo que sí trae es
+**lo que se encontró y lo que se hizo**, y eso se indexa y se recupera con su
+cita. El clasificador de causas necesita 12 casos con causa confirmada; esos
+se van juntando a medida que el equipo cierra fallas con `fixmate cerrar`,
+que sí pide causa.
+
+> [!NOTE]
+> Consecuencia práctica: sin causas confirmadas **no hay MTBF** para ese
+> equipo, porque `mtbf()` sólo cuenta eventos con causa. Las búsquedas sí
+> funcionan desde el primer archivo cargado.
+
 **El MTBF de un equipo no aparece.**
-Tiene una sola aparición en el historial. Con una sola no hay intervalo, hay
-una fecha.
+Tiene una sola aparición con causa en el historial. Con una sola no hay
+intervalo, hay una fecha.
 
 **El cumplimiento TPM sale vacío y no en 0 %.**
 Es correcto: todavía no hay ninguna ronda registrada. `null` significa «no hay
