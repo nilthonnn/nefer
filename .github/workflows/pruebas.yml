@@ -97,6 +97,7 @@ jobs:
             tests/test_fixmate_taxonomia.py \
             tests/test_fixmate_texto.py \
             tests/test_fixmate_tpm.py \
+            tests/test_manual_de_usuario.py \
             tests/test_layout.py \
             tests/test_publicacion_clon.py \
             tests/test_publicacion_fixmate.py \
