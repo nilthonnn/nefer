@@ -1,6 +1,6 @@
-"""Las cuatro superficies de FixMate tienen que ser el mismo producto.
+"""Las cinco superficies de FixMate tienen que ser el mismo producto.
 
-FixMate se usa desde cuatro pantallas: la página de entrada, la app de
+FixMate se usa desde cinco pantallas: la página de entrada, la app de
 diagnóstico del técnico, la ronda CIL del operador y el análisis RCM de la
 oficina. Hasta que esto existió había **dos paletas**: la de la app, clara y
 oscura según el aparato, y una azul marino propia de las dos pantallas
@@ -34,8 +34,13 @@ PANTALLAS = {
     "la página de entrada": RAIZ / "docs" / "fixmate" / "index.html",
     "la ronda CIL": RAIZ / "docs" / "fixmate" / "ronda" / "index.html",
     "el análisis RCM": RAIZ / "docs" / "fixmate" / "rcm" / "index.html",
+    "armar": RAIZ / "docs" / "fixmate" / "armar" / "index.html",
 }
-HERRAMIENTAS = ("la ronda CIL", "el análisis RCM")
+HERRAMIENTAS = ("la ronda CIL", "el análisis RCM", "armar")
+# La carpeta de cada herramienta, para poder decir a qué TIENE que enlazar
+# cada barra. Contar enlaces no servía: el día que apareció la cuarta
+# pantalla, la cuenta falló en las tres viejas sin decir qué faltaba.
+CARPETAS = {"la ronda CIL": "ronda", "el análisis RCM": "rcm", "armar": "armar"}
 
 
 @pytest.mark.parametrize("nombre", list(PANTALLAS))
@@ -43,7 +48,7 @@ def test_todas_llevan_la_misma_piel_que_la_app(nombre):
     html = PANTALLAS[nombre].read_text(encoding="utf-8")
     assert piel.tokens() in html, (
         f"{nombre} no lleva los tokens de la app. Si cambió la paleta, corra "
-        "`python herramientas/piel.py`, `espejo-ronda.py` y `espejo-rcm.py`.")
+        "`python herramientas/piel.py` y los `espejo-*.py` de las pantallas.")
 
 
 def test_la_piel_sale_de_la_app_y_no_de_una_copia():
@@ -94,7 +99,11 @@ def test_los_enlaces_entre_herramientas_van_a_algo_que_existe(nombre):
     barra = re.search(r'<nav class="vinculos">(.*?)</nav>', html, re.S)
     assert barra, f"{nombre} no enlaza con las otras herramientas"
     destinos = re.findall(r'href="([^"]+)"', barra.group(1))
-    assert len(destinos) == 3, destinos
+    # La entrada, la app de diagnóstico y las demás herramientas: todas, y
+    # sólo ésas. Desde cualquier pantalla se llega a cualquier otra.
+    esperados = {"../", "../app/"} | {
+        f"../{c}/" for n, c in CARPETAS.items() if n != nombre}
+    assert set(destinos) == esperados, destinos
     for destino in destinos:
         assert (ruta.parent / destino / "index.html").exists(), (
             f"{nombre} enlaza a «{destino}», que no existe")

@@ -13,7 +13,7 @@ archivo vuelve a la oficina.
     python herramientas/espejo-rcm.py --revisar  # solo dice si esta al dia
 
 Tambien se copia aqui LA PIEL —los tokens de color de la app de
-diagnostico y la capa comun de componentes—, para que las cuatro superficies
+diagnostico y la capa comun de componentes—, para que las cinco superficies
 de FixMate se vean como un solo producto y las dos pantallas nuevas tengan
 modo claro: ver `herramientas/piel.py`.
 

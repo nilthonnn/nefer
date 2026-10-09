@@ -15,7 +15,7 @@ tendrian que ser la misma.
     python herramientas/espejo-ronda.py --revisar  # solo dice si esta al dia
 
 Tambien se copia aqui LA PIEL —los tokens de color de la app de
-diagnostico y la capa comun de componentes—, para que las cuatro superficies
+diagnostico y la capa comun de componentes—, para que las cinco superficies
 de FixMate se vean como un solo producto y esta tenga modo claro: a 4.200 m
 al sol, una pantalla oscura no se lee. Ver `herramientas/piel.py`.
 

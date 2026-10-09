@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16191B">
+<title>Armar · FixMate</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+/* armar:piel:inicio */
+/* armar:piel:fin */
+
+/* --------------------------------------------- lo propio de esta pantalla
+ * Un escritorio, no un telefono: aqui se escribe, y escribir pide ancho,
+ * teclado y poder ver el conjunto. Las otras dos pantallas son de campo y
+ * estan hechas al reves —un dato a la vez, a pantalla completa—. Misma piel,
+ * distinta forma, porque es distinto el trabajo.
+ */
+.hoja { max-width:860px; margin:0 auto; padding:14px 0 7rem; }
+h1 { font-family:var(--cond); font-size:2rem; line-height:1.1; margin:.2rem 0 .4rem;
+     text-transform:uppercase; letter-spacing:.01em; }
+h2 { font-family:var(--cond); font-size:1.3rem; text-transform:uppercase;
+     letter-spacing:.02em; margin:1.6rem 0 .6rem; padding-top:.7rem;
+     border-top:2px solid var(--ink); display:flex; align-items:baseline;
+     gap:.6rem; flex-wrap:wrap; }
+h2 .lb { color:var(--ink-3); }
+
+/* El formulario. Las etiquetas van ENCIMA del campo, no al lado: con el
+   nombre al lado, en un telefono en horizontal el campo queda de 90 px y
+   nadie escribe un criterio de aceptacion ahi. */
+.campo { display:flex; flex-direction:column; gap:.2rem; margin-bottom:.7rem; }
+.campo > span { font-family:var(--mono); font-size:.66rem; letter-spacing:.07em;
+                text-transform:uppercase; color:var(--ink-3); }
+.campo > em { font-size:.78rem; color:var(--ink-2); font-style:normal; }
+input[type=text], input[type=number], textarea, select {
+  font:inherit; font-size:.95rem; color:var(--ink); background:var(--paper);
+  border:1px solid var(--rule); border-radius:6px; padding:.5rem .6rem;
+  width:100%; }
+textarea { min-height:3.2rem; resize:vertical; line-height:1.45; }
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+/* El campo que falta y bloquea se marca donde esta, no solo en la lista de
+   abajo: una lista de errores sin señalar el campo obliga a buscarlo. */
+.campo.falta input, .campo.falta textarea, .campo.falta select {
+  border-color:var(--mal); background:var(--mal-soft); }
+.campo .pide { display:none; font-style:normal; color:var(--mal); }
+.campo.falta .pide { display:inline; }
+.marca { display:flex; gap:.45rem; align-items:flex-start; margin-bottom:.35rem;
+         font-size:.9rem; }
+.marca input { width:1.1rem; height:1.1rem; margin:.15rem 0 0; flex:none; }
+.rejilla { display:grid; grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));
+           gap:0 .8rem; }
+
+/* Un punto de la pauta, o un modo de falla: una tarjeta con su numero y sus
+   botones de orden. El numero es visible a proposito —es el `id` que va a
+   salir en el archivo y el que va a citar el operador por radio—. */
+.bloque { background:var(--card); border:1px solid var(--rule); border-radius:8px;
+          padding:.8rem .9rem; margin-bottom:.7rem; }
+.bloque > summary { cursor:pointer; font-weight:600; display:flex; gap:.5rem;
+                    align-items:baseline; flex-wrap:wrap; list-style:none; }
+.bloque > summary::-webkit-details-marker { display:none; }
+.bloque > summary::before { content:"▸"; color:var(--ink-3); flex:none; }
+.bloque[open] > summary::before { content:"▾"; }
+.bloque > summary .vacio { font-weight:400; }
+.bloque .cuerpo { padding-top:.8rem; }
+.anidado { border-left:3px solid var(--rule-2); padding-left:.8rem;
+           margin-left:.1rem; }
+.acciones { display:flex; gap:.4rem; flex-wrap:wrap; margin:.2rem 0 .9rem; }
+.acciones button { font-size:.8rem; padding:.35rem .6rem; }
+.borrar { color:var(--mal); border-color:var(--mal-rule); }
+
+/* El panel de abajo. Va fijo porque es la unica cosa que el planificador
+   mira sin parar: si falta algo, cuanto falta, y si ya puede bajar el
+   archivo. Suelto arriba, se escribe media pauta sin ver que esta trabada. */
+.panel { position:fixed; left:0; right:0; bottom:0; z-index:8;
+         background:var(--card); border-top:1px solid var(--rule);
+         box-shadow:0 -8px 24px -18px rgba(0,0,0,.5);
+         padding:.7rem 16px; }
+.panel > div { max-width:860px; margin:0 auto; display:flex; gap:.7rem;
+               align-items:center; flex-wrap:wrap; }
+.panel .cuenta { font-family:var(--mono); font-size:.72rem; color:var(--ink-2);
+                 flex:1; min-width:10rem; }
+.panel button.primary { flex:none; }
+.lista { margin:.2rem 0 .6rem; padding-left:1.1rem; font-size:.88rem; }
+.lista li { margin-bottom:.2rem; }
+.lista.mal li { color:var(--mal); }
+.lista.obs li { color:var(--obs); }
+.detalle { max-height:40vh; overflow:auto; }
+.chip.cuenta { font-variant-numeric:tabular-nums; }
+.inicio button { width:100%; text-align:left; min-height:52px; margin-bottom:.6rem; }
+.inicio button .tenue { display:block; font-weight:400; margin-top:.15rem; }
+</style>
+</head>
+<body>
+<div class="barra">
+  <b>FixMate</b><span>Armar</span>
+  <nav class="vinculos">
+    <a href="../">Inicio</a>
+    <a href="../app/">Diagnóstico</a>
+    <a href="../ronda/">Ronda CIL</a>
+    <a href="../rcm/">Análisis RCM</a>
+  </nav>
+</div>
+<script>
+/* armar:arranque:inicio */
+/* armar:arranque:fin */
+</script>
+<div class="hoja" id="app"></div>
+<div class="panel" id="panel" hidden></div>

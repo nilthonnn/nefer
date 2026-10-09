@@ -407,9 +407,9 @@ baja **no** lleva la ronda dentro. La ronda sigue siendo la ronda, y el
 análisis sigue entrando por `rcm analizar` sin convertir nada.
 
 **10k. La misma pantalla, en claro y en oscuro.** Cambie el tema del sistema
-operativo. Las cuatro superficies de FixMate —la página, la app, la ronda y
-esta— siguen al aparato y comparten la misma paleta. A 4.200 m al sol, una
-pantalla oscura no se lee; en interior mina a las tres de la mañana, una
+operativo. Las cinco superficies de FixMate —la página, la app, la ronda,
+«Armar» y esta— siguen al aparato y comparten la misma paleta. A 4.200 m al
+sol, una pantalla oscura no se lee; en interior mina a las tres de la mañana, una
 blanca encandila.
 
 **Qué mirar.** La pantalla no evalúa criticidad, no arma la matriz FMECA y no
@@ -494,7 +494,7 @@ agregarlos — está dicho en el encabezado del módulo.
 | 10e | Pantalla RCM · 89 % | Aparece Nowlan y Heap al contestar «no» a la edad | |
 | 10i | Pantalla RCM · ida y vuelta | Lo exportado lo lee `rcm analizar` sin convertir | |
 | 10j | Pantalla RCM · ronda encima | 1 hallazgo en F1.1.1, con quién y cuándo | |
-| 10k | Claro y oscuro | Las cuatro pantallas siguen al aparato | |
+| 10k | Claro y oscuro | Las cinco pantallas siguen al aparato | |
 | 11a | Instalar en Android | Icono propio, a pantalla completa | |
 | 11b | Modo avión | La ronda entera se hace sin señal | |
 | 12 | Taxonomía ISO 14224 | Nueve niveles; 4, 5 y 9 vacíos con su motivo | |

@@ -14,11 +14,12 @@ que traducirlo.
 
 Los colores son los de la casa: el fondo de la barra y el acento.
 
-TRES HERRAMIENTAS, TRES MARCAS DENTRO DEL MISMO DISCO. En la pantalla de
-inicio de un telefono las tres quedan juntas, y tres iconos identicos no se
+CUATRO HERRAMIENTAS, CUATRO MARCAS DENTRO DEL MISMO DISCO. En la pantalla
+de inicio de un telefono quedan juntas, y cuatro iconos identicos no se
 eligen: se tantean. El disco y los colores son los mismos —es el mismo
 producto— y dentro cambia el gesto: la llave del diagnostico, el recorrido
-de la ronda, la bifurcacion del arbol de decision.
+de la ronda, la bifurcacion del arbol de decision, los renglones de lo que
+se esta escribiendo.
 """
 
 from __future__ import annotations
@@ -115,6 +116,19 @@ def dibujar(lado: int, maskable: bool = False, marca: str = "llave",
         for x, y in (izq, der):
             d.ellipse([x - r, y - r, x + r, y + r], fill=MARCA)
 
+    elif marca == "armar":
+        # Lo que se escribe: tres renglones, el ultimo a medias y en el color
+        # de acento. No es una lista de verificacion —esa es la ronda—: es la
+        # hoja en la que todavia se esta escribiendo. A 48 px, tres renglones
+        # se distinguen del recorrido y del arbol de un golpe de vista.
+        ancho = largo * 1.05
+        alto = grueso * 1.25
+        proporciones = ((1.0, MARCA), (0.78, MARCA), (0.46, ACENTO))
+        for i, (fraccion, color) in enumerate(proporciones):
+            y = centro + (i - 1) * alto * 1.9
+            d.line([centro - ancho * 0.5, y, centro - ancho * 0.5 + ancho * fraccion, y],
+                   fill=color, width=int(alto))
+
     else:
         raise SystemExit(f"marca «{marca}» desconocida")
 
@@ -129,7 +143,8 @@ TAMANOS = [("icono-192.png", 192, False),
 # Cada herramienta instalable, con su marca. El diagnostico conserva la suya.
 JUEGOS = [(DESTINO, "llave"),
           (RAIZ / "docs" / "fixmate" / "ronda", "ronda"),
-          (RAIZ / "docs" / "fixmate" / "rcm", "rcm")]
+          (RAIZ / "docs" / "fixmate" / "rcm", "rcm"),
+          (RAIZ / "docs" / "fixmate" / "armar", "armar")]
 
 
 def para_android(marca: str = "ronda") -> list:

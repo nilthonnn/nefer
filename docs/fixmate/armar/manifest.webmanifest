@@ -1,0 +1,33 @@
+{
+  "name": "FixMate · Armar",
+  "short_name": "Armar",
+  "description": "Escribir la pauta de la ronda y el análisis RCM: de aquí sale el archivo que abren las otras dos pantallas.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#16191B",
+  "theme_color": "#16191B",
+  "lang": "es",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "icono-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icono-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icono-512-recortable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,0 +1,2099 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16191B">
+<title>Armar · FixMate</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icono-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+/* armar:piel:inicio */
+/* Generado por herramientas/piel.py desde docs/fixmate/app/index.html.
+ * No editar aqui: se reescribe. */
+    :root {
+    --paper:#F3F4F2; --card:#FFFFFF; --card-2:#EAEDEB;
+    --ink:#16191B; --ink-2:#4E5860; --ink-3:#5F6A72;
+    --rule:#D6DCDA; --rule-2:#E6EAE8;
+    --accent:#1E4B6B; --accent-soft:#E3ECF3;
+    --ok:#1F6B4C; --ok-soft:#E1F0E9;
+    --obs:#8A5A00; --obs-soft:#F8EFDB; --obs-rule:#E0C894;
+    --mal:#96341F; --mal-soft:#F7E6E0; --mal-rule:#E0B2A2;
+    --barra:#16191B; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(22,25,27,.05), 0 10px 26px -16px rgba(22,25,27,.28);
+    /* Barlow va alojada; detrás, siempre, la del sistema: si el archivo aún
+       no llegó o no está —el demo descargado como archivo suelto no lo
+       lleva—, el texto se lee igual desde el primer instante. */
+    --cond:"Barlow Condensed",ui-sans-serif,system-ui,-apple-system,
+           "Roboto Condensed","Arial Narrow",sans-serif;
+    --sans:"Barlow",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    /* La monoespaciada no se aloja: la del aparato es buena y cuesta 0 bytes. */
+    --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+      --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+      --rule:#2F383D; --rule-2:#262E32;
+      --accent:#6FA8CE; --accent-soft:#16303F;
+      --ok:#6FC49B; --ok-soft:#143024;
+      --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+      --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+      --barra:#0E1113; --barra-ink:#E7ECEB;
+      --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#14181A; --card:#1C2225; --card-2:#242B2F;
+    --ink:#E7ECEB; --ink-2:#A3AFB4; --ink-3:#96A7B0;
+    --rule:#2F383D; --rule-2:#262E32;
+    --accent:#6FA8CE; --accent-soft:#16303F;
+    --ok:#6FC49B; --ok-soft:#143024;
+    --obs:#D9A24E; --obs-soft:#2C2417; --obs-rule:#4C3F23;
+    --mal:#E08A6E; --mal-soft:#2E1D17; --mal-rule:#5A3327;
+    --barra:#0E1113; --barra-ink:#E7ECEB;
+    --lift:0 1px 2px rgba(0,0,0,.45), 0 12px 30px -18px rgba(0,0,0,.8);
+  }
+  
+
+/* La capa comun de las pantallas de FixMate: barra, botones, tarjetas,
+ * etiquetas y avisos. Encima van las reglas propias de cada pantalla.
+ *
+ * Esto NO define colores: los toma de la piel, que sale de la app de
+ * diagnostico. Un color escrito aqui a mano seria una tercera paleta, que es
+ * justo lo que esta capa existe para que no pase.
+ *
+ * Por que una capa comun y no que cada pantalla se pinte sola: el tecnico que
+ * diagnostica, el operador que hace la ronda y el ingeniero que decide la
+ * estrategia son tres personas que hablan entre ellas de la misma maquina. Si
+ * cada pantalla parece de otro programa, la primera pregunta de cada reunion
+ * es cual de los tres tiene el dato bueno.
+ */
+
+*, *::before, *::after { box-sizing:border-box; }
+/* Que los controles del sistema —barras de desplazamiento, campos, el
+   teclado del telefono— sigan el mismo tema que la pagina. */
+html { -webkit-text-size-adjust:100%; color-scheme:light dark; }
+body { margin:0; background:var(--paper); color:var(--ink);
+       font-family:var(--sans); font-size:16px; line-height:1.5;
+       padding:0 16px env(safe-area-inset-bottom); }
+
+/* ---------------------------------------------------------- la barra
+ * La misma de la app de diagnostico: el nombre del producto, y al lado, en
+ * chico, en que pantalla esta parado. Es lo unico que se ve igual en las tres
+ * antes de leer una sola palabra.
+ */
+.barra { background:var(--barra); color:var(--barra-ink); margin:0 -16px;
+         padding:.7rem 16px calc(.7rem + env(safe-area-inset-top));
+         display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap; }
+.barra b { font-family:var(--cond); font-size:1.15rem; letter-spacing:.04em;
+           text-transform:uppercase; }
+.barra span { font-family:var(--mono); font-size:.66rem; opacity:.7;
+              letter-spacing:.06em; text-transform:uppercase; }
+.barra .vinculos { margin-left:auto; display:flex; gap:.9rem; }
+.barra .vinculos a { color:var(--barra-ink); opacity:.65; text-decoration:none;
+                     font-family:var(--mono); font-size:.66rem;
+                     letter-spacing:.06em; text-transform:uppercase; }
+.barra .vinculos a:hover, .barra .vinculos a:focus-visible { opacity:1;
+                     text-decoration:underline; }
+/* Sólo aparece cuando el aparato ofrece instalar; lo pone `arranque.js`. */
+.barra .instalar { margin-left:.9rem; background:transparent;
+                   border-color:var(--barra-ink); color:var(--barra-ink);
+                   font-family:var(--mono); font-size:.66rem;
+                   letter-spacing:.06em; text-transform:uppercase;
+                   padding:.25rem .6rem; border-radius:4px; }
+.barra .instalar:hover { background:var(--barra-ink); color:var(--barra); }
+
+/* ------------------------------------------------------- tipografia */
+h1 { font-family:var(--cond); font-size:1.6rem; letter-spacing:.01em;
+     margin:0 0 .25rem; text-wrap:balance; }
+h2 { font-family:var(--mono); font-size:.7rem; letter-spacing:.1em;
+     text-transform:uppercase; color:var(--ink-3); font-weight:700;
+     margin:1.6rem 0 .6rem; }
+h3 { font-size:1.05rem; margin:0 0 .3rem; text-wrap:balance; }
+p { margin:0 0 .6rem; }
+a { color:var(--accent); }
+code { font-family:var(--mono); font-size:.86em; background:var(--card-2);
+       padding:.05rem .3rem; border-radius:3px; }
+.tenue { color:var(--ink-2); font-size:.86rem; }
+.vacio { color:var(--ink-3); font-style:italic; }
+/* La etiqueta de un dato, en monoespaciada chica: la misma de la app. */
+.lb { font-family:var(--mono); font-size:.7rem; letter-spacing:.05em;
+      text-transform:uppercase; color:var(--ink-3); }
+
+/* ---------------------------------------------------------- botones */
+button { font:inherit; font-size:.9rem; cursor:pointer; color:var(--ink);
+         border:1px solid var(--rule); background:var(--card);
+         border-radius:6px; padding:.55rem .9rem; text-align:left;
+         touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+button:hover { border-color:var(--ink-3); }
+button.primary { background:var(--accent); color:var(--paper);
+                 border-color:var(--accent); font-weight:700; }
+button:disabled { opacity:.5; cursor:default; }
+:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+
+/* ----------------------------------------------- tarjetas y avisos */
+.tarjeta { background:var(--card); border:1px solid var(--rule);
+           border-radius:6px; padding:.9rem 1rem; margin-bottom:.8rem; }
+/* El aviso de la app: barra al costado y fondo suave, no un bloque de color.
+   Se lee con guantes y a contraluz. */
+.aviso { border-left:3px solid var(--obs); background:var(--obs-soft);
+         color:var(--ink); padding:.6rem .8rem; border-radius:0 4px 4px 0;
+         font-size:.88rem; margin:.6rem 0 0; }
+.aviso.peligro { border-left-color:var(--mal); background:var(--mal-soft); }
+.aviso.nota { border-left-color:var(--rule); background:var(--card-2);
+              color:var(--ink-2); }
+
+/* ------------------------------------------------------------ chips
+ * Rotulo corto con borde, no relleno: a tres por linea, el relleno convierte
+ * la ficha en una bolsa de colores y deja de distinguirse lo grave.
+ */
+.chip { display:inline-block; font-family:var(--mono); font-size:.6rem;
+        letter-spacing:.07em; text-transform:uppercase; color:var(--ink-3);
+        border:1px solid var(--rule); border-radius:3px; padding:.08rem .35rem;
+        margin:0 .25rem .25rem 0; white-space:nowrap; }
+.chip.grave { color:var(--mal); border-color:var(--mal); }
+.chip.ok { color:var(--ok); border-color:var(--ok); }
+.chip.obs { color:var(--obs); border-color:var(--obs); }
+.chip.acento { color:var(--accent); border-color:var(--accent); }
+
+ul.lista { margin:.35rem 0 0; padding-left:1.1rem; }
+ul.lista li { margin-bottom:.2rem; font-size:.88rem; }
+.oculto { display:none; }
+/* armar:piel:fin */
+
+/* --------------------------------------------- lo propio de esta pantalla
+ * Un escritorio, no un telefono: aqui se escribe, y escribir pide ancho,
+ * teclado y poder ver el conjunto. Las otras dos pantallas son de campo y
+ * estan hechas al reves —un dato a la vez, a pantalla completa—. Misma piel,
+ * distinta forma, porque es distinto el trabajo.
+ */
+.hoja { max-width:860px; margin:0 auto; padding:14px 0 7rem; }
+h1 { font-family:var(--cond); font-size:2rem; line-height:1.1; margin:.2rem 0 .4rem;
+     text-transform:uppercase; letter-spacing:.01em; }
+h2 { font-family:var(--cond); font-size:1.3rem; text-transform:uppercase;
+     letter-spacing:.02em; margin:1.6rem 0 .6rem; padding-top:.7rem;
+     border-top:2px solid var(--ink); display:flex; align-items:baseline;
+     gap:.6rem; flex-wrap:wrap; }
+h2 .lb { color:var(--ink-3); }
+
+/* El formulario. Las etiquetas van ENCIMA del campo, no al lado: con el
+   nombre al lado, en un telefono en horizontal el campo queda de 90 px y
+   nadie escribe un criterio de aceptacion ahi. */
+.campo { display:flex; flex-direction:column; gap:.2rem; margin-bottom:.7rem; }
+.campo > span { font-family:var(--mono); font-size:.66rem; letter-spacing:.07em;
+                text-transform:uppercase; color:var(--ink-3); }
+.campo > em { font-size:.78rem; color:var(--ink-2); font-style:normal; }
+input[type=text], input[type=number], textarea, select {
+  font:inherit; font-size:.95rem; color:var(--ink); background:var(--paper);
+  border:1px solid var(--rule); border-radius:6px; padding:.5rem .6rem;
+  width:100%; }
+textarea { min-height:3.2rem; resize:vertical; line-height:1.45; }
+input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+/* El campo que falta y bloquea se marca donde esta, no solo en la lista de
+   abajo: una lista de errores sin señalar el campo obliga a buscarlo. */
+.campo.falta input, .campo.falta textarea, .campo.falta select {
+  border-color:var(--mal); background:var(--mal-soft); }
+.campo .pide { display:none; font-style:normal; color:var(--mal); }
+.campo.falta .pide { display:inline; }
+.marca { display:flex; gap:.45rem; align-items:flex-start; margin-bottom:.35rem;
+         font-size:.9rem; }
+.marca input { width:1.1rem; height:1.1rem; margin:.15rem 0 0; flex:none; }
+.rejilla { display:grid; grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));
+           gap:0 .8rem; }
+
+/* Un punto de la pauta, o un modo de falla: una tarjeta con su numero y sus
+   botones de orden. El numero es visible a proposito —es el `id` que va a
+   salir en el archivo y el que va a citar el operador por radio—. */
+.bloque { background:var(--card); border:1px solid var(--rule); border-radius:8px;
+          padding:.8rem .9rem; margin-bottom:.7rem; }
+.bloque > summary { cursor:pointer; font-weight:600; display:flex; gap:.5rem;
+                    align-items:baseline; flex-wrap:wrap; list-style:none; }
+.bloque > summary::-webkit-details-marker { display:none; }
+.bloque > summary::before { content:"▸"; color:var(--ink-3); flex:none; }
+.bloque[open] > summary::before { content:"▾"; }
+.bloque > summary .vacio { font-weight:400; }
+.bloque .cuerpo { padding-top:.8rem; }
+.anidado { border-left:3px solid var(--rule-2); padding-left:.8rem;
+           margin-left:.1rem; }
+.acciones { display:flex; gap:.4rem; flex-wrap:wrap; margin:.2rem 0 .9rem; }
+.acciones button { font-size:.8rem; padding:.35rem .6rem; }
+.borrar { color:var(--mal); border-color:var(--mal-rule); }
+
+/* El panel de abajo. Va fijo porque es la unica cosa que el planificador
+   mira sin parar: si falta algo, cuanto falta, y si ya puede bajar el
+   archivo. Suelto arriba, se escribe media pauta sin ver que esta trabada. */
+.panel { position:fixed; left:0; right:0; bottom:0; z-index:8;
+         background:var(--card); border-top:1px solid var(--rule);
+         box-shadow:0 -8px 24px -18px rgba(0,0,0,.5);
+         padding:.7rem 16px; }
+.panel > div { max-width:860px; margin:0 auto; display:flex; gap:.7rem;
+               align-items:center; flex-wrap:wrap; }
+.panel .cuenta { font-family:var(--mono); font-size:.72rem; color:var(--ink-2);
+                 flex:1; min-width:10rem; }
+.panel button.primary { flex:none; }
+.lista { margin:.2rem 0 .6rem; padding-left:1.1rem; font-size:.88rem; }
+.lista li { margin-bottom:.2rem; }
+.lista.mal li { color:var(--mal); }
+.lista.obs li { color:var(--obs); }
+.detalle { max-height:40vh; overflow:auto; }
+.chip.cuenta { font-variant-numeric:tabular-nums; }
+.inicio button { width:100%; text-align:left; min-height:52px; margin-bottom:.6rem; }
+.inicio button .tenue { display:block; font-weight:400; margin-top:.15rem; }
+</style>
+</head>
+<body>
+<div class="barra">
+  <b>FixMate</b><span>Armar</span>
+  <nav class="vinculos">
+    <a href="../">Inicio</a>
+    <a href="../app/">Diagnóstico</a>
+    <a href="../ronda/">Ronda CIL</a>
+    <a href="../rcm/">Análisis RCM</a>
+  </nav>
+</div>
+<script>
+/* armar:arranque:inicio */
+/* Lo que hace cada pantalla al abrirse, antes de pintar nada. Todo depende de
+ * CÓMO llegó la pantalla al aparato, que son tres formas distintas:
+ *
+ *   - servida por el sitio, en un navegador;
+ *   - como archivo suelto, bajado por WhatsApp (`file:`);
+ *   - dentro del APK, servida por el cargador de assets de Android, que
+ *     también habla https pero no tiene ni red ni carpetas hermanas.
+ *
+ * La tercera engaña: el protocolo dice `https` y parece el sitio. Se reconoce
+ * por el puente nativo, que sólo existe ahí dentro.
+ */
+var EN_APK = typeof window.PuenteFixMate !== "undefined" && !!window.PuenteFixMate;
+
+/* 1. Los enlaces entre herramientas sólo sirven si se abrió desde el sitio.
+ *    Descargada como archivo suelto —que es como viaja por WhatsApp—
+ *    apuntarían a carpetas que no existen en ese teléfono, y un enlace roto
+ *    en la barra hace dudar del resto de la pantalla. Se quitan. */
+/*    Dentro del APK pasa lo mismo por otro motivo: lo único que viaja es
+ *    esta pantalla, así que las carpetas hermanas tampoco están. */
+if (location.protocol === "file:" || EN_APK) {
+  var vinculos = document.querySelector(".barra .vinculos");
+  if (vinculos) vinculos.remove();
+}
+
+/* 2. Servida por http(s), se guarda en el teléfono para que abra sin señal.
+ *    Es la condición de trabajo real: interior mina, sin cobertura, y el
+ *    turno no espera a que haya línea. Si el navegador no lo permite —modo
+ *    privado, versión vieja—, la pantalla sigue funcionando igual: el
+ *    trabajador de servicio es una mejora, no un requisito. */
+/*    Dentro del APK no se registra: los archivos ya son locales, no hay nada
+ *    que guardar, y como sus peticiones no pasan por el cargador de assets
+ *    intentaría salir a una red que la app no tiene permiso de usar. */
+if (!EN_APK && "serviceWorker" in navigator &&
+    location.protocol.indexOf("http") === 0) {
+  navigator.serviceWorker.register("sw.js").catch(function () {
+    /* Sin registro no hay copia local, y ya está: no se le dice nada al
+       operador, porque no hay nada que pueda hacer al respecto. */
+  });
+}
+
+/* 3. El botón de instalar, cuando el aparato lo ofrece.
+ *
+ *    Android avisa por su cuenta con un cartel discreto que casi nadie ve, y
+ *    la otra vía es el menú de tres puntos del navegador: el operador no va
+ *    a dar con eso, y sin instalar no hay copia local ni pantalla completa.
+ *    Así que cuando Chrome dice que se puede, aparece el botón en la barra.
+ *
+ *    No se dibuja si el aparato no lo ofrece —ya instalada, en un navegador
+ *    que no lo soporta, o en un escritorio—: un botón que no hace nada es
+ *    peor que ninguno. */
+window.addEventListener("beforeinstallprompt", function (e) {
+  e.preventDefault();
+  var barra = document.querySelector(".barra");
+  if (!barra || document.getElementById("instalar")) return;
+  var boton = document.createElement("button");
+  boton.id = "instalar";
+  boton.className = "instalar";
+  boton.textContent = "Instalar";
+  boton.onclick = function () {
+    boton.disabled = true;
+    if (e.prompt) e.prompt();
+  };
+  barra.appendChild(boton);
+});
+
+window.addEventListener("appinstalled", function () {
+  var boton = document.getElementById("instalar");
+  if (boton) boton.remove();
+});
+/* armar:arranque:fin */
+</script>
+<div class="hoja" id="app"></div>
+<div class="panel" id="panel" hidden></div>
+<script>
+/* armar:reglas:inicio — ESPEJO de los cargadores de Python.
+ *
+ * Las reglas de lo que se puede escribir, copiadas de Python.
+ *
+ * Esta pantalla existe porque faltaba la mitad del producto. FixMate sabia
+ * leer una pauta y un analisis, validarlos, sacar la matriz y el plan; lo que
+ * no sabia era CREARLOS. Las dos pantallas de campo abren un `.json` que
+ * hasta hoy solo podia escribir a mano alguien que conociera el esquema, y
+ * eso no es un producto: es un demo con un formulario escondido en un editor
+ * de texto.
+ *
+ * De aqui sale el archivo que abren las otras dos pantallas, asi que la regla
+ * es una sola y no puede negociarse: ESTA PANTALLA NO PUEDE PRODUCIR UN
+ * ARCHIVO QUE EL RESTO DE FIXMATE RECHACE. Si lo produjera, el planificador
+ * armaria la pauta, la bajaria, el operador la abriria en el socavon y la
+ * ronda no arrancaria —y el error aparecería a 4.200 m, no en la oficina.
+ *
+ * Por eso `erroresDeCarga()` es un espejo exacto de los cargadores de Python
+ * —`cargador.checklist_de_dict` y `cargador.analisis_de_dict`, con los
+ * `__post_init__` que hay debajo— y no una validacion «parecida». Lo que
+ * Python rechaza, esto rechaza; lo que Python acepta, esto acepta. De que
+ * sigan diciendo lo mismo responde `tests/test_fixmate_cruce_armar.py`, que
+ * corre este javascript con node y compara verdicto por verdicto.
+ *
+ * Y una segunda lista, aparte: `avisosDeCalidad()`. Esos NO bloquean. Un
+ * analisis sin revision ni aprobacion carga perfecto y es un borrador que
+ * alguien va a usar como si fuera definitivo; un punto sin presupuesto de
+ * segundos carga perfecto y hace que no se pueda detectar una ronda firmada.
+ * Son dos cosas distintas y mezclarlas tiene las dos consecuencias malas: o
+ * se bloquea al que tiene prisa por un campo opcional, o se deja pasar lo que
+ * de verdad rompe. Lo que falta se dice; lo que no carga, se detiene.
+ */
+/* armar:datos:inicio */
+var CLASES = {
+  "limpiar": "La mugre esconde la fuga y la grieta: limpiar es inspeccionar",
+  "inspeccionar": "Mirar, oir o tocar en un punto fijo",
+  "lubricar": "Nivel o engrase en el punto marcado",
+  "ajustar": "Apriete o regulacion dentro del alcance del operador",
+  "verificar": "Comprobar que una funcion responde"
+};
+var FRECUENCIAS = [
+  "por_turno",
+  "diaria",
+  "semanal",
+  "quincenal",
+  "mensual",
+  "por_horas"
+];
+var CLASES_CONSECUENCIA = [
+  "seguridad",
+  "ambiental",
+  "operacional",
+  "produccion",
+  "economica",
+  "no-significativa"
+];
+var CONSECUENCIAS_GRAVES = [
+  "ambiental",
+  "seguridad"
+];
+var TIPOS_FUNCION = [
+  "principal",
+  "secundaria"
+];
+var ESTADOS_VALIDACION = [
+  "propuesto",
+  "validado",
+  "descartado"
+];
+var FUENTES = [
+  "historial",
+  "manual",
+  "catalogo",
+  "operador",
+  "analisis",
+  "inferencia"
+];
+var CATALOGO = {
+  "ADM.BAJA_PRESION.TURBO": {
+    "causa": "Turbo con holgura o alabes dañados",
+    "mecanismo": "Desgaste",
+    "sistema": "admision"
+  },
+  "ADM.RESTRICCION.FILTRO": {
+    "causa": "Filtro de aire colmatado",
+    "mecanismo": "Obstruccion",
+    "sistema": "admision"
+  },
+  "COM.BAJA_PRESION.BOMBA": {
+    "causa": "Bomba de inyeccion con baja presion",
+    "mecanismo": "Desgaste",
+    "sistema": "combustible"
+  },
+  "COM.COMBUSTION.INYECTOR": {
+    "causa": "Inyector con retorno excesivo o goteo",
+    "mecanismo": "Desgaste",
+    "sistema": "combustible"
+  },
+  "COM.CONTAMINACION.AGUA": {
+    "causa": "Agua o particulas en el combustible",
+    "mecanismo": "Contaminacion",
+    "sistema": "combustible"
+  },
+  "COM.RESTRICCION.FILTRO": {
+    "causa": "Filtro de combustible colmatado",
+    "mecanismo": "Obstruccion",
+    "sistema": "combustible"
+  },
+  "ELE.FALSO_CONTACTO.ARNES": {
+    "causa": "Arnes rozado o conector con falso contacto",
+    "mecanismo": "Abrasion",
+    "sistema": "electrico"
+  },
+  "ELE.LECTURA_ERRATICA.SENSOR": {
+    "causa": "Sensor descalibrado o en falla",
+    "mecanismo": "Deriva",
+    "sistema": "electrico"
+  },
+  "ELE.NO_ARRANCA.BATERIA": {
+    "causa": "Bateria descargada o con vaso en corto",
+    "mecanismo": "Envejecimiento",
+    "sistema": "electrico"
+  },
+  "ELE.NO_ARRANCA.BORNES": {
+    "causa": "Bornes de bateria sulfatados o flojos",
+    "mecanismo": "Corrosion",
+    "sistema": "electrico"
+  },
+  "ELE.NO_ARRANCA.MOTOR_ARRANQUE": {
+    "causa": "Motor de arranque o solenoide en falla",
+    "mecanismo": "Desgaste",
+    "sistema": "electrico"
+  },
+  "ELE.NO_BAJA.EMERGENCIA": {
+    "causa": "Bomba o mando de bajada de emergencia inoperativo",
+    "mecanismo": "Falla de respaldo",
+    "sistema": "elevacion"
+  },
+  "ELE.NO_CARGA.ALTERNADOR": {
+    "causa": "Alternador o regulador en falla",
+    "mecanismo": "Desgaste",
+    "sistema": "electrico"
+  },
+  "ELE.NO_RESPONDE.CANASTILLA": {
+    "causa": "Joystick, botonera o sensor de canastilla en falla",
+    "mecanismo": "Falla electrica",
+    "sistema": "elevacion"
+  },
+  "ESC.FUGA.MULTIPLE": {
+    "causa": "Junta o multiple de escape fisurado",
+    "mecanismo": "Fatiga termica",
+    "sistema": "escape"
+  },
+  "EST.DESGASTE.DIENTES": {
+    "causa": "Dientes o cuchillas de cucharon gastados",
+    "mecanismo": "Abrasion",
+    "sistema": "estructura"
+  },
+  "EST.DESGASTE.TREN_RODAJE": {
+    "causa": "Tren de rodaje o cadena fuera de tolerancia",
+    "mecanismo": "Abrasion",
+    "sistema": "estructura"
+  },
+  "EST.FISURA.SOLDADURA": {
+    "causa": "Fisura en soldadura o elemento estructural",
+    "mecanismo": "Fatiga",
+    "sistema": "estructura"
+  },
+  "EST.HOLGURA.PINES_BOCINAS": {
+    "causa": "Pines y bocinas de articulacion o direccion gastados",
+    "mecanismo": "Desgaste",
+    "sistema": "elevacion"
+  },
+  "FRE.BAJA_EFICACIA.PASTILLAS": {
+    "causa": "Pastillas, bandas o discos desgastados",
+    "mecanismo": "Desgaste",
+    "sistema": "frenos"
+  },
+  "HID.BAJA_PRESION.BOMBA": {
+    "causa": "Bomba hidraulica con baja presion",
+    "mecanismo": "Desgaste",
+    "sistema": "hidraulico"
+  },
+  "HID.CONTAMINACION.ACEITE": {
+    "causa": "Aceite hidraulico contaminado o vencido",
+    "mecanismo": "Contaminacion",
+    "sistema": "hidraulico"
+  },
+  "HID.DERIVA.VALVULA": {
+    "causa": "Valvula de retencion o de mando con fuga interna",
+    "mecanismo": "Fuga interna",
+    "sistema": "hidraulico"
+  },
+  "HID.FUGA.CILINDRO_PLUMA": {
+    "causa": "Cilindro de pluma, pendular o telescopio con sellos vencidos",
+    "mecanismo": "Desgaste",
+    "sistema": "elevacion"
+  },
+  "HID.FUGA.MANGUERA": {
+    "causa": "Manguera picada o acople flojo",
+    "mecanismo": "Abrasion",
+    "sistema": "hidraulico"
+  },
+  "HID.FUGA.SELLO": {
+    "causa": "Sello o reten de cilindro vencido",
+    "mecanismo": "Desgaste",
+    "sistema": "hidraulico"
+  },
+  "HID.NO_ESTABILIZA.GATO": {
+    "causa": "Estabilizador o gato de apoyo que no sostiene",
+    "mecanismo": "Fuga interna o desgaste",
+    "sistema": "elevacion"
+  },
+  "HID.SOBRECALENTAMIENTO.ENFRIADOR": {
+    "causa": "Enfriador de aceite obstruido",
+    "mecanismo": "Obstruccion",
+    "sistema": "hidraulico"
+  },
+  "ILU.NO_ENCIENDE.DRIVER": {
+    "causa": "Driver o conector de foco LED dañado",
+    "mecanismo": "Vibracion",
+    "sistema": "iluminacion"
+  },
+  "LUB.FALTA.NIVEL": {
+    "causa": "Nivel de aceite bajo por consumo o fuga",
+    "mecanismo": "Consumo o fuga",
+    "sistema": "lubricacion"
+  },
+  "LUB.VENCIDO.INTERVALO": {
+    "causa": "Aceite o filtro fuera de intervalo",
+    "mecanismo": "Degradacion",
+    "sistema": "lubricacion"
+  },
+  "NEU.BAJA_PRESION.LLANTA": {
+    "causa": "Llanta con perforacion o valvula con fuga",
+    "mecanismo": "Perforacion",
+    "sistema": "neumatico"
+  },
+  "NEU.FUGA.AIRE": {
+    "causa": "Fuga en circuito de aire comprimido",
+    "mecanismo": "Desgaste",
+    "sistema": "neumatico"
+  },
+  "OPE.DAÑO.OPERACION": {
+    "causa": "Sobrecarga, golpe o maniobra indebida",
+    "mecanismo": "Sobrecarga o mal uso",
+    "sistema": "operacion"
+  },
+  "TER.FUGA.REFRIGERANTE": {
+    "causa": "Manguera, tapa o bomba de agua con fuga",
+    "mecanismo": "Desgaste",
+    "sistema": "termico"
+  },
+  "TER.SOBRECALENTAMIENTO.RADIADOR": {
+    "causa": "Radiador obstruido por tierra o incrustacion",
+    "mecanismo": "Obstruccion",
+    "sistema": "termico"
+  },
+  "TER.SOBRECALENTAMIENTO.TERMOSTATO": {
+    "causa": "Termostato trabado",
+    "mecanismo": "Atascamiento",
+    "sistema": "termico"
+  },
+  "TER.SOBRECALENTAMIENTO.VENTILADOR": {
+    "causa": "Ventilador, correa o embrague viscoso en falla",
+    "mecanismo": "Desgaste",
+    "sistema": "termico"
+  },
+  "TRA.FUGA.RETEN": {
+    "causa": "Reten de transmision o mando final vencido",
+    "mecanismo": "Desgaste",
+    "sistema": "transmision"
+  },
+  "TRA.PATINA.EMBRAGUE": {
+    "causa": "Embrague o disco desgastado",
+    "mecanismo": "Desgaste",
+    "sistema": "transmision"
+  },
+  "TRA.RUIDO.RODAMIENTO": {
+    "causa": "Rodamiento picado o sin lubricacion",
+    "mecanismo": "Fatiga",
+    "sistema": "transmision"
+  }
+};
+var FORMATO_FECHA = "AAAA-MM-DD";
+/* armar:datos:fin */
+
+/* ------------------------------------------------------------- utilidades */
+
+function txt(v) {
+  return (v === undefined || v === null) ? "" : String(v);
+}
+function vacio(v) {
+  return txt(v).trim() === "";
+}
+
+/* La fecha, con la misma regla que `nefer/fixmate/registro.py`: ISO 8601 o
+ * nada. «03/04/2026» en Lima es el 3 de abril y en Houston el 4 de marzo, y
+ * dos años despues nadie puede decir cual era. Vacia se admite: es «no se
+ * declaro», que es informacion honesta. Lo que no se admite es lo ambiguo. */
+function fechaMal(valor, donde) {
+  var v = txt(valor).trim();
+  if (!v) return "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    return donde + ": la fecha «" + v + "» no esta en formato ISO 8601 (" +
+      FORMATO_FECHA + ").";
+  }
+  var p = v.split("-"), a = +p[0], m = +p[1], d = +p[2];
+  var f = new Date(Date.UTC(a, m - 1, d));
+  if (f.getUTCFullYear() !== a || f.getUTCMonth() + 1 !== m ||
+      f.getUTCDate() !== d) {
+    return donde + ": la fecha «" + v + "» no existe.";
+  }
+  return "";
+}
+
+/* `int(p.get("segundos") or 0)` de Python: lo que no sea entero revienta el
+ * cargador, asi que aqui tambien. Un «30 s» escrito con la unidad pegada es
+ * el error tipico de pegar desde el Excel. */
+function segundosMal(valor) {
+  var v = txt(valor).trim();
+  if (!v) return false;
+  return !/^-?\d+$/.test(v);
+}
+
+/* ------------------------------------------- espejo: pauta de ronda (TPM) */
+
+/* Espejo de `cargador.checklist_de_dict` + `tpm.Checklist.__post_init__` +
+ * `tpm.PuntoChecklist.__post_init__`. El orden de las comprobaciones importa
+ * menos que el verdicto, pero se mantiene para que el mensaje que lee el
+ * planificador sea el mismo que leeria en la consola. */
+function erroresPauta(datos) {
+  var errores = [];
+  var frecuencia = txt(datos.frecuencia) || "diaria";
+  if (FRECUENCIAS.indexOf(frecuencia) < 0) {
+    errores.push("frecuencia «" + frecuencia + "» desconocida: use " +
+                 FRECUENCIAS.join(", ") + ".");
+  }
+  if (vacio(datos.id) || vacio(datos.activo_codigo)) {
+    errores.push("la pauta necesita «id» y «activo_codigo».");
+  }
+  var puntos = datos.puntos || [];
+  if (!(puntos instanceof Array)) {
+    errores.push("«puntos» tiene que ser una lista.");
+    return errores;
+  }
+  for (var i = 0; i < puntos.length; i++) {
+    var p = puntos[i] || {}, donde = "punto " + (i + 1) + ": ";
+    var clase = txt(p.clase);
+    if (!Object.prototype.hasOwnProperty.call(CLASES, clase)) {
+      errores.push(donde + "clase «" + clase + "» desconocida: use " +
+        Object.keys(CLASES).join(", ") + ". «Detectar anomalias» no es una " +
+        "clase de punto: es lo que pasa cuando un punto sale NOK.");
+      continue;
+    }
+    if (vacio(p.punto)) {
+      errores.push(donde + "el punto necesita un sitio fisico donde pararse.");
+      continue;
+    }
+    if (vacio(p.criterio)) {
+      errores.push(donde + "«" + txt(p.punto) + "»: falta el criterio de " +
+        "aceptacion. Sin criterio, cada operador juzga otra cosa y la pauta " +
+        "no mide nada.");
+      continue;
+    }
+    var cod = txt(p.codigo_catalogo);
+    if (cod && !Object.prototype.hasOwnProperty.call(CATALOGO, cod)) {
+      errores.push(donde + "el codigo «" + cod + "» no esta en el catalogo.");
+      continue;
+    }
+    if (segundosMal(p.segundos)) {
+      errores.push(donde + "«segundos» tiene que ser un numero entero.");
+    }
+  }
+  return errores;
+}
+
+/* ------------------------------------------- espejo: analisis RCM (JA1011) */
+
+/* Espejo de `cargador.analisis_de_dict`, con `activos.Activo`, `rcm.Funcion`,
+ * `rcm.FallaFuncional`, `rcm.ModoFalla`, `rcm.Consecuencia` y
+ * `rcm.Referencia` debajo. */
+function erroresAnalisis(datos) {
+  var errores = [];
+  var activo = datos.activo;
+  if (!activo || typeof activo !== "object" || activo instanceof Array) {
+    errores.push("falta el objeto «activo».");
+    return errores;
+  }
+  if (vacio(activo.codigo)) {
+    errores.push("el activo necesita codigo: es como lo llama el taller.");
+  } else if (vacio(activo.nombre)) {
+    errores.push(txt(activo.codigo) + ": falta el nombre del activo.");
+  }
+  var mal = fechaMal(datos.fecha, "el analisis");
+  if (mal) errores.push(mal);
+  mal = fechaMal(datos.proxima_revision, "la proxima revision del analisis");
+  if (mal) errores.push(mal);
+
+  var funciones = datos.funciones || [];
+  if (!(funciones instanceof Array)) {
+    errores.push("«funciones» tiene que ser una lista.");
+    return errores;
+  }
+  for (var i = 0; i < funciones.length; i++) {
+    var f = funciones[i] || {}, dondeF = "funcion " + (i + 1) + ": ";
+    if (vacio(f.descripcion)) {
+      errores.push(dondeF + "la funcion necesita descripcion.");
+    } else if (vacio(f.estandar)) {
+      errores.push(dondeF + "«" + txt(f.descripcion) + "»: falta el estandar " +
+        "de desempeño. Una funcion sin estandar no se puede fallar de forma " +
+        "verificable, y de ella no sale ningun modo de falla util.");
+    } else if (TIPOS_FUNCION.indexOf(txt(f.tipo) || "principal") < 0) {
+      errores.push(dondeF + "tipo de funcion «" + txt(f.tipo) +
+                   "» desconocido.");
+    }
+    var fallas = f.fallas || [];
+    if (!(fallas instanceof Array)) {
+      errores.push(dondeF + "«fallas» tiene que ser una lista.");
+      continue;
+    }
+    for (var j = 0; j < fallas.length; j++) {
+      var ff = fallas[j] || {};
+      var dondeFF = dondeF.slice(0, -2) + ", falla funcional " + (j + 1) + ": ";
+      if (vacio(ff.descripcion)) {
+        errores.push(dondeFF + "la falla funcional necesita descripcion.");
+      }
+      var modos = ff.modos || [];
+      if (!(modos instanceof Array)) {
+        errores.push(dondeFF + "«modos» tiene que ser una lista.");
+        continue;
+      }
+      for (var k = 0; k < modos.length; k++) {
+        var donde = dondeFF.slice(0, -2) + ", modo " + (k + 1) + ": ";
+        errores = errores.concat(erroresModo(modos[k] || {}, donde));
+      }
+    }
+  }
+  return errores;
+}
+
+function erroresModo(m, donde) {
+  var errores = [];
+  var cs = m.consecuencias || [];
+  for (var i = 0; i < cs.length; i++) {
+    var clase = typeof cs[i] === "string" ? cs[i] : txt((cs[i] || {}).clase);
+    if (CLASES_CONSECUENCIA.indexOf(clase) < 0) {
+      errores.push(donde + "clase de consecuencia «" + clase + "» " +
+        "desconocida. Si queria decir que la falla es oculta, eso va en " +
+        "«evidente», no aqui: es la primera bifurcacion del analisis, no una " +
+        "categoria mas.");
+    }
+  }
+  var ev = m.evidencia || [];
+  for (i = 0; i < ev.length; i++) {
+    var r = ev[i] || {};
+    if (FUENTES.indexOf(txt(r.fuente)) < 0) {
+      errores.push(donde + "fuente «" + txt(r.fuente) + "» desconocida: use " +
+                   FUENTES.join(", ") + ".");
+    }
+    // La referencia vacia NO es un error de carga: Python la admite. Es un
+    // hueco, y como hueco se dice en los avisos. Poner aqui una regla que
+    // Python no tiene seria exactamente el espejo roto al reves: la pantalla
+    // frenando un archivo que el resto del producto acepta.
+  }
+  if (vacio(m.descripcion)) {
+    errores.push(donde + "el modo de falla necesita descripcion.");
+    return errores;
+  }
+  var estado = txt(m.estado) || "propuesto";
+  if (ESTADOS_VALIDACION.indexOf(estado) < 0) {
+    errores.push(donde + "estado «" + estado + "» desconocido.");
+    return errores;
+  }
+  if (estado === "validado" && !ev.length) {
+    errores.push(donde + "«" + txt(m.descripcion) + "»: no se puede marcar " +
+      "validado sin evidencia. Un modo de falla validado de memoria es una " +
+      "opinion con sello.");
+    return errores;
+  }
+  var cod = txt(m.codigo_catalogo);
+  if (cod && !Object.prototype.hasOwnProperty.call(CATALOGO, cod)) {
+    errores.push(donde + "el codigo «" + cod + "» no esta en el catalogo.");
+  }
+  return errores;
+}
+
+/* El unico punto de entrada que usa la pantalla: el verdicto de carga del
+ * archivo que se va a bajar, sea del tipo que sea. */
+function erroresDeCarga(tipo, datos) {
+  return tipo === "pauta" ? erroresPauta(datos) : erroresAnalisis(datos);
+}
+
+/* --------------------------------------------------------------- calidad */
+
+/* Lo que carga pero deja un hueco. No bloquea: se dice. Sigue a
+ * `rcm.calidad()` y al encabezado de `tpm.py` en lo que cada hueco cuesta.
+ *
+ * Se lee sobre el ARCHIVO ya armado, igual que `erroresDeCarga`, y no sobre
+ * el borrador: asi los dos juicios hablan del mismo objeto —el que se va a
+ * bajar— y no hay una segunda forma del dato que mantener al dia. */
+function avisosPauta(datos) {
+  var avisos = [], puntos = datos.puntos || [];
+  if (!puntos.length) {
+    avisos.push("La pauta no tiene ningun punto todavia: asi no arranca en el " +
+      "telefono del operador.");
+  }
+  var sinSegundos = 0, conCatalogo = 0, clases = {};
+  for (var i = 0; i < puntos.length; i++) {
+    var p = puntos[i] || {};
+    if (!(+txt(p.segundos))) sinSegundos++;
+    if (txt(p.codigo_catalogo)) conCatalogo++;
+    clases[txt(p.clase)] = true;
+  }
+  if (sinSegundos) {
+    avisos.push(sinSegundos + " punto(s) sin presupuesto de segundos. Sin el " +
+      "no se puede detectar una ronda firmada en lugar de ejecutada, que es " +
+      "la forma en que esta herramienta se degrada siempre.");
+  }
+  if (puntos.length && !clases.limpiar) {
+    avisos.push("Ningun punto de clase «limpiar». La mugre esconde la fuga y " +
+      "la grieta: una ronda que solo mira encuentra menos.");
+  }
+  if (puntos.length && !conCatalogo) {
+    avisos.push("Ningun punto apunta al catalogo de fallas. Sin esa llave, " +
+      "lo que el operador encuentre no se cose con el analisis RCM ni con el " +
+      "historial: queda como texto suelto.");
+  }
+  if (vacio(datos.origen)) {
+    avisos.push("Sin «origen»: no queda dicho si la pauta sale del manual " +
+      "del fabricante, del analisis RCM o de la experiencia del taller.");
+  }
+  return avisos;
+}
+
+function avisosAnalisis(datos) {
+  var avisos = [], funciones = datos.funciones || [];
+  if (!funciones.length) {
+    avisos.push("El analisis no tiene ninguna funcion todavia: sin funciones " +
+      "no hay fallas funcionales, y sin ellas no hay nada que analizar.");
+  }
+  var fallas = 0, modos = 0, sinEfecto = 0, sinConsecuencia = 0, ocultos = 0,
+      sinReferencia = 0;
+  for (var i = 0; i < funciones.length; i++) {
+    var fs = (funciones[i] || {}).fallas || [];
+    if (!fs.length) {
+      avisos.push("La funcion " + (i + 1) + " no tiene ninguna falla " +
+        "funcional: una funcion declarada y nunca fallada no aporta al plan.");
+    }
+    fallas += fs.length;
+    for (var j = 0; j < fs.length; j++) {
+      var ms = (fs[j] || {}).modos || [];
+      if (!ms.length) {
+        avisos.push("La falla funcional " + (i + 1) + "." + (j + 1) + " no " +
+          "tiene modos de falla: la tarea se decide en el modo, no en la falla.");
+      }
+      modos += ms.length;
+      for (var k = 0; k < ms.length; k++) {
+        var m = ms[k] || {};
+        if (vacio((m.efecto || {}).local)) sinEfecto++;
+        if (!((m.consecuencias || []).length)) sinConsecuencia++;
+        if (m.evidente === false) ocultos++;
+        var refs = m.evidencia || [];
+        for (var r = 0; r < refs.length; r++) {
+          if (vacio((refs[r] || {}).referencia)) sinReferencia++;
+        }
+      }
+    }
+  }
+  if (sinEfecto) {
+    avisos.push(sinEfecto + " modo(s) sin efecto local descrito. La Q4 de " +
+      "JA1011 no se puede contestar sin saber que pasa cuando ocurre.");
+  }
+  if (sinConsecuencia) {
+    avisos.push(sinConsecuencia + " modo(s) sin ninguna consecuencia " +
+      "declarada. El arbol de decision empieza por la consecuencia: sin ella " +
+      "no sale tarea.");
+  }
+  if (sinReferencia) {
+    avisos.push(sinReferencia + " referencia(s) de evidencia sin apuntar a " +
+      "nada. «Historial» sin el numero del informe no se puede ir a mirar: " +
+      "es una opinion con etiqueta de fuente.");
+  }
+  if (modos && !ocultos) {
+    avisos.push("Ningun modo marcado como oculto. Es posible, pero conviene " +
+      "mirarlo dos veces: las fallas ocultas son la mitad de los modos en " +
+      "equipos con protecciones, y no declararlas borra la tarea de busqueda " +
+      "de fallas del plan.");
+  }
+  if (vacio(datos.contexto)) {
+    avisos.push("Sin contexto operacional. El mismo equipo en dos contextos " +
+      "son dos analisis: sin el declarado, copiar este sobre otra maquina " +
+      "parece legitimo.");
+  }
+  if (vacio(datos.revision) || vacio(datos.aprobado_por)) {
+    avisos.push("Sin revision o sin aprobacion: queda como borrador que " +
+      "alguien va a usar como definitivo.");
+  }
+  if (vacio(datos.proxima_revision)) {
+    avisos.push("Sin proxima revision. El contexto operacional cambia, y con " +
+      "el cambian las consecuencias.");
+  }
+  if (!(datos.participantes || []).length) {
+    avisos.push("Sin participantes. RCM lo hace el equipo que opera y " +
+      "mantiene el activo; un analisis de una sola persona es una opinion.");
+  }
+  return avisos;
+}
+
+function avisosDeCalidad(tipo, datos) {
+  return tipo === "pauta" ? avisosPauta(datos) : avisosAnalisis(datos);
+}
+
+/* ---------------------------------------------- pegar desde una planilla */
+
+/* El planificador ya tiene la pauta en un Excel. Pedirle que la vuelva a
+ * escribir punto por punto en un formulario es la forma mas segura de que no
+ * la escriba. Se pega el rango y se separa por tabulaciones —que es lo que
+ * pone el Excel en el portapapeles—, por punto y coma o por coma.
+ *
+ * Las filas que no se entienden NO se descartan en silencio: vuelven con su
+ * numero de linea y su motivo. Un importador que se come filas calladas es
+ * peor que no tener importador. */
+function separar(linea) {
+  if (linea.indexOf("\t") >= 0) return linea.split("\t");
+  if (linea.indexOf(";") >= 0) return linea.split(";");
+  return linea.split(",");
+}
+
+function filasPegadas(texto) {
+  var lineas = txt(texto).split(/\r?\n/);
+  var puntos = [], rechazos = [];
+  for (var i = 0; i < lineas.length; i++) {
+    var linea = lineas[i];
+    if (!linea.trim()) continue;
+    var c = separar(linea).map(function (x) { return x.trim(); });
+    // Un encabezado pegado junto con el rango: se saltea, no se rechaza.
+    if (i === 0 && /^clase$/i.test(c[0] || "")) continue;
+    var clase = (c[0] || "").toLowerCase();
+    if (!Object.prototype.hasOwnProperty.call(CLASES, clase)) {
+      rechazos.push("linea " + (i + 1) + ": «" + (c[0] || "") + "» no es una " +
+        "de las cinco clases (" + Object.keys(CLASES).join(", ") + ").");
+      continue;
+    }
+    if (!(c[1] || "").trim()) {
+      rechazos.push("linea " + (i + 1) + ": falta el punto, la segunda columna.");
+      continue;
+    }
+    if (!(c[2] || "").trim()) {
+      rechazos.push("linea " + (i + 1) + ": «" + c[1] + "» sin criterio de " +
+        "aceptacion, la tercera columna.");
+      continue;
+    }
+    var seg = (c[3] || "").replace(/[^\d-]/g, "");
+    puntos.push({
+      clase: clase, punto: c[1], criterio: c[2],
+      segundos: seg ? +seg : 0, alcance_operador: true,
+      codigo_catalogo: "", modo_falla_id: ""
+    });
+  }
+  return { puntos: puntos, rechazos: rechazos };
+}
+
+/* ------------------------------------------------- armar el archivo final */
+
+/* LO QUE ESTA PANTALLA NO EDITA, NO LO BORRA.
+ *
+ * Un analisis que ya existe trae cosas que aqui no se tocan: el metodo de
+ * criticidad, los valores de severidad/frecuencia/deteccion de cada modo y
+ * —la peor de perder— la `decision`, que son las respuestas del equipo al
+ * arbol de JA1011. Si el editor reescribiera el archivo solo con los campos
+ * que conoce, abrir un analisis para corregir una coma borraria la reunion
+ * entera, y lo haria en silencio: el archivo nuevo se veria perfecto.
+ *
+ * Asi que todo lo que se abre y no se edita viaja en `_resto` y se vuelve a
+ * escribir tal cual. Lo conocido gana sobre `_resto`, no al reves: lo que el
+ * planificador acaba de escribir no lo puede pisar una copia vieja. */
+function conResto(origen, salida) {
+  var resto = origen && origen._resto;
+  if (!resto) return salida;
+  var final = {};
+  for (var k in resto) {
+    if (Object.prototype.hasOwnProperty.call(resto, k)) final[k] = resto[k];
+  }
+  for (k in salida) {
+    if (Object.prototype.hasOwnProperty.call(salida, k)) final[k] = salida[k];
+  }
+  return final;
+}
+
+
+/* El `id` de la pauta no se le pide al planificador: se deriva del codigo del
+ * activo y de la frecuencia, que es lo que lo hace unico de verdad. Si lo
+ * escribe, gana el suyo —una pauta que ya existe tiene su id y hay que poder
+ * conservarlo—. */
+function idDerivado(borrador) {
+  var codigo = txt(borrador.activo_codigo).trim().toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+  if (!codigo) return "";
+  return "pauta-" + codigo.toLowerCase() + "-" + (txt(borrador.frecuencia) || "diaria");
+}
+
+function pautaJSON(b) {
+  var puntos = (b.puntos || []).map(function (p, i) {
+    return conResto(p, {
+      id: (txt(b.id).trim() || idDerivado(b)) + "." + (i + 1),
+      clase: txt(p.clase), punto: txt(p.punto).trim(),
+      criterio: txt(p.criterio).trim(),
+      alcance_operador: p.alcance_operador !== false,
+      segundos: segundosMal(p.segundos) ? txt(p.segundos) : (+txt(p.segundos) || 0),
+      codigo_catalogo: txt(p.codigo_catalogo).trim(),
+      modo_falla_id: txt(p.modo_falla_id).trim()
+    });
+  });
+  var total = 0;
+  for (var i = 0; i < puntos.length; i++) {
+    total += Math.max(0, +puntos[i].segundos || 0);
+  }
+  return conResto(b, {
+    id: txt(b.id).trim() || idDerivado(b),
+    activo_codigo: txt(b.activo_codigo).trim(),
+    nombre: txt(b.nombre).trim(),
+    frecuencia: txt(b.frecuencia) || "diaria",
+    origen: txt(b.origen).trim(),
+    presupuesto_seg: total,
+    puntos: puntos
+  });
+}
+
+/* Los participantes se escriben en una sola linea separados por coma, porque
+ * es como los dicta alguien al final de la reunion. */
+function listaDeTexto(valor) {
+  return txt(valor).split(/[,;\n]/).map(function (x) { return x.trim(); })
+    .filter(function (x) { return x; });
+}
+
+function analisisJSON(b) {
+  var a = b.activo || {};
+  var funciones = (b.funciones || []).map(function (f) {
+    return conResto(f, {
+      descripcion: txt(f.descripcion).trim(),
+      estandar: txt(f.estandar).trim(),
+      tipo: txt(f.tipo) || "principal",
+      condicion: txt(f.condicion).trim(),
+      fallas: (f.fallas || []).map(function (ff) {
+        return conResto(ff, {
+          descripcion: txt(ff.descripcion).trim(),
+          modos: (ff.modos || []).map(modoJSON)
+        });
+      })
+    });
+  });
+  return conResto(b, {
+    activo: {
+      codigo: txt(a.codigo).trim(), nombre: txt(a.nombre).trim(),
+      marca: txt(a.marca).trim(), modelo: txt(a.modelo).trim(),
+      serie: txt(a.serie).trim(), categoria: txt(a.categoria).trim(),
+      instalacion: txt(a.instalacion).trim(),
+      contexto: txt(a.contexto).trim()
+    },
+    contexto: txt(b.contexto).trim(),
+    facilitador: txt(b.facilitador).trim(),
+    participantes: listaDeTexto(b.participantes),
+    fecha: txt(b.fecha).trim(),
+    revision: txt(b.revision).trim(),
+    aprobado_por: txt(b.aprobado_por).trim(),
+    proxima_revision: txt(b.proxima_revision).trim(),
+    funciones: funciones
+  });
+}
+
+function modoJSON(m) {
+  var u = m.ubicacion || {}, e = m.efecto || {};
+  return conResto(m, {
+    descripcion: txt(m.descripcion).trim(),
+    ubicacion: {
+      sistema: txt(u.sistema).trim(), subsistema: txt(u.subsistema).trim(),
+      componente: txt(u.componente).trim()
+    },
+    codigo_catalogo: txt(m.codigo_catalogo).trim(),
+    causa: txt(m.causa).trim(),
+    mecanismo: txt(m.mecanismo).trim(),
+    // El desplegable de la pantalla da «si»/«no»; el archivo lleva un
+    // booleano, porque eso es lo que es. La traduccion vive aqui, en el unico
+    // sitio que arma el archivo: hecha en la pantalla, el cruce con Python
+    // comparaba un borrador que nadie va a bajar.
+    evidente: m.evidente !== false && m.evidente !== "no",
+    efecto: {
+      local: txt(e.local).trim(),
+      observa_operador: txt(e.observa_operador).trim(),
+      parametro: txt(e.parametro).trim(),
+      alarma: txt(e.alarma).trim(),
+      componente_afectado: txt(e.componente_afectado).trim(),
+      como_detectarlo: txt(e.como_detectarlo).trim()
+    },
+    consecuencias: (m.consecuencias || []).map(function (c) {
+      return typeof c === "string"
+        ? { clase: c, descripcion: "" }
+        : { clase: txt(c.clase), descripcion: txt(c.descripcion).trim() };
+    }),
+    evidencia: (m.evidencia || []).map(function (r) {
+      return { fuente: txt(r.fuente), referencia: txt(r.referencia).trim(),
+               nota: txt(r.nota).trim() };
+    }),
+    estado: txt(m.estado) || "propuesto"
+  });
+}
+
+function armarJSON(tipo, borrador) {
+  return tipo === "pauta" ? pautaJSON(borrador) : analisisJSON(borrador);
+}
+
+/* armar:reglas:fin */
+</script>
+<script>
+/* La pantalla donde se escribe. Tres decisiones, y las tres vienen de que
+ * esto NO es una pantalla de campo:
+ *
+ * ESCRIBIR NO PUEDE REDIBUJAR. Un formulario que se vuelve a pintar en cada
+ * tecla pierde el cursor a media palabra, y entonces nadie escribe un
+ * criterio de aceptacion de dos lineas: lo deja en tres palabras. Aqui el
+ * tecleo solo toca el borrador y el panel de abajo; la pantalla se vuelve a
+ * armar unicamente cuando cambia la ESTRUCTURA —se agrega un punto, se quita
+ * un modo—.
+ *
+ * EL PANEL VA FIJO ABAJO. Es lo unico que se mira sin parar: que falta,
+ * cuanto falta, y si ya se puede bajar el archivo. Suelto arriba, se escribe
+ * media pauta sin ver que esta trabada.
+ *
+ * SE PEGA DESDE EL EXCEL. El planificador ya tiene la pauta en una planilla.
+ * Pedirle que la vuelva a escribir punto por punto es la forma mas segura de
+ * que no la escriba, y de que el producto se quede en demo.
+ */
+
+var app = document.getElementById("app");
+var panel = document.getElementById("panel");
+var tipo = null;      // "pauta" | "analisis"
+var b = null;         // el borrador que se esta escribiendo
+var abierto = {};     // que bloques quedan desplegados entre redibujos
+var mensaje = "";     // lo ultimo que paso, para decirlo una vez
+
+function esc(s) {
+  return String(s === undefined || s === null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+function hoyISO() { return new Date().toISOString().slice(0, 10); }
+
+/* ---------------------------------------------- el borrador por su camino
+ * Cada campo lleva su ruta escrita —`funciones.0.fallas.1.modos.0.causa`— y
+ * un solo oyente la usa para escribir en el borrador. La alternativa es
+ * enganchar cada campo uno por uno, y con tres niveles de anidamiento eso es
+ * donde se cuelan los campos que se ven pero no guardan nada. */
+function leer(ruta) {
+  var partes = ruta.split("."), o = b;
+  for (var i = 0; i < partes.length; i++) {
+    if (o === null || o === undefined) return "";
+    o = o[partes[i]];
+  }
+  return o === undefined || o === null ? "" : o;
+}
+function fijar(ruta, valor) {
+  var partes = ruta.split("."), o = b;
+  for (var i = 0; i < partes.length - 1; i++) o = o[partes[i]];
+  o[partes[partes.length - 1]] = valor;
+}
+function enRuta(ruta) {
+  var partes = ruta.split("."), o = b;
+  for (var i = 0; i < partes.length; i++) o = o[partes[i]];
+  return o;
+}
+
+/* ------------------------------------------------------------ los campos */
+
+function fTexto(ruta, etiqueta, ayuda, opts) {
+  opts = opts || {};
+  var v = esc(leer(ruta));
+  var falta = opts.falta && !String(leer(ruta)).trim() ? " falta" : "";
+  // `data-obliga` es lo que deja que el aviso se apague MIENTRAS se escribe.
+  // Sin eso, el campo se quedaba en rojo hasta el próximo redibujo —que al
+  // teclear no ocurre— y el aviso pasaba de ayudar a estorbar.
+  var obliga = opts.falta ? ' data-obliga="1"' : '';
+  var cuerpo = opts.area
+    ? '<textarea data-ruta="' + ruta + '"' + obliga + ' rows="' + (opts.filas || 2) + '"' +
+      (opts.pista ? ' placeholder="' + esc(opts.pista) + '"' : '') + '>' + v + '</textarea>'
+    : '<input type="text" data-ruta="' + ruta + '"' + obliga + ' value="' + v + '"' +
+      (opts.pista ? ' placeholder="' + esc(opts.pista) + '"' : '') + '>';
+  return '<label class="campo' + falta + '"><span>' + esc(etiqueta) +
+    (opts.falta ? '<i class="pide"> ·&nbsp;hace falta</i>' : '') + '</span>' + cuerpo +
+    (ayuda ? '<em>' + esc(ayuda) + '</em>' : '') + '</label>';
+}
+
+function fNumero(ruta, etiqueta, ayuda) {
+  return '<label class="campo"><span>' + esc(etiqueta) + '</span>' +
+    '<input type="number" min="0" step="5" data-ruta="' + ruta + '" value="' +
+    esc(leer(ruta) || 0) + '"></label>' +
+    (ayuda ? '<em class="tenue">' + esc(ayuda) + '</em>' : '');
+}
+
+function fSelect(ruta, etiqueta, opciones, ayuda) {
+  var v = String(leer(ruta));
+  var o = opciones.map(function (par) {
+    var val = par instanceof Array ? par[0] : par;
+    var txt = par instanceof Array ? par[1] : par;
+    return '<option value="' + esc(val) + '"' + (val === v ? ' selected' : '') +
+      '>' + esc(txt) + '</option>';
+  }).join("");
+  return '<label class="campo"><span>' + esc(etiqueta) + '</span>' +
+    '<select data-ruta="' + ruta + '" data-recarga="' + (ruta.indexOf("codigo_catalogo") >= 0 ? "1" : "0") +
+    '">' + o + '</select>' + (ayuda ? '<em>' + esc(ayuda) + '</em>' : '') + '</label>';
+}
+
+function fMarca(ruta, etiqueta, ayuda) {
+  return '<label class="marca"><input type="checkbox" data-ruta="' + ruta +
+    '" data-bool="1"' + (leer(ruta) !== false ? ' checked' : '') + '>' +
+    '<span>' + esc(etiqueta) + (ayuda ? ' <em class="tenue">' + esc(ayuda) +
+    '</em>' : '') + '</span></label>';
+}
+
+function botones(ruta, i, n, que) {
+  return '<div class="acciones">' +
+    (i > 0 ? '<button data-accion="subir" data-ruta="' + ruta + '" data-i="' + i + '">↑ subir</button>' : '') +
+    (i < n - 1 ? '<button data-accion="bajar" data-ruta="' + ruta + '" data-i="' + i + '">↓ bajar</button>' : '') +
+    '<button class="borrar" data-accion="quitar" data-ruta="' + ruta +
+    '" data-i="' + i + '">quitar ' + esc(que) + '</button></div>';
+}
+
+/* El catalogo como lista para elegir, nunca como campo libre. Un codigo
+ * escrito a mano que no existe revienta en el cargador de Python, y lo haria
+ * despues de bajar el archivo. Aqui no se puede escribir uno que no exista. */
+function opcionesCatalogo() {
+  var codigos = Object.keys(CATALOGO).sort();
+  var o = [["", "— ninguno —"]];
+  for (var i = 0; i < codigos.length; i++) {
+    o.push([codigos[i], codigos[i] + " · " + CATALOGO[codigos[i]].causa]);
+  }
+  return o;
+}
+
+/* ---------------------------------------------------------- las pantallas */
+
+function verInicio(error) {
+  tipo = null; b = null; mensaje = "";
+  panel.hidden = true;
+  app.innerHTML =
+    '<h1>Armar</h1>' +
+    '<p class="tenue">Las dos pantallas de campo de FixMate abren un archivo ' +
+    '<code>.json</code>: la ronda abre la pauta del equipo, la mesa de ' +
+    'trabajo abre el análisis RCM. Aquí se escriben esos dos archivos, con ' +
+    'las mismas reglas que usa el resto de FixMate para leerlos.</p>' +
+    (error ? '<div class="aviso peligro">' + esc(error) + '</div>' : '') +
+    '<div class="inicio">' +
+    '<h2>Empezar</h2>' +
+    '<button id="n-pauta" class="primary">Nueva pauta de ronda' +
+    '<span class="tenue">Para el operador: los puntos de limpieza, ' +
+    'inspección y lubricación del arranque de turno. Se pega desde el Excel ' +
+    'si ya la tiene en una planilla.</span></button>' +
+    '<button id="n-analisis">Nuevo análisis RCM' +
+    '<span class="tenue">Para la oficina: funciones, fallas funcionales y ' +
+    'modos de falla, con sus consecuencias. De aquí sale lo que la mesa de ' +
+    'trabajo lleva por el árbol de SAE JA1011.</span></button>' +
+    '<h2>Seguir uno que ya existe</h2>' +
+    '<button id="abrir">Abrir un archivo' +
+    '<span class="tenue">Una pauta o un análisis que ya tenga. Se reconoce ' +
+    'cuál es por lo que lleva dentro.</span></button>' +
+    '</div>' +
+    '<p class="tenue">Nada de esto sale de este equipo: no hay servidor ' +
+    'detrás. El archivo se guarda donde usted lo baje.</p>';
+
+  document.getElementById("n-pauta").onclick = nuevaPauta;
+  document.getElementById("n-analisis").onclick = nuevoAnalisis;
+  document.getElementById("abrir").onclick = function () { entrada().click(); };
+}
+
+/* El input de archivo se crea UNA vez y se reusa. Creándolo en cada dibujo
+   quedaban inputs huérfanos pegados al body, y el de un dibujo viejo seguía
+   respondiendo. */
+var _entrada = null;
+function entrada() {
+  if (_entrada) return _entrada;
+  var inp = document.createElement("input");
+  inp.type = "file"; inp.accept = ".json,application/json"; inp.className = "oculto";
+  inp.onchange = function () {
+    var f = inp.files && inp.files[0];
+    if (!f) return;
+    var lector = new FileReader();
+    lector.onload = function () {
+      try { abrirArchivo(JSON.parse(lector.result)); }
+      catch (e) { verInicio("Ese archivo no se puede leer: " + e.message); }
+      inp.value = "";
+    };
+    lector.readAsText(f);
+  };
+  document.body.appendChild(inp);
+  _entrada = inp;
+  return inp;
+}
+
+function abrirArchivo(d) {
+  if (d && d.puntos instanceof Array && !d.funciones) {
+    tipo = "pauta"; b = borradorDePauta(d);
+  } else if (d && d.activo) {
+    tipo = "analisis"; b = borradorDeAnalisis(d);
+  } else {
+    verInicio("Ese archivo no es una pauta ni un análisis: no tiene «puntos» " +
+              "ni «activo».");
+    return;
+  }
+  abierto = {}; mensaje = "Abierto. Lo que cambie aquí no toca el archivo " +
+    "original: se baja uno nuevo.";
+  render();
+}
+
+/* --------------------------------------------------------- los borradores */
+
+/* Lo que trae el archivo y esta pantalla no edita. Viaja aparte y se vuelve a
+   escribir tal cual: ver `conResto()` en las reglas. Los `id` NO viajan —se
+   regeneran por posicion en Python, y un id viejo sobre un modo que se movio
+   de sitio es peor que ninguno: apuntaria a la decision de otro modo. */
+function resto(origen, conocidas) {
+  var o = {}, hay = false;
+  for (var k in origen) {
+    if (!Object.prototype.hasOwnProperty.call(origen, k)) continue;
+    if (conocidas.indexOf(k) >= 0) continue;
+    o[k] = origen[k];
+    hay = true;
+  }
+  return hay ? o : null;
+}
+
+var CONOCIDAS_PAUTA = ["id", "activo_codigo", "codigo_equipo", "nombre",
+                       "frecuencia", "origen", "presupuesto_seg", "puntos"];
+var CONOCIDAS_PUNTO = ["id", "clase", "punto", "criterio", "alcance_operador",
+                       "segundos", "codigo_catalogo", "modo_falla_id"];
+var CONOCIDAS_ANALISIS = ["activo", "contexto", "facilitador", "participantes",
+                          "fecha", "revision", "aprobado_por",
+                          "proxima_revision", "funciones", "fallas", "modos"];
+var CONOCIDAS_FUNCION = ["id", "descripcion", "estandar", "tipo", "condicion",
+                         "fallas"];
+var CONOCIDAS_FALLA = ["id", "funcion_id", "descripcion", "modos"];
+var CONOCIDAS_MODO = ["id", "falla_funcional_id", "descripcion", "ubicacion",
+                      "codigo_catalogo", "causa", "mecanismo", "evidente",
+                      "efecto", "consecuencias", "evidencia", "estado"];
+
+
+function puntoVacio() {
+  return { clase: "inspeccionar", punto: "", criterio: "", segundos: 30,
+           alcance_operador: true, codigo_catalogo: "", modo_falla_id: "" };
+}
+
+function nuevaPauta() {
+  tipo = "pauta";
+  b = { id: "", activo_codigo: "", nombre: "", frecuencia: "por_turno",
+        origen: "", puntos: [puntoVacio()] };
+  abierto = { "puntos.0": true }; mensaje = "";
+  render();
+}
+
+function borradorDePauta(d) {
+  return {
+    _resto: resto(d, CONOCIDAS_PAUTA),
+    id: String(d.id || ""), activo_codigo: String(d.activo_codigo || d.codigo_equipo || ""),
+    nombre: String(d.nombre || ""), frecuencia: String(d.frecuencia || "diaria"),
+    origen: String(d.origen || ""),
+    puntos: (d.puntos || []).map(function (p) {
+      return {
+        _resto: resto(p, CONOCIDAS_PUNTO),
+        clase: String(p.clase || "inspeccionar"), punto: String(p.punto || ""),
+        criterio: String(p.criterio || ""), segundos: +p.segundos || 0,
+        alcance_operador: p.alcance_operador !== false,
+        codigo_catalogo: String(p.codigo_catalogo || ""),
+        modo_falla_id: String(p.modo_falla_id || "")
+      };
+    })
+  };
+}
+
+function modoVacio() {
+  return { descripcion: "", ubicacion: { sistema: "", subsistema: "", componente: "" },
+           codigo_catalogo: "", causa: "", mecanismo: "", evidente: "si",
+           efecto: { local: "", observa_operador: "", parametro: "", alarma: "",
+                     componente_afectado: "", como_detectarlo: "" },
+           consecuencias: [], evidencia: [], estado: "propuesto" };
+}
+function fallaVacia() { return { descripcion: "", modos: [modoVacio()] }; }
+function funcionVacia() {
+  return { descripcion: "", estandar: "", tipo: "principal", condicion: "",
+           fallas: [fallaVacia()] };
+}
+
+function nuevoAnalisis() {
+  tipo = "analisis";
+  b = { activo: { codigo: "", nombre: "", marca: "", modelo: "", serie: "",
+                  categoria: "", instalacion: "", contexto: "" },
+        contexto: "", facilitador: "", participantes: "", fecha: hoyISO(),
+        revision: "", aprobado_por: "", proxima_revision: "",
+        funciones: [funcionVacia()] };
+  abierto = { "funciones.0": true }; mensaje = "";
+  render();
+}
+
+function borradorDeAnalisis(d) {
+  var a = d.activo || {};
+  // Un análisis guardado trae funciones, fallas y modos en tres listas planas
+  // cosidas por id —así lo escribe `Analisis.a_dict()`— o ya anidados, como
+  // lo escribe esta pantalla. Las dos formas se leen: si solo se leyera la
+  // anidada, un análisis exportado por el CLI no se podría volver a editar.
+  var funciones = (d.funciones || []).map(function (f) {
+    return { _resto: resto(f, CONOCIDAS_FUNCION),
+             descripcion: String(f.descripcion || ""), estandar: String(f.estandar || ""),
+             tipo: String(f.tipo || "principal"), condicion: String(f.condicion || ""),
+             id: String(f.id || ""), fallas: (f.fallas || []).map(fallaDe) };
+  });
+  if (d.fallas instanceof Array && d.fallas.length) {
+    var porFuncion = {};
+    for (var i = 0; i < funciones.length; i++) {
+      porFuncion[funciones[i].id || ("F" + (i + 1))] = funciones[i];
+      funciones[i].fallas = [];
+    }
+    var porId = {};
+    for (i = 0; i < d.fallas.length; i++) {
+      var ff = d.fallas[i], destino = porFuncion[String(ff.funcion_id || "")];
+      if (!destino) continue;
+      var nueva = { _resto: resto(ff, CONOCIDAS_FALLA),
+                    descripcion: String(ff.descripcion || ""), modos: [] };
+      porId[String(ff.id || "")] = nueva;
+      destino.fallas.push(nueva);
+    }
+    for (i = 0; i < (d.modos || []).length; i++) {
+      var m = d.modos[i], padre = porId[String(m.falla_funcional_id || "")];
+      if (padre) padre.modos.push(modoDe(m));
+    }
+  }
+  for (i = 0; i < funciones.length; i++) delete funciones[i].id;
+  return {
+    _resto: resto(d, CONOCIDAS_ANALISIS),
+    activo: { codigo: String(a.codigo || ""), nombre: String(a.nombre || ""),
+              marca: String(a.marca || ""), modelo: String(a.modelo || ""),
+              serie: String(a.serie || ""), categoria: String(a.categoria || ""),
+              instalacion: String(a.instalacion || ""),
+              contexto: String(a.contexto || "") },
+    contexto: String(d.contexto || ""), facilitador: String(d.facilitador || ""),
+    participantes: (d.participantes || []).join(", "),
+    fecha: String(d.fecha || ""), revision: String(d.revision || ""),
+    aprobado_por: String(d.aprobado_por || ""),
+    proxima_revision: String(d.proxima_revision || ""),
+    funciones: funciones
+  };
+}
+
+function fallaDe(ff) {
+  return { _resto: resto(ff, CONOCIDAS_FALLA),
+           descripcion: String(ff.descripcion || ""),
+           modos: (ff.modos || []).map(modoDe) };
+}
+
+function modoDe(m) {
+  var u = m.ubicacion || {}, e = m.efecto || {};
+  return {
+    // Aqui viajan la criticidad y la `decision` —las respuestas del equipo al
+    // arbol de JA1011—. Reescribir el archivo sin ellas borraria la reunion.
+    _resto: resto(m, CONOCIDAS_MODO),
+    descripcion: String(m.descripcion || ""),
+    ubicacion: { sistema: String(u.sistema || ""), subsistema: String(u.subsistema || ""),
+                 componente: String(u.componente || "") },
+    codigo_catalogo: String(m.codigo_catalogo || ""),
+    causa: String(m.causa || ""), mecanismo: String(m.mecanismo || ""),
+    // En el borrador es «si»/«no» porque sale de un desplegable; en el
+    // archivo es un booleano, porque eso es lo que es. Guardar el booleano y
+    // pintarlo con `String()` dejaba el desplegable diciendo «sí» sobre un
+    // modo oculto: la pantalla y el dato, distintos, sin avisar.
+    evidente: m.evidente === false ? "no" : "si",
+    efecto: { local: String(e.local || ""), observa_operador: String(e.observa_operador || ""),
+              parametro: String(e.parametro || ""), alarma: String(e.alarma || ""),
+              componente_afectado: String(e.componente_afectado || ""),
+              como_detectarlo: String(e.como_detectarlo || "") },
+    consecuencias: (m.consecuencias || []).map(function (c) {
+      return typeof c === "string" ? { clase: c, descripcion: "" }
+        : { clase: String(c.clase || ""), descripcion: String(c.descripcion || "") };
+    }),
+    evidencia: (m.evidencia || []).map(function (r) {
+      return { fuente: String(r.fuente || "historial"),
+               referencia: String(r.referencia || ""), nota: String(r.nota || "") };
+    }),
+    estado: String(m.estado || "propuesto")
+  };
+}
+
+/* ------------------------------------------------------------- el dibujo */
+
+function render() {
+  var y = window.scrollY;
+  app.innerHTML = tipo === "pauta" ? hojaPauta() : hojaAnalisis();
+  for (var llave in abierto) {
+    var d = app.querySelector('[data-llave="' + llave + '"]');
+    if (d && abierto[llave]) d.open = true;
+  }
+  pintarPanel();
+  // Volver a armar la hoja entera manda la página arriba. En un análisis de
+  // treinta modos eso significa buscar otra vez dónde se estaba cada vez que
+  // se agrega algo.
+  window.scrollTo(0, y);
+}
+
+function cabecera(titulo, bajada) {
+  return '<h1>' + esc(titulo) + '</h1>' +
+    '<p class="tenue">' + bajada + '</p>' +
+    (mensaje ? '<div class="aviso nota">' + esc(mensaje) + '</div>' : '') +
+    '<div class="acciones"><button data-accion="volver">← empezar otro</button></div>';
+}
+
+function hojaPauta() {
+  var h = cabecera("Armar la pauta",
+    'Lo que el operador va a tocar en el teléfono, punto por punto. Lo que ' +
+    'se escriba aquí es lo que él va a leer parado frente a la máquina, con ' +
+    'guantes: un sitio donde pararse y un criterio que se decide mirando.');
+
+  h += '<h2>El equipo</h2>' +
+    '<div class="rejilla">' +
+    fTexto("activo_codigo", "Código del activo",
+           "El que está pintado en la máquina y ya viaja en los informes. No se inventa aquí.",
+           { falta: true, pista: "EX-220-03" }) +
+    fTexto("nombre", "Nombre de la pauta", "Cómo la va a pedir el operador.",
+           { falta: true, pista: "Ronda de arranque · excavadora" }) +
+    fSelect("frecuencia", "Cada cuándo", [
+      ["por_turno", "por turno"], ["diaria", "diaria"], ["semanal", "semanal"],
+      ["quincenal", "quincenal"], ["mensual", "mensual"], ["por_horas", "por horas"]
+    ], "Una pauta de arranque de turno es la que de verdad se ejecuta.") +
+    fTexto("origen", "De dónde sale",
+           "Manual del fabricante, análisis RCM, experiencia del taller. Sin esto, " +
+           "dentro de un año nadie sabe por qué está este punto.",
+           { pista: "manual OEM, sección 4.2" }) +
+    '</div>';
+
+  h += '<h2>Los puntos <span class="lb">' + b.puntos.length + '</span></h2>';
+  if (!b.puntos.length) {
+    h += '<p class="vacio">Ninguno todavía. Sin puntos, la pauta no arranca en ' +
+      'el teléfono.</p>';
+  }
+  for (var i = 0; i < b.puntos.length; i++) h += bloquePunto(i);
+  h += '<div class="acciones">' +
+    '<button class="primary" data-accion="agregar-punto">+ agregar punto</button>' +
+    '</div>' + cajaPegar();
+  return h;
+}
+
+function bloquePunto(i) {
+  var p = b.puntos[i], llave = "puntos." + i;
+  var titulo = p.punto ? esc(p.punto) : '<span class="vacio">sin sitio todavía</span>';
+  return '<details class="bloque" data-llave="' + llave + '">' +
+    '<summary><span class="chip">' + (i + 1) + '</span>' +
+    '<span class="chip acento">' + esc(p.clase) + '</span>' + titulo + '</summary>' +
+    '<div class="cuerpo">' +
+    fSelect(llave + ".clase", "Qué se hace",
+      Object.keys(CLASES).map(function (c) { return [c, c + " — " + CLASES[c]]; }),
+      "Cinco, no siete: «detectar anomalías» y «registrar anomalía» no son " +
+      "clases de punto, son lo que pasa cuando un punto sale NOK.") +
+    fTexto(llave + ".punto", "El sitio",
+      "Un sitio físico donde pararse, no un sistema. «Revisar lubricación» no " +
+      "es un punto; «visor de nivel del reductor» sí.",
+      { falta: true, pista: "visor de nivel del reductor de giro" }) +
+    fTexto(llave + ".criterio", "Criterio de aceptación",
+      "Tiene que decidirse sin instrumento. Si hace falta un medidor, el punto " +
+      "es de la ruta predictiva, no de la ronda del operador.",
+      { falta: true, area: true, pista: "el nivel queda entre las dos marcas del visor" }) +
+    '<div class="rejilla">' +
+    fNumero(llave + ".segundos", "Segundos que debería llevar") +
+    fSelect(llave + ".codigo_catalogo", "Falla del catálogo que vigila",
+      opcionesCatalogo(),
+      "Es la llave hacia el análisis RCM y el historial: con ella, lo que el " +
+      "operador encuentre se cose solo.") +
+    '</div>' +
+    fMarca(llave + ".alcance_operador", "Está al alcance del operador",
+      "Se decide aquí, en frío, por quien conoce el bloqueo y la herramienta. " +
+      "Preguntárselo en campo garantiza la respuesta cómoda.") +
+    botones("puntos", i, b.puntos.length, "punto") +
+    '</div></details>';
+}
+
+function cajaPegar() {
+  return '<details class="bloque" data-llave="pegar">' +
+    '<summary><span class="chip acento">excel</span>Pegar los puntos desde una planilla</summary>' +
+    '<div class="cuerpo">' +
+    '<p class="tenue">Copie el rango en Excel y péguelo aquí. Cuatro columnas, ' +
+    'en este orden: <code>clase</code>, <code>punto</code>, ' +
+    '<code>criterio</code>, <code>segundos</code>. Las filas que no se ' +
+    'entiendan se devuelven con su número de línea y el motivo: no se ' +
+    'descarta ninguna en silencio.</p>' +
+    '<textarea id="pegado" rows="6" placeholder="limpiar&#9;radiador, cara de ' +
+    'entrada&#9;sin tierra pegada entre aletas&#9;40"></textarea>' +
+    '<div class="acciones"><button data-accion="pegar">agregar esas filas</button>' +
+    '</div></div></details>';
+}
+
+function hojaAnalisis() {
+  var h = cabecera("Armar el análisis RCM",
+    'Función, falla funcional, modo de falla: en ese orden y sin saltarse ' +
+    'ninguno. Un modo de falla que no cuelga de una función declarada no se ' +
+    'puede leer, porque dice cómo falla algo que nadie dijo que la máquina ' +
+    'deba hacer.');
+
+  h += '<h2>El activo</h2><div class="rejilla">' +
+    fTexto("activo.codigo", "Código", "Como lo llama el taller.",
+           { falta: true, pista: "EX-220-03" }) +
+    fTexto("activo.nombre", "Nombre", "", { falta: true, pista: "Excavadora hidráulica" }) +
+    fTexto("activo.marca", "Marca") +
+    fTexto("activo.modelo", "Modelo") +
+    fTexto("activo.serie", "Serie") +
+    fTexto("activo.categoria", "Familia",
+           "Sirve para preferir antecedentes de máquinas parecidas.") +
+    fTexto("activo.instalacion", "Obra o unidad",
+           "Nivel 3 de la taxonomía de ISO 14224. Es el único de los de " +
+           "localización que cambia por activo en una flota que se mueve.") +
+    '</div>';
+
+  h += '<h2>El análisis</h2>' +
+    fTexto("contexto", "Contexto operacional",
+      "El análisis está amarrado al contexto, no al activo solo: la misma " +
+      "bomba en dos contextos son dos análisis. Sin esto declarado, copiar " +
+      "este análisis sobre otra máquina parece legítimo.",
+      { area: true, filas: 3,
+        pista: "turno continuo en interior mina, 4.200 m, polvo de sílice" }) +
+    '<div class="rejilla">' +
+    fTexto("facilitador", "Facilitador") +
+    fTexto("participantes", "Participantes",
+      "Separados por coma. RCM lo hace el equipo que opera y mantiene el " +
+      "activo; de una sola persona es una opinión.") +
+    fTexto("fecha", "Fecha", "ISO 8601: " + FORMATO_FECHA + ".", { pista: hoyISO() }) +
+    fTexto("revision", "Revisión", "Qué versión es esto.", { pista: "rev. 1" }) +
+    fTexto("aprobado_por", "Aprobado por") +
+    fTexto("proxima_revision", "Próxima revisión",
+      "El contexto cambia, y con él las consecuencias.", { pista: "2027-10-08" }) +
+    '</div>';
+
+  h += '<h2>Funciones <span class="lb">' + b.funciones.length + '</span></h2>';
+  if (!b.funciones.length) {
+    h += '<p class="vacio">Ninguna todavía.</p>';
+  }
+  for (var i = 0; i < b.funciones.length; i++) h += bloqueFuncion(i);
+  h += '<div class="acciones">' +
+    '<button class="primary" data-accion="agregar-funcion">+ agregar función</button>' +
+    '</div>';
+  return h;
+}
+
+function bloqueFuncion(i) {
+  var f = b.funciones[i], llave = "funciones." + i;
+  var titulo = f.descripcion ? esc(f.descripcion)
+    : '<span class="vacio">sin descripción todavía</span>';
+  var h = '<details class="bloque" data-llave="' + llave + '">' +
+    '<summary><span class="chip acento">F' + (i + 1) + '</span>' + titulo +
+    '<span class="chip">' + f.fallas.length + ' falla(s)</span></summary>' +
+    '<div class="cuerpo">' +
+    fTexto(llave + ".descripcion", "La función",
+      "Lo que el activo debe hacer. En verbo y con el objeto.",
+      { falta: true, pista: "Girar la superestructura 360°" }) +
+    fTexto(llave + ".estandar", "Estándar de desempeño",
+      "Lo que la vuelve verificable, con número. Una función sin estándar no " +
+      "se puede fallar de forma verificable, y de ella no sale ningún modo " +
+      "de falla útil.",
+      { falta: true, area: true, pista: "a 9 rpm con carga nominal de 2,1 m³" }) +
+    '<div class="rejilla">' +
+    fSelect(llave + ".tipo", "Tipo", [["principal", "principal"], ["secundaria", "secundaria"]]) +
+    fTexto(llave + ".condicion", "En qué condición aplica",
+      "", { pista: "solo en pendiente > 15%" }) +
+    '</div>' +
+    botones("funciones", i, b.funciones.length, "función");
+
+  h += '<div class="anidado"><h2>Fallas funcionales <span class="lb">' +
+    f.fallas.length + '</span></h2>';
+  if (!f.fallas.length) {
+    h += '<p class="vacio">Ninguna. Una función declarada y nunca fallada no ' +
+      'aporta al plan.</p>';
+  }
+  for (var j = 0; j < f.fallas.length; j++) h += bloqueFalla(i, j);
+  h += '<div class="acciones"><button data-accion="agregar-falla" data-ruta="' +
+    llave + '.fallas">+ agregar falla funcional</button></div></div>';
+
+  return h + '</div></details>';
+}
+
+function bloqueFalla(i, j) {
+  var ff = b.funciones[i].fallas[j], llave = "funciones." + i + ".fallas." + j;
+  var titulo = ff.descripcion ? esc(ff.descripcion)
+    : '<span class="vacio">sin descripción todavía</span>';
+  var h = '<details class="bloque" data-llave="' + llave + '">' +
+    '<summary><span class="chip">F' + (i + 1) + '.' + (j + 1) + '</span>' + titulo +
+    '<span class="chip">' + ff.modos.length + ' modo(s)</span></summary>' +
+    '<div class="cuerpo">' +
+    fTexto(llave + ".descripcion", "La falla funcional",
+      "Cómo deja de cumplir la función. Pérdida total y pérdida parcial son " +
+      "dos fallas funcionales distintas, no una.",
+      { falta: true, pista: "No gira" }) +
+    botones("funciones." + i + ".fallas", j, b.funciones[i].fallas.length,
+            "falla funcional");
+
+  h += '<div class="anidado"><h2>Modos de falla <span class="lb">' +
+    ff.modos.length + '</span></h2>';
+  if (!ff.modos.length) {
+    h += '<p class="vacio">Ninguno. La tarea se decide en el modo, no en la ' +
+      'falla funcional.</p>';
+  }
+  for (var k = 0; k < ff.modos.length; k++) h += bloqueModo(i, j, k);
+  h += '<div class="acciones"><button data-accion="agregar-modo" data-ruta="' +
+    llave + '.modos">+ agregar modo de falla</button></div></div>';
+
+  return h + '</div></details>';
+}
+
+function bloqueModo(i, j, k) {
+  var m = b.funciones[i].fallas[j].modos[k];
+  var llave = "funciones." + i + ".fallas." + j + ".modos." + k;
+  var titulo = m.descripcion ? esc(m.descripcion)
+    : '<span class="vacio">sin descripción todavía</span>';
+  var h = '<details class="bloque" data-llave="' + llave + '">' +
+    '<summary><span class="chip">' + (i + 1) + '.' + (j + 1) + '.' + (k + 1) + '</span>' +
+    titulo + (m.evidente === "no" ? '<span class="chip grave">oculta</span>' : '') +
+    '</summary><div class="cuerpo">' +
+    fTexto(llave + ".descripcion", "El modo de falla",
+      "Qué produce la falla funcional. Es el nivel donde se decide la tarea.",
+      { falta: true, pista: "Corona de giro con desgaste en los dientes" }) +
+
+    fSelect(llave + ".codigo_catalogo", "Falla del catálogo", opcionesCatalogo(),
+      "Al elegirla se rellenan causa, mecanismo y sistema si están vacíos: " +
+      "lo que usted ya escribió no se pisa.") +
+
+    '<div class="rejilla">' +
+    fTexto(llave + ".causa", "Causa") +
+    fTexto(llave + ".mecanismo", "Mecanismo", "Desgaste, fatiga, corrosión…") +
+    '</div>' +
+    '<div class="rejilla">' +
+    fTexto(llave + ".ubicacion.sistema", "Sistema") +
+    fTexto(llave + ".ubicacion.subsistema", "Subsistema") +
+    fTexto(llave + ".ubicacion.componente", "Componente",
+      "Nivel 8 de ISO 14224: el ítem mantenible, donde cae el mantenimiento.") +
+    '</div>' +
+
+    fSelect(llave + ".evidente", "¿La falla se nota cuando ocurre?", [
+      ["si", "Sí — el operador se da cuenta solo"],
+      ["no", "No — es una falla oculta"]
+    ], "Es la PRIMERA bifurcación de RCM, no una consecuencia más. Si es " +
+       "oculta, el riesgo no es esta falla: es la falla múltiple, y de ahí " +
+       "sale una tarea de búsqueda de fallas.");
+
+  h += '<label class="campo"><span>Consecuencias</span>' +
+    '<em>Qué pasa si ocurre y nadie lo evita. El árbol de decisión empieza ' +
+    'aquí: sin consecuencia declarada no sale tarea.</em></label>';
+  for (var c = 0; c < CLASES_CONSECUENCIA.length; c++) {
+    var clase = CLASES_CONSECUENCIA[c], puesta = claseEn(m, clase);
+    h += '<label class="marca"><input type="checkbox" data-accion="consecuencia" ' +
+      'data-ruta="' + llave + '" data-clase="' + clase + '"' +
+      (puesta ? ' checked' : '') + '><span>' + esc(clase) +
+      (CONSECUENCIAS_GRAVES.indexOf(clase) >= 0
+        ? ' <span class="chip grave">grave</span>' : '') + '</span></label>';
+    if (puesta) {
+      h += fTexto(llave + ".consecuencias." + indiceClase(m, clase) + ".descripcion",
+                  "cómo, concretamente", "", { pista: "aplasta al que está abajo" });
+    }
+  }
+
+  h += fTexto(llave + ".efecto.local", "Efecto: qué pasa en el equipo",
+    "Responde la Q4 de JA1011. Sin esto, la pregunta no se puede contestar.",
+    { area: true, pista: "la superestructura se traba y el giro se detiene" }) +
+    '<div class="rejilla">' +
+    fTexto(llave + ".efecto.observa_operador", "Qué ve, oye o huele el operador") +
+    fTexto(llave + ".efecto.parametro", "Qué lectura cambia") +
+    fTexto(llave + ".efecto.alarma", "Qué alarma o luz aparece") +
+    fTexto(llave + ".efecto.como_detectarlo", "Cómo se confirma") +
+    '</div>' +
+    fSelect(llave + ".estado", "Estado", [
+      ["propuesto", "propuesto"], ["validado", "validado — necesita evidencia"],
+      ["descartado", "descartado"]
+    ], "«Validado» sin evidencia no se puede guardar: un modo validado de " +
+       "memoria es una opinión con sello.");
+
+  h += '<div class="anidado"><h2>Evidencia <span class="lb">' +
+    m.evidencia.length + '</span></h2>';
+  if (!m.evidencia.length) {
+    h += '<p class="vacio">Ninguna. Sin evidencia, el análisis es una opinión.</p>';
+  }
+  for (var e = 0; e < m.evidencia.length; e++) {
+    h += '<div class="bloque"><div class="rejilla">' +
+      fSelect(llave + ".evidencia." + e + ".fuente", "Fuente",
+              FUENTES.map(function (f) { return f; })) +
+      fTexto(llave + ".evidencia." + e + ".referencia", "Dónde ir a mirarlo",
+             "", { pista: "informe 2026-0412, sección 3" }) +
+      '</div>' +
+      fTexto(llave + ".evidencia." + e + ".nota", "Nota") +
+      '<div class="acciones"><button class="borrar" data-accion="quitar" data-ruta="' +
+      llave + '.evidencia" data-i="' + e + '">quitar evidencia</button></div></div>';
+  }
+  h += '<div class="acciones"><button data-accion="agregar-evidencia" data-ruta="' +
+    llave + '.evidencia">+ agregar evidencia</button></div></div>';
+
+  h += botones("funciones." + i + ".fallas." + j + ".modos", k,
+               b.funciones[i].fallas[j].modos.length, "modo");
+  return h + '</div></details>';
+}
+
+function claseEn(m, clase) {
+  return indiceClase(m, clase) >= 0;
+}
+function indiceClase(m, clase) {
+  for (var i = 0; i < m.consecuencias.length; i++) {
+    if (m.consecuencias[i].clase === clase) return i;
+  }
+  return -1;
+}
+
+/* ------------------------------------------------------------- el panel */
+
+function pintarPanel() {
+  var datos = armarJSON(tipo, b);
+  var errores = erroresDeCarga(tipo, datos);
+  var avisos = avisosDeCalidad(tipo, datos);
+  var listo = !errores.length && cuantos() > 0;
+
+  // El `id` va a la vista porque es el nombre con el que la pauta se va a
+  // pedir por radio, y no hay ningún campo donde se vea: se deriva.
+  var cuenta = tipo === "pauta"
+    ? (datos.id || "sin id") + " · " + b.puntos.length + " punto(s) · " +
+      datos.presupuesto_seg + " s de ronda"
+    : contarAnalisis();
+
+  panel.hidden = false;
+  panel.innerHTML = '<div>' +
+    '<div class="cuenta">' + esc(cuenta) +
+    (errores.length ? ' · <b style="color:var(--mal)">' + errores.length +
+      ' cosa(s) que hay que arreglar antes de bajarlo</b>' : '') +
+    (!errores.length && avisos.length ? ' · <b style="color:var(--obs)">' +
+      avisos.length + ' hueco(s)</b>' : '') +
+    '</div>' +
+    '<button id="ver-detalle">' + (errores.length || avisos.length
+      ? 'ver qué falta' : 'sin pendientes') + '</button>' +
+    '<button class="primary" id="bajar"' + (listo ? '' : ' disabled') + '>' +
+    (tipo === "pauta" ? 'Guardar la pauta (.json)' : 'Guardar el análisis (.json)') +
+    '</button></div>' +
+    '<div id="detalle" class="detalle" hidden>' + detalleHTML(errores, avisos) + '</div>';
+
+  document.getElementById("ver-detalle").onclick = function () {
+    var d = document.getElementById("detalle");
+    d.hidden = !d.hidden;
+    dejarSitio();
+  };
+  document.getElementById("bajar").onclick = bajar;
+  dejarSitio();
+}
+
+/* El panel va fijo abajo, y lo ultimo de la hoja le quedaba DEBAJO: el ultimo
+   punto de la pauta y la caja de pegar desde el Excel no se podian tocar. Un
+   margen fijo no alcanza —el panel crece cuando el texto de la cuenta se
+   parte en dos lineas, y mucho mas cuando se despliega el detalle—, asi que
+   se mide lo que ocupa y se le deja ese sitio. */
+function dejarSitio() {
+  app.style.paddingBottom = (panel.offsetHeight + 24) + "px";
+}
+
+function detalleHTML(errores, avisos) {
+  var h = "";
+  if (errores.length) {
+    h += '<p class="lb" style="color:var(--mal)">Esto detiene el archivo: el ' +
+      'resto de FixMate lo rechazaría</p><ul class="lista mal">' +
+      errores.map(function (e) { return '<li>' + esc(e) + '</li>'; }).join("") +
+      '</ul>';
+  }
+  if (avisos.length) {
+    h += '<p class="lb" style="color:var(--obs)">Esto carga igual, pero deja ' +
+      'un hueco</p><ul class="lista obs">' +
+      avisos.map(function (a) { return '<li>' + esc(a) + '</li>'; }).join("") +
+      '</ul>';
+  }
+  if (!h) {
+    h = '<p class="tenue">No queda nada pendiente. El archivo carga en el ' +
+      'resto de FixMate y no tiene huecos declarados.</p>';
+  }
+  return h;
+}
+
+function cuantos() {
+  if (tipo === "pauta") return b.puntos.length;
+  var n = 0;
+  for (var i = 0; i < b.funciones.length; i++) {
+    for (var j = 0; j < b.funciones[i].fallas.length; j++) {
+      n += b.funciones[i].fallas[j].modos.length;
+    }
+  }
+  return n;
+}
+
+function contarAnalisis() {
+  var fallas = 0;
+  for (var i = 0; i < b.funciones.length; i++) {
+    fallas += b.funciones[i].fallas.length;
+  }
+  return b.funciones.length + " función(es) · " + fallas + " falla(s) · " +
+    cuantos() + " modo(s)";
+}
+
+function nombreArchivo() {
+  var codigo = tipo === "pauta" ? b.activo_codigo : b.activo.codigo;
+  codigo = String(codigo || "sin-codigo").trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return (tipo === "pauta" ? "pauta-" : "analisis-") + codigo + ".json";
+}
+
+function bajar() {
+  var datos = armarJSON(tipo, b);
+  var texto = JSON.stringify(datos, null, 2) + "\n";
+  var blob = new Blob([texto], { type: "application/json" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nombreArchivo();
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function () {
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }, 0);
+  mensaje = "Guardado como «" + nombreArchivo() + "». " + (tipo === "pauta"
+    ? "Ábralo en la Ronda CIL del teléfono del operador."
+    : "Ábralo en la mesa de trabajo del análisis RCM.");
+  render();
+}
+
+/* ------------------------------------------------------------ los oyentes
+ * Dos, delegados en la hoja entera: uno para lo que se escribe y otro para
+ * lo que se toca. Con tres niveles de anidamiento, enganchar campo por campo
+ * es donde se cuelan los que se ven y no guardan nada. */
+app.addEventListener("input", function (ev) {
+  var t = ev.target, ruta = t.getAttribute("data-ruta");
+  if (!ruta || t.getAttribute("data-accion")) return;
+  if (t.getAttribute("data-bool")) fijar(ruta, t.checked);
+  else fijar(ruta, t.value);
+  if (t.getAttribute("data-obliga")) {
+    var campo = t.closest(".campo");
+    if (campo) campo.classList.toggle("falta", !t.value.trim());
+  }
+  pintarPanel();
+  // El resumen del bloque lleva la descripción: se actualiza al escribir sin
+  // volver a armar la hoja, que perdería el cursor.
+  refrescarResumen(ruta);
+});
+
+app.addEventListener("change", function (ev) {
+  var t = ev.target;
+  if (!t.getAttribute("data-ruta")) return;
+  if (t.getAttribute("data-recarga") === "1") {
+    heredarDelCatalogo(t.getAttribute("data-ruta"));
+  } else if (t.tagName !== "SELECT") {
+    return;
+  }
+  // Clase de punto, tipo de función, estado, `evidente`: cambian el chip del
+  // resumen, así que se vuelve a armar. No hay cursor que perder. Pero sí
+  // bloques desplegados: sin recordarlos, elegir un código de catálogo
+  // cerraba el modo que se estaba escribiendo y los dos niveles de arriba.
+  recordarAbiertos();
+  render();
+});
+
+app.addEventListener("click", function (ev) {
+  var t = ev.target.closest("[data-accion]");
+  if (!t) return;
+  var accion = t.getAttribute("data-accion"), ruta = t.getAttribute("data-ruta");
+  var i = +t.getAttribute("data-i");
+
+  if (accion === "consecuencia") {
+    var m = enRuta(ruta), clase = t.getAttribute("data-clase");
+    var pos = indiceClase(m, clase);
+    if (pos >= 0) m.consecuencias.splice(pos, 1);
+    else m.consecuencias.push({ clase: clase, descripcion: "" });
+    recordarAbiertos();
+    render();
+    return;
+  }
+  if (accion === "volver") { verInicio(""); return; }
+  if (accion === "pegar") { pegar(); return; }
+
+  recordarAbiertos();
+  if (accion === "agregar-punto") {
+    b.puntos.push(puntoVacio());
+    abierto["puntos." + (b.puntos.length - 1)] = true;
+  } else if (accion === "agregar-funcion") {
+    b.funciones.push(funcionVacia());
+    abierto["funciones." + (b.funciones.length - 1)] = true;
+  } else if (accion === "agregar-falla") {
+    var fallas = enRuta(ruta);
+    fallas.push(fallaVacia());
+    abierto[ruta + "." + (fallas.length - 1)] = true;
+  } else if (accion === "agregar-modo") {
+    var modos = enRuta(ruta);
+    modos.push(modoVacio());
+    abierto[ruta + "." + (modos.length - 1)] = true;
+  } else if (accion === "agregar-evidencia") {
+    enRuta(ruta).push({ fuente: "historial", referencia: "", nota: "" });
+  } else if (accion === "quitar") {
+    enRuta(ruta).splice(i, 1);
+  } else if (accion === "subir" || accion === "bajar") {
+    var lista = enRuta(ruta), j = accion === "subir" ? i - 1 : i + 1;
+    var tmp = lista[i]; lista[i] = lista[j]; lista[j] = tmp;
+  } else {
+    return;
+  }
+  mensaje = "";
+  render();
+});
+
+/* Cuáles bloques estaban desplegados antes de volver a armar la hoja. Sin
+   esto, agregar un punto cerraba los otros doce y había que abrirlos de
+   nuevo uno por uno. */
+function recordarAbiertos() {
+  abierto = {};
+  var ds = app.querySelectorAll("details[data-llave]");
+  for (var i = 0; i < ds.length; i++) {
+    if (ds[i].open) abierto[ds[i].getAttribute("data-llave")] = true;
+  }
+}
+
+function refrescarResumen(ruta) {
+  var partes = ruta.split(".");
+  if (partes[partes.length - 1] !== "descripcion" &&
+      partes[partes.length - 1] !== "punto") return;
+  var llave = partes.slice(0, -1).join(".");
+  var d = app.querySelector('details[data-llave="' + llave + '"] > summary');
+  if (!d) return;
+  var hijos = d.querySelectorAll(".chip");
+  var texto = String(leer(ruta)).trim();
+  // El resumen se rearma a mano para no tocar el resto del bloque.
+  var chips = [];
+  for (var i = 0; i < hijos.length; i++) chips.push(hijos[i].outerHTML);
+  d.innerHTML = chips.join("") +
+    (texto ? esc(texto) : '<span class="vacio">sin descripción todavía</span>');
+}
+
+/* Espejo de `ModoFalla.desde_catalogo()`: rellena huecos, no corrige. Lo que
+   el analista ya escribió gana. */
+function heredarDelCatalogo(ruta) {
+  var m = enRuta(ruta.replace(/\.codigo_catalogo$/, ""));
+  var e = CATALOGO[m.codigo_catalogo];
+  // El punto de una pauta tambien apunta al catalogo, pero ahi el codigo es
+  // solo la llave: no tiene causa ni ubicacion que rellenar.
+  if (!e || !m.efecto) return;
+  if (!String(m.causa || "").trim()) m.causa = e.causa;
+  if (!String(m.mecanismo || "").trim()) m.mecanismo = e.mecanismo;
+  if (m.ubicacion && !String(m.ubicacion.sistema || "").trim()) {
+    m.ubicacion.sistema = e.sistema;
+  }
+  if (!String(m.descripcion || "").trim()) m.descripcion = e.causa;
+}
+
+function pegar() {
+  var caja = document.getElementById("pegado");
+  if (!caja) return;
+  var r = filasPegadas(caja.value);
+  for (var i = 0; i < r.puntos.length; i++) b.puntos.push(r.puntos[i]);
+  recordarAbiertos();
+  abierto["pegar"] = true;
+  mensaje = r.puntos.length + " punto(s) agregados." +
+    (r.rechazos.length ? " No entraron " + r.rechazos.length + ": " +
+      r.rechazos.join(" ") : "");
+  if (r.puntos.length) caja.value = "";
+  render();
+}
+
+/* ---------------------------------------------------------------- arranque */
+
+verInicio("");
+</script>

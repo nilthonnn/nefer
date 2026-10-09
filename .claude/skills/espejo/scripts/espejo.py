@@ -31,7 +31,8 @@ HERRAMIENTAS = RAIZ / "herramientas"
 # que ella se llevan la piel vieja y hay que correrlo todo dos veces.
 # Un generador que aparezca y no este aqui se corre AL FINAL y se avisa: es
 # mejor un aviso que un orden adivinado.
-ORDEN = ("piel.py", "espejo-catalogo.py", "espejo-ronda.py", "espejo-rcm.py")
+ORDEN = ("piel.py", "espejo-catalogo.py", "espejo-ronda.py", "espejo-rcm.py",
+         "espejo-armar.py")
 
 
 def generadores() -> list[Path]:

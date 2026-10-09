@@ -10,7 +10,7 @@ Es trabajo de oficina o de sala de reuniones, no de patio. Para el patio está
 Arriba de todo está la barra de FixMate: el nombre del producto, la pantalla
 en la que está parado, y el paso a las otras dos —el diagnóstico del técnico y
 la ronda del operador—. Es la misma barra, el mismo color y la misma
-tipografía en las cuatro superficies: las tres personas hablan de la misma
+tipografía en las cinco superficies: las tres personas hablan de la misma
 máquina, y una pantalla que parece de otro programa abre la pregunta de cuál
 de las tres tiene el dato bueno.
 
