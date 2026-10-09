@@ -1,7 +1,12 @@
 # Auditoría de conformidad · RCM + TPM en FixMate
 
-**Fecha:** 2026-10-08 · **Revisión:** 2 · **Alcance auditado:** `commit ee0229c`
+**Fecha:** 2026-10-09 · **Revisión:** 3 · **Alcance auditado:** `commit ee0229c`
 
+> **Revisión 3** — agregada y cerrada OBS-03: el sistema no podía producir sus
+> propios registros. Está clasificada como observación y no como no
+> conformidad por la regla de esta auditoría —el proyecto lo declaraba, no lo
+> escondía—, y aun así era el hallazgo que más pesaba en el uso real.
+>
 > **Revisión 2** — cerrada OBS-02 con la taxonomía implementada. La revisión 1
 > la dejaba abierta y documentada.
 
@@ -62,6 +67,7 @@ se auditan.
 | NC-05 | Ambigüedad de códigos detectada en uso, no en revisión | Menor | Subsanada |
 | OBS-01 | Seis clases de consecuencia frente a cuatro de la norma, sin mapeo declarado | Observación | Subsanada |
 | OBS-02 | Jerarquía de activos de tres niveles frente a la taxonomía de la norma | Observación | Subsanada en rev. 2 |
+| OBS-03 | El sistema no podía producir sus propios registros: la pauta y el análisis se escribían a mano en un editor de texto | Observación | Subsanada en rev. 3 |
 
 ---
 
@@ -157,6 +163,13 @@ análisis de ejemplo —el que todo el mundo copia— quedó identificado.
 > contestadas y no ser un registro válido, y ésa es la diferencia que nadie
 > ve hasta que llega la auditoría.
 
+Y el que más pesaba en el uso es OBS-03, por la razón contraria: estaba
+**declarado**, con esas palabras, en la documentación de arquitectura. No
+hacía falta una auditoría para encontrarlo; hacía falta sacar la conclusión
+de lo que ya estaba escrito. Un sistema de registro que no puede crear su
+primer registro no se puede empezar a usar, y eso no lo arregla ninguna
+cantidad de pruebas verdes sobre lo que viene después.
+
 ### NC-05 · Menor — Ambigüedad de códigos detectada en uso, no en revisión
 
 **Evidencia.** `anomalia.enlazar()` se niega —correctamente— a elegir cuando
@@ -227,6 +240,52 @@ y 9. Si el cliente es una planta fija en vez de una flota, el 4 y el 5 pasan
 a tener sentido y hay que agregarlos; está escrito en el encabezado del
 módulo para que quien llegue a esa necesidad lo encuentre.
 
+### OBS-03 · Observación — El sistema no podía producir sus propios registros
+
+**Criterio.** No es normativo, y por eso es observación y no no conformidad:
+la regla de esta auditoría es que *una herramienta no es no conforme por no
+hacer algo que nunca prometió*. FixMate no lo prometía. Lo decía, con estas
+palabras, en `docs/ARQUITECTURA-RCM-TPM.md`: «Lo que **no** tienen pantalla:
+crear o editar el análisis —se edita el JSON—». Declarado, no escondido.
+
+**Lo que había.** Todos los verbos del sistema leían o validaban algo que ya
+existía:
+
+```
+$ python3 -m nefer fixmate rcm --help
+  {analizar,taxonomia,listar,matriz,tareas}
+$ python3 -m nefer fixmate tpm --help
+  {checklist,ejecutar,pendientes}
+```
+
+Ni un `crear`. Ni un `nuevo`. La pantalla de la ronda abre una pauta `.json`;
+la mesa de trabajo abre un análisis `.json`; ninguna de las dos podía
+producir uno. El único camino para tener el primer archivo era que alguien
+que conociera el esquema lo tecleara en un editor de texto.
+
+**Por qué pesa más que su clasificación.** Un sistema de registro que no
+puede crear su primer registro no se puede empezar a usar. En la práctica, el
+único análisis que un usuario podía ver era el de ejemplo —una excavadora
+EX-220 que no existe—, y eso convierte lo demás, que está probado y
+funciona, en un demo con el formulario escondido. La conformidad documental
+estaba bien; el producto, no.
+
+**Subsanación.** Una tercera pantalla, `docs/fixmate/armar/`, donde se
+escriben los dos archivos. Lo que la hace un control y no un formulario:
+
+| Control | Dónde está |
+|---|---|
+| No puede bajar un archivo que los cargadores rechazarían | `erroresDeCarga()` es espejo de `cargador.checklist_de_dict` y `cargador.analisis_de_dict`; `tests/test_fixmate_cruce_armar.py` compara los dos veredictos sobre 166 casos, incluido un barrido combinatorio |
+| Separa lo que detiene de lo que deja un hueco | Dos listas distintas: `erroresDeCarga()` traba el botón; `avisosDeCalidad()` se dice y no traba. Un campo opcional que traba al que tiene prisa es tan dañino como dejar pasar lo que rompe |
+| Los códigos de catálogo se eligen, no se escriben | Las 41 entradas vienen generadas; un código inventado no se puede teclear |
+| Lo que se abre y no se edita, no se borra | La criticidad y la `decision` del equipo viajan intactas: `conResto()`, y una prueba que abre el análisis de ejemplo, lo vuelve a bajar y compara las decisiones |
+| La planilla que ya existe entra | Se pega el rango del Excel; las filas que no se entienden vuelven con su línea y su motivo, no se descartan calladas |
+
+**Lo que sigue sin tener pantalla, y es una decisión:** evaluar criticidad
+—el método es configurable y vive en la oficina—, armar la matriz FMECA y
+cerrar anomalías. Eso sigue siendo línea de comandos, y está dicho en la
+propia pantalla.
+
 ---
 
 ## 4. Lo que esta auditoría no cubre
@@ -243,9 +302,9 @@ módulo para que quien llegue a esa necesidad lo encuentre.
 
 ## 5. Conclusión
 
-Los siete hallazgos quedaron subsanados, con pruebas que los fijan: seis en
-la revisión 1 y OBS-02 en la revisión 2, con la taxonomía de los nueve
-niveles implementada y el mapeo probado.
+Los ocho hallazgos quedaron subsanados, con pruebas que los fijan: seis en la
+revisión 1, OBS-02 en la revisión 2 —con la taxonomía de los nueve niveles
+implementada y el mapeo probado— y OBS-03 en la revisión 3.
 
 El hallazgo que importa es NC-01, y conviene decir por qué: **el sistema era
 honesto en su comportamiento y no en su etiqueta**. El catálogo nunca

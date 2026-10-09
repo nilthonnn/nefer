@@ -74,6 +74,7 @@ jobs:
             tests/test_fixmate_cli_rcm.py \
             tests/test_fixmate_criticidad.py \
             tests/test_fixmate_cruce.py \
+            tests/test_fixmate_cruce_armar.py \
             tests/test_fixmate_cruce_rcm.py \
             tests/test_fixmate_cruce_ronda.py \
             tests/test_fixmate_decision.py \
@@ -250,6 +251,7 @@ jobs:
             tests/test_entregables_app.py \
             tests/test_android_fixmate.py \
             tests/test_fixmate_app_navegador.py \
+            tests/test_fixmate_armar_navegador.py \
             tests/test_fixmate_instalable.py \
             tests/test_fixmate_rcm_navegador.py \
             tests/test_fixmate_ronda_navegador.py \

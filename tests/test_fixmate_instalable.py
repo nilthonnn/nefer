@@ -34,8 +34,13 @@ from navegador import HAY_CHROMIUM, opciones  # noqa: E402
 PANTALLAS = {
     "la ronda CIL": RAIZ / "docs" / "fixmate" / "ronda",
     "el análisis RCM": RAIZ / "docs" / "fixmate" / "rcm",
+    "armar": RAIZ / "docs" / "fixmate" / "armar",
     "la app de diagnóstico": RAIZ / "docs" / "fixmate" / "app",
 }
+# Las que genera el espejo con manifiesto y trabajador propios. La app de
+# diagnóstico es un archivo suelto que también se descarga y se abre con
+# `file://`, y por eso no registra trabajador.
+GENERADAS = ("la ronda CIL", "el análisis RCM", "armar")
 ICONOS = (("icono-192.png", 192), ("icono-512.png", 512),
           ("icono-512-recortable.png", 512))
 
@@ -77,7 +82,7 @@ def test_el_color_de_la_barra_del_telefono_es_el_de_la_piel(nombre):
     assert f'name="theme-color" content="{barra}"' in html, nombre
 
 
-@pytest.mark.parametrize("nombre", ["la ronda CIL", "el análisis RCM"])
+@pytest.mark.parametrize("nombre", GENERADAS)
 def test_la_pantalla_enlaza_su_manifiesto_y_registra_su_trabajador(nombre):
     html = (PANTALLAS[nombre] / "index.html").read_text(encoding="utf-8")
     assert '<link rel="manifest" href="manifest.webmanifest">' in html, nombre
@@ -87,7 +92,7 @@ def test_la_pantalla_enlaza_su_manifiesto_y_registra_su_trabajador(nombre):
     assert 'location.protocol.indexOf("http") === 0' in html, nombre
 
 
-@pytest.mark.parametrize("nombre", ["la ronda CIL", "el análisis RCM"])
+@pytest.mark.parametrize("nombre", GENERADAS)
 def test_el_cache_cambia_cuando_cambia_la_pantalla(nombre):
     """Si no, el teléfono que ya la guardó se queda con la versión vieja.
 
@@ -125,9 +130,15 @@ def servidor():
 
 
 @pytest.mark.skipif(not HAY_CHROMIUM, reason="no hay Chromium disponible")
-@pytest.mark.parametrize("carpeta,marca", [("ronda", "Ronda CIL"),
-                                           ("rcm", "Análisis RCM")])
-def test_la_pantalla_abre_con_la_red_cortada(servidor, carpeta, marca):
+# Qué se mira para saber que abrió usable y no como una cáscara: en las dos
+# pantallas de campo, el botón del ejemplo; en «Armar», el de empezar una
+# pauta, que es con lo que arranca el trabajo ahí.
+@pytest.mark.parametrize("carpeta,marca,senal", [
+    ("ronda", "Ronda CIL", "#demo"),
+    ("rcm", "Análisis RCM", "#demo"),
+    ("armar", "Armar", "#n-pauta"),
+])
+def test_la_pantalla_abre_con_la_red_cortada(servidor, carpeta, marca, senal):
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as pw:
@@ -144,8 +155,8 @@ def test_la_pantalla_abre_con_la_red_cortada(servidor, carpeta, marca):
         # La barra va en versalitas por CSS, y `inner_text` da lo que se ve.
         assert marca.upper() in pag.inner_text(".barra").upper(), (
             f"{carpeta} no abrió sin señal")
-        # Y sigue siendo usable, no una cáscara: el botón del ejemplo está.
-        assert pag.locator("#demo").count() == 1
+        # Y sigue siendo usable, no una cáscara.
+        assert pag.locator(senal).count() == 1
         ctx.set_offline(False)
         nav.close()
 
@@ -184,7 +195,7 @@ def test_la_ronda_entera_se_hace_sin_señal(servidor):
 
 
 @pytest.mark.skipif(not HAY_CHROMIUM, reason="no hay Chromium disponible")
-@pytest.mark.parametrize("carpeta", ["ronda", "rcm"])
+@pytest.mark.parametrize("carpeta", ["ronda", "rcm", "armar"])
 def test_el_boton_de_instalar_aparece_cuando_el_aparato_lo_ofrece(servidor, carpeta):
     """Sin botón, instalar es el menú de tres puntos del navegador.
 

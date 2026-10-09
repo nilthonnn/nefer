@@ -394,20 +394,31 @@ Dicho antes de que alguien lo suponga:
 - **Hay dos pantallas, y no cubren todo.** La ronda CIL
   (`docs/fixmate/ronda/`) corre en el teléfono del operador y el análisis RCM
   (`docs/fixmate/rcm/`) en la mesa de la oficina; las dos son espejos
-  generados de Python y cruzados por pruebas. Lo que **no** tienen pantalla:
-  crear o editar el análisis —se edita el JSON—, evaluar criticidad, armar la
-  matriz FMECA y cerrar anomalías. Eso sigue siendo línea de comandos.
+  generados de Python y cruzados por pruebas.
+- **Y los archivos que esas dos pantallas abren se escriben en una tercera**
+  (`docs/fixmate/armar/`). Hasta que existió, la pauta y el análisis sólo
+  podía producirlos alguien que conociera el esquema y lo tecleara a mano en
+  un editor de texto: un usuario real sólo podía ver el ejemplo, y el
+  producto era un demo con el formulario escondido. La pantalla valida con
+  las mismas reglas que los cargadores de Python —el cruce compara los dos
+  verdictos sobre 166 casos— y no deja bajar un archivo que el resto de
+  FixMate rechazaría; lo que abre y no edita —la criticidad, la `decision`
+  del equipo— lo vuelve a escribir tal cual, porque corregir una coma no
+  puede costar la reunión. Lo que sigue **sin** pantalla: evaluar criticidad,
+  armar la matriz FMECA y cerrar anomalías. Eso sigue siendo línea de
+  comandos.
 - **La jerarquía mapea a la taxonomía de ISO 14224.** `taxonomia.py` declara
   los nueve niveles y de qué campo sale cada uno; tres no se modelan y dicen
   por qué. `fixmate rcm taxonomia --csv` saca el archivo de intercambio. Ver
   [la auditoría](AUDITORIA-RCM-TPM.md), OBS-02.
-- **Las cuatro superficies comparten una sola piel.** Los tokens de color
+- **Las cinco superficies comparten una sola piel.** Los tokens de color
   salen de la app de diagnóstico (`herramientas/piel.py`) y se copian a la
-  página de entrada, a la ronda y al análisis; la capa común de componentes
+  página de entrada, a la ronda, al análisis y a «Armar»; la capa común de
+  componentes
   (`herramientas/piel/base.css`) no declara un solo color, y una prueba lo
   comprueba. Las dos pantallas nuevas eran oscuras y punto; ahora siguen al
   aparato, que es lo que hace falta a 4.200 m al sol.
-- **Las dos pantallas se instalan en Android y abren sin señal.** Manifiesto,
+- **Las tres pantallas nuevas se instalan en Android y abren sin señal.** Manifiesto,
   trabajador de servicio e iconos propios, generados junto con la página
   —el nombre del caché lleva su huella, así que un teléfono no se queda con
   la versión vieja—. Hay una prueba que levanta un servidor, registra el
@@ -449,9 +460,11 @@ Dicho antes de que alguien lo suponga:
 | `test_fixmate_ronda_navegador.py` | 13 | «No pude ver» igual de fácil de tocar que «OK», en un navegador real |
 | `test_fixmate_cruce_rcm.py` | 18 | El árbol en las 729 combinaciones × 7 consecuencias × evidente/oculta: 10.206 dictámenes comparados |
 | `test_fixmate_rcm_navegador.py` | 21 | La guarda de seguridad en pantalla; la ronda encima del análisis; que lo exportado vuelva a entrar |
-| `test_fixmate_instalable.py` | 15 | Que se instalen en Android y que la ronda entera se haga sin señal |
+| `test_fixmate_instalable.py` | 21 | Que se instalen en Android y que la ronda entera se haga sin señal |
 | `test_fixmate_taxonomia.py` | 11 | Los nueve niveles de ISO 14224, lo que llena cada uno y por qué tres no se modelan |
-| `test_fixmate_piel.py` | 15 | Que las cuatro superficies sean el mismo producto, y que la capa común no declare color |
+| `test_fixmate_piel.py` | 20 | Que las cinco superficies sean el mismo producto, y que la capa común no declare color |
+| `test_fixmate_cruce_armar.py` | 166 | Que lo que «Armar» deja bajar sea exactamente lo que los cargadores de Python leen: verdicto por verdicto |
+| `test_fixmate_armar_navegador.py` | 10 | Que escribir no pierda el cursor; que la pauta que sale la abra la ronda y el análisis la mesa; que abrir para corregir no borre la reunión |
 
 ## 8. Fases pendientes
 
@@ -464,4 +477,4 @@ Dicho antes de que alguien lo suponga:
 | 12 | CLI `fixmate rcm` / `fixmate tpm`, API | **hecha** · `cli.py`, `api.py`, `cargador.py` |
 | 13 | Exportación FMEA/FMECA | **hecha** · `fmeca.py` |
 | 14 | Tablero de indicadores | **hecha** · `tablero.py` |
-| — | Frontend para RCM y TPM | **pendiente** |
+| — | Frontend para RCM y TPM | **parcial** · se puede crear, editar y ejecutar desde el navegador (`docs/fixmate/{armar,ronda,rcm}/`); criticidad, matriz FMECA y cierre siguen en la línea de comandos |

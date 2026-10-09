@@ -172,17 +172,24 @@ def test_la_pagina_publicada_manda_a_fixmate_y_no_a_la_app_de_actas():
     assert 'href="app/"' in pagina
 
 
-def test_la_pagina_lleva_a_las_dos_pantallas_y_a_sus_manuales(html):
-    """Las dos apps que no son la de diagnóstico, con su manual al lado.
+def test_la_pagina_lleva_a_las_tres_pantallas_y_a_sus_manuales(html):
+    """Las tres apps que no son la de diagnóstico, con su manual al lado.
 
     Una app publicada que no se enlaza desde ninguna parte no existe: nadie
     la encuentra escribiendo la ruta. Y un manual que no se enlaza desde la
     página se queda sin leer justamente por quien lo necesita.
+
+    «Armar» es la que más falta hacía enlazar: es por donde se empieza. Sin
+    ella, las otras dos abren un archivo que el usuario no tiene de dónde
+    sacar.
     """
-    for destino in ('href="ronda/"', 'href="rcm/"',
+    for destino in ('href="armar/"', 'href="ronda/"', 'href="rcm/"',
+                    'href="../MANUAL-ARMAR.md"',
                     'href="../MANUAL-RONDA-CIL.md"',
                     'href="../MANUAL-ANALISIS-RCM.md"'):
         assert destino in html, f"la página ya no lleva a {destino}"
-    for ruta in ("docs/fixmate/ronda/index.html", "docs/fixmate/rcm/index.html",
+    for ruta in ("docs/fixmate/armar/index.html",
+                 "docs/fixmate/ronda/index.html", "docs/fixmate/rcm/index.html",
+                 "docs/MANUAL-ARMAR.md",
                  "docs/MANUAL-RONDA-CIL.md", "docs/MANUAL-ANALISIS-RCM.md"):
         assert (RAIZ / ruta).exists(), f"falta {ruta}"

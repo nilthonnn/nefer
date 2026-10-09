@@ -1,4 +1,4 @@
-/* Trabajador de servicio de Análisis RCM: guarda la pantalla en el telefono
+/* Trabajador de servicio de Armar: guarda la pantalla en el telefono
    para que abra sin señal, que es la condicion para la que se hizo.
 
    Lo genera `herramientas/piel.py` a partir de la plantilla, con la misma
@@ -14,7 +14,7 @@
    linea, el telefono se trae la nueva en vez de quedarse con la vieja para
    siempre. */
 
-var CACHE = "análisis-rcm-2b7e897a9dcf";
+var CACHE = "armar-6852988eb008";
 var PIEZAS = [
   "./",
   "./index.html",

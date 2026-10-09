@@ -1,6 +1,6 @@
 """La piel de FixMate: de donde sacan el color todas las pantallas.
 
-FixMate tiene cuatro superficies —la pagina de entrada, la app de
+FixMate tiene cinco superficies —la pagina de entrada, la app de
 diagnostico, la ronda CIL del operador y el analisis RCM de la oficina— y
 hasta aqui tenia dos paletas: la de la app, clara y oscura segun el aparato,
 y una azul marino propia de las dos pantallas nuevas, sin modo claro.
