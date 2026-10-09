@@ -254,6 +254,25 @@ def checklist(ruta: str | Path) -> Checklist:
 
 
 def ejecucion_de_dict(datos: dict, donde: str = "la ejecucion") -> Ejecucion:
+    """La ejecucion de una ronda, suelta o dentro del archivo del telefono.
+
+    El archivo que baja la pantalla de la ronda es un ENVOLTORIO:
+    `{"ejecucion": ..., "anomalias": ..., "estado": ...}`. Lleva la ejecucion
+    dentro y, al lado, lo que el telefono ya decidio.
+
+    Hasta que esto lo desenvolvio, el unico formato que el producto GENERA era
+    el unico que este cargador NO aceptaba: `fixmate tpm ejecutar` sobre el
+    archivo del operador fallaba con «la ejecucion necesita responsable» —que
+    ademas es la causa equivocada: el responsable estaba, un nivel mas
+    adentro—. Se encontro probando con el historial de una maquina real, no en
+    las pruebas, porque las pruebas le daban el diccionario ya desenvuelto.
+
+    Lo que el telefono decidio NO se lee de aqui: la oficina vuelve a decidir
+    con el analisis delante, y comparar las dos respuestas es justamente el
+    control. Lo que se toma del envoltorio es la ejecucion y nada mas.
+    """
+    if isinstance(datos.get("ejecucion"), dict):
+        datos = datos["ejecucion"]
     try:
         e = Ejecucion(id=str(datos.get("id") or ""),
                       checklist_id=str(datos.get("checklist_id") or ""),
