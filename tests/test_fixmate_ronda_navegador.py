@@ -29,6 +29,16 @@ APP = RAIZ / "docs" / "fixmate" / "ronda" / "index.html"
 pytestmark = pytest.mark.skipif(not HAY_CHROMIUM, reason="no hay Chromium disponible")
 
 
+# UNA SOLA PÁGINA PARA TODO EL ARCHIVO, y por eso cada prueba tiene que
+# dejarla como la encontró — o, más simple, empezar navegando de nuevo.
+#
+# Es `module` a propósito: levantar Chromium diecisiete veces cuesta más que
+# todas las pruebas juntas. El precio es este contrato, y se paga olvidándolo:
+# una prueba que mira `.aviso.peligro` sin navegar primero lee el aviso que
+# dejó la anterior, y `wait_for_selector` se lo devuelve AL INSTANTE porque ya
+# estaba ahí. Pasa en local y falla en CI, o al revés: es una carrera.
+#
+# Use `_arrancar()` o `_elegir()`, que navegan. No mire el DOM sin hacerlo.
 @pytest.fixture(scope="module")
 def pagina():
     from playwright.sync_api import sync_playwright
@@ -43,6 +53,24 @@ def pagina():
         pag.goto(APP.as_uri())
         yield pag, errores
         navegador.close()
+
+
+def _elegir(pag, ruta):
+    """Abre la pantalla limpia, elige un archivo y devuelve el aviso.
+
+    El `goto` no es ceremonia: borra el aviso de la prueba anterior, que es lo
+    único que hace que esperar el aviso nuevo signifique algo. Se comprueba
+    además que no haya quedado ninguno, para que la espera no pueda volver a
+    quedarse con uno viejo sin que nadie lo note.
+    """
+    pag.goto(APP.as_uri())
+    pag.wait_for_selector("#archivo")
+    assert pag.locator(".aviso.peligro").count() == 0, (
+        "la pantalla no arrancó limpia: queda un aviso de otra prueba")
+    with pag.expect_file_chooser() as elector:
+        pag.click("#archivo")
+    elector.value.set_files(str(ruta))
+    return pag.wait_for_selector(".aviso.peligro").inner_text()
 
 
 def _arrancar(pag, operador="J. Quispe"):
@@ -242,3 +270,123 @@ def test_una_pauta_sin_criterio_se_rechaza_y_lo_explica(pagina):
 def test_sin_errores_de_consola(pagina):
     pag, errores = pagina
     assert errores == []
+
+
+# ------------------------- «Abrir pauta del equipo»: lo que puede elegir
+#
+# Las cuatro navegan primero, con `_elegir()`. La primera versión de estas
+# pruebas no lo hacía y leía el aviso que dejaba la prueba anterior: pasaban
+# aquí y fallaban en CI, cada una con el mensaje de otra. Ver el contrato del
+# fixture, arriba.
+
+def test_elegir_el_excel_por_error_dice_que_hacer(pagina, tmp_path):
+    """Es el error más probable: el Excel es lo que el taller tiene a mano.
+
+    Lo que decía antes era el error del parser de JavaScript —«Unexpected
+    token 'P', "PK"... is not valid JSON»—, que a un operador en un socavón
+    no le dice nada y, sobre todo, no le dice qué hacer.
+    """
+    pag, _ = pagina
+    # Un .xlsx de verdad empieza por «PK»: es un zip.
+    falso = tmp_path / "historial.xlsx"
+    falso.write_bytes(b"PK\x03\x04" + b"\x00" * 64)
+    aviso = _elegir(pag, falso)
+    assert "planilla" in aviso.lower() or "office" in aviso.lower(), aviso
+    # Y dice de dónde sale la pauta, que es lo que resuelve el problema.
+    assert "armar" in aviso.lower() and ".json" in aviso.lower(), aviso
+
+
+def test_un_json_que_no_es_pauta_no_se_confunde_con_una_pauta_vacia(pagina, tmp_path):
+    """Decirle «no trae puntos» manda a agregarle puntos a un archivo que
+    nunca fue una pauta."""
+    import json
+
+    pag, _ = pagina
+    otro = tmp_path / "cualquiera.json"
+    otro.write_text(json.dumps({"hola": "mundo"}), encoding="utf-8")
+    aviso = _elegir(pag, otro)
+    assert "no es una pauta" in aviso.lower(), aviso
+
+
+def test_una_pauta_sin_puntos_nombra_el_equipo_y_a_quien_le_toca(pagina, tmp_path):
+    import json
+
+    pag, _ = pagina
+    vacia = tmp_path / "pauta.json"
+    vacia.write_text(json.dumps(
+        {"id": "p1", "activo_codigo": "MLAD041-02", "puntos": []}), encoding="utf-8")
+    aviso = _elegir(pag, vacia)
+    assert "MLAD041-02" in aviso, aviso
+    assert "armar" in aviso.lower(), aviso
+
+
+def test_la_pauta_buena_arranca_sin_avisos(pagina):
+    """El control de que los avisos nuevos no se disparen de más.
+
+    No se mira la lista de errores de consola: es del módulo entero y
+    acumularía los de las dieciséis pruebas anteriores. De eso responde
+    `test_sin_errores_de_consola`.
+    """
+    pag, _ = pagina
+    pag.goto(APP.as_uri())
+    pag.wait_for_selector("#archivo")
+    with pag.expect_file_chooser() as elector:
+        pag.click("#archivo")
+    elector.value.set_files(str(RAIZ / "ejemplos" / "rcm-tpm" / "pauta-ex220.json"))
+    pag.wait_for_selector("#op")
+    assert pag.locator(".aviso.peligro").count() == 0
+
+
+# --------------------------------------- el contrato del fixture, vigilado
+
+# Las pruebas que no navegan antes de mirar el DOM. `test_sin_errores_de_consola`
+# es la única legítima: no mira la pantalla, mira la lista de errores que el
+# fixture viene acumulando desde la primera prueba.
+SIN_NAVEGAR = {"test_sin_errores_de_consola"}
+
+# Lo que deja la página en un estado conocido.
+NAVEGAN = ("_arrancar", "_elegir", "goto")
+
+
+def test_toda_prueba_navega_antes_de_mirar_la_pantalla():
+    """El fixture es de módulo: una sola página para las diecisiete.
+
+    Una prueba que mira el DOM sin navegar primero lee lo que dejó la
+    anterior — y `wait_for_selector` se lo devuelve AL INSTANTE, porque ya
+    estaba ahí. Pasó: tres pruebas nuevas leyeron cada una el mensaje de
+    otra, pasaron aquí y fallaron en CI. Es una carrera, así que «me pasó a
+    mí en local» no prueba nada.
+
+    Esto lo hace mecánico en vez de recordado, que es la única forma de que
+    aguante al próximo que agregue una prueba al final del archivo.
+    """
+    import ast
+
+    arbol = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+    culpables = []
+    for nodo in arbol.body:
+        if not (isinstance(nodo, ast.FunctionDef)
+                and nodo.name.startswith("test_")
+                and "pagina" in [a.arg for a in nodo.args.args]):
+            continue
+        if nodo.name in SIN_NAVEGAR:
+            continue
+        # Las llamadas de la función, en el orden en que están escritas.
+        llamadas = sorted(
+            (n for n in ast.walk(nodo) if isinstance(n, ast.Call)),
+            key=lambda n: (n.lineno, n.col_offset))
+        primera = None
+        for llamada in llamadas:
+            texto = ast.unparse(llamada.func)
+            if any(x in texto for x in NAVEGAN):
+                primera = "navega"
+                break
+            if texto.startswith("pag.") or ".locator" in texto:
+                primera = texto
+                break
+        if primera != "navega":
+            culpables.append(f"{nodo.name} (primero hace: {primera})")
+    assert not culpables, (
+        "estas pruebas miran la página sin navegar primero, así que leen lo "
+        "que dejó la anterior:\n  " + "\n  ".join(culpables) +
+        "\nUse _arrancar() o _elegir(), o añádala a SIN_NAVEGAR con su motivo.")

@@ -2,10 +2,14 @@ package pe.fixmate.ronda;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.ViewGroup;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -38,8 +42,21 @@ public class PantallaPrincipal extends Activity {
     /** El mismo gris de la barra de FixMate. Ver res/values/colors.xml. */
     private static final int FONDO = 0xFF16191B;
 
+    /** Codigo de la peticion al selector de archivos del sistema. */
+    private static final int PEDIR_ARCHIVO = 2;
+
     private WebView vista;
     private long ultimoAtras = 0;
+
+    /**
+     * El WebView esperando los archivos que el operador elija.
+     *
+     * <p>Hay que contestarle SIEMPRE, incluso con {@code null}: mientras no
+     * se le contesta, el WebView considera que hay un selector abierto y no
+     * abre otro. Dejarlo sin contestar una vez —el operador toca «atras» en
+     * el selector— deja el boton muerto hasta que se cierra la app.
+     */
+    private ValueCallback<Uri[]> esperandoArchivo;
 
     @Override
     protected void onCreate(Bundle estado) {
@@ -62,7 +79,12 @@ public class PantallaPrincipal extends Activity {
         ajustes.setJavaScriptEnabled(true);
         ajustes.setDomStorageEnabled(true);
         ajustes.setAllowFileAccess(false);           // no hace falta: todo va por el cargador
-        ajustes.setAllowContentAccess(false);
+        // El selector del sistema devuelve `content://`, y el WebView tiene
+        // que poder leer de ahi el archivo que el operador eligio. Con esto
+        // en false, «Abrir pauta del equipo» abria el selector y despues no
+        // cargaba nada. `file://` sigue cerrado: el contenido de la app va
+        // por el cargador de assets y no hace falta.
+        ajustes.setAllowContentAccess(true);
         ajustes.setSupportZoom(false);
         ajustes.setMediaPlaybackRequiresUserGesture(true);
         // El contenido es local y va por https interno: no hay mezcla que permitir.
@@ -83,7 +105,43 @@ public class PantallaPrincipal extends Activity {
             }
         });
 
-        // El puente por el que sale el archivo de la ronda. En un WebView una
+        // Por donde ENTRA la pauta. En un WebView, un `<input type="file">`
+        // no hace absolutamente nada si la app no implementa esto: ni abre
+        // selector, ni da error, ni avisa. El operador tocaba «Abrir pauta
+        // del equipo» y no pasaba nada — y como el APK existe para las minas
+        // que no dejan instalar desde el navegador, y esa es la unica forma
+        // de meterle una pauta, ahi la ronda no arrancaba.
+        vista.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> callback,
+                                             FileChooserParams parametros) {
+                // Si quedo uno sin contestar, se le contesta ahora: dos
+                // selectores a medias dejan el boton muerto.
+                if (esperandoArchivo != null) {
+                    esperandoArchivo.onReceiveValue(null);
+                }
+                esperandoArchivo = callback;
+                try {
+                    // El intento que arma el propio WebView ya trae el filtro
+                    // que declara la pantalla (`accept=".json"`), asi que no
+                    // se escribe aqui otra vez: una segunda copia del filtro
+                    // se queda atras el dia que la pantalla cambie.
+                    startActivityForResult(parametros.createIntent(), PEDIR_ARCHIVO);
+                    return true;
+                } catch (RuntimeException sinSelector) {
+                    // Un telefono de faena puede no tener ninguna aplicacion
+                    // que atienda el selector. Se dice, en vez de dejar la
+                    // pantalla esperando algo que no va a llegar.
+                    esperandoArchivo = null;
+                    callback.onReceiveValue(null);
+                    Toast.makeText(PantallaPrincipal.this, R.string.sin_selector,
+                                   Toast.LENGTH_LONG).show();
+                    return true;
+                }
+            }
+        });
+
+        // El puente por el que SALE el archivo de la ronda. En un WebView una
         // descarga `blob:` no dispara nada —ni DownloadListener—, así que la
         // pantalla entrega los bytes por aquí y esto los escribe en Descargas.
         vista.addJavascriptInterface(new PuenteArchivos(this), "PuenteFixMate");
@@ -114,6 +172,25 @@ public class PantallaPrincipal extends Activity {
         if (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 == PackageManager.PERMISSION_GRANTED) return;
         requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+    }
+
+    /**
+     * Lo que eligio el operador en el selector, de vuelta al WebView.
+     *
+     * <p>Se contesta en los dos casos: con los archivos si eligio, y con
+     * {@code null} si cancelo. Lo segundo no es cortesia: sin eso el WebView
+     * se queda creyendo que el selector sigue abierto y no vuelve a abrirlo.
+     */
+    @Override
+    protected void onActivityResult(int peticion, int resultado, Intent datos) {
+        if (peticion != PEDIR_ARCHIVO) {
+            super.onActivityResult(peticion, resultado, datos);
+            return;
+        }
+        if (esperandoArchivo == null) return;
+        esperandoArchivo.onReceiveValue(
+                WebChromeClient.FileChooserParams.parseResult(resultado, datos));
+        esperandoArchivo = null;
     }
 
     @Override
@@ -149,6 +226,12 @@ public class PantallaPrincipal extends Activity {
 
     @Override
     protected void onDestroy() {
+        // Si la app se cierra con el selector abierto, el callback se queda
+        // colgado con una referencia a esta actividad.
+        if (esperandoArchivo != null) {
+            esperandoArchivo.onReceiveValue(null);
+            esperandoArchivo = null;
+        }
         if (vista != null) {
             ((ViewGroup) vista.getParent()).removeView(vista);
             vista.destroy();

@@ -358,3 +358,67 @@ def test_el_boton_de_atras_cierra_el_dialogo_y_no_la_ronda(ronda_en_apk):
     assert pag.locator(".velo").count() == 0
     # Y la ronda sigue en pie, en el mismo punto.
     assert pag.inner_text("#paso") == "1 / 5"
+
+
+# --------------------------------- por donde ENTRA la pauta en el APK
+
+def test_el_webview_abre_el_selector_de_archivos():
+    """Sin esto, «Abrir pauta del equipo» no hace NADA en el APK.
+
+    En un WebView, un `<input type="file">` no abre selector, no da error y
+    no avisa si la aplicación no implementa `onShowFileChooser`. El operador
+    toca el botón y no pasa nada.
+
+    Y pesa más de lo que parece: el APK existe para las minas que no dejan
+    instalar desde el navegador, y ese botón es la **única** forma de meterle
+    una pauta. Sin él, ahí la ronda no arranca — sólo funcionaba el botón del
+    ejemplo, que es un taller inventado.
+    """
+    java = _texto(JAVA / "PantallaPrincipal.java")
+    assert "setWebChromeClient" in java, "el WebView no tiene WebChromeClient"
+    assert "onShowFileChooser" in java, (
+        "sin `onShowFileChooser` el input de archivo del APK no hace nada")
+    assert "startActivityForResult" in java
+    assert "FileChooserParams.parseResult" in java, (
+        "lo que elige el operador tiene que volver al WebView por parseResult")
+
+
+def test_el_selector_contesta_siempre_aunque_el_operador_cancele():
+    """Un callback sin contestar deja el botón muerto hasta cerrar la app.
+
+    Mientras no se le contesta, el WebView cree que hay un selector abierto y
+    no abre otro. Hay tres caminos que abandonan el callback y los tres
+    tienen que contestarlo: una petición nueva encima de otra, que no haya
+    con qué abrir archivos, y que la app se cierre con el selector abierto.
+    """
+    java = _texto(JAVA / "PantallaPrincipal.java")
+    assert java.count("onReceiveValue(null)") >= 3, (
+        "faltan caminos que contesten el callback: " +
+        str(java.count("onReceiveValue(null)")) + " de 3")
+    # Y el que sí eligió archivo se contesta con lo que eligió.
+    assert "onReceiveValue(\n                WebChromeClient.FileChooserParams" in java \
+        or "onReceiveValue(WebChromeClient.FileChooserParams" in java
+
+
+def test_el_webview_puede_leer_lo_que_devuelve_el_selector():
+    """El selector del sistema devuelve `content://`.
+
+    Con `setAllowContentAccess(false)` el botón abría el selector y después
+    no cargaba nada: dos bloqueos encadenados, y el segundo sin mensaje.
+    `file://` sigue cerrado, que es el endurecimiento que sí hace falta: el
+    contenido de la app va por el cargador de assets.
+    """
+    java = _texto(JAVA / "PantallaPrincipal.java")
+    assert "setAllowContentAccess(true)" in java, (
+        "sin acceso a content:// el archivo elegido no se puede leer")
+    assert "setAllowFileAccess(false)" in java, (
+        "file:// no hace falta y abrirlo es perder el endurecimiento")
+
+
+def test_si_no_hay_con_que_abrir_archivos_se_dice_y_no_se_queda_esperando():
+    java = _texto(JAVA / "PantallaPrincipal.java")
+    assert "R.string.sin_selector" in java
+    cadenas = _texto(PROYECTO / "app" / "src" / "main" / "res" / "values" / "strings.xml")
+    assert 'name="sin_selector"' in cadenas
+    # Un mensaje que sólo dice que falló no sirve: tiene que decir qué hacer.
+    assert "WhatsApp" in cadenas or "Descargas" in cadenas

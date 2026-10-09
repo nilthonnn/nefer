@@ -64,8 +64,19 @@ function verInicio(error) {
     if (!f) return;
     var lector = new FileReader();
     lector.onload = function () {
-      try { empezar(JSON.parse(lector.result)); }
-      catch (e) { verInicio("Ese archivo no es una pauta legible: " + e.message); }
+      var datos;
+      try {
+        datos = JSON.parse(lector.result);
+      } catch (e) {
+        // Lo que decia antes era el error del parser de JavaScript:
+        // «Unexpected token 'P', "PK"... is not valid JSON». Eso, a un
+        // operador en un socavon, no le dice nada y no le dice QUE HACER.
+        // El error mas probable es justo el de elegir el Excel, porque el
+        // Excel es lo que el taller tiene a mano.
+        return verInicio(queEs(f, lector.result) + " " + PAUTA_ES +
+                         " (detalle tecnico: " + e.message + ")");
+      }
+      empezar(datos);
     };
     lector.readAsText(f);
   };
@@ -76,9 +87,44 @@ function verInicio(error) {
   }
 }
 
+// Que es el archivo que eligio, por su nombre y por sus primeros bytes. No
+// se adivina el contenido: se reconoce el envase, que es lo que permite decir
+// algo util en vez de repetir el error del parser.
+var PAUTA_ES = "La pauta es un archivo .json que le pasa mantenimiento: lo " +
+               "genera la pantalla «Armar».";
+
+function queEs(archivo, texto) {
+  var nombre = String((archivo && archivo.name) || "").toLowerCase();
+  var cabeza = String(texto || "").slice(0, 8);
+  if (cabeza.indexOf("PK") === 0 || /\.(xlsx|xlsm|xls|docx|zip)$/.test(nombre)) {
+    return "Ese archivo es una planilla o un documento de Office, no la pauta.";
+  }
+  if (cabeza.indexOf("%PDF") === 0 || /\.pdf$/.test(nombre)) {
+    return "Ese archivo es un PDF, no la pauta.";
+  }
+  if (/\.(png|jpg|jpeg|heic)$/.test(nombre)) {
+    return "Ese archivo es una foto, no la pauta.";
+  }
+  if (/\.csv$/.test(nombre)) {
+    return "Ese archivo es un CSV, no la pauta.";
+  }
+  return "Ese archivo no se puede leer como pauta.";
+}
+
 function empezar(p) {
-  if (!p || !p.puntos || !p.puntos.length) {
-    return verInicio("La pauta no trae puntos.");
+  // Un JSON que no es una pauta no es «una pauta sin puntos»: decirle eso
+  // manda al planificador a agregarle puntos a un archivo que nunca fue una
+  // pauta. Se distingue por si trae la forma, no por si trae contenido.
+  if (!p || typeof p !== "object" || p instanceof Array ||
+      (p.puntos === undefined && !p.activo_codigo && !p.codigo_equipo)) {
+    return verInicio("Ese archivo es un .json, pero no es una pauta: no trae " +
+                     "ni «puntos» ni «activo_codigo». " + PAUTA_ES);
+  }
+  if (!p.puntos || !p.puntos.length) {
+    return verInicio("La pauta de " + (p.activo_codigo || p.codigo_equipo ||
+                     "ese equipo") + " no trae ningun punto, asi que no hay " +
+                     "nada que recorrer. Quien la escribio tiene que " +
+                     "agregarle los puntos en «Armar».");
   }
   normalizarPauta(p);   // los ids los pone la regla, no la pantalla
   for (var i = 0; i < p.puntos.length; i++) {

@@ -60,7 +60,8 @@ jobs:
 
       - name: Probar
         run: |
-          python -m pytest -q \
+          set -o pipefail
+          python -m pytest -q -rf --tb=short \
             tests/test_android.py \
             tests/test_build_extract.py \
             tests/test_codigos_qr.py \
@@ -103,7 +104,26 @@ jobs:
             tests/test_publicacion_fixmate.py \
             tests/test_schema.py \
             tests/test_skill_espejo.py \
-            tests/test_textos.py
+            tests/test_textos.py | tee salida.txt
+
+      # Ver el paso del mismo nombre en los otros jobs: el log crudo lo sirve
+      # GitHub desde otro host y hay redes desde las que no se puede leer.
+      - name: Qué falló, en el resumen y en las anotaciones
+        if: failure()
+        run: |
+          if [ ! -f salida.txt ]; then
+            echo "::error::no hay salida.txt: falló antes de correr las pruebas"
+            exit 0
+          fi
+          grep -E '^(FAILED|ERROR)' salida.txt | while read -r linea; do
+            echo "::error::$linea"
+          done
+          {
+            echo "## Lo que falló"
+            echo '```'
+            grep -E '^(FAILED|ERROR)' salida.txt || echo "(ningún FAILED: mire el resumen)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   clon-rd-renta:
     name: la copia de RD RENTA (motor y app)
@@ -134,7 +154,7 @@ jobs:
       - name: Probar
         run: |
           set -o pipefail
-          python -m pytest -q -rs \
+          python -m pytest -q -rs -rf --tb=short \
             tests/test_app_navegador.py \
             tests/test_build_extract.py \
             tests/test_layout.py \
@@ -150,6 +170,34 @@ jobs:
             grep -E '^SKIPPED' salida.txt || true
             exit 1
           fi
+
+      # El log crudo de un job lo sirve GitHub desde otro host, y hay redes
+      # —la de este proyecto entre ellas— desde las que no se puede leer. Sin
+      # esto, un fallo aqui es «Process completed with exit code 1» y nada
+      # mas: hay que adivinar que prueba cayo. Las ANOTACIONES si se leen por
+      # la API, asi que cada fallo sale como una.
+      - name: Qué falló, en el resumen y en las anotaciones
+        if: failure()
+        run: |
+          if [ ! -f salida.txt ]; then
+            echo "::error::no hay salida.txt: falló antes de correr las pruebas"
+            exit 0
+          fi
+          grep -E '^(FAILED|ERROR)' salida.txt | while read -r linea; do
+            echo "::error::$linea"
+          done
+          {
+            echo "## Lo que falló"
+            echo '```'
+            grep -E '^(FAILED|ERROR)' salida.txt || echo "(ningún FAILED: mire el resumen)"
+            echo '```'
+            echo "<details><summary>Últimas 120 líneas</summary>"
+            echo
+            echo '```'
+            tail -120 salida.txt
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   entregables:
     name: entregables (navegador, Excel y PDF de verdad)
@@ -246,7 +294,7 @@ jobs:
       - name: Probar
         run: |
           set -o pipefail
-          python -m pytest -q -rs \
+          python -m pytest -q -rs -rf --tb=short \
             tests/test_app_navegador.py \
             tests/test_autoguardado.py \
             tests/test_entregables_app.py \
@@ -268,6 +316,34 @@ jobs:
             grep -E '^SKIPPED' salida.txt || true
             exit 1
           fi
+
+      # El log crudo de un job lo sirve GitHub desde otro host, y hay redes
+      # —la de este proyecto entre ellas— desde las que no se puede leer. Sin
+      # esto, un fallo aqui es «Process completed with exit code 1» y nada
+      # mas: hay que adivinar que prueba cayo. Las ANOTACIONES si se leen por
+      # la API, asi que cada fallo sale como una.
+      - name: Qué falló, en el resumen y en las anotaciones
+        if: failure()
+        run: |
+          if [ ! -f salida.txt ]; then
+            echo "::error::no hay salida.txt: falló antes de correr las pruebas"
+            exit 0
+          fi
+          grep -E '^(FAILED|ERROR)' salida.txt | while read -r linea; do
+            echo "::error::$linea"
+          done
+          {
+            echo "## Lo que falló"
+            echo '```'
+            grep -E '^(FAILED|ERROR)' salida.txt || echo "(ningún FAILED: mire el resumen)"
+            echo '```'
+            echo "<details><summary>Últimas 120 líneas</summary>"
+            echo
+            echo '```'
+            tail -120 salida.txt
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # La app de estados financieros es un proyecto aparte: no comparte código
   # ni datos con las actas, así que se prueba sola y su fallo no tapa a los
@@ -294,7 +370,7 @@ jobs:
       - name: Probar
         run: |
           set -o pipefail
-          python -m pytest -q -rs tests/test_eeff_navegador.py | tee salida.txt
+          python -m pytest -q -rs -rf --tb=short tests/test_eeff_navegador.py | tee salida.txt
 
       - name: Ninguna prueba se saltó
         run: |
@@ -303,6 +379,34 @@ jobs:
             grep -E '^SKIPPED' salida.txt || true
             exit 1
           fi
+
+      # El log crudo de un job lo sirve GitHub desde otro host, y hay redes
+      # —la de este proyecto entre ellas— desde las que no se puede leer. Sin
+      # esto, un fallo aqui es «Process completed with exit code 1» y nada
+      # mas: hay que adivinar que prueba cayo. Las ANOTACIONES si se leen por
+      # la API, asi que cada fallo sale como una.
+      - name: Qué falló, en el resumen y en las anotaciones
+        if: failure()
+        run: |
+          if [ ! -f salida.txt ]; then
+            echo "::error::no hay salida.txt: falló antes de correr las pruebas"
+            exit 0
+          fi
+          grep -E '^(FAILED|ERROR)' salida.txt | while read -r linea; do
+            echo "::error::$linea"
+          done
+          {
+            echo "## Lo que falló"
+            echo '```'
+            grep -E '^(FAILED|ERROR)' salida.txt || echo "(ningún FAILED: mire el resumen)"
+            echo '```'
+            echo "<details><summary>Últimas 120 líneas</summary>"
+            echo
+            echo '```'
+            tail -120 salida.txt
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   camal:
     name: la app del camal (navegador, Excel, PDF y puente)
