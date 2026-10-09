@@ -76,11 +76,21 @@
   main { max-width:44rem; margin:0 auto; padding:1rem 0 3rem; }
   .barra { background:var(--barra); color:var(--barra-ink); margin:0 -16px;
            padding:.7rem 16px calc(.7rem + env(safe-area-inset-top));
-           display:flex; align-items:baseline; gap:.6rem; }
+           display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap; }
   .barra b { font-family:var(--cond); font-size:1.15rem; letter-spacing:.04em;
              text-transform:uppercase; }
   .barra span { font-family:var(--mono); font-size:.66rem; opacity:.7;
                 letter-spacing:.06em; text-transform:uppercase; }
+  /* Los enlaces a las otras herramientas. Mismas reglas que
+     `herramientas/piel/base.css`, de donde las toman las otras tres
+     pantallas; aquí van repetidas porque esta app tiene su propia capa de
+     componentes —es la FUENTE de los tokens, no su destino—. */
+  .barra .vinculos { margin-left:auto; display:flex; gap:.9rem; }
+  .barra .vinculos a { color:var(--barra-ink); opacity:.65; text-decoration:none;
+                       font-family:var(--mono); font-size:.66rem;
+                       letter-spacing:.06em; text-transform:uppercase; }
+  .barra .vinculos a:hover, .barra .vinculos a:focus-visible { opacity:1;
+                       text-decoration:underline; }
   button, label.primary { font:inherit; font-size:.9rem; cursor:pointer;
           border:1px solid var(--rule); background:var(--card); color:var(--ink);
           border-radius:6px; padding:.55rem .9rem; display:inline-block; }
@@ -195,7 +205,27 @@
            padding-bottom:.3rem; border-bottom:2px solid var(--rule); }
 </style>
 
-<div class="barra"><b>FixMate</b><span>diagnóstico en campo</span></div>
+<div class="barra"><b>FixMate</b><span>diagnóstico en campo</span>
+  <nav class="vinculos">
+    <a href="../">Inicio</a>
+    <a href="../ronda/">Ronda CIL</a>
+    <a href="../rcm/">Análisis RCM</a>
+    <a href="../armar/">Armar</a>
+  </nav>
+</div>
+<script>
+/* Las otras tres pantallas enlazaban aquí y ésta no enlazaba a ninguna: desde
+   el diagnóstico no había vuelta. Ya no.
+   La regla es la de `herramientas/piel/arranque.js`, escrita aquí porque esta
+   app no lo incluye: servida desde el sitio los enlaces sirven; bajada como
+   archivo suelto —que es como viaja por WhatsApp— apuntarían a carpetas que
+   no existen en ese teléfono, y un enlace roto en la barra hace dudar del
+   resto de la pantalla. Se quitan. */
+if (location.protocol === "file:") {
+  var _vinculos = document.querySelector(".barra .vinculos");
+  if (_vinculos) _vinculos.remove();
+}
+</script>
 
     <main id="v-diagnostico" aria-labelledby="tab-diagnostico">
       <div class="encab">

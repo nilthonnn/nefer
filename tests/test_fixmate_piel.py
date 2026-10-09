@@ -35,12 +35,20 @@ PANTALLAS = {
     "la ronda CIL": RAIZ / "docs" / "fixmate" / "ronda" / "index.html",
     "el análisis RCM": RAIZ / "docs" / "fixmate" / "rcm" / "index.html",
     "armar": RAIZ / "docs" / "fixmate" / "armar" / "index.html",
+    "la app de diagnóstico": APP,
 }
-HERRAMIENTAS = ("la ronda CIL", "el análisis RCM", "armar")
+HERRAMIENTAS = ("la ronda CIL", "el análisis RCM", "armar",
+                "la app de diagnóstico")
 # La carpeta de cada herramienta, para poder decir a qué TIENE que enlazar
 # cada barra. Contar enlaces no servía: el día que apareció la cuarta
 # pantalla, la cuenta falló en las tres viejas sin decir qué faltaba.
-CARPETAS = {"la ronda CIL": "ronda", "el análisis RCM": "rcm", "armar": "armar"}
+#
+# La app de diagnóstico entró después que las otras tres: ellas enlazaban a
+# ella y ella no enlazaba a ninguna, así que desde el diagnóstico no había
+# vuelta. Que esté en esta tabla es lo que impide que vuelva a quedarse
+# fuera: cada barra tiene que llevar a la entrada y a TODAS las demás.
+CARPETAS = {"la ronda CIL": "ronda", "el análisis RCM": "rcm", "armar": "armar",
+            "la app de diagnóstico": "app"}
 
 
 @pytest.mark.parametrize("nombre", list(PANTALLAS))
@@ -99,9 +107,9 @@ def test_los_enlaces_entre_herramientas_van_a_algo_que_existe(nombre):
     barra = re.search(r'<nav class="vinculos">(.*?)</nav>', html, re.S)
     assert barra, f"{nombre} no enlaza con las otras herramientas"
     destinos = re.findall(r'href="([^"]+)"', barra.group(1))
-    # La entrada, la app de diagnóstico y las demás herramientas: todas, y
-    # sólo ésas. Desde cualquier pantalla se llega a cualquier otra.
-    esperados = {"../", "../app/"} | {
+    # La entrada y todas las demás herramientas: todas, y sólo ésas. Desde
+    # cualquier pantalla se llega a cualquier otra, sin pasar por la entrada.
+    esperados = {"../"} | {
         f"../{c}/" for n, c in CARPETAS.items() if n != nombre}
     assert set(destinos) == esperados, destinos
     for destino in destinos:
