@@ -711,6 +711,12 @@ def cmd_tablero(args) -> int:
     datos = _tablero.confiabilidad(indice)
     print(f"Equipos con historial: {datos.equipos}")
     print(f"Fallas registradas:    {datos.fallas}")
+    # Lo fechado sin causa se dice aparte en vez de sumarse a las fallas: en un
+    # historial de verdad son actas y guias —la maquina entrando y saliendo—, y
+    # valen como lecturas de horometro, no como averias.
+    if datos.lecturas:
+        print(f"Otras lecturas fechadas: {datos.lecturas} "
+              "(sin causa: no cuentan como falla, si como uso)")
     if datos.mtbf_dias:
         print("\nMTBF por equipo (dias entre fallas, base calendario):")
         for codigo, dias in sorted(datos.mtbf_dias.items()):

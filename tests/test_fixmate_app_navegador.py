@@ -692,3 +692,47 @@ def test_suelta_la_barra_no_deja_enlaces_rotos():
             assert "FIXMATE" in pg.inner_text(".barra").upper()
         finally:
             navegador.close()
+
+
+# ------------------------------------- que `hidden` de verdad esconda
+
+def test_hidden_le_gana_a_cualquier_display_de_la_hoja():
+    """La clase de defecto, no los dos casos que la tenían.
+
+    La hoja del navegador trae `[hidden] { display:none }` con prioridad
+    baja, y **cualquier** regla de autor que fije `display` se la lleva por
+    delante. Pasó en `.dx-cargar` y `.dx-ejemplo`, las dos `display:flex`: al
+    cargar el historial el JavaScript ponía `hidden = true` y la pantalla
+    seguía diciendo «todavía no hay nada cargado» encima de 244 informes ya
+    cargados, y seguía ofreciendo el taller **inventado** — que es justo lo
+    que no puede mezclarse con el historial de verdad.
+
+    No se comprueban esos dos elementos: se recorre todo lo que la app
+    esconde y se comprueba que esconderlo funcione. Una clase nueva con
+    `display` el día que alguien la escriba cae aquí sola.
+    """
+    with sync_playwright() as pw:
+        navegador = pw.chromium.launch(**opciones())
+        pg = navegador.new_context(user_agent=UA_ANDROID).new_page()
+        try:
+            pg.goto(APP.as_uri())
+            # Todo lo que lleva `hidden` en el HTML o lo recibe por JS.
+            ids = sorted(set(re.findall(r'\$\("#([\w-]+)"\)\.hidden', APP.read_text(
+                encoding="utf-8"))))
+            assert len(ids) >= 4, f"solo se encontraron {ids}"
+            visibles = []
+            for elemento in ids:
+                existe = pg.evaluate(
+                    "id => !!document.getElementById(id)", elemento)
+                if not existe:
+                    continue
+                pg.evaluate("id => document.getElementById(id).hidden = true",
+                            elemento)
+                if pg.is_visible(f"#{elemento}"):
+                    visibles.append(elemento)
+            assert not visibles, (
+                "estos elementos siguen visibles con hidden=true, porque su "
+                f"CSS fija `display`: {visibles}. Hace falta "
+                "`[hidden] { display:none !important }`.")
+        finally:
+            navegador.close()
