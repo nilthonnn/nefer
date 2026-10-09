@@ -181,8 +181,20 @@ def test_la_ronda_se_puede_guardar_como_archivo_para_la_oficina(pagina):
 
 
 def test_el_archivo_que_sale_del_telefono_lo_lee_la_oficina(pagina, tmp_path):
-    # El circuito completo: lo que el teléfono exporta tiene que entrar por
-    # el cargador de Python sin tocarlo a mano.
+    """El circuito completo: el archivo ENTERO, tal como sale del teléfono.
+
+    Esta prueba decía esto mismo y no lo probaba: desenvolvía el archivo a
+    mano —`datos["ejecucion"]`— antes de dárselo al cargador, y así el único
+    formato que el producto genera era el único que el cargador no aceptaba.
+    `fixmate tpm ejecutar` sobre el archivo del operador fallaba con «la
+    ejecucion necesita responsable», que además es la causa equivocada: el
+    responsable estaba, un nivel más adentro. Se encontró probando con el
+    historial de una máquina real.
+
+    La oficina recibe un `.json` por WhatsApp y lo pasa por el comando. No
+    abre un editor para quitarle una capa: si la prueba lo hace, no está
+    probando lo que hace la oficina.
+    """
     import json
 
     from nefer.fixmate import cargador
@@ -197,13 +209,24 @@ def test_el_archivo_que_sale_del_telefono_lo_lee_la_oficina(pagina, tmp_path):
         pag.click('button[data-r="ok"]')
     with pag.expect_download() as bajada:
         pag.click("#bajar")
-    datos = json.loads(Path(bajada.value.path()).read_text(encoding="utf-8"))
+    archivo = Path(bajada.value.path())
+    datos = json.loads(archivo.read_text(encoding="utf-8"))
+    assert "ejecucion" in datos, "el teléfono dejó de envolver la ejecución"
 
-    ejecucion = cargador.ejecucion_de_dict(datos["ejecucion"])
+    # Sin tocarlo: el archivo completo, por el cargador y por la ruta de disco.
+    ejecucion = cargador.ejecucion_de_dict(datos)
     pauta = cargador.checklist(RAIZ / "ejemplos" / "rcm-tpm" / "pauta-ex220.json")
     e = estado(ejecucion, pauta)
     assert e.respondidos == 5 and e.nok == 1
     assert ejecucion.operador == "R. Mamani"
+
+    copia = tmp_path / "ronda-del-telefono.json"
+    copia.write_text(json.dumps(datos, ensure_ascii=False), encoding="utf-8")
+    assert cargador.ejecucion(copia).operador == "R. Mamani"
+
+    # Y una ejecución suelta —la que escribe la oficina a mano— sigue
+    # entrando: el envoltorio se admite, no se exige.
+    assert cargador.ejecucion_de_dict(datos["ejecucion"]).operador == "R. Mamani"
 
 
 def test_una_pauta_sin_criterio_se_rechaza_y_lo_explica(pagina):
