@@ -144,7 +144,8 @@ def _cabecera(ws, enc: dict, raiz: Path, avisos: list[str]) -> None:
     # Fila 9: codigo interno + horometro.
     st.escribir(ws, "A9:F9", "CÓDIGO:", fuente=st.FUENTE_ETIQUETA, fill=st.FILL_CABECERA)
     st.escribir(ws, "G9:L9", enc.get("codigo_equipo", ""))
-    st.escribir(ws, "M9:R9", "HORÓMETRO:", fuente=st.FUENTE_ETIQUETA, fill=st.FILL_CABECERA)
+    etiqueta_metrica = layout.etiqueta_metrica(enc.get("categoria"))
+    st.escribir(ws, "M9:R9", f"{etiqueta_metrica}:", fuente=st.FUENTE_ETIQUETA, fill=st.FILL_CABECERA)
     horometro = enc.get("horometro")
     if horometro == schema.REVISION_MANUAL:
         st.escribir(ws, "S9:Z9", schema.REVISION_MANUAL,
