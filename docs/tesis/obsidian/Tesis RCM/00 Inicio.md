@@ -32,5 +32,16 @@ Nilthon Rosinaldo Chite Vilca · Asesor: Mg. Erick Hans Araca Berrios · Ingenie
 - [[Guion 20 min]] · [[Guion 28 min]]
 - [[Plan de ensayo]] · [[Checklist día de sustentación]] · [[Registro del simulacro]]
 
+## 6. Datos completos
+- [[Matriz NPR completa]] (93 modos con tarea y plan)
+- [[Criticidad de 20 equipos]]
+- [[Presupuesto 91 ítems]]
+
+## 7. Visual y práctica
+- Mapa: `Mapa de la sustentación.canvas`
+- [[Anexos de respaldo (20 min)]] · diapositivas embebidas en [[Guion 20 min]] y [[Guion 28 min]]
+- Plantillas: `Plantillas/Respuesta de simulacro` y `Plantillas/Ensayo cronometrado` (Ctrl/Cmd + P → «Insertar plantilla»)
+- [[Guía de estudio inicial]]
+
 ## Archivos
 Ver carpeta `Archivos/`: presentación de 20 min, v9, guía de 28 min y guion de 20 min.

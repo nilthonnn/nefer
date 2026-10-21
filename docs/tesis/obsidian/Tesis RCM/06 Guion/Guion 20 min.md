@@ -7,6 +7,8 @@ Archivo: `Archivos/PRESENTACION_ChiteVilca_20min.pptx` (18 diapositivas + 15 ane
 
 ## 1 · Portada — 0:30 (acum. 0:30)
 
+![[Diapositivas 20 min/d-01.jpg|500]]
+
 > «Buenos días, señores miembros del jurado. Soy Nilthon Chite Vilca y presento la tesis "Implementación de la metodología RCM para la reducción de fallas y maximización de la disponibilidad operativa del grupo electrógeno Rivera Diesel de 500 kW, Moquegua 2024", asesorada por el magíster Erick Araca Berrios. En pocas palabras: cómo dejar de reparar fallas y empezar a prevenirlas.»
 
 **TRANSICIÓN → El problema.**
@@ -23,6 +25,8 @@ Archivo: `Archivos/PRESENTACION_ChiteVilca_20min.pptx` (18 diapositivas + 15 ane
 1. Sin animaciones.
 
 ## 2 · El problema — 1:15 (acum. 1:45)
+
+![[Diapositivas 20 min/d-02.jpg|500]]
 
 [Señala las tres cifras.]
 > «La empresa alquila grupos electrógenos a la minería. Sus tres grupos más críticos, de 500 kW, tuvieron 113 fallas en cuatro años. Por eso estuvieron disponibles entre 92,7 y 93,9 % del tiempo, cuando la meta es 97 %. Y solo en uno de ellos las fallas costaron más de 17 750 dólares.
@@ -51,6 +55,8 @@ Mi propuesta es aplicar el mantenimiento centrado en la confiabilidad, RCM, para
 
 ## 3 · Objetivos — 0:50 (acum. 2:35)
 
+![[Diapositivas 20 min/d-03.jpg|500]]
+
 > «Mi objetivo general es implementar la metodología RCM para reducir las fallas del grupo electrógeno de 500 kW y maximizar su disponibilidad.
 [Señala OE1.]
 Para lograrlo, primero apliqué el RCM para identificar las fallas críticas, con el análisis de modos y efectos de falla y el árbol de decisiones.
@@ -76,6 +82,8 @@ Mi hipótesis es que con RCM sí es posible reducir las fallas y maximizar la di
 
 ## 4 · Metodología — 0:55 (acum. 3:30)
 
+![[Diapositivas 20 min/d-04.jpg|500]]
+
 [Señala las fichas.]
 > «La investigación es aplicada, porque resuelve un problema real; cuantitativa, porque trabaja con datos numéricos; y no experimental, porque observé la situación sin intervenir los equipos. De los 20 grupos de la empresa, estudié los 3 más críticos.
 [Recorre los pasos.]
@@ -99,6 +107,8 @@ Usé datos reales de la empresa de 2019 a 2022. Los resultados del plan son proy
 3. Clic 2: banda.
 
 ## 5 · Conceptos clave — 1:10 (acum. 4:40)
+
+![[Diapositivas 20 min/d-05.jpg|500]]
 
 [Señala la tarjeta RCM.]
 > «El RCM, o mantenimiento centrado en la confiabilidad, es una metodología de Moubray. No repara por costumbre ni cambia piezas solo por calendario: analiza cómo falla cada componente y elige la tarea que conviene: medir su estado, renovarlo o cambiarlo cada cierto tiempo, o rediseñar.
@@ -127,6 +137,8 @@ Un estudio similar en alquiler para minería logró subir la disponibilidad 7,48
 
 ## 6 · Diagnóstico — 1:00 (acum. 5:40)
 
+![[Diapositivas 20 min/d-06.jpg|500]]
+
 [Recorre las tres tarjetas.]
 > «Este es el punto de partida. Ninguno de los tres equipos llega a la meta. El GI500-16 estuvo disponible 92,65 % del tiempo, le faltan 4,4 puntos; tuvo 43 fallas, falla cada 145 horas y demora 11,5 en repararse. El GI500-19 llega a 93,94 %; el GI500-20, a 93,34 %.
 [Señala las paradas.]
@@ -150,6 +162,8 @@ Y al revisar el historial encontré un patrón: piezas que se sacan y se reinsta
 3. Clic 2: banda.
 
 ## 7 · Equipos críticos — 0:55 (acum. 6:35)
+
+![[Diapositivas 20 min/d-07.jpg|500]]
 
 [Señala el gráfico.]
 > «¿Por qué estudié estos tres equipos? Porque evalué los 20 grupos de la flota con una matriz de criticidad, que multiplica qué tan seguido falla un equipo por qué tan grave es su falla: tiempo de reparación, impacto en la operación, costo, ambiente y seguridad.
@@ -176,6 +190,8 @@ Esos tres equipos son mi muestra.»
 
 ## 8 · ¿Dónde fallan? — 0:45 (acum. 7:20)
 
+![[Diapositivas 20 min/d-08.jpg|500]]
+
 [Señala el gráfico.]
 > «Luego busqué dónde fallan. Dividí el equipo en sistemas y conté las fallas. El resultado es claro: el motor diésel tiene 79 de 102 fallas, el 77 %. Le siguen el generador y el control.
 [Banda.]
@@ -197,6 +213,8 @@ Por eso el análisis detallado empieza por el motor diésel y sigue con el gener
 2. Clic 1: cifras y banda.
 
 ## 9 · Priorizar las fallas (NPR) — 1:15 (acum. 8:35)
+
+![[Diapositivas 20 min/d-09.jpg|500]]
 
 [Señala los tres factores.]
 > «Para decidir qué falla atender primero usé el número de prioridad de riesgo, NPR. Se multiplican tres notas: la severidad, qué tan grave es la falla; la ocurrencia, qué tan seguido pasa; y la detección, qué tan difícil es verla a tiempo. El máximo es 800 y fijé como prioritarias las que superan 180.
@@ -229,6 +247,8 @@ Por eso el plan incluye controles al reinstalar piezas.»
 
 ## 10 · AMEF: el caso del filtro — 1:20 (acum. 9:55)
 
+![[Diapositivas 20 min/d-10.jpg|500]]
+
 [Recorre la cadena de izquierda a derecha.]
 > «Así se analizó cada falla con el AMEF. Tomemos el caso más riesgoso. ¿Qué debe hacer el componente? El filtro debe quitar agua y partículas del combustible. ¿Cómo falla? Deja pasar partículas finas. ¿Por qué? Porque se instaló un filtro incorrecto o vencido. ¿Qué pasa entonces? Se desgastan los inyectores. Su riesgo es 7 por 6 por 8: 336.
 [Señala las dos tarjetas.]
@@ -255,6 +275,8 @@ Repetí este análisis en todo el equipo. En el motor diésel, 31 de 67 formas d
 
 ## 11 · Árbol de decisiones — 1:10 (acum. 11:05)
 
+![[Diapositivas 20 min/d-11.jpg|500]]
+
 [Recorre las preguntas de arriba abajo.]
 > «Una vez priorizadas las fallas, el árbol de decisiones de Moubray elige qué hacer con cada una. Hace las preguntas en orden. Primero: ¿se puede medir el estado del componente? Si sí, se le hace una tarea a condición: se mide y solo se interviene si la medición lo indica. Si no, ¿se puede renovar cada cierto tiempo? Si no, ¿conviene cambiarlo cada cierto tiempo? Y si nada de eso sirve, se buscan fallas ocultas o se rediseña.
 [Señala las cifras.]
@@ -279,6 +301,8 @@ La regla es simple: primero medir; cambiar piezas por tiempo solo cuando medir n
 
 ## 12 · Plan de mantenimiento — 1:15 (acum. 12:20)
 
+![[Diapositivas 20 min/d-12.jpg|500]]
+
 [Señala la tabla, fila por fila, sin leerla completa.]
 > «Con esas decisiones armé el plan de mantenimiento: qué hacer, cada cuánto y quién. Algunos ejemplos. El filtro de combustible se cambia según su caída de presión, y se agrega un sensor que detecta agua. El filtro de aceite debe ser de 30 micras o menos. El radiador y el intercooler se revisan y limpian. Al regulador de voltaje se le vigila el voltaje y la frecuencia cada semana. Y la protección por temperatura se prueba cada 500 horas, porque es una falla que no se ve hasta que se necesita.
 [Señala las fichas.]
@@ -302,6 +326,8 @@ Cada tarea tiene un valor que medir, así el técnico decide con datos.»
 
 ## 13 · Recursos — 0:40 (acum. 13:00)
 
+![[Diapositivas 20 min/d-13.jpg|500]]
+
 [Señala el personal.]
 > «Para ejecutar el plan se necesitan cinco perfiles: el técnico electromecánico, que mide, prueba y repara; el operario, que inspecciona; el planner, que programa y registra; el personal predictivo; y servicios externos para laboratorio y limpiezas químicas.
 [Señala la inversión.]
@@ -323,6 +349,8 @@ La inversión en equipos es de 54 709 dólares. El 85 % son instrumentos de medi
 3. Clic 2: banda.
 
 ## 14 · Disponibilidad proyectada — 1:00 (acum. 14:00)
+
+![[Diapositivas 20 min/d-14.jpg|500]]
 
 [Señala el gráfico.]
 > «Este es el resultado principal. Con el plan, la disponibilidad proyectada sube de 92,7 a 97,9 % en el GI500-16, de 93,9 a 96,9 % en el GI500-19 y de 93,3 a 97,8 % en el GI500-20. Son entre 3 y 5 puntos de mejora.
@@ -348,6 +376,8 @@ Son proyecciones, calculadas con la fórmula de disponibilidad; se confirmarán 
 
 ## 15 · ¿De dónde sale la mejora? — 0:55 (acum. 14:55)
 
+![[Diapositivas 20 min/d-15.jpg|500]]
+
 [Señala el gráfico de MTTR.]
 > «¿De dónde sale la mejora? Sobre todo de reparar más rápido: el tiempo de reparación baja casi a la mitad en los tres equipos, gracias a diagnosticar con mediciones, tener los repuestos listos en kits y usar un checklist al reinstalar.
 [Señala el gráfico de MTBF.]
@@ -371,6 +401,8 @@ También de fallar menos: el tiempo entre fallas sube de 145 a 250 horas en el G
 3. Clic 2: palancas y banda.
 
 ## 16 · Evaluación económica — 1:20 (acum. 16:15)
+
+![[Diapositivas 20 min/d-16.jpg|500]]
 
 [Señala las tres cifras de arriba.]
 > «La inversión es de 54 709 dólares, una sola vez, y sirve para toda la flota. Según la tesis, el beneficio es de 232 310 dólares al año, porque valora cada hora de parada evitada en 200 dólares. Con eso, la inversión se recupera en menos de tres meses.
@@ -397,6 +429,8 @@ En resumen: el proyecto es viable, pero el resultado real depende de cuántas ho
 
 ## 17 · Conclusiones — 1:15 (acum. 17:30)
 
+![[Diapositivas 20 min/d-17.jpg|500]]
+
 [Conclusión 1.]
 > «Concluyo en tres puntos. Primero: el RCM permitió priorizar las fallas críticas. El AMEF y el árbol de decisiones ordenaron 93 formas de falla, y los focos son el combustible, la excitación del generador y la refrigeración.
 [Conclusión 2.]
@@ -422,6 +456,8 @@ Recomiendo profundizar el diagnóstico, simular escenarios y justificar mejor lo
 3. Clic 4: recomendaciones y banda.
 
 ## 18 · Gracias — 0:20 (acum. 17:50)
+
+![[Diapositivas 20 min/d-18.jpg|500]]
 
 > «En resumen: analicé 93 formas de falla, prioricé 47 y propuse un plan que proyecta llevar la disponibilidad a 96,9–97,9 %. Muchas gracias por su atención; quedo atento a sus preguntas.»
 

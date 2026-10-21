@@ -1,5 +1,6 @@
 {
   "attachmentFolderPath": "Archivos",
   "newFileLocation": "root",
-  "alwaysUpdateLinks": true
+  "alwaysUpdateLinks": true,
+  "showFrontmatter": false
 }
