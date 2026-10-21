@@ -9,6 +9,8 @@ Nilthon Rosinaldo Chite Vilca · Asesor: Mg. Erick Hans Araca Berrios · Ingenie
 
 > **Leyenda:** [D] dato de la tesis · [C] cálculo verificable · [P] proyección · [I] interpretación · [F] falta o no verificable
 
+> [!tip] ¿Primera vez? Lee [[Cómo integrar esta bóveda]].
+
 ## 1. La tesis
 - [[Resumen de la tesis]]
 - [[Problema]] · [[Objetivos e hipótesis]] · [[Metodología]]
