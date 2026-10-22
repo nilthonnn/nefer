@@ -22,6 +22,7 @@ Manuales de equipos organizados para estudiar y consultar en campo.
 ## Con Claude Code (VS Code)
 - `/agregar-manual Archivos/<Marca>/<archivo>.pdf` → crea la nota y enlaza las páginas.
 - `/repasar sincronismo` → práctica con preguntas.
+- `/tutor` → curso por capítulos; progreso en [[Progreso ComAp]].
 
 ## Cómo agregar un manual (a mano)
 1. Copia el PDF a `Archivos/<Marca>/`.

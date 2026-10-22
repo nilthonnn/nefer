@@ -10,5 +10,6 @@ Biblioteca de manuales técnicos (empezando por ComAp). Español técnico peruan
 ## Skills de esta bóveda
 - `/agregar-manual <ruta.pdf>` — procesa un manual nuevo (mapa de páginas, nota, temas, revisión de enlaces).
 - `/repasar [tema]` — simulacro de preguntas con calificación 1–5 y páginas para releer.
+- `/tutor` — curso por capítulos estilo Harvard (≥ 80 % para avanzar); progreso en `Repasos/Progreso ComAp.md`.
 - Revisión rápida de enlaces: `python .claude/skills/agregar-manual/scripts/revisar_enlaces.py`
 - Los scripts necesitan `pip install pypdf`.
