@@ -4,7 +4,7 @@ curso: Controladores ComAp para grupos electrógenos
 inicio: 2026-10-22
 ---
 # Progreso ComAp
-Usa `/tutor` en Claude Code para continuar. Regla: ≥ 80 % para avanzar.
+Usa `/tutor` en Claude Code o la app [Aula ComAp](https://claude.ai/artifact/Ea2rDwHpkqJXCF4Wyak7RN) para continuar. Regla: ≥ 80 % para avanzar.
 
 ## Programa
 | Cap. | Título | Lectura base |
@@ -16,6 +16,7 @@ Usa `/tutor` en Claude Code para continuar. Regla: ≥ 80 % para avanzar.
 | 5 | Protecciones y gestión de alarmas | [[Alarmas y protecciones]] · [[InteliCompact-NT-1.4-Reference Guide-r4.pdf#page=105\|IC p. 105]] |
 | 6 | Diagnóstico | [[Diagnóstico]] · [[IL-NT-MRS-1.5-Reference Guide.pdf#page=68\|MRS p. 68]] |
 | 7 | Síntesis: el controlador dentro de tu RCM | Tesis + caps. 1–6 |
+| 8 | Machine learning para el monitoreo de condición | [[Machine learning en RCM]] · demo [Flota Sur ML](https://claude.ai/artifact/SUKwxFbWcSJX8c1GoRba35) (datos simulados) |
 
 ## Panel
 | Cap. | Título | Estado | Dominio | Fortalezas | Pendientes |
@@ -28,6 +29,7 @@ Usa `/tutor` en Claude Code para continuar. Regla: ≥ 80 % para avanzar.
 | 5 | Protecciones y gestión de alarmas | 🔒 | — % | — | — |
 | 6 | Diagnóstico | 🔒 | — % | — | — |
 | 7 | Síntesis RCM | 🔒 | — % | — | — |
+| 8 | Machine learning | 🔒 | — % | — | — |
 
 ## Evaluaciones
 *(Se agregan enlaces a cada evaluación guardada.)*

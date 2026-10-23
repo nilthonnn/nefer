@@ -28,4 +28,4 @@ tags: [moc, comap]
 | [[IL-NT MRS 1.5 Reference Guide]] | 105 | ✅ |
 
 ## Temas
-[[Control de potencia]] · [[Sincronismo]] · [[Alarmas y protecciones]] · [[Diagnóstico]] · [[Comunicación y software]] · [[Glosario ComAp]] · [[Ruta de estudio ComAp]]
+[[Control de potencia]] · [[Sincronismo]] · [[Alarmas y protecciones]] · [[Diagnóstico]] · [[Comunicación y software]] · [[Machine learning en RCM]] · [[Glosario ComAp]] · [[Ruta de estudio ComAp]]
