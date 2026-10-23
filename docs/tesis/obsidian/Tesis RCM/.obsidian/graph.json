@@ -1,0 +1,26 @@
+{
+  "colorGroups": [
+    {
+      "query": "path:\"05 Defensa\"",
+      "color": {
+        "a": 1,
+        "rgb": 11817737
+      }
+    },
+    {
+      "query": "path:\"02 Conceptos\"",
+      "color": {
+        "a": 1,
+        "rgb": 1981066
+      }
+    },
+    {
+      "query": "path:\"01 Tesis\"",
+      "color": {
+        "a": 1,
+        "rgb": 3359061
+      }
+    }
+  ],
+  "showAttachments": false
+}

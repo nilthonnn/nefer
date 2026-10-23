@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "type": "file",
+      "path": "00 Inicio.md",
+      "title": "Inicio"
+    },
+    {
+      "type": "file",
+      "path": "Mapa de la sustentación.canvas",
+      "title": "Mapa"
+    },
+    {
+      "type": "file",
+      "path": "06 Guion/Guion 20 min.md",
+      "title": "Guion 20 min"
+    },
+    {
+      "type": "file",
+      "path": "05 Defensa/Riesgos de defensa.md",
+      "title": "Riesgos"
+    }
+  ]
+}
