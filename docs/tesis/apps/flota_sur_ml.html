@@ -1,0 +1,519 @@
+<title>Flota Sur ML</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* Layout: consola de operación de flota — resumen y mapa de calor arriba, detalle del grupo seleccionado abajo, métodos explicados al lado de su resultado */
+:root{
+  --bg:#edf1f2; --panel:#ffffff; --sunk:#e1e8ea; --ink:#15211f; --muted:#55625f; --line:#c8d3d3;
+  --accent:#0f6b6b; --accent-ink:#ffffff; --ok:#2b7a4b; --ok-bg:#e1f2e7; --warn:#a8670f; --warn-bg:#fbeed8; --bad:#b42318; --bad-bg:#fce6e3;
+  --heat0:#dfe9e8; --heat1:#f2c46d; --heat2:#d9480f;
+  --f-disp:"Barlow Condensed","Arial Narrow",Arial,sans-serif; --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1716; --panel:#162120; --sunk:#1f2c2b; --ink:#e2ebea; --muted:#97a7a4; --line:#2f403e;
+  --accent:#5cc2c0; --accent-ink:#0b1514; --ok:#6cc391; --ok-bg:#183223; --warn:#e8a64b; --warn-bg:#3a2b15; --bad:#f08a7e; --bad-bg:#3d1f1c;
+  --heat0:#22302f; --heat1:#9a6a1c; --heat2:#e2582a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1716; --panel:#162120; --sunk:#1f2c2b; --ink:#e2ebea; --muted:#97a7a4; --line:#2f403e;
+  --accent:#5cc2c0; --accent-ink:#0b1514; --ok:#6cc391; --ok-bg:#183223; --warn:#e8a64b; --warn-bg:#3a2b15; --bad:#f08a7e; --bad-bg:#3d1f1c;
+  --heat0:#22302f; --heat1:#9a6a1c; --heat2:#e2582a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1200px;margin:0 auto;padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-disp);margin:0;line-height:1.12;text-wrap:balance}
+h1{font-size:2.2rem;font-weight:700} h2{font-size:1.55rem;font-weight:700} h3{font-size:1.15rem;font-weight:600}
+p{margin:0}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-size:.86em}
+.note{font-size:.85rem;color:var(--muted)}
+button,select,input{font:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;padding-bottom:14px;border-bottom:2px solid var(--ink)}
+.sim{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:.74rem;padding:4px 10px;border-radius:4px;background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.controls{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:center}
+.ctl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ctl label{font-size:.85rem;color:var(--muted)}
+input[type=range]{width:min(320px,60vw);accent-color:var(--accent)}
+.btn{padding:7px 14px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;font-weight:500}
+.btn.ghost{background:transparent;color:var(--accent)}
+select{padding:6px 8px;border-radius:4px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpi{border:1px solid var(--line);border-radius:6px;padding:12px 14px;background:var(--panel)}
+.kpi .v{font-family:var(--f-disp);font-size:2.1rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:.82rem;color:var(--muted);margin-top:4px}
+.tscroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--sunk)}
+tbody tr[aria-selected="true"]{background:var(--sunk);box-shadow:inset 3px 0 0 var(--accent)}
+.st{display:inline-block;font-family:var(--f-mono);font-size:.72rem;padding:2px 8px;border-radius:4px}
+.st.ok{background:var(--ok-bg);color:var(--ok)} .st.warn{background:var(--warn-bg);color:var(--warn)} .st.bad{background:var(--bad-bg);color:var(--bad)}
+.heat{display:grid;grid-template-columns:64px minmax(0,1fr);gap:4px 8px;align-items:center}
+.heat .u{font-family:var(--f-mono);font-size:.76rem;color:var(--muted);cursor:pointer;background:none;border:0;text-align:left;padding:0}
+.heat .u[aria-current="true"]{color:var(--accent);font-weight:600}
+.cells{display:grid;gap:1px;height:16px}
+.cells i{display:block;height:100%;background:var(--heat0)}
+.axis{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:.68rem;color:var(--muted);grid-column:2}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-size:.8rem;color:var(--muted)}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;vertical-align:-2px;margin-right:4px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{padding:6px 12px;border-radius:4px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);cursor:pointer;font-size:.86rem}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px}
+.chartbox{position:relative;height:230px}
+.chartbox.sm{height:170px}
+.explain{display:flex;flex-direction:column;gap:10px;font-size:.9rem;max-width:62ch}
+.explain ol,.explain ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.verdict{border-radius:4px;padding:10px 12px;font-size:.9rem}
+.verdict.ok{background:var(--ok-bg)} .verdict.warn{background:var(--warn-bg)} .verdict.bad{background:var(--bad-bg)}
+pre{margin:0;background:var(--sunk);border-radius:4px;padding:12px;overflow-x:auto;font-family:var(--f-mono);font-size:.78rem;line-height:1.5}
+details summary{cursor:pointer;color:var(--accent);font-size:.88rem}
+.npr-hi{color:var(--bad);font-weight:600}
+@media (max-width:900px){ .grid2{grid-template-columns:minmax(0,1fr)} .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Mantenimiento RCM · monitoreo de condición con machine learning</div>
+      <h1>Flota Sur ML</h1>
+      <p class="note">8 grupos electrógenos de 500 kW en operación continua, 120 días de registro horario. Cuatro modelos detectan fallas antes que las alarmas del controlador.</p>
+    </div>
+    <span class="sim" title="Ningún dato de esta página es real">● DATOS SIMULADOS · ejemplo didáctico</span>
+  </header>
+
+  <section class="panel" aria-label="Controles">
+    <div class="controls">
+      <div class="ctl"><label for="day">Día de operación</label><input type="range" id="day" min="31" max="120" value="120"><span class="mono" id="dayTxt">120</span><button class="btn ghost" id="play">▶ Reproducir</button></div>
+      <div class="ctl"><label for="ksig">Umbral de alerta</label><select id="ksig"><option value="2.5">2,5 σ (más sensible)</option><option value="3" selected>3 σ (recomendado)</option><option value="4">4 σ (menos falsas alarmas)</option></select></div>
+      <div class="ctl"><button class="btn ghost" id="regen">Generar otra flota</button><span class="note" id="seedTxt"></span></div>
+    </div>
+    <p class="note">Los días 1–30 son el periodo de entrenamiento: los modelos aprenden cómo se comporta cada grupo sano. Desde el día 31 vigilan. Mueve el día para ver cuándo se habría detectado cada falla.</p>
+  </section>
+
+  <section class="kpis" aria-label="Resumen" id="kpis"></section>
+
+  <section class="panel" aria-labelledby="hFlota">
+    <div><h2 id="hFlota">Estado de la flota</h2><p class="note">Toca una fila para ver el detalle de ese grupo.</p></div>
+    <div class="tscroll"><table>
+      <thead><tr><th>Grupo</th><th>Sitio</th><th>Estado</th><th>Detectó</th><th>Día alerta ML</th><th>Día alarma controlador</th><th>Adelanto</th><th>Vida útil restante batería</th></tr></thead>
+      <tbody id="fleet"></tbody>
+    </table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="hHeat">
+    <div><h2 id="hHeat">Mapa de anomalías · Isolation Forest</h2>
+      <p class="note">Cada celda es un día de un grupo. El color es la puntuación de anomalía que combina las cuatro señales. Más oscuro = más raro respecto a la flota sana.</p></div>
+    <div class="heat" id="heat"></div>
+    <div class="legend"><span><span class="sw" style="background:var(--heat0)"></span>normal</span><span><span class="sw" style="background:var(--heat1)"></span>sospechoso</span><span><span class="sw" style="background:var(--heat2)"></span>anómalo (sobre el umbral)</span><span>· Umbral = percentil 99 de los días 21–30, que el modelo no vio al entrenar</span></div>
+    <p class="note">En los grupos sanos puede aparecer algún día rojo suelto: es ruido normal. Por eso una alerta exige <b>3 días seguidos</b> sobre el umbral.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="hDet">
+    <div class="controls" style="justify-content:space-between">
+      <div><div class="eyebrow">Detalle</div><h2 id="hDet">Grupo <span id="uName"></span></h2></div>
+      <div class="ctl"><label for="unit">Grupo</label><select id="unit"></select></div>
+    </div>
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="grid2">
+      <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+        <div class="chartbox"><canvas id="cTop" aria-label="Valor real frente a esperado"></canvas></div>
+        <div class="chartbox sm"><canvas id="cRes" aria-label="Residuo diario y umbral"></canvas></div>
+      </div>
+      <div class="explain" id="explain"></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="hWei">
+    <div><h2 id="hWei">Confiabilidad de baterías de la flota · Weibull</h2>
+      <p class="note">Vida en meses de 18 baterías de arranque reemplazadas en la flota (simulado). Con esto se estima la ocurrencia (O) con datos y el intervalo de reemplazo preventivo.</p></div>
+    <div class="grid2">
+      <div class="chartbox"><canvas id="cWei" aria-label="Curva de confiabilidad Weibull"></canvas></div>
+      <div class="explain" id="weiTxt"></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="hAmef">
+    <div><h2 id="hAmef">Impacto en el AMEF</h2>
+      <p class="note">Cómo cambia la detección (D) de cada modo de falla cuando hay un modelo que avisa antes que la alarma. NPR = S × O × D. En rojo, NPR &gt; 180 (umbral de la tesis).</p></div>
+    <div class="tscroll"><table>
+      <thead><tr><th>Modo de falla</th><th>Señal / modelo</th><th>S</th><th>O</th><th>D sin ML</th><th>D con ML</th><th>NPR sin ML</th><th>NPR con ML</th></tr></thead>
+      <tbody id="amef"></tbody>
+    </table></div>
+    <p class="note">S, O y D son valores ilustrativos para el ejemplo. La O de la batería sale del ajuste Weibull de arriba. En una tesis cada valor se justifica con datos propios.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="hPy">
+    <h2 id="hPy">Así se hace con tus datos reales</h2>
+    <ol class="explain" style="max-width:none">
+      <li>Registrar cada minuto, por Modbus desde el controlador (InteliGen 200 + ECU): kW, temperatura del refrigerante, presión de aceite, consumo, voltaje de batería y temperatura ambiente.</li>
+      <li>Guardar en un CSV o base de datos por grupo. Con 30 días de operación normal ya se puede entrenar.</li>
+      <li>Correr los modelos una vez al día y revisar las alertas en la reunión de mantenimiento.</li>
+    </ol>
+    <details><summary>Ver el código Python equivalente</summary>
+<pre>import pandas as pd, numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import IsolationForest
+from scipy.stats import weibull_min
+
+df = pd.read_csv("ge03.csv", parse_dates=["fecha"])           # 1 fila por hora o minuto
+df = df[df.kW > 100]
+train = df[df.fecha &lt; df.fecha.min() + pd.Timedelta(days=30)]
+
+# 1) Enfriamiento: temperatura esperada según carga y clima
+m = LinearRegression().fit(train[["kW","T_amb"]], train.T_ref)
+df["res"] = df.T_ref - m.predict(df[["kW","T_amb"]])
+dia = df.set_index("fecha").res.resample("D").mean()
+sigma = dia.iloc[:30].std()                                   # variación normal del residuo
+alerta = (dia > 3*sigma).rolling(3).sum() == 3                 # 3 días seguidos
+
+# 2) Isolation Forest sobre residuos diarios de toda la flota
+X = residuos_diarios[["res_T","res_aceite","res_comb","res_bat"]]
+iso = IsolationForest(n_estimators=100, contamination=0.01).fit(X[X.dia &lt;= 30])
+X["anomalia"] = -iso.score_samples(X)
+
+# 3) Batería: tendencia del voltaje mínimo de arranque y días hasta 18 V
+ult = bat.tail(14); a, b = np.polyfit(ult.dia, ult.v_min, 1)
+dias_restantes = (18.0 - b)/a - ult.dia.iloc[-1] if a &lt; 0 else np.inf
+
+# 4) Weibull de vidas de batería (meses)
+beta, _, eta = weibull_min.fit(vidas, floc=0)
+t10 = eta * (-np.log(0.90))**(1/beta)                           # reemplazar antes de que falle el 10 %</pre>
+    </details>
+  </section>
+</div>
+
+<script>
+/* ===================== Simulación ===================== */
+const DAYS = 120, TRAIN = 30, H = 24;
+const SITES = ["Moquegua · Cuajone","Moquegua · Toquepala","Ilo · Puerto","Tacna · Planta","Arequipa · Cerro Verde","Moquegua · Campamento","Ilo · Fundición","Tacna · Bombeo"];
+const LIM = {coolWrn:97, oilWrn:3.2, batFail:18.0};
+const FAULTS = {
+  2:{tipo:"cool", desde:60, txt:"Radiador obstruido (enfriamiento)"},
+  4:{tipo:"bat",  desde:40, txt:"Batería de arranque degradándose"},
+  5:{tipo:"oil",  desde:75, txt:"Desgaste de cojinetes (presión de aceite)"},
+  6:{tipo:"fuel", desde:50, txt:"Inyectores con desgaste (consumo)"}
+};
+function rng(seed){ return function(){ seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+let R, SEED = 20241;
+const gauss = () => { let u = 0, v = 0; while(!u) u = R(); while(!v) v = R(); return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v); };
+
+function simulate(){
+  R = rng(SEED);
+  return SITES.map((site, u) => {
+    const f = FAULTS[u], base = 300 + R()*110, ampAmb = 6 + R()*3, tAmb0 = 16 + R()*4;
+    const hrs = [], bat = [];
+    for(let d=0; d<DAYS; d++){
+      const dayAmb = tAmb0 + 0.02*d + gauss()*1.2;
+      for(let h=0; h<H; h++){
+        const tAmb = dayAmb + ampAmb*Math.sin(2*Math.PI*(h-9)/24) + gauss()*0.6;
+        let kW = base + 75*Math.sin(2*Math.PI*(h-14)/24) + gauss()*18; kW = Math.max(60, Math.min(500, kW));
+        let cool = 72 + 0.035*kW + 0.45*(tAmb-20) + gauss()*0.8;
+        let oil = 4.3 - 0.0012*kW + gauss()*0.06;
+        let fuel = 6 + 0.235*kW + gauss()*1.5;
+        if(f && d >= f.desde){
+          const k = d - f.desde + h/24;
+          if(f.tipo==="cool") cool += 0.15*k*(kW/400);
+          if(f.tipo==="oil")  oil  -= 0.015*k;
+          if(f.tipo==="fuel") fuel *= 1 + 0.0015*k;
+        }
+        hrs.push({d, h, kW, tAmb, cool, oil, fuel});
+      }
+      const tMorning = dayAmb - ampAmb*0.8;
+      let v = 21.2 - 0.04*(20 - tMorning) - 0.001*d + gauss()*0.12;
+      if(f && f.tipo==="bat" && d >= f.desde) v -= 0.045*(d - f.desde);
+      bat.push({d, tM:tMorning, v});
+    }
+    return {id:`GE-${String(u+1).padStart(2,"0")}`, site, fault:f||null, hrs, bat};
+  });
+}
+
+/* ===================== Utilidades ML ===================== */
+function lstsq(X, y){                    // mínimos cuadrados por ecuaciones normales
+  const n = X[0].length, A = Array.from({length:n}, () => Array(n+1).fill(0));
+  X.forEach((row, i) => { for(let a=0;a<n;a++){ for(let b=0;b<n;b++) A[a][b] += row[a]*row[b]; A[a][n] += row[a]*y[i]; } });
+  for(let c=0;c<n;c++){ let p = c; for(let r=c+1;r<n;r++) if(Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r; [A[c],A[p]] = [A[p],A[c]];
+    for(let r=0;r<n;r++){ if(r===c) continue; const m = A[r][c]/A[c][c]; for(let k=c;k<=n;k++) A[r][k] -= m*A[c][k]; } }
+  return A.map((r,i)=>r[n]/r[i]);
+}
+const mean = a => a.reduce((s,x)=>s+x,0)/a.length;
+const std = a => { const m = mean(a); return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1)); };
+const cN = n => n > 2 ? 2*(Math.log(n-1)+0.5772156649) - 2*(n-1)/n : n === 2 ? 1 : 0;
+function iTree(X, depth, maxD){
+  if(depth >= maxD || X.length <= 1) return {size:X.length};
+  const q = Math.floor(R()*X[0].length); let lo = Infinity, hi = -Infinity;
+  for(const x of X){ if(x[q] < lo) lo = x[q]; if(x[q] > hi) hi = x[q]; }
+  if(lo === hi) return {size:X.length};
+  const p = lo + R()*(hi-lo);
+  return {q, p, l:iTree(X.filter(x=>x[q]<p), depth+1, maxD), r:iTree(X.filter(x=>x[q]>=p), depth+1, maxD)};
+}
+function pathLen(x, n, d){ return n.size !== undefined ? d + cN(n.size) : pathLen(x, x[n.q] < n.p ? n.l : n.r, d+1); }
+function isoForest(train, nTrees=100, psi=128){
+  const s = Math.min(psi, train.length), maxD = Math.ceil(Math.log2(s)), trees = [];
+  for(let t=0;t<nTrees;t++){ const sub = []; for(let i=0;i<s;i++) sub.push(train[Math.floor(R()*train.length)]); trees.push(iTree(sub, 0, maxD)); }
+  return x => Math.pow(2, -mean(trees.map(tr=>pathLen(x, tr, 0))) / cN(s));
+}
+
+/* ===================== Modelos ===================== */
+function analyze(fleet){
+  R = rng(SEED + 7);
+  fleet.forEach(g => {
+    const tr = g.hrs.filter(r => r.d < TRAIN && r.kW > 100);
+    g.mCool = lstsq(tr.map(r=>[1, r.kW, r.tAmb]), tr.map(r=>r.cool));
+    g.mOil  = lstsq(tr.map(r=>[1, r.kW]), tr.map(r=>r.oil));
+    g.mFuel = lstsq(tr.map(r=>[1, r.kW]), tr.map(r=>r.fuel));
+    const bt = g.bat.filter(b=>b.d < TRAIN); g.mBat = lstsq(bt.map(b=>[1, b.tM]), bt.map(b=>b.v));
+    g.daily = [];
+    for(let d=0; d<DAYS; d++){
+      const rows = g.hrs.filter(r => r.d === d && r.kW > 100), all = g.hrs.filter(r => r.d === d), b = g.bat[d];
+      const eCool = rows.map(r => g.mCool[0] + g.mCool[1]*r.kW + g.mCool[2]*r.tAmb), eOil = rows.map(r => g.mOil[0] + g.mOil[1]*r.kW), eFuel = rows.map(r => g.mFuel[0] + g.mFuel[1]*r.kW);
+      const eBat = g.mBat[0] + g.mBat[1]*b.tM;
+      g.daily.push({d,
+        cool:{real:mean(rows.map(r=>r.cool)), exp:mean(eCool), res:mean(rows.map((r,i)=>r.cool - eCool[i]))},
+        oil:{real:mean(rows.map(r=>r.oil)), exp:mean(eOil), res:mean(rows.map((r,i)=>r.oil - eOil[i]))},
+        fuel:{real:mean(rows.map(r=>r.fuel)), exp:mean(eFuel), res:100*mean(rows.map((r,i)=>(r.fuel - eFuel[i])/eFuel[i]))},
+        bat:{real:b.v, exp:eBat, res:b.v - eBat},
+        maxCool:Math.max(...all.map(r=>r.cool)), minOil:Math.min(...all.map(r=>r.oil)),
+        extraL: all.reduce((s,r)=>s + (r.fuel - (g.mFuel[0] + g.mFuel[1]*r.kW)), 0)
+      });
+    }
+    g.sig = {}; ["cool","oil","fuel","bat"].forEach(k => g.sig[k] = std(g.daily.slice(0,TRAIN).map(x=>x[k].res)));
+    // alarmas que daría el controlador sin ML
+    g.alarm = {
+      cool: g.daily.find(x=>x.maxCool > LIM.coolWrn)?.d ?? null,
+      oil:  g.daily.find(x=>x.minOil < LIM.oilWrn)?.d ?? null,
+      bat:  g.daily.find(x=>x.bat.real < LIM.batFail)?.d ?? null,
+      fuel: null
+    };
+  });
+  // Isolation Forest de flota sobre residuos estandarizados
+  const feat = (g, x) => [x.cool.res/g.sig.cool, -x.oil.res/g.sig.oil, x.fuel.res/g.sig.fuel, -x.bat.res/g.sig.bat];
+  // se entrena con los días 1–20 y el umbral se fija con los días 21–30, que el bosque no vio
+  const train = [], hold = [];
+  fleet.forEach(g => g.daily.slice(0,TRAIN).forEach(x => (x.d < 20 ? train : hold).push(feat(g,x))));
+  const score = isoForest(train);
+  const ts = hold.map(score).sort((a,b)=>a-b); const thr = ts[Math.floor(0.99*(ts.length-1))];
+  fleet.forEach(g => g.daily.forEach(x => x.iso = score(feat(g,x))));
+  return {thr};
+}
+
+const SIGN = {cool:1, oil:-1, fuel:1, bat:-1};           // dirección en que la falla mueve el residuo
+function firstAlert(series, test, upto){
+  let run = 0;
+  for(let i=TRAIN; i<=upto && i<series.length; i++){ run = test(series[i]) ? run+1 : 0; if(run === 3) return i; }
+  return null;
+}
+function detections(g, k, upto, isoThr){
+  const out = {};
+  ["cool","oil","fuel","bat"].forEach(m => out[m] = firstAlert(g.daily, x => SIGN[m]*x[m].res > k*g.sig[m], upto));
+  out.iso = firstAlert(g.daily, x => x.iso > isoThr, upto);
+  return out;
+}
+function batRUL(g, upto){
+  const last = g.bat.slice(Math.max(TRAIN, upto-13), upto+1); if(last.length < 7) return null;
+  const xs = last.map(b=>b.d), ys = last.map(b=>b.v), mx = mean(xs), my = mean(ys);
+  const a = xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0) / xs.reduce((s,x)=>s+(x-mx)**2,0), b0 = my - a*mx;
+  if(a >= -0.005) return {dias:Infinity, a};
+  return {dias: Math.max(0, (LIM.batFail - b0)/a - upto), a};
+}
+
+/* ===================== Weibull ===================== */
+function weibull(){
+  const r = rng(SEED + 99), beta0 = 2.4, eta0 = 30;
+  const t = Array.from({length:18}, () => eta0 * Math.pow(-Math.log(1 - r()), 1/beta0)).sort((a,b)=>a-b);
+  const n = t.length, X = [], Y = [];
+  t.forEach((ti, i) => { const F = (i + 1 - 0.3)/(n + 0.4); X.push(Math.log(ti)); Y.push(Math.log(-Math.log(1-F))); });
+  const mx = mean(X), my = mean(Y), beta = X.reduce((s,x,i)=>s+(x-mx)*(Y[i]-my),0)/X.reduce((s,x)=>s+(x-mx)**2,0);
+  const eta = Math.exp(mx - my/beta);
+  const gamma = z => { const g = [676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7]; z -= 1; let x = 0.99999999999980993; g.forEach((c,i)=>x += c/(z+i+1)); const tt = z + 7.5; return Math.sqrt(2*Math.PI)*Math.pow(tt, z+0.5)*Math.exp(-tt)*x; };
+  return {t, beta, eta, mtbf: eta*gamma(1+1/beta), t10: eta*Math.pow(-Math.log(0.9), 1/beta), F12: 1 - Math.exp(-Math.pow(12/eta, beta))};
+}
+
+/* ===================== Render ===================== */
+let FLEET, ISO, WEI, sel = 2, tab = "cool", charts = {};
+const $ = id => document.getElementById(id);
+const fmt = (x, d=1) => { if(x == null || !isFinite(x)) return "—"; const [i, f] = Math.abs(x).toFixed(d).split("."); return (x < 0 ? "−" : "") + i.replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0") + (f ? "," + f : ""); };
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const METH = {
+  cool:{n:"Enfriamiento", u:"°C", what:"Temperatura del refrigerante", model:"Regresión lineal: T esperada = a + b·kW + c·T ambiente", alarm:`WRN temperatura alta (> ${LIM.coolWrn} °C)`},
+  oil:{n:"Presión de aceite", u:"bar", what:"Presión de aceite", model:"Regresión lineal: P esperada = a + b·kW", alarm:`WRN baja presión (< ${LIM.oilWrn} bar)`},
+  fuel:{n:"Consumo", u:"l/h", what:"Consumo de combustible", model:"Regresión lineal: consumo esperado = a + b·kW (residuo en %)", alarm:"No existe alarma de consumo"},
+  bat:{n:"Batería", u:"V", what:"Voltaje mínimo al arrancar (24 V)", model:"Regresión: V esperado según la temperatura de la mañana + tendencia de 14 días", alarm:`Falla de arranque (< ${LIM.batFail} V)`},
+  iso:{n:"Isolation Forest", u:"", what:"Puntuación de anomalía (0–1)", model:"Bosque de 100 árboles de aislamiento entrenado con la flota sana", alarm:"—"}
+};
+
+function status(g, upto, k){
+  const det = detections(g, k, upto, ISO.thr), al = Object.values(g.alarm).filter(x=>x!=null && x<=upto);
+  const mlDays = Object.entries(det).filter(([,v])=>v!=null);
+  const first = mlDays.length ? mlDays.reduce((a,b)=>a[1]<=b[1]?a:b) : null;
+  const alarmDay = al.length ? Math.min(...al) : null;
+  return {det, first, alarmDay};
+}
+
+function batTxt(g, s, upto, rul){
+  if(g.alarm.bat != null && g.alarm.bat <= upto) return `falló (día ${g.alarm.bat})`;
+  if(s.det.bat == null) return "estable";
+  return rul && isFinite(rul.dias) ? fmt(rul.dias,0) + " días" : "estable";
+}
+function render(){
+  const upto = +$("day").value, k = +$("ksig").value;
+  $("dayTxt").textContent = upto;
+  let nAlert = 0, nAlarm = 0, leads = [], fp = 0, extra = 0;
+  const rows = FLEET.map((g, u) => {
+    const s = status(g, upto, k), rul = batRUL(g, upto);
+    if(g.fault?.tipo === "fuel") extra += Math.max(0, g.daily.slice(TRAIN, upto+1).reduce((a,x)=>a+x.extraL, 0));
+    const st = s.alarmDay != null ? ["bad","Alarma"] : s.first ? ["warn","Alerta ML"] : ["ok","Sano"];
+    if(s.first) nAlert++; if(s.alarmDay != null) nAlarm++;
+    if(s.first && !g.fault) fp++;
+    const realAlarm = g.fault ? g.alarm[g.fault.tipo] : null;
+    const lead = s.first && realAlarm != null && realAlarm <= upto ? realAlarm - s.first[1] : null;
+    if(lead != null) leads.push(lead);
+    const leadTxt = lead != null ? lead + " días" : g.fault?.tipo==="fuel" && s.first ? "solo ML" : s.first && g.fault && realAlarm != null ? "alarma aún no ocurre" : "—";
+    return `<tr data-u="${u}" aria-selected="${u===sel}"><td class="mono">${g.id}</td><td>${g.site}</td><td><span class="st ${st[0]}">${st[1]}</span></td>
+      <td>${s.first ? METH[s.first[0]].n : "—"}</td><td class="num">${s.first ? s.first[1] : "—"}</td><td class="num">${s.alarmDay ?? (g.fault?.tipo==="fuel" && s.first ? "sin alarma" : "—")}</td>
+      <td class="num">${leadTxt}</td>
+      <td class="num">${batTxt(g, s, upto, rul)}</td></tr>`;
+  });
+  $("fleet").innerHTML = rows.join("");
+  $("kpis").innerHTML = [
+    [nAlert, "grupos con alerta ML"],
+    [nAlarm, "grupos con alarma del controlador"],
+    [leads.length ? fmt(mean(leads),0) + " d" : "—", "adelanto medio de la alerta ML frente a la alarma"],
+    [fmt(extra,0) + " l", "diésel extra quemado por inyectores sin alarma (GE-07)"]
+  ].map(([v,l])=>`<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+  renderHeat(upto); renderDetail(upto, k); renderAmef(k);
+}
+
+function renderHeat(upto){
+  const h = $("heat"), cols = `repeat(${DAYS}, minmax(0,1fr))`;
+  h.innerHTML = FLEET.map((g,u) => `<button class="u" data-u="${u}" aria-current="${u===sel}">${g.id}</button><div class="cells" style="grid-template-columns:${cols}">${g.daily.map(x => {
+    if(x.d > upto) return `<i style="opacity:.25"></i>`;
+    if(x.d < TRAIN) return `<i style="opacity:.55" title="${g.id} día ${x.d+1}: entrenamiento"></i>`;
+    const c = x.iso > ISO.thr ? "var(--heat2)" : x.iso > ISO.thr - 0.02 ? "var(--heat1)" : "var(--heat0)";
+    return `<i style="background:${c}" title="${g.id} día ${x.d}: puntuación ${fmt(x.iso,2)}"></i>`; }).join("")}</div>`).join("")
+    + `<div class="axis"><span>día 1</span><span>30 · fin del entrenamiento</span><span>60</span><span>90</span><span>120</span></div>`;
+}
+
+function marker(){ return {id:"marks", afterDatasetsDraw(ch, a, opts){
+  const {ctx, chartArea:ar, scales:{x}} = ch; (opts.lines||[]).forEach(l => { if(l.d == null) return; const px = x.getPixelForValue(l.d); if(px < ar.left || px > ar.right) return;
+    ctx.save(); ctx.strokeStyle = l.c; ctx.setLineDash(l.dash||[]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(px, ar.top); ctx.lineTo(px, ar.bottom); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = l.c; ctx.font = "11px " + css("--f-mono"); ctx.textAlign = px > ar.right - 90 ? "right" : "left"; ctx.fillText(l.t, px + (ctx.textAlign==="left"?4:-4), ar.top + 12 + (l.y||0)); ctx.restore(); }); } }; }
+
+function lineChart(id, datasets, lines, yTitle){
+  const C = {ink:css("--ink"), muted:css("--muted"), line:css("--line")};
+  if(charts[id]) charts[id].destroy();
+  if(!window.Chart){ $(id).parentElement.innerHTML = '<p class="note">No se pudo cargar la librería de gráficos.</p>'; return; }
+  charts[id] = new Chart($(id), {type:"line", data:{datasets}, plugins:[marker()],
+    options:{animation:false, maintainAspectRatio:false, parsing:false, interaction:{mode:"nearest", intersect:false},
+      plugins:{legend:{labels:{color:C.muted, boxWidth:12, font:{size:11}}}, marks:{lines}, tooltip:{callbacks:{title:it=>"Día " + it[0].parsed.x}}},
+      scales:{x:{type:"linear", min:0, max:DAYS, ticks:{color:C.muted, stepSize:30}, grid:{color:C.line}, title:{display:true, text:"día", color:C.muted}},
+              y:{ticks:{color:C.muted}, grid:{color:C.line}, title:{display:!!yTitle, text:yTitle, color:C.muted}}}}});
+}
+
+function renderDetail(upto, k){
+  const g = FLEET[sel], s = status(g, upto, k), m = METH[tab];
+  $("uName").textContent = `${g.id} · ${g.site}`;
+  $("unit").value = sel;
+  $("tabs").innerHTML = ["cool","oil","fuel","bat","iso"].map(t=>`<button class="tab" role="tab" data-tab="${t}" aria-selected="${t===tab}">${METH[t].n}</button>`).join("");
+  const D = g.daily.filter(x => x.d <= upto && x.d > 0), acc = css("--accent"), mut = css("--muted"), bad = css("--bad"), warn = css("--warn");
+  const det = s.det[tab], al = tab==="iso" ? null : g.alarm[tab];
+  const lines = [{d:TRAIN, c:mut, dash:[4,4], t:"fin entrenamiento"}, {d:det, c:warn, t:"alerta ML", y:14}, {d:al!=null && al<=upto ? al : null, c:bad, t:"alarma", y:28}];
+  if(tab === "iso"){
+    lineChart("cTop", [{label:"Puntuación de anomalía", data:D.map(x=>({x:x.d, y:x.iso})), borderColor:acc, backgroundColor:acc, pointRadius:0, borderWidth:1.6},
+      {label:"Umbral (percentil 99, validación)", data:[{x:0,y:ISO.thr},{x:DAYS,y:ISO.thr}], borderColor:bad, borderDash:[6,4], pointRadius:0, borderWidth:1.2}], lines, "puntuación");
+    lineChart("cRes", [{label:"Residuo estandarizado del enfriamiento", data:D.map(x=>({x:x.d, y:x.cool.res/g.sig.cool})), borderColor:css("--heat2"), pointRadius:0, borderWidth:1.2},
+      {label:"Aceite", data:D.map(x=>({x:x.d, y:-x.oil.res/g.sig.oil})), borderColor:css("--ok"), pointRadius:0, borderWidth:1.2},
+      {label:"Consumo", data:D.map(x=>({x:x.d, y:x.fuel.res/g.sig.fuel})), borderColor:warn, pointRadius:0, borderWidth:1.2},
+      {label:"Batería", data:D.map(x=>({x:x.d, y:-x.bat.res/g.sig.bat})), borderColor:mut, pointRadius:0, borderWidth:1.2}], lines, "σ");
+  } else {
+    lineChart("cTop", [{label:`${m.what} real (media diaria)`, data:D.map(x=>({x:x.d, y:x[tab].real})), borderColor:acc, pointRadius:0, borderWidth:1.6},
+      {label:"Esperado por el modelo", data:D.map(x=>({x:x.d, y:x[tab].exp})), borderColor:mut, borderDash:[5,4], pointRadius:0, borderWidth:1.2}], lines, m.u);
+    const thr = SIGN[tab]*k*g.sig[tab];
+    lineChart("cRes", [{label:`Residuo = real − esperado${tab==="fuel"?" (%)":""}`, data:D.map(x=>({x:x.d, y:x[tab].res})), borderColor:css("--heat2"), backgroundColor:css("--heat2"), pointRadius:0, borderWidth:1.4},
+      {label:`Umbral ${k} σ`, data:[{x:0,y:thr},{x:DAYS,y:thr}], borderColor:bad, borderDash:[6,4], pointRadius:0, borderWidth:1.2}], lines, tab==="fuel" ? "%" : m.u);
+  }
+  const f = g.fault, isTarget = f && (f.tipo === tab || tab === "iso");
+  const lead = det != null && al != null ? al - det : null;
+  let verdict;
+  if(det != null && f && isTarget) verdict = `<div class="verdict warn"><b>Falla real detectada el día ${det}.</b> ${al!=null ? (al<=upto ? `La alarma del controlador llegó el día ${al}: el modelo avisó <b>${lead} días antes</b>.` : `La alarma del controlador llegaría el día ${al}.`) : tab==="iso" && g.alarm[f.tipo]!=null ? `La alarma del controlador ${g.alarm[f.tipo]<=upto?"llegó":"llegaría"} el día ${g.alarm[f.tipo]}: ${g.alarm[f.tipo]-det} días de adelanto.` : "Esta falla no tiene alarma en el controlador: sin el modelo pasaría inadvertida."}</div>`;
+  else if(det != null) verdict = `<div class="verdict bad"><b>Falsa alarma el día ${det}.</b> Este grupo no tiene esa falla inyectada. Prueba con 4 σ para reducirlas a costa de detectar más tarde.</div>`;
+  else if(f && isTarget) verdict = `<div class="verdict ${upto < f.desde ? "ok" : "warn"}">${upto < f.desde ? `Hasta el día ${upto} el grupo está sano. La falla empieza el día ${f.desde}.` : `La falla empezó el día ${f.desde} y aún no supera el umbral. Avanza los días.`}</div>`;
+  else verdict = `<div class="verdict ok">Sin alertas en esta señal hasta el día ${upto}.</div>`;
+  const rul = tab === "bat" ? batRUL(g, upto) : null;
+  $("explain").innerHTML = `<h3>${m.n}</h3>
+    <p><b>Modelo:</b> ${m.model}.</p>
+    ${tab==="iso" ? `<p>Cada día se calculan los cuatro residuos estandarizados del grupo. El bosque se entrena con los días 1–20 y el umbral se fija con los días 21–30 para no ser optimista. Aprende qué combinaciones son normales en la flota sana y da una puntuación alta a los días que se aíslan con pocos cortes. Sirve para detectar fallas que mueven varias señales a la vez y no necesita ejemplos de fallas.</p>`
+      : `<ol><li>Con los días 1–30 el modelo aprende la relación normal de este grupo.</li><li>Cada día compara lo real con lo esperado: la diferencia es el <b>residuo</b>.</li><li>Si el residuo supera ${k} σ del entrenamiento <b>3 días seguidos</b>, se emite una alerta.</li></ol>
+      <p class="note">σ de este grupo: ${fmt(g.sig[tab], tab==="oil"?3:2)} ${tab==="fuel"?"%":m.u}. Alarma del controlador: ${m.alarm}.</p>`}
+    ${rul ? `<p><b>Tendencia de 14 días:</b> ${fmt(rul.a*1000,0)} mV/día. ${g.alarm.bat != null && g.alarm.bat <= upto ? `Ya cayó bajo ${LIM.batFail} V el día ${g.alarm.bat}: falla de arranque.` : s.det.bat != null && isFinite(rul.dias) ? `Llegaría a ${LIM.batFail} V en <b>${fmt(rul.dias,0)} días</b>: programa el reemplazo antes.` : "Sin alerta de batería: la pendiente es ruido normal y no se proyecta la vida útil."}</p>` : ""}
+    ${verdict}
+    <p class="note">Falla inyectada en este grupo: ${f ? f.txt + " desde el día " + f.desde : "ninguna (grupo sano)"}.</p>`;
+}
+
+function renderWeibull(){
+  WEI = weibull();
+  const C = {muted:css("--muted"), line:css("--line"), acc:css("--accent"), bad:css("--bad"), warn:css("--warn")};
+  const n = WEI.t.length, pts = WEI.t.map((t,i)=>({x:t, y:1-(i+1-0.3)/(n+0.4)}));
+  const curve = Array.from({length:61}, (_,i)=>{ const t = i; return {x:t, y:Math.exp(-Math.pow(t/WEI.eta, WEI.beta))}; });
+  if(charts.cWei) charts.cWei.destroy();
+  if(window.Chart) charts.cWei = new Chart($("cWei"), {type:"scatter", data:{datasets:[
+      {label:"R(t) ajustada", data:curve, showLine:true, borderColor:C.acc, pointRadius:0, borderWidth:2},
+      {label:"Baterías reemplazadas (rango de mediana)", data:pts, borderColor:C.warn, backgroundColor:C.warn, pointRadius:3.5}]},
+    plugins:[marker()],
+    options:{animation:false, maintainAspectRatio:false, plugins:{legend:{labels:{color:C.muted, boxWidth:12, font:{size:11}}}, marks:{lines:[{d:WEI.t10, c:C.bad, dash:[5,4], t:"reemplazo preventivo"}]}},
+      scales:{x:{type:"linear", min:0, max:60, title:{display:true, text:"meses de servicio", color:C.muted}, ticks:{color:C.muted}, grid:{color:C.line}},
+              y:{min:0, max:1, title:{display:true, text:"confiabilidad R(t)", color:C.muted}, ticks:{color:C.muted}, grid:{color:C.line}}}}});
+  $("weiTxt").innerHTML = `<h3>Resultado del ajuste</h3>
+    <ul><li><b>β = ${fmt(WEI.beta,2)}</b> (forma). ${WEI.beta > 1.2 ? "Mayor que 1: falla por <b>desgaste</b>. El reemplazo preventivo sí reduce fallas." : WEI.beta < 0.9 ? "Menor que 1: fallas tempranas. Reemplazar antes no ayuda; revisa instalación y calidad." : "Cercano a 1: fallas aleatorias. El reemplazo por tiempo no ayuda; usa monitoreo."}</li>
+    <li><b>η = ${fmt(WEI.eta,1)} meses</b> (vida característica: a esa edad ya falló el 63 %).</li>
+    <li><b>MTBF = ${fmt(WEI.mtbf,1)} meses</b>.</li>
+    <li><b>Reemplazar a los ${fmt(WEI.t10,1)} meses</b> deja una confiabilidad del 90 % (B10).</li>
+    <li>Probabilidad de falla en el primer año: <b>${fmt(WEI.F12*100,0)} %</b> → en el AMEF, O = ${occ(WEI.F12)}.</li></ul>
+    <p class="note">Método: rangos de mediana de Bernard y regresión sobre papel Weibull, el mismo que harías en Excel.</p>`;
+}
+const occ = F => F > 0.5 ? 8 : F > 0.2 ? 6 : F > 0.1 ? 5 : F > 0.05 ? 4 : F > 0.01 ? 3 : 2;
+
+function renderAmef(k){
+  const o = WEI ? occ(WEI.F12) : 4;
+  const rows = [
+    ["Radiador obstruido / sobrecalentamiento","Residuo de temperatura", 8, 5, 6, k<=3?3:4],
+    ["Batería degradada / falla de arranque","Tendencia de voltaje + Weibull", 9, o, 7, 3],
+    ["Desgaste de cojinetes / baja presión de aceite","Residuo de presión de aceite", 9, 3, 5, 3],
+    ["Inyectores desgastados / consumo alto","Residuo de consumo (sin alarma)", 6, 4, 9, 3],
+    ["Falla multivariable no prevista","Isolation Forest de flota", 7, 3, 8, 5]
+  ];
+  $("amef").innerHTML = rows.map(([mf, sg, S, O, D0, D1]) => { const a = S*O*D0, b = S*O*D1;
+    return `<tr><td>${mf}</td><td>${sg}</td><td class="num">${S}</td><td class="num">${O}</td><td class="num">${D0}</td><td class="num">${D1}</td><td class="num ${a>180?"npr-hi":""}">${a}</td><td class="num ${b>180?"npr-hi":""}">${b}</td></tr>`; }).join("");
+}
+
+/* ===================== Eventos ===================== */
+function boot(){
+  FLEET = simulate(); ISO = analyze(FLEET);
+  $("unit").innerHTML = FLEET.map((g,u)=>`<option value="${u}">${g.id} · ${g.site}</option>`).join("");
+  $("seedTxt").textContent = "semilla " + SEED;
+  renderWeibull(); render();
+}
+document.addEventListener("click", e => {
+  const tr = e.target.closest("tr[data-u], .u[data-u]"); if(tr){ sel = +tr.dataset.u; render(); return; }
+  const t = e.target.closest("[data-tab]"); if(t){ tab = t.dataset.tab; render(); }
+});
+$("unit").addEventListener("change", e => { sel = +e.target.value; render(); });
+$("day").addEventListener("input", render);
+$("ksig").addEventListener("change", render);
+$("regen").addEventListener("click", () => { SEED = Math.floor(Math.random()*90000) + 10000; boot(); });
+let timer = null;
+$("play").addEventListener("click", () => {
+  if(timer){ clearInterval(timer); timer = null; $("play").textContent = "▶ Reproducir"; return; }
+  if(+$("day").value >= DAYS) $("day").value = TRAIN + 1;
+  $("play").textContent = "❚❚ Pausa";
+  timer = setInterval(() => { const d = +$("day").value + 1; $("day").value = d; render(); if(d >= DAYS){ clearInterval(timer); timer = null; $("play").textContent = "▶ Reproducir"; } }, 120);
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { renderWeibull(); render(); });
+new MutationObserver(() => { renderWeibull(); render(); }).observe(document.documentElement, {attributes:true, attributeFilter:["data-theme"]});
+boot();
+</script>
