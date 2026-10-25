@@ -59,7 +59,7 @@ nav.rail{display:flex;flex-direction:column;gap:6px;align-self:start;position:st
 .ch .s{display:block;font-family:var(--f-mono);font-size:.68rem;color:var(--muted);margin-top:2px}
 .ch[aria-current="true"]{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
 .ch[aria-current="true"] .n{color:var(--accent)}
-.ch.locked{opacity:.62}
+.ch.locked{opacity:.85}
 .work{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:22px 24px;min-width:0}
 .work-head{display:flex;flex-direction:column;gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .steps{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
@@ -899,7 +899,7 @@ function statusOf(n){
   if(c.score !== null && c.score < 80) return "ret";
   return "cur";
 }
-const ST = {ok:["ok","🟢 Aprobado"], cur:["cur","🟡 En curso"], ret:["ret","🔴 Reintento"], lock:["lock","🔒 Bloqueado"]};
+const ST = {ok:["ok","🟢 Aprobado"], cur:["cur","🟡 En curso"], ret:["ret","🔴 Reintento"], lock:["lock","🔒 Evaluación bloqueada"]};
 
 function save(){
   clearTimeout(saveT);
@@ -927,7 +927,7 @@ function renderRail(){
   const items = [{n:0,t:"Diagnóstico inicial"}, ...CH];
   document.getElementById("rail").innerHTML = items.map(c => {
     const st = statusOf(c.n);
-    return `<button class="ch ${st==="lock"?"locked":""}" data-go="${c.n}" aria-current="${S.cur===c.n}"><span class="n">${c.n===0?"D":c.n}</span><span><span class="t">${esc(c.t)}</span><span class="s">${c.n===0&&st==="ok"?"🟢 Completado":ST[st][1]}${cap(c.n).best!==null&&c.n?" · "+cap(c.n).best+" %":""}</span></span></button>`;
+    return `<button class="ch ${st==="lock"?"locked":""}" data-go="${c.n}" aria-current="${S.cur===c.n}"><span class="n">${c.n===0?"D":c.n}</span><span><span class="t">${esc(c.t)}</span><span class="s">${c.n===0&&st==="ok"?"🟢 Completado":st==="lock"?"📖 Marco y preguntas abiertos":ST[st][1]}${cap(c.n).best!==null&&c.n?" · "+cap(c.n).best+" %":""}</span></span></button>`;
   }).join("");
 }
 function render(){ renderBoard(); renderRail(); renderWork(); }
@@ -936,13 +936,11 @@ function renderWork(){
   const w = document.getElementById("work");
   if(S.cur === 0) return renderDiag(w);
   const c = CH[S.cur-1];
-  if(!unlocked(c.n)){
-    w.innerHTML = `<div class="lockbox"><div class="eyebrow">Capítulo ${c.n} · bloqueado</div><h2>${esc(c.t)}</h2><p>Para abrirlo necesitas ${c.n===1?"completar el diagnóstico inicial":"80 % o más en el capítulo "+(c.n-1)}.</p><button class="btn" data-go="${c.n===1?0:c.n-1}">${c.n===1?"Ir al diagnóstico":"Ir al capítulo "+(c.n-1)}</button></div>`;
-    return;
-  }
-  const step = S.step[c.n] || "marco";
+  const open = unlocked(c.n), FREE = ["marco","quiz"];
+  let step = S.step[c.n] || "marco";
+  if(!open && !FREE.includes(step)) step = "locked";
   const k = cap(c.n);
-  const tabs = [["marco","1 · Marco teórico"],["quiz","2 · Preguntas para marcar"],["teo","3 · Resumen y caso"],["soc","4 · Discusión"],["eva","5 · Evaluación"]];
+  const tabs = [["marco","1 · Marco teórico"],["quiz","2 · Preguntas para marcar"],["teo","3 · Resumen y caso"],["soc","4 · Discusión"],["eva","5 · Evaluación"]].map(([id,l]) => [id, !open && !FREE.includes(id) ? "🔒 " + l : l]);
   if(k.score !== null && k.score < 80 && (k.best??0) < 80) tabs.push(["ret","6 · Reintento"]);
   let body = "";
   if(step==="marco") body = viewMarco(c);
@@ -951,8 +949,10 @@ function renderWork(){
   if(step==="soc") body = viewSoc(c);
   if(step==="eva") body = viewEva(c);
   if(step==="ret") body = viewRet(c);
+  if(step==="locked") body = `<div class="lockbox"><p><b>Caso, discusión y evaluación se abren</b> cuando ${c.n===1?"completes el diagnóstico inicial":"apruebes el capítulo "+(c.n-1)+" con 80 % o más"}. El marco teórico y las preguntas para marcar ya están abiertos.</p><div class="row"><button class="btn" data-step="marco">Leer el marco teórico</button><button class="btn ghost" data-go="${c.n===1?0:c.n-1}">${c.n===1?"Ir al diagnóstico":"Ir al capítulo "+(c.n-1)}</button></div></div>`;
+  const lockNote = !open ? `<div class="fb"><b>Modo estudio libre.</b> Puedes leer el marco y practicar con las preguntas para marcar. La evaluación de este capítulo se abre cuando ${c.n===1?"completes el diagnóstico":"apruebes el capítulo "+(c.n-1)}.</div>` : "";
   w.innerHTML = `<div class="work-head"><div class="eyebrow">Capítulo ${c.n} de ${CH.length} · lectura: ${esc(c.lect)}</div><h2>${esc(c.t)}</h2>
-    <div class="steps" role="tablist">${tabs.map(([id,l])=>`<button class="step" role="tab" data-step="${id}" aria-selected="${step===id}">${l}</button>`).join("")}</div></div>${body}`;
+    <div class="steps" role="tablist">${tabs.map(([id,l])=>`<button class="step" role="tab" data-step="${id}" aria-selected="${step===id}">${l}</button>`).join("")}</div>${lockNote}</div>${body}`;
 }
 
 function viewMarco(c){
@@ -1053,6 +1053,7 @@ function viewRet(c){
 function renderDiag(w){
   const d = S.diag, fb = d.fb;
   w.innerHTML = `<div class="work-head"><div class="eyebrow">Fase 1 · antes del capítulo 1</div><h2>Diagnóstico inicial</h2>
+    <div class="fb pass"><b>Novedades:</b> cada capítulo tiene ahora <b>Marco teórico</b> y <b>Preguntas para marcar</b>, abiertos desde ya. Toca un capítulo en el menú para estudiarlo; la evaluación de cada uno sigue la regla del 80 %.</div>
     <p class="note">Responde con tus palabras, sin mirar los manuales. Si no sabes, escribe «no sé»: es una respuesta válida y no te bloquea. La nota solo sirve para calibrar tu nivel.</p></div>
     <div class="sec">${DIAG.map((q,i)=>`<div class="q"><div class="lab">Pregunta ${i+1} de 3</div><div>${esc(q.q)}</div><textarea id="dg-${i}">${esc(d.a[i])}</textarea></div>`).join("")}
     ${fb?`<div class="fb ${fb.valida===false?"fail":"pass"}"><div class="eyebrow">Resultado del diagnóstico</div>
