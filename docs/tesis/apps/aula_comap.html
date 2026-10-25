@@ -37,6 +37,11 @@ header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justif
 .dot.on{background:var(--green)} .dot.warn{background:var(--amber)}
 /* Panel de progreso */
 .board{margin-top:20px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+summary.board-head{cursor:pointer;list-style:none}
+summary.board-head::-webkit-details-marker{display:none}
+summary.board-head h2::after{content:" ▾";font-size:.8em;color:var(--muted)}
+details.board:not([open]) summary.board-head h2::after{content:" ▸"}
+details.board:not([open]) summary.board-head{border-bottom:0}
 .board-head{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
 .meter{display:flex;align-items:center;gap:10px;min-width:220px}
 .meter .bar{flex:1;height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}
@@ -103,10 +108,27 @@ details summary{cursor:pointer;color:var(--accent);font-size:.86rem}
 .opt.bad{border-color:var(--red);background:var(--red-bg)}
 .opt.dim{opacity:.6}
 .opt .ltr{font-family:var(--f-mono);color:var(--muted);margin-right:4px}
+.nextbar{margin-top:20px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.nextbtn{flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left;padding:14px 18px;border-radius:6px;border:2px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.nextbtn .eyebrow{color:inherit;opacity:.85}
+.nextbtn .nt{font-family:var(--f-disp);font-size:1.35rem;font-weight:600;line-height:1.2}
+.streak{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tbtn{cursor:pointer;color:var(--ink)}
+.dots{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.dots i{display:block;width:22px;height:6px;border-radius:3px;background:var(--sunk);border:1px solid var(--line)}
+.dots i.done{background:var(--green);border-color:var(--green)} .dots i.now{background:var(--accent);border-color:var(--accent)}
+textarea.short{min-height:70px}
+.mine{white-space:pre-wrap;font-size:.9rem}
+.ch.special .n{color:var(--accent)}
+.formulas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.fcard{border:1px solid var(--line);border-radius:6px;padding:12px;background:var(--bg);display:flex;flex-direction:column;gap:6px;min-width:0}
+.fcard .lab{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.ff{font-family:var(--f-mono);font-size:.9rem;overflow-wrap:anywhere}
+ul.ideas label{cursor:pointer}
 ul.ideas{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:.88rem}
 .mk{display:inline-block;width:1.2em;font-weight:600}
 .mk-si{color:var(--green)} .mk-parcial{color:var(--amber)} .mk-no{color:var(--red)}
-@media (max-width:600px){ th:nth-child(6),td:nth-child(6),th:nth-child(7),td:nth-child(7){display:none} th,td{padding:7px 8px} td:first-child{white-space:nowrap} .st .lt{display:none} }
+@media (max-width:600px){ th:nth-child(5),td:nth-child(5),th:nth-child(6),td:nth-child(6),th:nth-child(7),td:nth-child(7){display:none} .nextbtn .nt{font-size:1.15rem} th,td{padding:7px 8px} td:first-child{white-space:nowrap} .st .lt{display:none} }
 @media (max-width:820px){
   .main{grid-template-columns:minmax(0,1fr)}
   nav.rail{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px}
@@ -129,16 +151,18 @@ ul.ideas{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;g
     </div>
   </header>
 
-  <section class="board" aria-labelledby="hBoard">
-    <div class="board-head">
+  <section class="nextbar" id="next" aria-label="Siguiente paso"></section>
+
+  <details class="board" id="boardBox" open>
+    <summary class="board-head">
       <h2 id="hBoard">Panel de progreso</h2>
       <div class="meter"><span class="mono" id="mText">0 de 8 aprobados</span><div class="bar"><div class="fill" id="mFill" style="width:0%"></div></div></div>
-    </div>
+    </summary>
     <div class="tscroll"><table>
       <thead><tr><th>Cap.</th><th>Título</th><th>Estado</th><th>Dominio</th><th>Marcar</th><th>Fortalezas</th><th>Pendientes</th></tr></thead>
       <tbody id="board"></tbody>
     </table></div>
-  </section>
+  </details>
 
   <div class="main">
     <nav class="rail" id="rail" aria-label="Capítulos"></nav>
@@ -885,7 +909,7 @@ QUIZ[8] = [
 /*FIN CONTENIDO*/
 
 /* ---------- Estado ---------- */
-const blank = () => ({diag:{a:["","",""],fb:null,done:false}, caps:{}, cur:0, step:{} });
+const blank = () => ({diag:{a:["","",""],fb:null,done:false}, caps:{}, cur:0, step:{}, srs:{}, streak:{count:0, last:null}, day:{date:null, n:0}, recall:{}, mpos:{}, mview:"cards", fcopies:0, fhide:false, thinkFirst:true, sessions:0});
 let S = blank();
 let store = {kind:"local"}, sample = null, saveT = null;
 const cap = n => (S.caps[n] ||= {status:"lock", score:null, best:null, fort:"", pend:"", soc:{}, ev:{a:["","","","",""], r:null}, rt:null});
@@ -925,16 +949,21 @@ function renderBoard(){
 }
 function renderRail(){
   const items = [{n:0,t:"Diagnóstico inicial"}, ...CH];
-  document.getElementById("rail").innerHTML = items.map(c => {
+  const due = dueCards().length, nSrs = Object.keys(S.srs).length;
+  const special = `<button class="ch special" data-go="${REPASO}" aria-current="${S.cur===REPASO}"><span class="n">↻</span><span><span class="t">Repaso de hoy</span><span class="s">${due ? "🔔 " + due + " tarjeta" + (due>1?"s":"") + " pendiente" + (due>1?"s":"") : nSrs ? "✓ al día · " + nSrs + " en el mazo" : "mazo vacío"}</span></span></button>
+    <button class="ch special" data-go="${FORMULAS}" aria-current="${S.cur===FORMULAS}"><span class="n">ƒ</span><span><span class="t">Hoja de fórmulas</span><span class="s">copias a mano: ${S.fcopies||0}/3</span></span></button>`;
+  document.getElementById("rail").innerHTML = special + items.map(c => {
     const st = statusOf(c.n);
     return `<button class="ch ${st==="lock"?"locked":""}" data-go="${c.n}" aria-current="${S.cur===c.n}"><span class="n">${c.n===0?"D":c.n}</span><span><span class="t">${esc(c.t)}</span><span class="s">${c.n===0&&st==="ok"?"🟢 Completado":st==="lock"?"📖 Marco y preguntas abiertos":ST[st][1]}${cap(c.n).best!==null&&c.n?" · "+cap(c.n).best+" %":""}</span></span></button>`;
   }).join("");
 }
-function render(){ renderBoard(); renderRail(); renderWork(); }
+function render(){ renderBoard(); renderNext(); renderRail(); renderWork(); }
 
 function renderWork(){
   const w = document.getElementById("work");
   if(S.cur === 0) return renderDiag(w);
+  if(S.cur === REPASO) return renderReview(w);
+  if(S.cur === FORMULAS) return renderFormulas(w);
   const c = CH[S.cur-1];
   const open = unlocked(c.n), FREE = ["marco","quiz"];
   let step = S.step[c.n] || "marco";
@@ -955,12 +984,6 @@ function renderWork(){
     <div class="steps" role="tablist">${tabs.map(([id,l])=>`<button class="step" role="tab" data-step="${id}" aria-selected="${step===id}">${l}</button>`).join("")}</div>${lockNote}</div>${body}`;
 }
 
-function viewMarco(c){
-  const secs = MARCO[c.n] || [];
-  return `<div class="sec marco"><p class="note">Lee el marco antes de marcar: cada pregunta se responde con lo que está aquí. <b>[I]</b> = explicación general; las referencias en azul son páginas de los manuales (IC, AMF, MRS, DS).</p>
-    ${secs.map(x=>`<section><h3>${x.h}</h3>${x.html}</section>`).join("")}
-    <div class="row"><button class="btn" data-step="quiz">Ir a las preguntas para marcar</button></div></div>`;
-}
 function shuffle(n){ const a = [...Array(n).keys()]; for(let i=n-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
 function quizState(c){
   const k = cap(c.n), qs = QUIZ[c.n] || [];
@@ -972,22 +995,24 @@ function viewQuiz(c){
   const n = Object.keys(st.ans).length, good = qs.filter((q,i)=>st.ans[i] === q.ok).length;
   const L = "abcd";
   const items = qs.map((q,i)=>{
-    const a = st.ans[i], done = a !== undefined;
+    const a = st.ans[i], done = a !== undefined, hidden = S.thinkFirst && !done && !(st.shown||{})[i];
     const ops = st.order[i].map((oi, pos)=>{
       const cls = !done ? "" : oi === q.ok ? " ok" : oi === a ? " bad" : " dim";
       return `<button class="opt${cls}" data-quiz="${i}:${oi}" ${done?"disabled":""}><span class="ltr">${q.ops.length>2?L[pos]+")":""}</span> ${esc(q.ops[oi])}</button>`; }).join("");
     const fb = done ? `<div class="fb ${a===q.ok?"pass":"fail"}"><b>${a===q.ok?"✓ Correcto":"✗ Incorrecto · la respuesta es: "+esc(q.ops[q.ok])}</b><div>${esc(q.exp)} <span class="ref">${esc(q.ref)}</span></div></div>` : "";
-    return `<div class="q"><div class="lab">Pregunta ${i+1} de ${qs.length}${q.ops.length===2?" · verdadero o falso":q.q.startsWith("Caso")?" · caso":""}</div><div>${esc(q.q)}</div><div class="opts">${ops}</div>${fb}</div>`;
+    const body = hidden ? `<div class="row"><span class="note">Piensa tu respuesta (o escríbela en tu cuaderno) antes de ver las alternativas.</span><button class="btn ghost" data-qshow="${i}">Ya lo pensé → ver alternativas</button></div>` : `<div class="opts">${ops}</div>${fb}`;
+    return `<div class="q"><div class="lab">Pregunta ${i+1} de ${qs.length}${q.ops.length===2?" · verdadero o falso":q.q.startsWith("Caso")?" · caso":""}</div><div>${esc(q.q)}</div>${body}</div>`;
   }).join("");
   const fin = n === qs.length ? `<div class="fb ${good*10>=80?"pass":"fail"}"><div class="eyebrow">Resultado</div><div class="score">${Math.round(good/qs.length*100)} %</div>
       <div>${good} de ${qs.length} correctas. ${good/qs.length>=0.8?"Buen dominio: pasa al caso y a la evaluación.":"Relee las secciones del marco que citan las preguntas que fallaste y repite."}</div>
       <div class="row"><button class="btn ghost" data-quizreset="1">Repetir con otro orden</button><button class="btn" data-step="teo">Ir al resumen y caso</button></div></div>` : "";
-  return `<div class="sec"><div class="row" style="justify-content:space-between"><p>Marca una alternativa: se corrige al instante. No cuenta para desbloquear capítulos; tu mejor nota aparece en el panel.</p><span class="pill">${n}/${qs.length} respondidas · ${good} correctas${st.best!=null?` · mejor ${st.best} %`:""}</span></div>${items}${fin}</div>`;
+  return `<div class="sec"><div class="row" style="justify-content:space-between"><p>Marca una alternativa: se corrige al instante. Cada pregunta entra a tu <b>Repaso de hoy</b> y vuelve según aciertes o falles. <label class="note"><input type="checkbox" id="think" ${S.thinkFirst?"checked":""}> Pensar antes de ver alternativas</label></p><span class="pill">${n}/${qs.length} respondidas · ${good} correctas${st.best!=null?` · mejor ${st.best} %`:""}</span></div>${items}${fin}</div>`;
 }
 function answerQuiz(i, oi){
   const c = CH[S.cur-1], qs = QUIZ[c.n], st = quizState(c);
   if(st.ans[i] !== undefined) return;
   st.ans[i] = oi;
+  srsUpdate(c.n, i, oi === qs[i].ok); countActivity();
   if(Object.keys(st.ans).length === qs.length){ const sc = Math.round(qs.filter((q,j)=>st.ans[j]===q.ok).length/qs.length*100); st.last = sc; st.best = Math.max(st.best ?? 0, sc); }
   save(); render();
   const el = document.querySelector(`[data-quiz^="${i}:"]`)?.closest(".q"); if(el && el.scrollIntoView) el.scrollIntoView({block:"nearest"});
@@ -1202,11 +1227,244 @@ async function gradeRet(){
   rt.r = r; applyResult(k, r); save(); render();
 }
 
+/* ---------- Estudio con repetición (repaso espaciado, escribir de memoria, tarjetas, fórmulas, sesión, racha) ---------- */
+const REPASO = 100, FORMULAS = 101, GOAL = 10, INT = [1, 3, 7, 14, 30];
+const pad2 = x => String(x).padStart(2, "0");
+function today(){ const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function addDays(s, n){ const [y,m,d] = s.split("-").map(Number); const t = new Date(y, m-1, d + n); return `${t.getFullYear()}-${pad2(t.getMonth()+1)}-${pad2(t.getDate())}`; }
+const cardQ = key => { const [n, i] = key.split("-").map(Number); return {n, i, q: QUIZ[n]?.[i]}; };
+
+function srsUpdate(n, i, ok){
+  const key = `${n}-${i}`, c = S.srs[key] || {box:0, reps:0, lapses:0};
+  if(ok){ c.box = Math.min(c.box + 1, INT.length); c.due = addDays(today(), INT[c.box-1]); }
+  else { c.box = 0; c.lapses++; c.due = addDays(today(), 1); }
+  c.reps++; S.srs[key] = c;
+}
+function dueCards(){
+  const t = today();
+  return Object.entries(S.srs).filter(([k, c]) => c.due <= t && cardQ(k).q).sort((a, b) => a[1].due.localeCompare(b[1].due) || b[1].lapses - a[1].lapses).map(([k]) => k);
+}
+function streakNow(){ const s = S.streak; return s.last === today() || s.last === addDays(today(), -1) ? s.count : 0; }
+function countActivity(){
+  const t = today();
+  if(S.day.date !== t) S.day = {date:t, n:0};
+  S.day.n++;
+  if(S.day.n >= GOAL || (dueCards().length === 0 && R.active)) bumpStreak();
+}
+function bumpStreak(){ const t = today(); if(S.streak.last === t) return; S.streak.count = S.streak.last === addDays(t, -1) ? S.streak.count + 1 : 1; S.streak.last = t; }
+function dayN(){ return S.day.date === today() ? S.day.n : 0; }
+
+/* ----- Repaso de hoy ----- */
+const R = {active:false, queue:[], idx:0, phase:"think", order:null, ok:0, extra:false};
+function startReview(extra){
+  let q = dueCards();
+  if(extra){ const seen = Object.keys(S.srs).filter(k => cardQ(k).q); q = shuffle(seen.length).map(i => seen[i]).slice(0, GOAL); }
+  Object.assign(R, {active:true, queue:q, idx:0, phase:"think", order:null, ok:0, extra:!!extra});
+}
+function renderReview(w){
+  const seen = Object.keys(S.srs).length;
+  if(!R.active || R.queue.length === 0){
+    const due = dueCards().length;
+    if(due > 0) startReview(false);
+    else {
+      w.innerHTML = `<div class="work-head"><div class="eyebrow">Repetición espaciada</div><h2>Repaso de hoy</h2></div>
+        <div class="sec">${seen === 0
+          ? `<p>Tu mazo está vacío. Cada pregunta que respondas en <b>Preguntas para marcar</b> entra aquí y vuelve en 1, 3, 7, 14 y 30 días si aciertas, o mañana si fallas.</p><div class="row"><button class="btn" data-next="1">Ir a las preguntas del capítulo 1</button></div>`
+          : `<div class="fb pass"><b>✓ No te toca nada más hoy.</b> Tienes ${seen} tarjetas en el mazo. Mañana vuelve lo que corresponda.</div>
+             <p class="note">Hoy llevas ${dayN()} de ${GOAL} de la meta diaria. Racha: ${streakNow()} día(s).</p>
+             <div class="row"><button class="btn ghost" data-revextra="1">Repaso extra: 10 tarjetas al azar</button></div>`}
+        ${boxTable()}</div>`;
+      return;
+    }
+  }
+  if(R.idx >= R.queue.length){
+    const n = R.queue.length;
+    w.innerHTML = `<div class="work-head"><div class="eyebrow">Repetición espaciada</div><h2>Repaso terminado</h2></div>
+      <div class="sec"><div class="fb pass"><div class="score">${R.ok}/${n}</div><div>aciertos. Las que fallaste vuelven mañana; las que acertaste, más adelante.</div>
+      <div>🔥 Racha: <b>${streakNow()} día(s)</b> · hoy ${dayN()}/${GOAL}</div></div>
+      <div class="row"><button class="btn" data-revend="1">Volver</button></div>${boxTable()}</div>`;
+    return;
+  }
+  const key = R.queue[R.idx], {n, i, q} = cardQ(key), L = "abcd";
+  if(!R.order) R.order = q.ops.length > 2 ? shuffle(q.ops.length) : q.ops.map((_, j) => j);
+  const head = `<div class="work-head"><div class="eyebrow">${R.extra ? "Repaso extra" : "Repaso de hoy"} · tarjeta ${R.idx+1} de ${R.queue.length} · Cap. ${n}</div>
+    <div class="dots">${R.queue.map((_, j) => `<i class="${j < R.idx ? "done" : j === R.idx ? "now" : ""}"></i>`).join("")}</div></div>`;
+  let body;
+  if(R.phase === "think") body = `<div class="q"><div>${esc(q.q)}</div>
+      <label class="note" for="revthink">Piensa o escribe tu respuesta antes de ver las alternativas (opcional):</label>
+      <textarea id="revthink" class="short"></textarea>
+      <div class="row"><button class="btn" data-revshow="1">Ver alternativas</button></div></div>`;
+  else {
+    const a = R.ans, done = R.phase === "fb";
+    const ops = R.order.map((oi, pos) => { const cls = !done ? "" : oi === q.ok ? " ok" : oi === a ? " bad" : " dim";
+      return `<button class="opt${cls}" data-revans="${oi}" ${done ? "disabled" : ""}><span class="ltr">${q.ops.length > 2 ? L[pos] + ")" : ""}</span> ${esc(q.ops[oi])}</button>`; }).join("");
+    const fb = done ? `<div class="fb ${a === q.ok ? "pass" : "fail"}"><b>${a === q.ok ? "✓ Correcto · vuelve en " + INT[S.srs[key].box-1] + " día(s)" : "✗ Incorrecto · la respuesta es: " + esc(q.ops[q.ok]) + " · vuelve mañana"}</b><div>${esc(q.exp)} <span class="ref">${esc(q.ref)}</span></div></div>
+      <div class="row"><button class="btn" data-revnext="1">Siguiente</button></div>` : "";
+    body = `<div class="q"><div>${esc(q.q)}</div><div class="opts">${ops}</div>${fb}</div>`;
+  }
+  w.innerHTML = head + `<div class="sec">${body}</div>`;
+}
+function boxTable(){
+  const cnt = [0,0,0,0,0,0]; Object.values(S.srs).forEach(c => cnt[c.box]++);
+  if(!Object.keys(S.srs).length) return "";
+  return `<div class="tscroll"><table><thead><tr><th>Caja</th>${["Nuevas o falladas","1 día","3 días","7 días","14 días","30 días"].map(t => `<th>${t}</th>`).join("")}</tr></thead>
+    <tbody><tr><td>Tarjetas</td>${cnt.map(x => `<td class="num">${x}</td>`).join("")}</tr></tbody></table></div>`;
+}
+
+/* ----- Marco en tarjetas + escribir de memoria ----- */
+const MPH = {};
+const IDEAS = {
+ "1-0":["El controlador arranca, para, mide, maneja interruptores, protege y guarda historial","Se elige por cuántos grupos hay","Se elige por si deben trabajar en paralelo"],
+ "1-5":["El controlador tiene sus propios modos de falla","Es la principal fuente de detección (D)","Su historial da datos para MTBF y MTTR"],
+ "2-4":["Estados del motor: Init, Not ready, Prestart, Cranking, Running, Loaded, Cooling, Ready","Estados eléctricos: MainsOper, MainsFlt, IslOper, MainsRet","MinStabTO / MaxStabTO / Trans Del"],
+ "2-6":["Enfría (Cooling) y luego para","Parado: menos de 2 RPM","Parado: menos de 50 V en todas las fases"],
+ "3-0":["Igualar ΔV con el AVR","Igualar Δf con el gobernador","Igualar Δφ","Secuencia de fases (ANSI 47)","Cerrar fuera de fase da corriente y par bruscos"],
+ "4-5":["Ganancia 5 %, integral 0 %","Subir la ganancia hasta que oscile y dejar la mitad","Subir la integral hasta respuesta aceptable","Sobrecarga 32 · potencia inversa 32R · pérdida de excitación 40"],
+ "6-0":["Diagnosticar = qué pasó, en qué orden y por qué","Fuentes: estado, Alarmlist, ECU Alarmlist, historial","Registrar todo antes de reconocer alarmas"],
+ "8-4":["Isolation Forest combina varias señales","Un punto raro se aísla con pocos cortes","No necesita ejemplos de fallas","El umbral se fija con datos que el modelo no vio"]
+};
+const ideasOf = (n, i) => IDEAS[`${n}-${i}`] || keyIdeas((MARCO[n] || [])[i]?.html || "");
+function keyIdeas(html){
+  const out = [], seen = new Set();
+  for(const m of html.matchAll(/<b>([\s\S]*?)<\/b>/g)){
+    const t = m[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().replace(/[:·]$/, "").trim();
+    const k = t.toLowerCase();
+    if(/^(ejemplo|ejemplos|paso \d|regla práctica|bottom line|nota)$/i.test(t) || /^paso \d/i.test(t)) continue;
+    if(t.length >= 2 && t.length <= 70 && !seen.has(k) && !/^\d+\.?$/.test(t)){ seen.add(k); out.push(t); }
+  }
+  if(out.length < 3) for(const m of html.matchAll(/<tr>\s*<td>([\s\S]*?)<\/td>/g)){
+    const t = m[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(), k = t.toLowerCase();
+    if(t.length >= 2 && t.length <= 70 && !seen.has(k)){ seen.add(k); out.push(t); }
+  }
+  if(out.length < 2){ const h = html.replace(/<[^>]+>/g, " ").split(/(?<=[.:])\s+/).map(x => x.trim()).filter(x => x.length > 15 && x.length < 120); out.push(...h.slice(0, 3 - out.length)); }
+  return out.slice(0, 7);
+}
+function viewMarco(c){
+  const secs = MARCO[c.n] || [], n = c.n;
+  if(S.mview === "all") return `<div class="sec marco"><div class="row" style="justify-content:space-between"><p class="note"><b>[I]</b> = explicación general; en azul, páginas de los manuales.</p><button class="btn ghost" data-mview="cards">Ver en tarjetas</button></div>
+    ${secs.map(x => `<section><h3>${x.h}</h3>${x.html}</section>`).join("")}
+    <div class="row"><button class="btn" data-step="quiz">Ir a las preguntas para marcar</button></div></div>`;
+  const i = Math.min(S.mpos[n] || 0, secs.length), ph = MPH[n] || "read";
+  const dots = `<div class="dots">${secs.map((_, j) => `<i class="${j < i ? "done" : j === i ? "now" : ""}"></i>`).join("")}</div>`;
+  const top = `<div class="row" style="justify-content:space-between"><span class="note">Lee una sección, escríbela de memoria y compárala. Cada tarjeta toma 3–5 minutos.</span><button class="btn ghost" data-mview="all">Ver todo seguido</button></div>${dots}`;
+  if(i >= secs.length){
+    let got = 0, tot = 0; secs.forEach((x, j) => { const r = S.recall[`${n}-${j}`]; const ids = ideasOf(n, j); tot += ids.length; got += r?.got?.length || 0; });
+    return `<div class="sec marco">${top}<div class="fb pass"><div class="eyebrow">Marco terminado</div><div class="score">${got}/${tot}</div><div>ideas clave recordadas al escribir de memoria. No es nota: es tu punto de partida para repetir.</div></div>
+      <div class="row"><button class="btn" data-step="quiz">Ir a las preguntas para marcar</button><button class="btn ghost" data-mgo="0">Repetir desde la sección 1</button></div></div>`;
+  }
+  const x = secs[i], ideas = ideasOf(n, i), rkey = `${n}-${i}`, rec = S.recall[rkey] || {t:"", got:[]};
+  const nav = `<div class="row">${i > 0 ? `<button class="btn ghost" data-mgo="${i-1}">← Anterior</button>` : ""}<span class="note">Sección ${i+1} de ${secs.length}</span></div>`;
+  if(ph === "write") return `<div class="sec marco">${top}<section><h3>${x.h}</h3>
+      <div class="fb"><b>Sin mirar:</b> escribe con tus palabras todo lo que recuerdes de esta sección. No hay nota.</div>
+      <textarea id="rc-${n}-${i}">${esc(rec.t)}</textarea>
+      <div class="row"><button class="btn" data-mph="compare">Comparar con el marco</button><button class="btn ghost" data-mph="read">Volver a leer</button></div></section>${nav}</div>`;
+  if(ph === "compare") return `<div class="sec marco">${top}<section><h3>${x.h}</h3>
+      ${rec.t ? `<div class="fb"><b>Lo que escribiste:</b><div class="mine">${esc(rec.t)}</div></div>` : ""}
+      <div class="fb"><b>Ideas clave de esta sección: marca las que escribiste.</b>
+        <ul class="ideas">${ideas.map((t, j) => `<li><label><input type="checkbox" data-got="${j}" ${rec.got.includes(j) ? "checked" : ""}> ${esc(t)}</label></li>`).join("")}</ul>
+        <div class="note">${rec.got.length} de ${ideas.length} · si faltaron, relee esa parte abajo y vuelve a escribirla en tu cuaderno.</div></div>
+      ${x.html}
+      <div class="row"><button class="btn" data-mgo="${i+1}">Siguiente sección →</button><button class="btn ghost" data-mph="write">Escribir otra vez</button></div></section>${nav}</div>`;
+  return `<div class="sec marco">${top}<section><h3>${x.h}</h3>${x.html}
+    <div class="row"><button class="btn" data-mph="write">Ya leí → escribir de memoria</button><button class="btn ghost" data-mgo="${i+1}">Saltar</button></div></section>${nav}</div>`;
+}
+
+/* ----- Hoja de fórmulas ----- */
+const FORM = [
+ {t:"Giro del ángulo al sincronizar", f:"ω = Δf × 360 °/s · t en ventana = 2·PW / (Δf × 360)", e:"Δf = 0,2 Hz → 72 °/s; PW ± 10° → 0,28 s", c:3},
+ {t:"Rampa de carga", f:"t = (ΔP / P nominal) × Load Ramp", e:"300/500 × 100 s = 60 s", c:4},
+ {t:"Corriente nominal trifásica", f:"In = S / (√3 · V)", e:"625 kVA / (1,732 × 400 V) ≈ 902 A", c:5},
+ {t:"Sobrecorriente IDMT", f:"t = Amps IDMT Del × In / (I − In)", e:"4 × 902 / (1 353 − 902) = 8 s", c:5},
+ {t:"MTBF y MTTR", f:"MTBF = horas de operación / n.º de fallas · MTTR = tiempo de reparación / n.º de reparaciones", e:"5 000 h / 10 fallas = 500 h", c:6},
+ {t:"Número de prioridad de riesgo", f:"NPR = S × O × D", e:"8 × 5 × 6 = 240 > 180 → prioritario", c:7},
+ {t:"Disponibilidad", f:"A = MTBF / (MTBF + MTTR)", e:"500 / (500 + 20) = 96,2 %", c:7},
+ {t:"Confiabilidad con tasa constante", f:"R(t) = e^(−t / MTBF)", e:"e^(−100/1 000) = 90,5 %", c:7},
+ {t:"Misión de un grupo de respaldo", f:"R(t) = (1 − p) · e^(−λ·t)", e:"0,985 × e^(−24 × 0,00089) ≈ 96,4 %", c:7},
+ {t:"Redundancia N+1", f:"P(ninguno arranca) = p²", e:"0,015² = 2,25 × 10⁻⁴", c:7},
+ {t:"Vida de batería plomo-ácido", f:"L(T) = L₂₅ · 2^(−(T − 25)/8)", e:"4 años a 33 °C → 2 años", c:7},
+ {t:"Vida del aislamiento (regla de 10 °C)", f:"L = 20 000 h · 2^((T clase − T punto caliente)/10)", e:"Clase H a 160 °C → 80 000 h", c:7},
+ {t:"Calor y enfriamiento", f:"Q = ṁ · cp · ΔT · Q = UA · (T ref − T amb)", e:"UA −15 %: 60 K / 0,85 = 70,6 K → +10,6 °C", c:7},
+ {t:"Residuo y alerta", f:"r = y − ŷ · alerta si r > k·σ 3 días seguidos", e:"k = 3: p³ ≈ 2,5 × 10⁻⁹ por azar", c:8},
+ {t:"EWMA", f:"z = λ·r + (1 − λ)·z₋₁ · límite = L·σ·√(λ/(2 − λ))", e:"λ = 0,2, L = 3 → límite = 1σ", c:8},
+ {t:"Weibull", f:"F(t) = 1 − e^(−(t/η)^β) · B10 = η·(−ln 0,9)^(1/β)", e:"β = 2,2, η = 26 meses → B10 ≈ 9,4 meses", c:8},
+ {t:"Precisión y sensibilidad", f:"Precisión = VP / (VP + FP) · Sensibilidad = VP / (VP + FN)", e:"20 / (20 + 1) ≈ 95 %", c:8}
+];
+function renderFormulas(w){
+  const hide = !!S.fhide, shown = FH;
+  const copies = S.fcopies || 0;
+  w.innerHTML = `<div class="work-head"><div class="eyebrow">Para repetir a mano</div><h2>Hoja de fórmulas</h2>
+    <p class="note">Cópiala a mano 3 veces en la semana. La tercera, de memoria: activa «Modo memoria», escribe cada fórmula en tu cuaderno y luego tócala para comprobar.</p></div>
+    <div class="sec" style="max-width:none">
+    <div class="row"><label class="note"><input type="checkbox" id="fhide" ${hide ? "checked" : ""}> Modo memoria (ocultar fórmulas)</label>
+      <span class="pill">Copias a mano: ${copies}/3${copies >= 3 ? " ✓" : ""}</span><button class="btn ghost" data-fcopy="1">Marqué una copia</button>${copies ? `<button class="btn ghost" data-fcopy="-1">Deshacer</button>` : ""}</div>
+    <div class="formulas">${FORM.map((x, j) => `<div class="fcard"><div class="lab">Cap. ${x.c} · ${esc(x.t)}</div>
+      ${hide && !shown.has(j) ? `<button class="btn ghost" data-fshow="${j}">Mostrar</button>` : `<div class="ff">${esc(x.f)}</div><div class="note">Ejemplo: ${esc(x.e)}</div>`}</div>`).join("")}</div></div>`;
+}
+const FH = new Set();
+
+/* ----- Siguiente paso ----- */
+function nextStep(){
+  const due = dueCards().length;
+  if(due > 0) return {t:`Repaso de hoy: ${due} tarjeta${due > 1 ? "s" : ""} · unos ${Math.max(1, Math.round(due * 0.7))} min`, go:REPASO};
+  if(!S.diag.done) return {t:"Diagnóstico inicial: 3 preguntas · unos 10 min", go:0};
+  for(const c of CH){
+    const k = cap(c.n); if((k.best ?? 0) >= 80) continue;
+    if(!unlocked(c.n)) break;
+    const pos = S.mpos[c.n] || 0, len = (MARCO[c.n] || []).length;
+    if(pos < len) return {t:`Cap. ${c.n} · Marco teórico: sección ${pos+1} de ${len} · unos 5 min`, go:c.n, step:"marco"};
+    if(k.quiz?.best == null) return {t:`Cap. ${c.n} · Preguntas para marcar · unos 10 min`, go:c.n, step:"quiz"};
+    if(k.score != null && k.score < 80) return {t:`Cap. ${c.n} · Reintento de la evaluación`, go:c.n, step:"ret"};
+    return {t:`Cap. ${c.n} · Evaluación (5 preguntas) · unos 20 min`, go:c.n, step:"eva"};
+  }
+  return {t:"Curso completo · mantén el repaso diario para no olvidar", go:REPASO};
+}
+function renderNext(){
+  const s = nextStep(), el = document.getElementById("next");
+  el.innerHTML = `<button class="nextbtn" data-next="1" data-ngo="${s.go}" data-nstep="${s.step || ""}"><span class="eyebrow">Sigue aquí</span><span class="nt">${esc(s.t)} →</span></button>
+    <div class="streak"><span class="pill">🔥 Racha: ${streakNow()} día${streakNow() === 1 ? "" : "s"}</span><span class="pill">Hoy: ${Math.min(dayN(), GOAL)}/${GOAL}${dayN() >= GOAL ? " ✓" : ""}</span>
+    <button class="pill tbtn" id="timer" data-timer="1">${timerText()}</button></div>`;
+}
+
+/* ----- Sesión de 15 minutos ----- */
+const T = {mode:"idle", end:0, id:null};
+const mmss = ms => { const s = Math.max(0, Math.round(ms/1000)); return `${Math.floor(s/60)}:${pad2(s%60)}`; };
+function timerText(){
+  if(T.mode === "focus") return `⏱ Enfoque ${mmss(T.end - Date.now())} · detener`;
+  if(T.mode === "break") return `☕ Pausa ${mmss(T.end - Date.now())} · levántate`;
+  if(T.mode === "done") return "✓ Sesión completa · otra de 15 min";
+  return "⏱ Empezar sesión de 15 min";
+}
+function timerClick(){
+  if(T.mode === "focus" || T.mode === "break"){ clearInterval(T.id); T.mode = "idle"; renderNext(); return; }
+  T.mode = "focus"; T.end = Date.now() + 15*60*1000; clearInterval(T.id);
+  T.id = setInterval(() => {
+    if(Date.now() >= T.end){
+      if(T.mode === "focus"){ T.mode = "break"; T.end = Date.now() + 5*60*1000; S.sessions = (S.sessions || 0) + 1; save(); }
+      else { T.mode = "done"; clearInterval(T.id); }
+    }
+    const b = document.getElementById("timer"); if(b) b.textContent = timerText();
+  }, 1000);
+  renderNext();
+}
+
 /* ---------- Eventos ---------- */
 document.addEventListener("click", e => {
   const b = e.target.closest("button"); if(!b) return;
   if(b.dataset.go !== undefined){ S.cur = +b.dataset.go; save(); render(); window.scrollTo({top: document.querySelector(".main").offsetTop - 10, behavior:"smooth"}); return; }
   if(b.dataset.step){ S.step[S.cur] = b.dataset.step; save(); renderWork(); return; }
+  if(b.dataset.next){ const g = b.dataset.ngo; if(g === undefined){ S.cur = 1; S.step[1] = "quiz"; } else { S.cur = +g; if(b.dataset.nstep) S.step[S.cur] = b.dataset.nstep; } if(S.cur === REPASO) R.active = false; save(); render(); window.scrollTo({top: document.querySelector(".main").offsetTop - 10, behavior:"smooth"}); return; }
+  if(b.dataset.timer) return timerClick();
+  if(b.dataset.revshow){ R.phase = "opts"; return renderWork(); }
+  if(b.dataset.revans !== undefined){ const key = R.queue[R.idx], q = cardQ(key).q, oi = +b.dataset.revans; R.ans = oi; R.phase = "fb"; if(oi === q.ok) R.ok++; srsUpdate(cardQ(key).n, cardQ(key).i, oi === q.ok); countActivity(); save(); renderNext(); renderRail(); return renderWork(); }
+  if(b.dataset.revnext){ R.idx++; R.phase = "think"; R.order = null; R.ans = undefined; return renderWork(); }
+  if(b.dataset.revend){ R.active = false; R.queue = []; render(); return; }
+  if(b.dataset.revextra){ startReview(true); return renderWork(); }
+  if(b.dataset.mph){ const n = S.cur, ph = b.dataset.mph; if(ph === "compare"){ const ta = document.getElementById(`rc-${n}-${S.mpos[n]||0}`); const key = `${n}-${S.mpos[n]||0}`; S.recall[key] = {t: ta ? ta.value : "", got: S.recall[key]?.got || []}; save(); } MPH[n] = ph; renderWork(); return; }
+  if(b.dataset.mgo !== undefined){ const n = S.cur; S.mpos[n] = +b.dataset.mgo; MPH[n] = "read"; save(); render(); document.querySelector("#work")?.scrollIntoView?.({block:"start"}); return; }
+  if(b.dataset.mview){ S.mview = b.dataset.mview; save(); return renderWork(); }
+  if(b.dataset.fcopy){ S.fcopies = Math.max(0, (S.fcopies||0) + (+b.dataset.fcopy)); save(); renderRail(); return renderWork(); }
+  if(b.dataset.fshow !== undefined){ FH.add(+b.dataset.fshow); return renderWork(); }
+  if(b.dataset.qshow !== undefined){ const st = quizState(CH[S.cur-1]); st.shown = st.shown || {}; st.shown[+b.dataset.qshow] = true; save(); return renderWork(); }
   if(b.dataset.quiz){ const [i,oi] = b.dataset.quiz.split(":").map(Number); return answerQuiz(i, oi); }
   if(b.dataset.quizreset){ const k = cap(S.cur); k.quiz = {best: k.quiz?.best ?? null}; save(); renderWork(); return; }
   if(b.dataset.appeal){ const [ctx,i] = b.dataset.appeal.split(":"); return appeal(ctx, +i); }
@@ -1222,10 +1480,20 @@ document.addEventListener("input", e => {
   const id = e.target.id || ""; let m;
   if((m = id.match(/^ev-(\d+)-(\d+)$/))){ cap(+m[1]).ev.a[+m[2]] = e.target.value; save(); }
   else if((m = id.match(/^dg-(\d+)$/))){ S.diag.a[+m[1]] = e.target.value; save(); }
+  else if((m = id.match(/^rc-(\d+)-(\d+)$/))){ const key = `${m[1]}-${m[2]}`; S.recall[key] = {t: e.target.value, got: S.recall[key]?.got || []}; save(); }
+});
+document.addEventListener("change", e => {
+  const t = e.target;
+  if(t.dataset && t.dataset.got !== undefined){ const n = S.cur, key = `${n}-${S.mpos[n]||0}`, rec = S.recall[key] || (S.recall[key] = {t:"", got:[]}), j = +t.dataset.got;
+    rec.got = t.checked ? [...new Set([...rec.got, j])] : rec.got.filter(x => x !== j); save(); renderWork(); return; }
+  if(t.id === "fhide"){ S.fhide = t.checked; FH.clear(); save(); return renderWork(); }
+  if(t.id === "think"){ S.thinkFirst = t.checked; save(); return renderWork(); }
 });
 
 /* ---------- Arranque ---------- */
-function migrate(){ if(S.diag.fb && S.diag.fb.v !== 3){ const avanzo = Object.values(S.caps||{}).some(c=>c && c.best!=null); S.diag.fb = null; if(!avanzo) S.diag.done = false; } }
+function seedSrs(){ for(const [n, k] of Object.entries(S.caps||{})){ const st = k?.quiz; if(!st?.ans || !QUIZ[n]) continue; for(const [i, oi] of Object.entries(st.ans)){ const key = `${n}-${i}`; if(!S.srs[key] && QUIZ[n][i]) S.srs[key] = {box: oi === QUIZ[n][i].ok ? 1 : 0, reps:1, lapses: oi === QUIZ[n][i].ok ? 0 : 1, due: today()}; } } }
+function migrate(){ S.srs = S.srs || {}; seedSrs(); if(S.diag.fb && S.diag.fb.v !== 3){ const avanzo = Object.values(S.caps||{}).some(c=>c && c.best!=null); S.diag.fb = null; if(!avanzo) S.diag.done = false; } }
+try{ if(innerWidth < 700) document.getElementById("boardBox").open = false; }catch(_){}
 try{ const raw = localStorage.getItem("aula-comap"); if(raw){ S = Object.assign(blank(), JSON.parse(raw)); migrate(); } }catch(_){}
 render();
 (async () => {
