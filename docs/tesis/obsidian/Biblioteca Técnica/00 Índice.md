@@ -23,6 +23,7 @@ Manuales de equipos organizados para estudiar y consultar en campo.
 - `/agregar-manual Archivos/<Marca>/<archivo>.pdf` → crea la nota y enlaza las páginas.
 - `/repasar sincronismo` → práctica con preguntas.
 - `/tutor` → curso por capítulos; progreso en [[Progreso ComAp]].
+- `/graphify .` → mapa de conceptos de la bóveda; ver [[Cómo usar graphify]].
 
 ## Cómo agregar un manual (a mano)
 1. Copia el PDF a `Archivos/<Marca>/`.

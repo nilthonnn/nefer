@@ -13,3 +13,9 @@ Biblioteca de manuales técnicos (empezando por ComAp). Español técnico peruan
 - `/tutor` — curso por capítulos estilo Harvard (≥ 80 % para avanzar); progreso en `Repasos/Progreso ComAp.md`.
 - Revisión rápida de enlaces: `python .claude/skills/agregar-manual/scripts/revisar_enlaces.py`
 - Los scripts necesitan `pip install pypdf`.
+
+## graphify
+- Skill instalada en `.claude/skills/graphify/` (requiere `uv tool install graphifyy` en la PC). Uso: `/graphify .` para construir el grafo de conceptos de la bóveda; luego `graphify query "<pregunta>"`, `graphify path "<A>" "<B>"` y `graphify explain "<concepto>"`.
+- Cuando exista `graphify-out/graph.json`, consulta el grafo antes de leer muchas notas, y vuelve a la nota y a la página del PDF para citar datos.
+- `.graphifyignore` excluye `Archivos/` (PDF) y `Repasos/`. Solo incluir PDF si el usuario lo pide: cuesta muchos tokens.
+- No se instalaron los hooks de graphify (son para código y fallan si el programa no está instalado).
