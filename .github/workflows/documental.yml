@@ -49,6 +49,9 @@ jobs:
     env:
       GUION: ${{ github.event.inputs.guion || 'ejemplos/ia-sin-electricidad.json' }}
       DOCUMENTAL_SALIDA: ${{ github.workspace }}/documental/salidas
+      # Kokoro habla ~160 palabras/min; a 0,95 queda en el ritmo pausado de un
+      # documental (~150/min), el que usa la estimación de duración del guion.
+      DOCUMENTAL_KOKORO_VELOCIDAD: "0.95"
       HF_HOME: ${{ github.workspace }}/.cache/huggingface
     steps:
       - uses: actions/checkout@v4

@@ -257,6 +257,15 @@
           }
         },
         {
+          "narracion": "Y no todo ese consumo es inteligencia artificial: los centros de datos también guardan tus fotos, tus correos y tus series. Pero la inteligencia artificial es la parte que más rápido está creciendo.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "streaming video screen tv"
+            ]
+          }
+        },
+        {
           "narracion": "Uno y medio por ciento puede sonar poco. El problema no es el promedio mundial. El problema es que esa demanda no se reparte: se concentra en muy pocos lugares.",
           "visual": {
             "tipo": "stock",
@@ -512,6 +521,15 @@
           }
         },
         {
+          "narracion": "El atractivo es claro: una central nuclear produce enormes cantidades de electricidad en muy poco terreno, y no emite dióxido de carbono mientras funciona.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "nuclear plant aerial river"
+            ]
+          }
+        },
+        {
           "narracion": "En septiembre de dos mil veinticuatro, Microsoft firmó un acuerdo de veinte años con Constellation Energy para volver a encender la unidad uno de Three Mile Island, en Pensilvania.",
           "visual": {
             "tipo": "linea_tiempo",
@@ -761,6 +779,15 @@
           }
         },
         {
+          "narracion": "Para países con abundante sol y viento, la oportunidad es atraer centros de datos que funcionen con energía limpia generada en la propia región.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "wind turbines hills"
+            ]
+          }
+        },
+        {
           "narracion": "Para la región es una oportunidad y un riesgo al mismo tiempo: inversión y empleo, pero también competencia por la electricidad y el agua que necesitan hogares, minas y campos.",
           "visual": {
             "tipo": "stock",
@@ -949,6 +976,15 @@
             }
           },
           "pausa": 0.5
+        },
+        {
+          "narracion": "La próxima vez que le hagas una pregunta a una inteligencia artificial, recuerda el viaje completo: un chip, un edificio, una red eléctrica y, en algún lugar, una central encendida.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "phone screen chat app"
+            ]
+          }
         },
         {
           "narracion": "Y en esa carrera, quien tenga su propia energía tendrá ventaja, sea un gigante tecnológico o una familia con unos paneles en el techo.",

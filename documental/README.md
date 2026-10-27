@@ -146,7 +146,7 @@ duración de cada escena la decide la voz, nunca el guion.
 | `final` | Pantalla final de 20 s con huecos para los elementos de YouTube | se añade sola si falta |
 
 Hay ejemplos en `ejemplos/`:
-- `ia-sin-electricidad.json`: **15 minutos**, tema actual («La inteligencia artificial se está quedando sin electricidad»): 14 capítulos, estructura de misterio, 11 fuentes (IEA, PJM, CSO Irlanda...), ~32 % de visual propio.
+- `ia-sin-electricidad.json`: **15 minutos**, tema actual («La inteligencia artificial se está quedando sin electricidad»): 14 capítulos, ~2.250 palabras, estructura de misterio, 11 fuentes (IEA, PJM, CSO Irlanda...), ~30 % de visual propio. Con Kokoro a velocidad 0,95 dura unos 15 min.
 - `guerra-de-las-corrientes.json`: el ejemplo completo y monetizable (9 min, 8 capítulos, estructura de duelo, 7 fuentes, ~37 % de visual propio, sin titulares manuales).
 - `historia-panel-solar.json`: un ejemplo corto (no llega a 8 min).
 - `independencia-energetica.md`: el formato Markdown, más cómodo para escribir a mano.
