@@ -40,7 +40,7 @@ se prueban con dobles (están en `tests/`), no en vivo.
 | `shortsfactory/publisher/` | `auth.py` (OAuth2), `cuota.py`, `seo.py`, `youtube.py` (subida reanudable). |
 | `shortsfactory/memory.py` | Historial del canal en `estado/historial.jsonl` (se persiste en CI con caché). |
 | `remotion/src/` | `schema.ts` (Zod = contrato de props), `Short.tsx`, `components/*`, `lib/geometria.ts` (puro, probado con node). |
-| `../.github/workflows/autopilot.yml` | Cron cada 6 h + manual; pruebas → producir → subir; artefactos de auditoría. |
+| `../.github/workflows/autopilot.yml` | Cron cada 6 h + manual; pruebas → producir → subir; artefactos de auditoría. `modo=muestra` (manual) o un PR: Short de prueba con guion editorial, sin publicar. |
 
 ## Reglas para cambios
 
