@@ -53,7 +53,7 @@ def _importar_mpt(mpt_dir: str) -> tuple[Any, Any, Any]:
 class VisualStockMPT:
     nombre = "moneyprinterturbo"
 
-    def __init__(self, config: Config, cache: Path) -> None:
+    def __init__(self, config: Config, cache: Path, prohibidos: set[str] | None = None) -> None:
         s = config.secretos
         if not (s.pexels_api_key or s.pixabay_api_key):
             raise ErrorConfiguracion("El stock necesita PEXELS_API_KEY o PIXABAY_API_KEY en .env")
@@ -71,6 +71,8 @@ class VisualStockMPT:
         # Huellas de los clips ya usados en este video (ver huella()): repetir
         # un clip es la señal más obvia de "contenido reutilizado".
         self.usados: set[str] = set()
+        # Clips que ya salieron en OTROS videos del canal: no se reutilizan.
+        self.prohibidos: set[str] = set(prohibidos or ())
 
     def puede(self, escena: Escena) -> bool:
         return escena.visual.tipo == "stock"
@@ -102,7 +104,9 @@ class VisualStockMPT:
                 continue
             tramo = min(6.0, max(2.5, duracion - cubierto), medir(local).duracion)
             pieza = destino.with_name(f"{destino.stem}.p{len(piezas)}.mp4")
-            normalizar_video(local, pieza, tramo, self._cfg)
+            # Movimiento alterno entre planos: acercar, alejar, acercar...
+            movimiento = "acercar" if (len(piezas) + len(self.usados)) % 2 == 0 else "alejar"
+            normalizar_video(local, pieza, tramo, self._cfg, movimiento=movimiento)
             piezas.append(pieza)
             cubierto += tramo
             self.usados.add(huella(item.url))
@@ -126,7 +130,7 @@ class VisualStockMPT:
                 except Exception as e:
                     slog.warning("%s falló buscando %r: %s", nombre, termino, e)
                     continue
-                ya = self.usados | {huella(e.url) for e in encontrados}
+                ya = self.usados | self.prohibidos | {huella(e.url) for e in encontrados}
                 nuevos = [i for i in items if huella(i.url) not in ya]
                 slog.debug("%s %r: %d resultados, %d nuevos", nombre, termino, len(items), len(nuevos))
                 encontrados.extend(nuevos[:4])

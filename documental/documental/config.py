@@ -80,8 +80,16 @@ class Subtitulos:
 @dataclass(frozen=True)
 class Monetizacion:
     minutos_minimos: float = 8.0
-    proporcion_visual_propio: float = 0.25
+    # Proporción del TIEMPO en pantalla con visual propio (no de escenas).
+    proporcion_visual_propio: float = 0.30
     similitud_maxima: float = 0.45
+    # Tarjeta animada de 3 s al empezar cada capítulo (salvo el gancho).
+    tarjetas_capitulo: bool = True
+    segundos_tarjeta_capitulo: float = 3.0
+    # Un clip de stock usado en un video del canal no se repite en otro.
+    stock_unico_en_canal: bool = True
+    # Correcciones automáticas que puede pedir el guionista a Claude.
+    correcciones_guion: int = 2
 
 
 @dataclass(frozen=True)

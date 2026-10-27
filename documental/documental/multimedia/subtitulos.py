@@ -68,8 +68,13 @@ Style: Voz,{s.fuente},{s.tamano},{s.color},{s.color},&H00000000,&H80000000,-1,0,
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     lineas = []
-    for grupo in agrupar(palabras, s.max_palabras):
+    grupos = agrupar(palabras, s.max_palabras)
+    for g, grupo in enumerate(grupos):
+        # El grupo no puede seguir en pantalla cuando empieza el siguiente:
+        # dos eventos simultáneos se apilan en dos líneas (y en orden inverso).
         fin_grupo = grupo[-1].fin + 0.15
+        if g + 1 < len(grupos):
+            fin_grupo = min(fin_grupo, grupos[g + 1][0].inicio)
         for k, p in enumerate(grupo):
             inicio = grupo[0].inicio if k == 0 else p.inicio
             fin = grupo[k + 1].inicio if k + 1 < len(grupo) else fin_grupo

@@ -36,27 +36,42 @@ def _opciones(args: argparse.Namespace) -> Opciones:
     return Opciones(usar_remotion=not args.sin_remotion, usar_stock=not args.sin_stock, estricto=args.estricto)
 
 
+def _historial(cfg) -> list[dict]:
+    from .monetizacion import leer_registro
+
+    return leer_registro(cfg.salida / "registro.jsonl")
+
+
 def cmd_validar(args, cfg) -> int:
+    """Revisa el guion contra las reglas de monetización sin gastar nada."""
+    from .monetizacion import auditar_guion, estimar_duracion, proporcion_propia_estimada
+
     g = entrada.cargar(Path(args.guion))
     palabras = sum(len(e.narracion.split()) for e in g.escenas)
-    propios = sum(1 for e in g.escenas if e.visual.es_propio)
-    print(f"«{g.titulo}» ({g.slug})")
+    print(f"«{g.titulo}» ({g.slug})" + (f"  estructura: {g.estructura}" if g.estructura else ""))
     print(f"  capítulos: {len(g.capitulos)}   escenas: {len(g.escenas)}   palabras: {palabras}")
-    print(f"  duración estimada: {palabras / 150:.1f} min (a 150 palabras/min)")
-    print(f"  visuales propios: {propios}/{len(g.escenas)} ({propios / max(1, len(g.escenas)):.0%})")
+    print(f"  duración estimada: {estimar_duracion(g, cfg) / 60:.1f} min (mínimo {cfg.monetizacion.minutos_minimos:.0f})")
+    print(f"  visual propio: ~{proporcion_propia_estimada(g, cfg):.0%} del tiempo (mínimo {cfg.monetizacion.proporcion_visual_propio:.0%})")
     print(f"  fuentes citadas: {len(g.fuentes)}")
-    return 0
+    hallazgos = auditar_guion(g, _historial(cfg), cfg)
+    for h in hallazgos:
+        print(f"  {'✘ BLOQUEO' if h.nivel == 'bloqueo' else '! aviso  '} {h.mensaje}")
+    if not hallazgos:
+        print("  ✔ listo para producir")
+    return 1 if any(h.nivel == "bloqueo" for h in hallazgos) else 0
 
 
 def cmd_guion(args, cfg) -> int:
     from . import guionista
 
     notas = Path(args.notas).read_text(encoding="utf-8") if args.notas else ""
-    datos = guionista.escribir(args.tema, cfg, minutos=args.minutos, notas=notas)
+    datos = guionista.escribir(args.tema, cfg, minutos=args.minutos, notas=notas,
+                               historial=_historial(cfg), estructura=args.estructura or "")
     entrada.desde_dict(datos)  # valida antes de guardar
     destino = Path(args.salida)
     guionista.guardar(datos, destino)
-    print(f"Guion guardado en {destino}. Revísalo (datos, tono, fuentes) antes de `render`.")
+    print(f"Guion guardado en {destino} (estructura: {datos.get('estructura')}).")
+    print("Revísalo (datos, tono, tu experiencia propia) y luego: documental validar", destino)
     return 0
 
 
@@ -65,6 +80,8 @@ def cmd_render(args, cfg) -> int:
     r = producir(g, cfg, _voz(cfg, args.previa), _opciones(args))
     bloqueos = sum(1 for h in r.hallazgos if h.nivel == "bloqueo")
     print(f"\nVideo: {r.video}  ({r.duracion / 60:.1f} min)")
+    if r.video.name.endswith(".previa.mp4"):
+        print("Es una VISTA PREVIA con marca de agua: no se puede publicar. Quita --previa para la versión final.")
     print(f"Paquete: {r.carpeta} (miniatura.jpg, descripcion.txt, subtitulos.srt, metadatos.json, auditoria.md)")
     if bloqueos:
         print(f"ATENCIÓN: {bloqueos} bloqueo(s) de monetización, ver auditoria.md")
@@ -106,6 +123,13 @@ def cmd_diagnostico(args, cfg) -> int:
         filas.append((h, shutil.which(h) is not None, "necesaria" if h.startswith("ff") else "opcional"))
     filas.append(("ELEVENLABS_API_KEY", bool(s.elevenlabs_api_key), "voz para publicar"))
     filas.append(("ELEVENLABS_VOICE_ID", bool(s.elevenlabs_voice_id), "voz latina elegida"))
+    if s.elevenlabs_api_key and s.elevenlabs_voice_id:
+        from .voz.elevenlabs import VozElevenLabs
+
+        voz = VozElevenLabs(cfg)
+        comercial, detalle = voz.licencia()
+        filas.append(("Licencia de la voz", bool(comercial), detalle))
+        filas.append(("Voz elegida", True, voz.describir_voz()))
     filas.append(("PEXELS/PIXABAY", bool(s.pexels_api_key or s.pixabay_api_key), "video de stock"))
     filas.append(("ANTHROPIC_API_KEY", bool(s.anthropic_api_key), "guiones con Claude (opcional)"))
     try:
@@ -144,6 +168,7 @@ def construir_parser() -> argparse.ArgumentParser:
     sp.add_argument("-o", "--salida", required=True)
     sp.add_argument("--minutos", type=float, default=10.0)
     sp.add_argument("--notas", help="archivo con indicaciones propias (experiencia, enfoque)")
+    sp.add_argument("--estructura", help="cronologica, misterio, mitos, caso o comparacion (por defecto, la menos usada)")
     sp.set_defaults(fn=cmd_guion)
 
     sp = sub.add_parser("validar", help="valida un guion y estima su duración")

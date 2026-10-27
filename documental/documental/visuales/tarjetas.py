@@ -106,12 +106,14 @@ def dibujar(tipo: str, datos: dict, cfg: Config, texto_escena: str = "") -> Imag
         d.text((120, 110), str(datos["titulo"]), font=fuente(72), fill=TEXTO)
         barras = list(datos.get("barras", []))[:6]
         maximo = max([float(b.get("valor", 0)) for b in barras] + [1.0])
+        valores = [float(b.get("valor", 0)) for b in barras] or [0.0]
+        ganador = min(valores) if datos.get("destacar") == "menor" else maximo
         y = 300
         for b in barras:
             valor = float(b.get("valor", 0))
             d.text((120, y + 10), str(b.get("etiqueta", "")), font=fuente(44, "regular"), fill=TEXTO)
             largo = int(1050 * valor / maximo)
-            d.rounded_rectangle((560, y, 560 + max(8, largo), y + 72), 8, fill=ACENTO2 if valor == maximo else ACENTO)
+            d.rounded_rectangle((560, y, 560 + max(8, largo), y + 72), 8, fill=ACENTO2 if valor == ganador else ACENTO)
             d.text((580 + largo, y + 10), f"{valor:,.0f} {datos.get('unidad', '')}".replace(",", " "), font=fuente(44), fill=TEXTO)
             y += 116
         _pie_fuente(d, cfg, str(datos.get("fuente", "")))
@@ -127,10 +129,20 @@ def dibujar(tipo: str, datos: dict, cfg: Config, texto_escena: str = "") -> Imag
         d.ellipse((W - 540, 520, W - 300, 760), outline=FONDO_SUAVE, width=4)
     elif tipo == "frase":
         # Respaldo de una escena de stock sin material: la idea clave en grande.
+        # Máximo 3 líneas y por encima del tercio inferior: esa franja es de
+        # los subtítulos quemados y no se debe tapar.
         frase = texto_escena.split(".")[0].strip() or texto_escena
+        lineas = textwrap.wrap(frase, 36)
+        if len(lineas) > 3:
+            lineas = lineas[:3]
+            lineas[-1] = lineas[-1].rstrip(" ,;") + "…"
         img = _degradado(cfg)
         d = ImageDraw.Draw(img)
-        _parrafo(d, frase, (160, H // 2 - 160), 76, TEXTO, 36)
+        f = fuente(int(H * 0.07))
+        y = int(H * 0.16)
+        for linea in lineas:
+            d.text((int(W * 0.083), y), linea, font=f, fill=TEXTO)
+            y += int(H * 0.07 * 1.2)
     else:
         raise ValueError(f"tipo de tarjeta desconocido: {tipo}")
     return img

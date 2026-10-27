@@ -69,3 +69,41 @@ def test_render_completo_sin_servicios_externos(tmp_path, cfg):
     voz_antes = {p: p.stat().st_mtime for p in (r.carpeta / "trabajo" / "voz").glob("*.wav")}
     producir(g, cfg, VozEspeak(), Opciones(usar_remotion=False, usar_stock=False))
     assert voz_antes == {p: p.stat().st_mtime for p in (r.carpeta / "trabajo" / "voz").glob("*.wav")}
+
+
+@requiere_ffmpeg
+@requiere_espeak
+def test_mejoras_de_monetizacion_en_el_pipeline(tmp_path, cfg):
+    from dataclasses import replace
+
+    from documental.errores import ErrorMonetizacion
+    from documental.pipeline import secuencia
+    from documental.voz.espeak import VozEspeak
+
+    datos = guion_minimo(fuentes=["IRENA 2023"])
+    datos["capitulos"].append({"titulo": "Dos", "escenas": [
+        {"narracion": "Segunda parte.", "visual": {"tipo": "stock", "busqueda": ["wind"]}}]})
+    g = entrada.desde_dict(datos)
+
+    # Tarjeta de capítulo automática (no en el gancho).
+    ids = [e.id for _, e in secuencia(g, cfg)]
+    assert ids == ["c01e01", "c01e02", "capitulo01", "c02e01"]
+
+    # La vista previa sale marcada y con otro nombre: imposible confundirla.
+    r = producir(g, cfg, VozEspeak(), Opciones(usar_remotion=False, usar_stock=False))
+    assert r.video.name == "prueba-de-energia.previa.mp4"
+    meta = json.loads((r.carpeta / "metadatos.json").read_text(encoding="utf-8"))
+    assert meta["previa"] is True
+    assert [c["titulo"] for c in meta["capitulos"]] == ["Uno", "Dos"]
+    assert "licencia comercial" in (r.carpeta / "auditoria.md").read_text(encoding="utf-8")
+
+    # --estricto con un guion copiado de otro video del canal se detiene ANTES
+    # de sintetizar la voz. (Las vistas previas no cuentan como publicadas.)
+    from documental.monetizacion import registrar
+
+    otro = replace(g, slug="copia", titulo="Copia")
+
+    registrar(cfg.salida / "registro.jsonl", g, 60, previa=False)
+    with pytest.raises(ErrorMonetizacion, match="se parece"):
+        producir(otro, cfg, VozEspeak(), Opciones(usar_remotion=False, usar_stock=False, estricto=True))
+    assert not (cfg.salida / "copia" / "trabajo" / "voz").exists()

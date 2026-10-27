@@ -33,13 +33,27 @@ def _codec(cfg: Config) -> list[str]:
     return ["-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p", "-an"]
 
 
-def normalizar_video(entrada: Path, salida: Path, duracion: float, cfg: Config) -> None:
-    """Escala+recorta al lienzo, fija fps, quita audio y ajusta la duración (repite si es corto)."""
+# Gradación del canal para el stock: un poco más de contraste y color y una
+# viñeta suave. Junto con el movimiento de cámara, convierte el clip genérico
+# en un plano con identidad propia (y no idéntico al original de Pexels).
+GRADACION = "eq=contrast=1.06:saturation=1.12:gamma=0.98,vignette=PI/5"
+
+
+def normalizar_video(entrada: Path, salida: Path, duracion: float, cfg: Config, movimiento: str = "") -> None:
+    """Escala+recorta al lienzo, fija fps, quita audio y ajusta la duración (repite si es corto).
+
+    ``movimiento`` ("acercar" o "alejar") aplica un zoom lento del 8 % y la
+    gradación del canal; se usa en el stock, no en las infografías.
+    """
     v = cfg.video
-    filtro = (
-        f"scale={v.ancho}:{v.alto}:force_original_aspect_ratio=increase,"
-        f"crop={v.ancho}:{v.alto},fps={v.fps},setsar=1,format=yuv420p"
-    )
+    filtro = f"scale={v.ancho}:{v.alto}:force_original_aspect_ratio=increase,crop={v.ancho}:{v.alto},fps={v.fps}"
+    if movimiento:
+        d = max(duracion, 0.1)
+        z = f"1+0.08*in_time/{d:.3f}" if movimiento == "acercar" else f"1.08-0.08*in_time/{d:.3f}"
+        filtro += (
+            f",zoompan=z='{z}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={v.ancho}x{v.alto}:fps={v.fps},{GRADACION}"
+        )
+    filtro += ",setsar=1,format=yuv420p"
     ffmpeg(
         ["-stream_loop", "-1", "-i", str(entrada), "-t", f"{duracion:.3f}", "-vf", filtro, *_codec(cfg), str(salida)],
         f"normalizar {entrada.name}",

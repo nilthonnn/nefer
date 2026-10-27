@@ -14,6 +14,10 @@ class ProveedorVoz(Protocol):
     # False = solo vista previa: su licencia o calidad no sirve para monetizar.
     comercial: bool
 
+    def licencia(self) -> tuple[bool | None, str]:
+        """(¿uso comercial permitido?, detalle). None = no se pudo verificar."""
+        ...
+
     def huella(self) -> str:
         """Identifica voz+modelo+ajustes; si cambia, la caché de audio se invalida."""
         ...

@@ -49,7 +49,7 @@ def encadenar(clips: list[Path], tramos: list[float], salida: Path, cfg: Config)
     verificar(salida, duracion=total, video=True, tolerancia=0.2)
 
 
-def exportar(video: Path, audio: Path, salida: Path, cfg: Config, subtitulos_ass: Path | None = None) -> None:
+def exportar(video: Path, audio: Path, salida: Path, cfg: Config, subtitulos_ass: Path | None = None, marca: str = "") -> None:
     """Codificación final con los parámetros recomendados por YouTube.
 
     H.264 High, yuv420p, GOP cerrado de medio segundo de cuadros, AAC 48 kHz
@@ -62,6 +62,15 @@ def exportar(video: Path, audio: Path, salida: Path, cfg: Config, subtitulos_ass
         # Ruta relativa + cwd: evita escapar ':' y comillas dentro del filtro.
         carpeta = subtitulos_ass.parent
         filtros.append(f"ass={subtitulos_ass.name}")
+    if marca:
+        # Marca de agua de vista previa: grande, arriba y semitransparente.
+        from ..visuales.tarjetas import ruta_fuente
+
+        texto = marca.replace(":", " ").replace("'", " ")
+        filtros.append(
+            f"drawtext=fontfile='{ruta_fuente()}':text='{texto}':fontsize={int(v.alto * 0.045)}"
+            f":fontcolor=white@0.55:box=1:boxcolor=red@0.45:boxborderw=18:x=(w-text_w)/2:y=h*0.05"
+        )
     argumentos = ["-i", str(video.resolve()), "-i", str(audio.resolve())]
     if filtros:
         argumentos += ["-vf", ",".join(filtros)]

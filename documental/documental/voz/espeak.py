@@ -25,6 +25,9 @@ class VozEspeak:
         self._voz = voz
         self._ppm = palabras_por_minuto
 
+    def licencia(self) -> tuple[bool | None, str]:
+        return False, "voz local espeak-ng de vista previa"
+
     def huella(self) -> str:
         return hashlib.sha256(f"espeak:{self._voz}:{self._ppm}".encode()).hexdigest()[:16]
 

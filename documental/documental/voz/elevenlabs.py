@@ -51,6 +51,46 @@ class VozElevenLabs:
         }
         self._sesion = sesion or requests.Session()
 
+    def licencia(self) -> tuple[bool | None, str]:
+        """Consulta el plan de la cuenta: el plan gratuito no permite uso comercial.
+
+        Sin licencia comercial, monetizar el video incumple los términos de
+        ElevenLabs aunque YouTube no lo detecte; por eso es un bloqueo.
+        """
+        try:
+            r = self._sesion.get(
+                "https://api.elevenlabs.io/v1/user/subscription",
+                headers={"xi-api-key": self._clave},
+                timeout=(10, 30),
+            )
+        except (requests.ConnectionError, requests.Timeout) as e:
+            return None, f"sin conexión con ElevenLabs: {type(e).__name__}"
+        if r.status_code != 200:
+            return None, f"ElevenLabs respondió {r.status_code} al consultar el plan"
+        try:
+            plan = str(r.json().get("tier", "")).lower()
+        except ValueError:
+            return None, "respuesta del plan ilegible"
+        if not plan:
+            return None, "ElevenLabs no informó el plan"
+        if plan == "free":
+            return False, "plan gratuito de ElevenLabs, sin licencia comercial"
+        return True, f"plan {plan} de ElevenLabs"
+
+    def describir_voz(self) -> str:
+        """Nombre y etiquetas de la voz elegida (para `diagnostico`)."""
+        try:
+            r = self._sesion.get(f"https://api.elevenlabs.io/v1/voices/{self._voz}", headers={"xi-api-key": self._clave}, timeout=(10, 30))
+        except (requests.ConnectionError, requests.Timeout) as e:
+            return f"no verificada ({type(e).__name__})"
+        if r.status_code == 404:
+            raise ErrorConfiguracion(f"ELEVENLABS_VOICE_ID no existe en tu cuenta: {self._voz}")
+        if r.status_code != 200:
+            return f"no verificada ({r.status_code})"
+        datos = r.json()
+        etiquetas = ", ".join(f"{k}={v}" for k, v in (datos.get("labels") or {}).items())
+        return f"{datos.get('name', '?')} ({etiquetas})" if etiquetas else str(datos.get("name", "?"))
+
     def huella(self) -> str:
         crudo = json.dumps([self._voz, self._modelo, self._ajustes], sort_keys=True)
         return hashlib.sha256(crudo.encode()).hexdigest()[:16]

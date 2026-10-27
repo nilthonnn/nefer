@@ -81,14 +81,31 @@ def test_stock_concatena_atribuye_y_no_repite(tmp_path, cfg_stock, monkeypatch):
     assert descargas == ["https://v/1", "https://v/2"]
 
 
-def test_guionista_usa_herramienta_y_valida(monkeypatch, cfg):
-    llamada = {}
-    guion = guion_minimo()
+def guion_largo(titulo="Historia de la batería") -> dict:
+    """Guion que pasa la auditoría: 4 capítulos, ~10 min, 50 % visual propio, con fuentes."""
+    frase = " ".join(f"palabra{i}" for i in range(80)) + "."
+    capitulos = []
+    for c in range(4):
+        escenas = []
+        for e in range(4):
+            if e % 2:
+                visual = {"tipo": "cifra", "datos": {"valor": 1, "etiqueta": "x", "fuente": "IRENA 2023"}}
+            else:
+                visual = {"tipo": "stock", "busqueda": [f"plano {c} {e}"]}
+            escenas.append({"narracion": f"Capítulo {c} escena {e}. {frase}", "visual": visual})
+        capitulos.append({"titulo": f"Capítulo {c}", "escenas": escenas})
+    return {"titulo": titulo, "miniatura": "X", "descripcion": "d", "etiquetas": ["a"],
+            "fuentes": ["IRENA, Renewable Power Generation Costs 2023"], "capitulos": capitulos}
+
+
+def _anthropic_falso(monkeypatch, entregas):
+    llamadas = []
 
     class _Mensajes:
         def create(self, **kw):
-            llamada.update(kw)
-            bloque = types.SimpleNamespace(type="tool_use", name="entregar_guion", input=guion)
+            llamadas.append({**kw, "messages": list(kw["messages"])})
+            bloque = types.SimpleNamespace(type="tool_use", name="entregar_guion", id=f"t{len(llamadas)}",
+                                           input=entregas[len(llamadas) - 1])
             return types.SimpleNamespace(content=[bloque], stop_reason="tool_use")
 
     falso = types.ModuleType("anthropic")
@@ -96,15 +113,62 @@ def test_guionista_usa_herramienta_y_valida(monkeypatch, cfg):
     for nombre in ("APIConnectionError", "RateLimitError", "InternalServerError", "APIStatusError"):
         setattr(falso, nombre, type(nombre, (Exception,), {}))
     monkeypatch.setitem(sys.modules, "anthropic", falso)
+    return llamadas
 
-    cfg = replace(cfg, secretos=Secretos(anthropic_api_key="k", claude_model="claude-opus-5-5"))
-    datos = guionista.escribir("historia del panel solar", cfg, minutos=8)
-    assert entrada.desde_dict(datos).titulo == "Prueba de energía"
-    assert llamada["model"] == "claude-opus-5-5"
-    assert llamada["tool_choice"] == {"type": "tool", "name": "entregar_guion"}
-    assert "1200 palabras" in llamada["messages"][0]["content"]
+
+def test_guionista_corrige_contra_la_auditoria(monkeypatch, cfg):
+    # 1.ª entrega: corta y sin fuentes → se devuelve con los problemas; 2.ª: correcta.
+    llamadas = _anthropic_falso(monkeypatch, [guion_minimo(), guion_largo()])
+    cfg = replace(cfg, video=replace(cfg.video, pantalla_final_segundos=20),
+                  secretos=Secretos(anthropic_api_key="k", claude_model="claude-opus-5-5"))
+    historial = [{"titulo": "Viejo", "estructura": "cronologica", "narracion": "nada que ver"}]
+    datos = guionista.escribir("historia de la batería", cfg, minutos=8, historial=historial)
+
+    assert len(llamadas) == 2
+    assert datos["titulo"] == "Historia de la batería"
+    assert datos["estructura"] != "cronologica"  # la usada en el último video
+    primera = llamadas[0]
+    assert primera["model"] == "claude-opus-5-5"
+    assert primera["tool_choice"] == {"type": "tool", "name": "entregar_guion"}
+    assert "1350 palabras" in primera["messages"][0]["content"]  # se sube a 9 min (mínimo 8 + 1)
+    assert "Viejo" in primera["messages"][0]["content"]  # conoce lo ya publicado
+    correccion = llamadas[1]["messages"][-1]["content"][0]
+    assert correccion["type"] == "tool_result" and correccion["tool_use_id"] == "t1"
+    assert "Duración" in correccion["content"]
+
+
+def test_guionista_rechaza_copia_del_canal(monkeypatch, cfg):
+    largo = guion_largo()
+    narracion = " ".join(e["narracion"] for c in largo["capitulos"] for e in c["escenas"])
+    llamadas = _anthropic_falso(monkeypatch, [largo, largo, largo])
+    cfg = replace(cfg, video=replace(cfg.video, pantalla_final_segundos=20), secretos=Secretos(anthropic_api_key="k"))
+    guionista.escribir("x", cfg, historial=[{"slug": "otro", "titulo": "Otro", "narracion": narracion}])
+    # Se agotan las 2 correcciones porque sigue siendo una copia.
+    assert len(llamadas) == 3
+    assert "se parece" in llamadas[1]["messages"][-1]["content"][0]["content"]
+
+
+def test_estructura_rota_entre_videos():
+    historial = [{"estructura": e} for e in ("cronologica", "misterio", "mitos", "caso")]
+    assert guionista.elegir_estructura(historial) == "comparacion"
+    historial.append({"estructura": "comparacion"})
+    assert guionista.elegir_estructura(historial) == "cronologica"  # la más antigua
+    with pytest.raises(ErrorConfiguracion):
+        guionista.elegir_estructura([], "inventada")
 
 
 def test_guionista_sin_clave(cfg):
     with pytest.raises(ErrorConfiguracion, match="ANTHROPIC"):
         guionista.escribir("x", cfg)
+
+
+@requiere_ffmpeg
+def test_stock_no_reutiliza_clips_de_otros_videos(tmp_path, cfg_stock, monkeypatch):
+    resultados = {"sun": [_Item("https://v/1", "Ana"), _Item("https://v/2", "Luis")]}
+    config_mpt, material, descargas = _material_falso(tmp_path, resultados)
+    monkeypatch.setattr(mpt, "_importar_mpt", lambda d: (config_mpt, material, _Aspecto))
+    proveedor = mpt.VisualStockMPT(cfg_stock, tmp_path / "cache", prohibidos={mpt.huella("https://v/1")})
+    escena = entrada.desde_dict(guion_minimo()).escenas[0]
+    clip = proveedor.generar(escena, 3.0, tmp_path / "e1.mp4")
+    assert descargas == ["https://v/2"]
+    assert [a.autor for a in clip.atribuciones] == ["Luis"]

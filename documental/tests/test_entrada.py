@@ -31,6 +31,7 @@ def test_ids_automaticos_y_slug():
         (lambda d: d["capitulos"][0]["escenas"][0]["visual"].update(tipo="gif"), "visual.tipo"),
         (lambda d: d["capitulos"][0]["escenas"][0]["visual"].update(busqueda=[]), "busqueda"),
         (lambda d: d["capitulos"][0]["escenas"][1]["visual"].update(datos={"valor": 1}), "etiqueta"),
+        (lambda d: d["capitulos"][0]["escenas"][1]["visual"]["datos"].update(fuente=""), "fuente"),
         (lambda d: d["capitulos"][0]["escenas"][1].update(pausa=9), "pausa"),
         (lambda d: d.update(capitulos=[]), "capitulos"),
     ],
@@ -62,7 +63,7 @@ def test_markdown(tmp_path):
     ruta.write_text(
         "---\ntitulo: Título MD\netiquetas: a, b\nfuentes:\n- F1\n- F2\n---\n\n"
         "## Cap 1\n> stock: sun, solar farm\nPrimera frase\nque sigue.\n\n"
-        '> cifra: {"valor": 5, "etiqueta": "x"}\nSegunda.\n',
+        '> cifra: {"valor": 5, "etiqueta": "x", "fuente": "F1"}\nSegunda.\n',
         encoding="utf-8",
     )
     g = entrada.cargar(ruta)
@@ -70,7 +71,7 @@ def test_markdown(tmp_path):
     assert g.etiquetas == ["a", "b"] and g.fuentes == ["F1", "F2"]
     assert [e.narracion for e in g.escenas] == ["Primera frase que sigue.", "Segunda."]
     assert g.escenas[0].visual.busqueda == ["sun", "solar farm"]
-    assert g.escenas[1].visual.datos == {"valor": 5, "etiqueta": "x"}
+    assert g.escenas[1].visual.datos == {"valor": 5, "etiqueta": "x", "fuente": "F1"}
 
 
 def test_markdown_parrafo_sin_visual(tmp_path):

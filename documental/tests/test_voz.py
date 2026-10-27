@@ -113,3 +113,33 @@ def test_huella_cambia_con_ajustes():
     a = VozElevenLabs(_cfg()).huella()
     b = VozElevenLabs(Config(secretos=Secretos(elevenlabs_api_key="k", elevenlabs_voice_id="otra"))).huella()
     assert a != b
+
+
+class _SesionGet(_Sesion):
+    def __init__(self, respuesta):
+        super().__init__([])
+        self.respuesta = respuesta
+
+    def get(self, url, **kw):
+        if isinstance(self.respuesta, Exception):
+            raise self.respuesta
+        return self.respuesta
+
+
+@pytest.mark.parametrize(
+    "respuesta, esperado",
+    [
+        (_Respuesta(200, {"tier": "free"}), False),
+        (_Respuesta(200, {"tier": "creator"}), True),
+        (_Respuesta(401, texto="no"), None),
+        (requests.ConnectionError("x"), None),
+    ],
+)
+def test_licencia_segun_plan(respuesta, esperado):
+    comercial, detalle = VozElevenLabs(_cfg(), sesion=_SesionGet(respuesta)).licencia()
+    assert comercial is esperado and detalle
+
+
+def test_voz_inexistente_es_error_de_configuracion():
+    with pytest.raises(ErrorConfiguracion, match="no existe"):
+        VozElevenLabs(_cfg(), sesion=_SesionGet(_Respuesta(404))).describir_voz()

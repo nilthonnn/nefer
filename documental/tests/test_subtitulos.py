@@ -38,3 +38,16 @@ def test_srt_formato():
     bloques = srt.strip().split("\n\n")
     assert len(bloques) == 2
     assert re.match(r"1\n00:00:00,000 --> 00:00:00,\d{3}\nPrimera frase\.", bloques[0])
+
+
+def test_ass_sin_eventos_solapados():
+    # Palabras pegadas: el margen de 0.15 s del primer grupo invadiría el segundo.
+    p = [Palabra(t, i * 0.3, i * 0.3 + 0.29) for i, t in enumerate("Uno dos tres. Cuatro cinco seis.".split())]
+    eventos = []
+    for linea in a_ass(p, Config()).splitlines():
+        if linea.startswith("Dialogue:"):
+            _, ini, fin = linea.split(",")[:3]
+            a = [float(x) for x in ini.split(":")]
+            b = [float(x) for x in fin.split(":")]
+            eventos.append((a[0] * 3600 + a[1] * 60 + a[2], b[0] * 3600 + b[1] * 60 + b[2]))
+    assert all(fin <= sig_ini + 1e-9 for (_, fin), (sig_ini, _) in zip(eventos, eventos[1:]))

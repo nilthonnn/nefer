@@ -39,6 +39,10 @@ color = "&H00FFFFFF"  # ASS: &HAABBGGRR
 resaltado = "&H0001B3F5" # ámbar #f5b301
 
 [monetizacion]
-minutos_minimos = 8.0         # con 8 min o más se pueden poner anuncios a mitad del video
-proporcion_visual_propio = 0.25
-similitud_maxima = 0.45        # contra videos anteriores del canal
+minutos_minimos = 8.0            # con 8 min o más se pueden poner anuncios a mitad del video
+proporcion_visual_propio = 0.30  # fracción del TIEMPO en pantalla con visual propio
+similitud_maxima = 0.45          # contra videos anteriores del canal
+tarjetas_capitulo = true         # tarjeta animada al empezar cada capítulo
+segundos_tarjeta_capitulo = 3.0
+stock_unico_en_canal = true      # ningún clip de stock se repite entre videos
+correcciones_guion = 2           # rondas en que Claude corrige su propio guion

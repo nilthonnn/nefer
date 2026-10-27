@@ -58,6 +58,9 @@ class Guion:
     fuentes: list[str] = field(default_factory=list)
     miniatura: str = ""  # 2–5 palabras para la miniatura
     idioma: str = "es-419"
+    # Estructura narrativa elegida (cronológica, misterio...): variarla entre
+    # videos evita que el canal parezca salido de una sola plantilla.
+    estructura: str = ""
     origen: Path | None = None  # archivo de donde se leyó (para rutas relativas)
 
     @property

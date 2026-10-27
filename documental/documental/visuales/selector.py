@@ -25,7 +25,14 @@ log = obtener("visual")
 
 
 class Selector:
-    def __init__(self, config: Config, cache: Path, usar_remotion: bool = True, usar_stock: bool = True) -> None:
+    def __init__(
+        self,
+        config: Config,
+        cache: Path,
+        usar_remotion: bool = True,
+        usar_stock: bool = True,
+        stock_prohibido: set[str] | None = None,
+    ) -> None:
         self.tarjetas = VisualTarjetas(config)
         self.remotion: VisualRemotion | None = None
         self.stock: VisualStockMPT | None = None
@@ -37,7 +44,7 @@ class Selector:
                 log.warning("Remotion no disponible, uso tarjetas Pillow: %s", e)
         if usar_stock:
             try:
-                self.stock = VisualStockMPT(config, cache)
+                self.stock = VisualStockMPT(config, cache, stock_prohibido)
             except ErrorConfiguracion as e:
                 log.warning("Stock (MoneyPrinterTurbo) no disponible, uso tarjetas: %s", e)
 

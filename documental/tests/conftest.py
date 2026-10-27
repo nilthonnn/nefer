@@ -43,7 +43,7 @@ def guion_minimo(**extra) -> dict:
         "capitulos": [
             {"titulo": "Uno", "escenas": [
                 {"narracion": "La energía solar es abundante.", "visual": {"tipo": "stock", "busqueda": ["sun"]}},
-                {"narracion": "Y cada vez más barata.", "visual": {"tipo": "cifra", "datos": {"valor": 89, "etiqueta": "menos"}}},
+                {"narracion": "Y cada vez más barata.", "visual": {"tipo": "cifra", "datos": {"valor": 89, "etiqueta": "menos", "fuente": "IRENA 2023"}}},
             ]},
         ],
     }

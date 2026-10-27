@@ -36,11 +36,13 @@ from .errores import ErrorEntrada
 from .modelos import TIPOS_VISUAL, Capitulo, Escena, Guion, Visual
 
 # Campos mínimos de cada visual generado: sin ellos la composición sale vacía.
+# Las cifras y comparativas exigen "fuente": un dato en pantalla sin respaldo
+# es justo lo que hace que un revisor de YouTube dude de todo el video.
 _REQUERIDOS: dict[str, tuple[str, ...]] = {
     "titular": ("titulo",),
-    "cifra": ("valor", "etiqueta"),
+    "cifra": ("valor", "etiqueta", "fuente"),
     "linea_tiempo": ("titulo", "hitos"),
-    "comparativa": ("titulo", "barras"),
+    "comparativa": ("titulo", "barras", "fuente"),
     "final": (),
 }
 
@@ -105,6 +107,7 @@ def desde_dict(datos: dict[str, Any], origen: Path | None = None) -> Guion:
         fuentes=_lista_texto(datos.get("fuentes", []), "fuentes"),
         miniatura=str(datos.get("miniatura", "")),
         idioma=str(datos.get("idioma", "es-419")),
+        estructura=str(datos.get("estructura", "")),
         origen=origen,
     )
 
@@ -152,7 +155,7 @@ def _escena(datos: Any, donde: str, id_defecto: str, origen: Path | None) -> Esc
         if not ruta.is_file():
             raise ErrorEntrada(f"{donde}: no existe la imagen {ruta}")
         visual.ruta = str(ruta)
-    faltan = [c for c in _REQUERIDOS.get(tipo, ()) if c not in visual.datos]
+    faltan = [c for c in _REQUERIDOS.get(tipo, ()) if c not in visual.datos or visual.datos[c] in ("", None, [])]
     if faltan:
         raise ErrorEntrada(f"{donde}: visual '{tipo}' necesita en 'datos': {', '.join(faltan)}")
 

@@ -37,7 +37,7 @@ tema ──(Claude)──► guion.json ──► revisión humana
 
 | Archivo | Para qué |
 |---|---|
-| `<slug>.mp4` | H.264 High 1080p30 con AAC de 48 kHz y 384 kbps a −14 LUFS, con `faststart` (los parámetros que recomienda YouTube) |
+| `<slug>.mp4` (o `<slug>.previa.mp4`) | H.264 High 1080p30 con AAC de 48 kHz y 384 kbps a −14 LUFS, con `faststart` (los parámetros que recomienda YouTube) |
 | `miniatura.jpg` | 1280×720 y menos de 2 MB: fotograma de stock oscurecido con 2 a 4 palabras grandes |
 | `descripcion.txt` | Descripción, capítulos (`00:00 …`), fuentes, créditos de stock y música, y hashtags |
 | `subtitulos.srt` | Se sube como subtítulos en español (Latinoamérica); ayuda al SEO y a la accesibilidad |
@@ -139,32 +139,46 @@ duración de cada escena la decide la voz, nunca el guion.
 |---|---|---|
 | `stock` | MoneyPrinterTurbo (Pexels/Pixabay) | `busqueda`: 2 o 3 términos **en inglés** y fáciles de filmar |
 | `titular` | Remotion | `antetitulo`, `titulo` |
-| `cifra` | Remotion | `valor`, `prefijo`, `sufijo`, `decimales`, `etiqueta`, `fuente` |
+| `cifra` | Remotion | `valor`, `prefijo`, `sufijo`, `decimales`, `etiqueta`, `fuente` (obligatoria) |
 | `linea_tiempo` | Remotion | `titulo`, `hitos: [{anio, texto}]` |
-| `comparativa` | Remotion | `titulo`, `unidad`, `barras: [{etiqueta, valor}]`, `fuente` |
+| `comparativa` | Remotion | `titulo`, `unidad`, `barras: [{etiqueta, valor}]`, `fuente` (obligatoria) |
 | `imagen` | Foto o ilustración propia con efecto Ken Burns | `ruta` (relativa al guion) |
 | `final` | Pantalla final de 20 s con huecos para los elementos de YouTube | se añade sola si falta |
 
-Hay ejemplos en `ejemplos/`: uno en JSON y otro en Markdown, que es más cómodo
-para escribir a mano.
+Hay ejemplos en `ejemplos/`:
+- `guerra-de-las-corrientes.json`: el ejemplo completo y monetizable (9 min, 8 capítulos, estructura de duelo, 7 fuentes, ~37 % de visual propio, sin titulares manuales).
+- `historia-panel-solar.json`: un ejemplo corto (no llega a 8 min).
+- `independencia-energetica.md`: el formato Markdown, más cómodo para escribir a mano.
+
+Las tarjetas de capítulo se añaden solas, así que no hace falta poner un
+`titular` al inicio de cada capítulo.
 
 ## Pensado para monetizar
 
-YouTube no monetiza el **contenido no auténtico**, es decir, el producido en
-masa o repetitivo, ni el material reutilizado que no aporta nada propio. El
-sistema está diseñado para aportar valor y para avisarte cuando no lo hace.
-`auditoria.md` revisa lo siguiente:
+YouTube no monetiza el **contenido no auténtico**: el producido en masa, el
+repetitivo o el material reutilizado que no aporta nada propio. El sistema no
+se limita a avisar: **previene** cada problema lo antes posible, casi siempre
+antes de gastar en voz o render.
 
-- **Bloqueos.** Si la voz es de vista previa, si un clip de stock se repite o
-  si el guion se parece más de un 45 % a otro video del canal. Con
-  `--estricto`, el render se detiene.
-- **Avisos.**
-  - Duración menor de 8 minutos (sin anuncios a mitad del video).
-  - Capítulos que YouTube no aceptaría (menos de 3, o alguno de menos de 10 s).
-  - Menos del 25 % de las escenas con visual propio.
-  - Escenas que usaron un visual de respaldo.
-  - Guion sin fuentes.
-  - Ritmo de narración fuera de 120 a 185 palabras por minuto.
+| Riesgo | Qué hace el sistema |
+|---|---|
+| **Voz de prueba publicada por error** | La vista previa sale como `<slug>.previa.mp4`, con marca de agua «VISTA PREVIA - NO PUBLICAR» y `"previa": true` en `metadatos.json`, y no entra al historial del canal. Con ElevenLabs se consulta el plan de la cuenta: el plan gratuito no tiene licencia comercial y cuenta como bloqueo (`--estricto` lo detiene antes de sintetizar). `diagnostico` muestra el plan y la voz elegida. |
+| **Clips de stock repetidos** | Ningún clip se repite dentro de un video ni entre videos del canal (`salidas/stock_usados.jsonl`). Cada plano recibe un zoom lento, alternando acercar y alejar, y la gradación de color del canal, así que nunca es idéntico al original. `validar` avisa si dos escenas piden los mismos términos de búsqueda. |
+| **Guiones parecidos entre sí** | El guionista recibe la lista de videos ya publicados y elige la **estructura narrativa** menos usada (cronológica, misterio, mitos contra datos, caso de estudio o duelo). Se compara la narración (bigramas) y el título con todo el historial; más de un 45 % de parecido es bloqueo y se le devuelve a Claude para que lo reescriba. |
+| **Menos de 8 minutos** | El guionista pide un mínimo de 9 minutos; si la duración estimada no llega, Claude amplía el guion. `validar` dice cuántas palabras faltan. `metadatos.json` sugiere los puntos para anuncios a mitad del video (inicios de capítulo separados 2 minutos o más). |
+| **Pocos visuales propios** | Se mide por **tiempo en pantalla**, no por número de escenas (mínimo 30 %). Cada capítulo recibe una tarjeta animada automática y el guionista debe convertir cada cifra o fecha clave en una infografía. Una escena de stock que cae al respaldo no cuenta como propia. |
+| **Falta de fuentes** | Toda `cifra` y `comparativa` exige `fuente`, o el guion no se acepta. Si la narración dice números y el guion no tiene `fuentes`, es bloqueo. Además se avisa si la fuente de una infografía no aparece en la lista que va a la descripción. |
+
+### Flujo recomendado
+
+```bash
+python -m documental guion "tema" -o g.json   # Claude escribe y se autocorrige (hasta 2 rondas)
+python -m documental validar g.json           # gratis: duración, fuentes, parecido, visuales propios
+python -m documental render g.json --previa   # gratis: revisar ritmo y cortes (sale marcado)
+python -m documental render g.json --estricto # versión final; se detiene ante cualquier bloqueo
+```
+
+`auditoria.md` separa los hallazgos del **guion** y los del **render**.
 
 Esto, además, va integrado en el producto:
 
@@ -174,7 +188,7 @@ Esto, además, va integrado en el producto:
 - Créditos de stock y de música en la descripción.
 
 Antes de subir:
-1. Revisa y personaliza el guion. Tu criterio es lo que lo hace auténtico.
+1. Revisa y personaliza el guion, y **verifica cada fuente**. Tu criterio es lo que lo hace auténtico.
 2. Usa solo música con licencia, por ejemplo de la Biblioteca de audio de YouTube (ver `assets/musica/LEEME.md`).
 3. Marca «Contenido alterado o sintético» solo si muestras personas o hechos realistas que no ocurrieron.
 

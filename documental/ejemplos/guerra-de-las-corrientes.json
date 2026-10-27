@@ -1,0 +1,528 @@
+{
+  "slug": "guerra-de-las-corrientes",
+  "estructura": "comparacion",
+  "titulo": "Tesla contra Edison: la guerra que decidió cómo llega la luz a tu casa",
+  "miniatura": "LA GUERRA DE LA LUZ",
+  "descripcion": "A finales del siglo XIX, dos ideas se disputaron el futuro de la electricidad: la corriente continua de Edison y la corriente alterna de Tesla y Westinghouse. Hubo espectáculos macabros, una silla eléctrica y una catarata convertida en central.\n\nEn este video comparamos ambas tecnologías capítulo a capítulo, hacemos el cálculo que explica por qué ganó la alterna y mostramos por qué la continua está volviendo: en las líneas de ultra alta tensión y en cada sistema solar off-grid.",
+  "etiquetas": [
+    "guerra de las corrientes",
+    "Tesla vs Edison",
+    "historia de la electricidad",
+    "corriente alterna",
+    "corriente continua",
+    "energía off grid",
+    "Westinghouse",
+    "Niagara Falls",
+    "HVDC",
+    "historia de la tecnología",
+    "inversor solar"
+  ],
+  "fuentes": [
+    "Departamento de Energía de EE. UU., The War of the Currents: AC vs. DC Power (2014)",
+    "Smithsonian, Lighting a Revolution: la central de Pearl Street (1882)",
+    "Cornell University Library, The Execution of William Kemmler (1890)",
+    "IEEE, Milestone: Adams Hydroelectric Generating Plant, Niagara Falls (1895)",
+    "The New York Times, Off Goes the Power Current Started by Thomas Edison (14/11/2007)",
+    "State Grid Corporation of China, línea UHVDC Changji–Guquan de ±1100 kV (2019)",
+    "Cálculo propio con la ley de Joule (pérdida = corriente² × resistencia)"
+  ],
+  "capitulos": [
+    {
+      "titulo": "El gancho",
+      "escenas": [
+        {
+          "narracion": "Cada vez que enciendes una luz, usas al ganador de una guerra. Una guerra con espionaje industrial, animales sacrificados en público y hasta una silla eléctrica.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "vintage light bulb filament glowing"
+            ]
+          }
+        },
+        {
+          "narracion": "Pero aquí está lo extraño: la tecnología que perdió esa guerra hace más de cien años está regresando. Está en las líneas eléctricas más potentes del planeta, y probablemente en el techo de tu vecino.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "high voltage transmission towers sunset"
+            ]
+          }
+        },
+        {
+          "narracion": "Hoy enfrentamos a los dos bandos, round por round, con los números en la mano. Y al final vas a entender qué significa esta historia para cualquiera que quiera producir su propia energía.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "old electrical engineer workshop"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "Round uno: la ciudad de Edison",
+      "escenas": [
+        {
+          "narracion": "Septiembre de mil ochocientos ochenta y dos. En el sur de Manhattan, Thomas Edison pone en marcha la central de Pearl Street. Por primera vez, una ciudad recibe electricidad desde una planta central, como si fuera agua o gas.",
+          "visual": {
+            "tipo": "linea_tiempo",
+            "datos": {
+              "titulo": "La guerra de las corrientes",
+              "hitos": [
+                {
+                  "anio": "1882",
+                  "texto": "Edison inaugura Pearl Street en Nueva York"
+                },
+                {
+                  "anio": "1886",
+                  "texto": "Primer sistema de corriente alterna en Great Barrington"
+                },
+                {
+                  "anio": "1888",
+                  "texto": "Westinghouse licencia los motores de Tesla"
+                },
+                {
+                  "anio": "1893",
+                  "texto": "La alterna ilumina la Exposición de Chicago"
+                },
+                {
+                  "anio": "1896",
+                  "texto": "Niágara envía electricidad a Buffalo"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "narracion": "El sistema de Edison usaba corriente continua: los electrones avanzan siempre en la misma dirección, desde la central hasta la lámpara. Es simple, estable, y funciona muy bien con las baterías.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "new york city historic street 1900s"
+            ]
+          }
+        },
+        {
+          "narracion": "Pero tenía un problema enorme. La corriente continua de la época no se podía elevar ni reducir de tensión con facilidad, así que viajaba a baja tensión y perdía energía en cada metro de cable.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "copper wire cable spool close up"
+            ]
+          }
+        },
+        {
+          "narracion": "En la práctica, una central de Edison solo llegaba a los clientes que estaban a un kilómetro y medio, más o menos. Para iluminar una ciudad entera había que sembrar centrales en cada barrio.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 1.6,
+              "prefijo": "",
+              "sufijo": " km",
+              "decimales": 1,
+              "etiqueta": "alcance práctico de una central de corriente continua de baja tensión",
+              "fuente": "Departamento de Energía de EE. UU., The War of the Currents: AC vs. DC Power (2014)"
+            }
+          },
+          "pausa": 0.5
+        },
+        {
+          "narracion": "Edison lo sabía, pero tenía patentes, fábricas e inversionistas apostados a la corriente continua. Y no estaba dispuesto a cambiar de caballo a mitad de la carrera.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "vintage factory machinery belts"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "Round dos: la corriente que cambia de sentido",
+      "escenas": [
+        {
+          "narracion": "En mil ochocientos ochenta y cuatro llega a Nueva York un joven ingeniero serbio, Nikola Tesla. Trabaja un tiempo para Edison, pero sus ideas van en otra dirección. Literalmente.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "steam ship arriving harbor black and white"
+            ]
+          }
+        },
+        {
+          "narracion": "Tesla apuesta por la corriente alterna: los electrones van y vienen, cambiando de sentido decenas de veces por segundo. Parece un detalle técnico. Es la clave de todo.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "oscilloscope sine wave screen"
+            ]
+          }
+        },
+        {
+          "narracion": "Con corriente alterna, un aparato muy sencillo, el transformador, puede subir la tensión a miles de voltios para viajar lejos, y bajarla de nuevo antes de entrar a una casa.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "electrical transformer substation"
+            ]
+          }
+        },
+        {
+          "narracion": "¿Por qué importa tanto subir la tensión? Por una ley de la física: la energía que se pierde en un cable crece con el cuadrado de la corriente. Si para la misma potencia multiplicas la tensión por diez, la corriente baja diez veces, y las pérdidas bajan cien veces.",
+          "visual": {
+            "tipo": "comparativa",
+            "datos": {
+              "titulo": "Pérdidas en el mismo cable, misma potencia",
+              "unidad": "%",
+              "barras": [
+                {
+                  "etiqueta": "110 voltios",
+                  "valor": 100
+                },
+                {
+                  "etiqueta": "1100 voltios",
+                  "valor": 1
+                }
+              ],
+              "fuente": "Cálculo propio con la ley de Joule (pérdida = corriente² × resistencia)",
+              "destacar": "menor"
+            }
+          },
+          "pausa": 0.6
+        },
+        {
+          "narracion": "Ese es el argumento definitivo de la corriente alterna. No es que sea más elegante: es que permite generar la electricidad donde conviene y llevarla lejos sin desperdiciarla en el camino.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "long power lines across countryside"
+            ]
+          }
+        },
+        {
+          "narracion": "El empresario George Westinghouse lo entendió. En mil ochocientos ochenta y ocho licenció las patentes de los motores de Tesla y se lanzó a competir contra Edison ciudad por ciudad.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "vintage businessman office desk"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "Round tres: una guerra sucia",
+      "escenas": [
+        {
+          "narracion": "Entonces la competencia dejó de ser técnica. El bando de la corriente continua lanzó una campaña para convencer al público de que la alterna era un peligro mortal.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "old newspaper printing press"
+            ]
+          }
+        },
+        {
+          "narracion": "Un ingeniero llamado Harold Brown, apoyado por el entorno de Edison, organizó demostraciones públicas en las que electrocutaba animales con corriente alterna. El mensaje era brutal y simple: esto es lo que entrará a tu casa.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "crowd audience old theater"
+            ]
+          }
+        },
+        {
+          "narracion": "La campaña llegó a su punto más oscuro en agosto de mil ochocientos noventa. William Kemmler se convirtió en el primer condenado ejecutado en una silla eléctrica, en la prisión de Auburn, Nueva York. La silla funcionaba con corriente alterna.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 1,
+              "prefijo": "",
+              "sufijo": "ª",
+              "decimales": 0,
+              "etiqueta": "ejecución en silla eléctrica de la historia: Auburn, Nueva York, 6 de agosto de 1890",
+              "fuente": "Cornell University Library, The Execution of William Kemmler (1890)"
+            }
+          },
+          "pausa": 0.8
+        },
+        {
+          "narracion": "La ejecución fue un desastre que horrorizó a los testigos. Pero, contra lo que esperaban sus promotores, no frenó la expansión de la corriente alterna. Los números seguían de su lado.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "dark prison corridor"
+            ]
+          }
+        },
+        {
+          "narracion": "Y en los negocios, Edison iba perdiendo terreno. En mil ochocientos noventa y dos, su empresa se fusionó con su rival Thomson-Houston para formar General Electric. Su nombre desapareció de la marca, y la nueva compañía terminó adoptando también la corriente alterna.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "historic corporate building facade"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "Round cuatro: Chicago y Niágara",
+      "escenas": [
+        {
+          "narracion": "El golpe de efecto llegó en mil ochocientos noventa y tres. La Exposición Universal de Chicago quería ser la más brillante de la historia, y Westinghouse ganó el contrato para iluminarla con corriente alterna.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "world fair night illumination"
+            ]
+          }
+        },
+        {
+          "narracion": "Decenas de miles de lámparas encendidas a la vez frente a millones de visitantes. Para el público, la corriente peligrosa de los periódicos era, en realidad, la que hacía brillar el futuro.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "city lights night aerial timelapse"
+            ]
+          }
+        },
+        {
+          "narracion": "Faltaba la prueba más difícil: llevar mucha energía, muy lejos. La respuesta estaba en las cataratas del Niágara, donde se construyó una gran central hidroeléctrica con generadores de corriente alterna.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "niagara falls aerial"
+            ]
+          }
+        },
+        {
+          "narracion": "En noviembre de mil ochocientos noventa y seis, la electricidad del Niágara llegó a la ciudad de Buffalo, a unos cuarenta kilómetros. Veinticinco veces más lejos que el alcance de una central de Edison.",
+          "visual": {
+            "tipo": "comparativa",
+            "datos": {
+              "titulo": "Alcance del suministro eléctrico",
+              "unidad": "km",
+              "barras": [
+                {
+                  "etiqueta": "Edison, continua (1882)",
+                  "valor": 1.6
+                },
+                {
+                  "etiqueta": "Niágara, alterna (1896)",
+                  "valor": 40
+                }
+              ],
+              "fuente": "IEEE, Milestone: Adams Hydroelectric Generating Plant, Niagara Falls (1895)",
+              "destacar": "mayor"
+            }
+          },
+          "pausa": 0.6
+        },
+        {
+          "narracion": "Ese día la guerra quedó decidida. Durante el siglo veinte, prácticamente todas las redes eléctricas del mundo se construyeron con corriente alterna.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "electricity grid control room"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "La revancha de la corriente continua",
+      "escenas": [
+        {
+          "narracion": "La corriente continua no desapareció de golpe. En Nueva York siguió habiendo clientes con corriente continua durante más de un siglo. La compañía Con Edison cortó su último servicio en noviembre de dos mil siete.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 125,
+              "prefijo": "",
+              "sufijo": " años",
+              "decimales": 0,
+              "etiqueta": "años después de Pearl Street, Nueva York apagó su última corriente continua (2007)",
+              "fuente": "The New York Times, Off Goes the Power Current Started by Thomas Edison (14/11/2007)"
+            }
+          },
+          "pausa": 0.5
+        },
+        {
+          "narracion": "Y para entonces, la corriente continua ya estaba preparando su regreso. Los semiconductores modernos hicieron posible lo que en tiempos de Edison era imposible: convertir corriente continua a muy alta tensión, y volver.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "power electronics circuit board macro"
+            ]
+          }
+        },
+        {
+          "narracion": "Hoy, para mover enormes cantidades de energía a miles de kilómetros, la mejor opción vuelve a ser la continua, en líneas de ultra alta tensión. En largas distancias pierde menos que la alterna y no necesita sincronizar redes distintas.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "ultra high voltage dc converter station"
+            ]
+          }
+        },
+        {
+          "narracion": "El récord lo tiene China: una línea de corriente continua que funciona a un millón cien mil voltios y cruza el país durante más de tres mil kilómetros, desde Xinjiang hasta Anhui.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 1100,
+              "prefijo": "",
+              "sufijo": " kV",
+              "decimales": 0,
+              "etiqueta": "tensión de la línea de corriente continua Changji–Guquan, de más de 3000 km",
+              "fuente": "State Grid Corporation of China, línea UHVDC Changji–Guquan de ±1100 kV (2019)"
+            }
+          },
+          "pausa": 0.6
+        },
+        {
+          "narracion": "Edison perdió la guerra de su época. Pero su corriente, con la tecnología correcta, terminó ganando la batalla de las largas distancias.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "transmission line desert landscape"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "Lo que significa para tu casa off-grid",
+      "escenas": [
+        {
+          "narracion": "Y aquí la historia se vuelve personal. Si alguna vez piensas en producir tu propia energía, vas a vivir esta guerra en tu propia casa.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "off grid cabin forest"
+            ]
+          }
+        },
+        {
+          "narracion": "Un panel solar produce corriente continua. Una batería almacena corriente continua. Pero casi todo lo que enchufas en casa espera corriente alterna. El puente entre los dos mundos es el inversor.",
+          "visual": {
+            "tipo": "linea_tiempo",
+            "datos": {
+              "titulo": "El camino de la energía en una casa solar",
+              "hitos": [
+                {
+                  "anio": "Panel",
+                  "texto": "genera corriente continua"
+                },
+                {
+                  "anio": "Regulador",
+                  "texto": "carga la batería sin dañarla"
+                },
+                {
+                  "anio": "Batería",
+                  "texto": "almacena corriente continua"
+                },
+                {
+                  "anio": "Inversor",
+                  "texto": "convierte a corriente alterna"
+                },
+                {
+                  "anio": "Casa",
+                  "texto": "electrodomésticos de siempre"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "narracion": "Cada conversión cuesta un poco de energía. Por eso muchas instalaciones aisladas usan aparatos que funcionan directamente con corriente continua: luces, refrigeradores y bombas de agua de doce, veinticuatro o cuarenta y ocho voltios.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "rv camper solar battery bank"
+            ]
+          }
+        },
+        {
+          "narracion": "Y por la misma ley que le dio la victoria a Tesla, en un sistema solar también conviene subir la tensión: a cuarenta y ocho voltios circula cuatro veces menos corriente que a doce para la misma potencia, y las pérdidas en los cables bajan dieciséis veces.",
+          "visual": {
+            "tipo": "comparativa",
+            "datos": {
+              "titulo": "Pérdidas en el cableado, misma potencia",
+              "unidad": "%",
+              "barras": [
+                {
+                  "etiqueta": "Sistema de 12 V",
+                  "valor": 100
+                },
+                {
+                  "etiqueta": "Sistema de 48 V",
+                  "valor": 6.25
+                }
+              ],
+              "fuente": "Cálculo propio con la ley de Joule (pérdida = corriente² × resistencia)",
+              "destacar": "menor"
+            }
+          },
+          "pausa": 0.6
+        },
+        {
+          "narracion": "Es exactamente el mismo cálculo que se hacía en mil ochocientos ochenta y ocho, solo que ahora cabe en un garaje.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "garage workshop tools wall"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "El veredicto",
+      "escenas": [
+        {
+          "narracion": "Entonces, ¿quién ganó? Tesla y Westinghouse ganaron la red eléctrica del siglo veinte. Pero la corriente continua de Edison está ganando el siglo veintiuno: en los paneles, en las baterías, en los autos eléctricos y en las autopistas de energía.",
+          "visual": {
+            "tipo": "linea_tiempo",
+            "datos": {
+              "titulo": "El veredicto",
+              "hitos": [
+                {
+                  "anio": "Siglo XIX",
+                  "texto": "Guerra de propaganda: gana la alterna"
+                },
+                {
+                  "anio": "Siglo XX",
+                  "texto": "Redes de todo el mundo en alterna"
+                },
+                {
+                  "anio": "Siglo XXI",
+                  "texto": "Vuelve la continua: paneles, baterías, ultra alta tensión"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "narracion": "La lección es más grande que una rivalidad. La mejor tecnología no es la que gana una guerra de propaganda: es la que mejor resuelve el problema de su tiempo. Y el problema de nuestro tiempo es producir energía limpia cerca de donde se usa.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "family house rooftop solar morning"
+            ]
+          }
+        },
+        {
+          "narracion": "Si quieres ver cómo se diseña un sistema solar desde cero, con los números reales de una casa, te dejo ese video aquí. Nos vemos en la próxima investigación.",
+          "visual": {
+            "tipo": "final",
+            "datos": {
+              "mensaje": "¿Diseñamos tu sistema solar?"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -3,10 +3,20 @@ from pathlib import Path
 from documental import entrada
 from documental.config import Config
 from documental.modelos import Atribucion, ClipEscena, Locucion, Palabra, Tramo
-from documental.monetizacion import auditar, informe, similitud
-from documental.publicacion import capitulos, descripcion, etiquetas, marca_tiempo, problemas_capitulos
+from dataclasses import replace
+
+from documental.monetizacion import (
+    auditar_guion,
+    auditar_render,
+    estimar_duracion,
+    informe,
+    proporcion_propia_estimada,
+    similitud,
+)
+from documental.publicacion import capitulos, descripcion, etiquetas, marca_tiempo, pausas_publicitarias, problemas_capitulos
 
 from conftest import guion_minimo
+from test_adaptadores import guion_largo
 
 
 def _tramos(guion, duracion=12.0, ppm=150):
@@ -64,25 +74,66 @@ def test_auditoria_bloqueos_y_avisos():
     g = entrada.desde_dict(guion_minimo())
     tramos = _tramos(g)
     clips = {
-        "c01e01": ClipEscena(Path("a"), False, ids_stock=["abc"]),
+        "c01e01": ClipEscena(Path("a"), False, ids_stock=["abc", "otro"]),
         "c01e02": ClipEscena(Path("b"), False, ids_stock=["abc"]),
     }
     historial = [{"slug": "otro", "titulo": "Otro", "narracion": " ".join(e.narracion for e in g.escenas)}]
-    h = auditar(g, tramos, clips, {}, voz_comercial=False, historial=historial, cfg=Config())
-    bloqueos = [x.mensaje for x in h if x.nivel == "bloqueo"]
-    assert any("vista previa" in m for m in bloqueos)
-    assert any("se repite" in m for m in bloqueos)
-    assert any("se parece" in m for m in bloqueos)
+    h = auditar_guion(g, historial, Config()) + auditar_render(
+        g, tramos, clips, {}, (False, "voz local"), {"otro": "video-anterior"}, Config())
+    bloqueos = " ".join(x.mensaje for x in h if x.nivel == "bloqueo")
+    assert "licencia comercial" in bloqueos
+    assert "se repite" in bloqueos
+    assert "ya se usó en el video «video-anterior»" in bloqueos
+    assert "se parece" in bloqueos
+    assert "no cita ninguna fuente" in bloqueos  # hay una cifra (89) y fuentes = []
     avisos = " ".join(x.mensaje for x in h if x.nivel == "aviso")
-    assert "anuncios a mitad" in avisos and "visual propio" in avisos and "fuentes" in avisos
+    assert "anuncios a mitad" in avisos and "Duración estimada" in avisos
     assert "Bloqueos" in informe(h)
 
 
-def test_auditoria_limpia():
+def test_licencia_no_verificada_es_aviso():
     g = entrada.desde_dict(guion_minimo(fuentes=["F"]))
+    h = auditar_render(g, _tramos(g), {}, {}, (None, "sin red"), {}, Config())
+    assert any(x.nivel == "aviso" and "sin red" in x.mensaje for x in h)
+
+
+def test_fuente_que_no_esta_en_la_lista():
+    g = entrada.desde_dict(guion_minimo(fuentes=["Agencia Internacional de Energía 2022"]))
+    h = auditar_guion(g, [], Config())
+    assert any("IRENA 2023" in x.mensaje and "no aparece" in x.mensaje for x in h)
+    g = entrada.desde_dict(guion_minimo(fuentes=["IRENA, Renewable Power Generation Costs 2023"]))
+    assert not any("no aparece" in x.mensaje for x in auditar_guion(g, [], Config()))
+
+
+def test_terminos_de_stock_repetidos():
+    datos = guion_minimo(fuentes=["IRENA 2023"])
+    datos["capitulos"][0]["escenas"][1]["visual"] = {"tipo": "stock", "busqueda": ["SUN"]}
+    h = auditar_guion(entrada.desde_dict(datos), [], Config())
+    assert any("«SUN» se repite" in x.mensaje for x in h)
+
+
+def test_proporcion_propia_por_tiempo_y_tarjetas():
+    cfg = Config()
     datos = guion_minimo(fuentes=["F"])
-    tramos = _tramos(g, duracion=250)
-    clips = {"c01e01": ClipEscena(Path("a"), False, ids_stock=["1"]), "c01e02": ClipEscena(Path("b"), True)}
-    h = auditar(g, tramos, clips, {}, True, [], Config())
-    # Solo queda el aviso de capítulos (el guion mínimo tiene uno).
-    assert [x.nivel for x in h] == ["aviso"] and "Capítulos" in h[0].mensaje
+    datos["capitulos"].append({"titulo": "Dos", "escenas": [{"narracion": "uno dos tres cuatro", "visual": {"tipo": "stock", "busqueda": ["x"]}}]})
+    g = entrada.desde_dict(datos)
+    # 3 s de tarjeta del capítulo "Dos" cuentan como propios.
+    sin = proporcion_propia_estimada(g, replace(cfg, monetizacion=replace(cfg.monetizacion, tarjetas_capitulo=False)))
+    con = proporcion_propia_estimada(g, cfg)
+    assert con > sin
+    palabras = sum(len(e.narracion.split()) for e in g.escenas)
+    assert abs(estimar_duracion(g, cfg) - (palabras / 150 * 60 + 3 + 20)) < 0.01
+
+
+def test_pausas_publicitarias():
+    caps = [(0, "a"), (90, "b"), (130, "c"), (200, "d"), (300, "e"), (590, "f")]
+    assert pausas_publicitarias(caps, 600) == [130, 300]
+
+
+def test_auditoria_limpia():
+    g = entrada.desde_dict(guion_largo())
+    tramos = _tramos(g, duracion=40)
+    clips = {e.id: ClipEscena(Path("a"), not e.visual.tipo == "stock", ids_stock=[e.id] if e.visual.tipo == "stock" else [])
+             for e in g.escenas}
+    h = auditar_guion(g, [], Config()) + auditar_render(g, tramos, clips, {}, (True, "plan creator"), {}, Config())
+    assert h == []

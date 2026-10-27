@@ -126,6 +126,21 @@ def miniatura(texto: str, fondo: Path | None, salida: Path, cfg: Config) -> None
         img.save(salida, "JPEG", quality=75, optimize=True)
 
 
+def pausas_publicitarias(caps: list[tuple[float, str]], total: float, separacion: float = 120.0) -> list[float]:
+    """Inicios de capítulo aptos para anuncios a mitad del video.
+
+    Un anuncio en un cambio de tema molesta menos que uno a mitad de frase,
+    y YouTube permite elegir los puntos a mano. Se exigen 2 min desde el
+    inicio y entre pausas, y ninguna en el último minuto.
+    """
+    pausas: list[float] = []
+    for inicio, _ in caps:
+        ultima = pausas[-1] if pausas else 0.0
+        if inicio >= separacion and inicio - ultima >= separacion and inicio <= total - 60:
+            pausas.append(inicio)
+    return pausas
+
+
 def escribir_paquete(
     carpeta: Path,
     guion: Guion,
@@ -133,6 +148,7 @@ def escribir_paquete(
     atribuciones: list[Atribucion],
     musica: str,
     sintetica: bool,
+    previa: bool = False,
 ) -> dict:
     """Escribe ``metadatos.json`` y ``descripcion.txt``; devuelve los metadatos."""
     total = tramos[-1].inicio + tramos[-1].duracion if tramos else 0.0
@@ -146,6 +162,10 @@ def escribir_paquete(
         "categoria": "Ciencia y tecnología",
         "duracion_segundos": round(total, 2),
         "capitulos": [{"inicio": marca_tiempo(t), "titulo": c} for t, c in caps],
+        "pausas_publicitarias": [marca_tiempo(t) for t in pausas_publicitarias(caps, total)],
+        # Una vista previa (voz sin licencia comercial) nunca debe subirse.
+        "previa": previa,
+        "estructura": guion.estructura,
         "contenido_sintetico_realista": False,
         "atribuciones": [asdict(a) for a in atribuciones],
         "fuentes": guion.fuentes,

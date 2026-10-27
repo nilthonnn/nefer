@@ -30,7 +30,7 @@ COMPOSICIONES = {
 _DEFECTOS = {
     "titular": {"antetitulo": ""},
     "cifra": {"prefijo": "", "sufijo": "", "decimales": 0, "fuente": ""},
-    "comparativa": {"unidad": "", "fuente": ""},
+    "comparativa": {"unidad": "", "fuente": "", "destacar": "mayor"},
     "final": {"mensaje": "", "canal": ""},
 }
 

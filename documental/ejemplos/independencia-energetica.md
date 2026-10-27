@@ -3,7 +3,7 @@ titulo: ¿Cuántos paneles necesitas para vivir sin la red eléctrica?
 miniatura: CERO CUENTA DE LUZ
 etiquetas: off grid, energía solar, independencia energética, baterías
 fuentes:
-- Ejemplo de formato Markdown: reemplaza con tus fuentes reales
+- Valores y cálculos ilustrativos (ejemplo de formato: reemplaza con tus fuentes reales)
 ---
 
 ## El gancho
@@ -18,5 +18,5 @@ Antes de comprar un solo panel, hay que responder una pregunta: cuánta energía
 Supongamos diez kilovatios hora al día. Ese número decide todo lo demás.
 
 ## Paneles y baterías
-> comparativa: {"titulo": "Lo que pide tu casa", "unidad": "kWh", "barras": [{"etiqueta": "Consumo diario", "valor": 10}, {"etiqueta": "Batería sugerida", "valor": 15}]}
+> comparativa: {"titulo": "Lo que pide tu casa", "unidad": "kWh", "barras": [{"etiqueta": "Consumo diario", "valor": 10}, {"etiqueta": "Batería sugerida", "valor": 15}], "fuente": "cálculo ilustrativo"}
 Para atravesar la noche y un día nublado, la batería debe guardar más de lo que consumes en un día.
