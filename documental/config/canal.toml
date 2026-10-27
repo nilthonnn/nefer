@@ -1,0 +1,44 @@
+# Identidad y parámetros técnicos del canal. Lo sensible va en .env, no aquí.
+
+[canal]
+nombre = "Energía Libre"
+# Se usa en la pantalla final y en la descripción.
+llamado_final = "¿Seguimos investigando? Mira este video"
+idioma = "es-419"
+
+[video]
+ancho = 1920
+alto = 1080
+fps = 30
+crf = 18             # 18 ≈ visualmente sin pérdida; YouTube recomprime igual
+preset = "medium"
+transicion = "fade"  # cualquier transición de xfade de ffmpeg
+transicion_segundos = 0.5
+pantalla_final_segundos = 20   # YouTube permite elementos finales en los últimos 5–20 s
+
+[voz]
+# Ajustes pensados para narración documental con energía (no de audiolibro).
+estabilidad = 0.42
+similitud = 0.8
+estilo = 0.3
+refuerzo_hablante = true
+velocidad = 1.04
+
+[audio]
+lufs = -14.0          # sonoridad de referencia de YouTube
+pico_db = -1.0
+musica_db = -20.0     # nivel base de la música bajo la voz
+musica = "assets/musica"
+
+[subtitulos]
+quemados = true       # subtítulos dinámicos dentro del video (retienen audiencia)
+fuente = "Inter"
+tamano = 76
+max_palabras = 5
+color = "&H00FFFFFF"  # ASS: &HAABBGGRR
+resaltado = "&H0001B3F5" # ámbar #f5b301
+
+[monetizacion]
+minutos_minimos = 8.0         # con 8 min o más se pueden poner anuncios a mitad del video
+proporcion_visual_propio = 0.25
+similitud_maxima = 0.45        # contra videos anteriores del canal

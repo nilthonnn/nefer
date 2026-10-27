@@ -1,0 +1,75 @@
+{
+  "slug": "historia-panel-solar",
+  "titulo": "El panel solar: de un experimento de 1839 a la energía más barata del mundo",
+  "miniatura": "DE 1839 A TU TECHO",
+  "descripcion": "Un joven de 19 años descubrió en 1839 que la luz podía producir electricidad. Hicieron falta más de cien años, una carrera espacial y una caída de precios histórica para que esa idea llegara a los techos de todo el mundo.\n\nEn este video recorremos la historia del panel solar y los números que explican por qué hoy es una de las formas más baratas de generar electricidad.",
+  "etiquetas": ["energía solar", "historia de la tecnología", "paneles solares", "energía renovable", "off grid", "independencia energética", "Bell Labs", "Vanguard I"],
+  "fuentes": [
+    "IRENA, Renewable Power Generation Costs in 2022 (2023)",
+    "Bell Labs: anuncio de la celda solar de silicio, 25 de abril de 1954",
+    "NASA: Vanguard 1, primer satélite alimentado por energía solar (1958)"
+  ],
+  "capitulos": [
+    {
+      "titulo": "El gancho",
+      "escenas": [
+        {
+          "narracion": "La electricidad más barata que la humanidad ha producido no sale de una represa ni de un reactor. Sale de un rectángulo de vidrio que cabe en tu techo.",
+          "visual": {"tipo": "stock", "busqueda": ["solar panels rooftop aerial", "sunlight solar panel close up"]}
+        },
+        {
+          "narracion": "Y su historia empieza con un joven de diecinueve años, en un laboratorio de París, hace casi dos siglos.",
+          "visual": {"tipo": "stock", "busqueda": ["old laboratory glassware", "paris historic street"]}
+        }
+      ]
+    },
+    {
+      "titulo": "Un descubrimiento accidental",
+      "escenas": [
+        {
+          "narracion": "En mil ochocientos treinta y nueve, Edmond Becquerel notó que ciertos materiales generaban una pequeña corriente al recibir luz.",
+          "visual": {"tipo": "titular", "datos": {"antetitulo": "Capítulo 1", "titulo": "Un descubrimiento accidental"}}
+        },
+        {
+          "narracion": "Faltaba más de un siglo para convertir esa curiosidad en una fuente de energía. El salto llegó en mil novecientos cincuenta y cuatro, en los laboratorios Bell de Estados Unidos.",
+          "visual": {"tipo": "linea_tiempo", "datos": {"titulo": "De la curiosidad a la celda", "hitos": [
+            {"anio": "1839", "texto": "Becquerel descubre el efecto fotovoltaico"},
+            {"anio": "1954", "texto": "Bell Labs presenta la celda solar de silicio"},
+            {"anio": "1958", "texto": "Vanguard I vuela con paneles solares"}
+          ]}},
+          "pausa": 0.4
+        }
+      ]
+    },
+    {
+      "titulo": "Del espacio a tu techo",
+      "escenas": [
+        {
+          "narracion": "Al principio era tan cara que solo tenía sentido donde no había otra opción: el espacio. En mil novecientos cincuenta y ocho, el satélite Vanguard uno funcionó con energía solar.",
+          "visual": {"tipo": "stock", "busqueda": ["satellite orbit earth", "space station solar array"]}
+        },
+        {
+          "narracion": "Y lo que antes era tecnología espacial, hoy se instala en una casa de campo para vivir sin depender de la red eléctrica.",
+          "visual": {"tipo": "stock", "busqueda": ["off grid cabin solar", "rural house solar panels"]}
+        }
+      ]
+    },
+    {
+      "titulo": "La caída del precio",
+      "escenas": [
+        {
+          "narracion": "Entre dos mil diez y dos mil veintidós, el costo de la electricidad de las grandes plantas solares cayó un ochenta y nueve por ciento.",
+          "visual": {"tipo": "cifra", "datos": {"valor": 89, "sufijo": " %", "etiqueta": "cayó el costo de la electricidad solar entre 2010 y 2022", "fuente": "IRENA 2023"}},
+          "pausa": 0.6
+        },
+        {
+          "narracion": "Pasó de casi cuarenta y cinco centavos de dólar por kilovatio hora a menos de cinco. Esa caída lo cambió todo.",
+          "visual": {"tipo": "comparativa", "datos": {"titulo": "Costo de la electricidad solar (USD por kWh)", "unidad": "¢", "barras": [
+            {"etiqueta": "2010", "valor": 44.5},
+            {"etiqueta": "2022", "valor": 4.9}
+          ], "fuente": "IRENA 2023"}}
+        }
+      ]
+    }
+  ]
+}

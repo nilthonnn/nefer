@@ -246,6 +246,14 @@ su QR en `https://nilthonnn.github.io/nefer/rd-rental/`. La copia se rehace con
 `python3 herramientas/publicar-clon.py` y `tests/test_publicacion_clon.py`
 falla si se queda atrás.
 
+## Proyectos independientes
+
+`documental/` es un generador de documentales para YouTube (energía
+renovable, vida off-grid, historia de la tecnología): guion → voz ElevenLabs
+→ stock vía MoneyPrinterTurbo + infografías Remotion → MP4 con paquete de
+publicación. No comparte código ni dependencias con `nefer`; tiene su propio
+`pyproject.toml`, pruebas y [README](documental/README.md).
+
 ## Pruebas
 
 ```bash
