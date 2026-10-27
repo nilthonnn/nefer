@@ -1,0 +1,30 @@
+{
+  "name": "shortsfactory-remotion",
+  "private": true,
+  "type": "module",
+  "description": "Motor de render vertical (1080x1920) de ShortsFactory. Lo invoca shortsfactory/visuals/render.py.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "typecheck": "tsc -p .",
+    "test": "tsc -p . && node --experimental-strip-types src/lib/props.test.ts"
+  },
+  "dependencies": {
+    "@fontsource/anton": "5.3.0",
+    "@fontsource/bebas-neue": "5.3.0",
+    "@fontsource/inter": "5.3.0",
+    "@fontsource/montserrat": "5.3.0",
+    "@fontsource/oswald": "5.3.0",
+    "@fontsource/poppins": "5.3.0",
+    "@remotion/cli": "4.0.534",
+    "@remotion/fonts": "4.0.534",
+    "@remotion/zod-types": "4.0.534",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.534",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.12",
+    "typescript": "5.6.3"
+  }
+}

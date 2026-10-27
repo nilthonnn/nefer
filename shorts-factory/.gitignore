@@ -1,0 +1,11 @@
+.env
+runs/
+estado/*
+!estado/.gitkeep
+assets/musica/*
+!assets/musica/LEEME.md
+remotion/node_modules/
+remotion/public/runs/
+remotion/out/
+client_secret*.json
+token*.json

@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shortsfactory"
+version = "0.1.0"
+description = "ShortsFactory-Enterprise: Shorts verticales de 15 s sobre tecnología y economía, anclados en datos reales."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+llm = ["anthropic>=0.40", "openai>=1.40"]
+kokoro = ["kokoro>=0.7.16", "soundfile>=0.12"]
+edge = ["edge-tts>=7.0"]
+youtube = ["google-api-python-client>=2.130", "google-auth>=2.30", "google-auth-oauthlib>=1.2"]
+dev = ["pytest>=7.4"]
+todo = ["shortsfactory[llm,kokoro,edge,youtube]"]
+
+[project.scripts]
+shortsfactory = "shortsfactory.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["shortsfactory*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["render: renderiza con Remotion (lento; se activa con SF_TEST_RENDER=1)"]
