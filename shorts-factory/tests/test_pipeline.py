@@ -67,3 +67,18 @@ def test_run_completo_real(cfg, tmp_path):
     assert r.estado == Estado.COMPLETADO, r.error
     assert r.artefactos["qa"]["duracion"] <= 15.1 and r.artefactos["publicable"] is False
     assert not (cfg.remotion_dir / "public" / "runs" / r.run_id).exists()  # limpieza
+
+
+def test_qa_exige_datos_verificables(monkeypatch, cfg, serie, tendencia, tmp_path):
+    from shortsfactory import qa
+
+    monkeypatch.setattr(qa, "revisar", lambda *a, **k: {"duracion": 14.0, "lufs": -14.0})
+    p = Pipeline(cfg)
+    base = _registro(serie, tendencia, tmp_path, voz_publicable=True)
+    base.artefactos["guion"]["generador"] = "editorial"
+    # Serie local sin URL (la sintética): bloqueada.
+    assert p.qa(base)["motivos_no_publicable"] == ["datos locales sin URL de fuente verificable"]
+    # Serie del Banco Mundial: publicable.
+    base.artefactos["serie_origen"] = "worldbank"
+    salida = p.qa(base)
+    assert salida["publicable"] is True and salida["motivos_no_publicable"] == []

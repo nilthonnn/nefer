@@ -78,12 +78,36 @@ SF_LLM=plantilla SF_TTS=espeak python -m shortsfactory run --topic "Inflación" 
 # Real, sin subir:
 python -m shortsfactory run --topic "La crisis de los semiconductores"
 
+# Guion EDITORIAL (escrito por una persona; las cifras las pone la serie real):
+python -m shortsfactory run --topic "La crisis de los semiconductores" \
+    --guion guiones/crisis-semiconductores.json --exigir-publicable
+
 # Real, tendencia automática, subida como privado:
 python -m shortsfactory run --auto-trend --publicar private
 ```
 
 Cada run deja en `runs/<id>/`: `short.mp4`, `guion.json`, `estado.json` (la FSM con
 artefactos y reintentos) y `auditoria.jsonl` (el log estructurado).
+
+## El filtro de publicación
+
+Un Short solo es **publicable** si cumple todo esto (si no, `PUBLICACION` lo bloquea y
+`--exigir-publicable` sale con código 4):
+
+| Regla | Por qué |
+|---|---|
+| Guion de LLM o **editorial** (nunca de plantilla) | Una plantilla repetida es justo el «contenido producido en masa» que YouTube no monetiza |
+| Pasa todas las heurísticas (gancho, bucle, loop, cifras de la serie, sin consejos de inversión, sin parecerse a Shorts anteriores) | Retención y veracidad |
+| Cabe en 15 s contando **palabras habladas** («18,5%» son 5) | Si la voz no cabe, se corta el loop o se acelera de forma artificial |
+| Voz publicable (Kokoro o Edge; nunca espeak) | Calidad y licencia |
+| Datos verificables: API del Banco Mundial o archivo con la URL de su fuente | Cualquiera debe poder comprobar el dato |
+| QA del MP4: 1080×1920, fps, audio, ≤ 15 s y −14 LUFS ± 1,5 | Calidad técnica |
+
+Los **guiones editoriales** (`guiones/*.json`) son la vía más sólida: el ángulo y las frases
+son de autoría humana, y las cifras salen de la serie mediante huecos (`{ultimo}`,
+`{anio_primero}`, `{verbo}`...), así nunca quedan mal copiadas. En cada PR, el job `muestra`
+produce uno real (Kokoro + Banco Mundial) y falla si no sale publicable; el MP4 queda como
+artefacto.
 
 ## YouTube: configuración (una vez)
 
@@ -118,7 +142,7 @@ memoria del canal en caché y sube como artefacto el video, el estado, el guion 
 ## Pruebas
 
 ```bash
-python -m pytest -q                              # 61 pruebas, sin red (dobles para LLM, HTTP, YouTube y voz)
+python -m pytest -q                              # 71 pruebas, sin red (dobles para LLM, HTTP, YouTube y voz)
 SF_TEST_RENDER=1 python -m pytest -q -m render   # render real de punta a punta
 (cd remotion && npm test)                        # tipos + lógica pura en TypeScript
 ```

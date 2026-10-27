@@ -22,7 +22,8 @@ from ..logs import obtener
 from ..memory import Memoria
 from ..models import Guion, Serie, Tendencia
 from ..settings import Settings
-from .heuristicas import Evaluacion, evaluar
+from .editorial import cifra
+from .heuristicas import PALABRAS_POR_SEGUNDO_MAX, Evaluacion, evaluar
 
 log = obtener("guion")
 
@@ -51,7 +52,9 @@ ESQUEMA = {
 }
 
 SISTEMA = """Eres guionista de YouTube Shorts sobre tecnología y economía para público latinoamericano.
-Escribes en español latino neutro. Cada Short dura como máximo {duracion:.0f} segundos ({palabras} palabras como máximo).
+Escribes en español latino neutro. Cada Short dura como máximo {duracion:.0f} segundos: {palabras} palabras HABLADAS como máximo
+(las cifras cuentan como se pronuncian: "18,5%" son 5 palabras; los años, 3). Prefiere pocas cifras bien elegidas:
+el gráfico ya muestra los años.
 
 Estructura obligatoria:
 1. Gancho (0–3 s, ≤ 10 palabras): una cifra sorprendente, una pregunta o un contraste. Prohibido saludar, "en este video" o "¿sabías que…?".
@@ -182,7 +185,7 @@ def escribir(
         return guion, evaluar(guion, serie, tendencia, cfg.duracion_max, memoria, cfg.similitud_maxima)
 
     proveedor = proveedor or (ProveedorAnthropic(cfg) if cfg.llm_proveedor == "anthropic" else ProveedorOpenAI(cfg))
-    maximo = int(cfg.duracion_max * 2.75)
+    maximo = int(cfg.duracion_max * PALABRAS_POR_SEGUNDO_MAX)
     sistema = SISTEMA.format(duracion=cfg.duracion_max, palabras=maximo)
     recientes = [e.get("titulo", "") for e in memoria.entradas(15)]
     pedido = (
@@ -212,26 +215,21 @@ def escribir(
 # --- generador local (solo pruebas) ------------------------------------------------
 
 
-def _fmt(valor: float) -> str:
-    texto = f"{valor:.1f}".rstrip("0").rstrip(".")
-    return texto.replace(".", ",")
-
-
 def plantilla(tendencia: Tendencia, serie: Serie, rng: random.Random) -> Guion:
     """Guion determinista a partir de la serie. Marcado como 'plantilla': no publicable."""
     p0, p1 = serie.puntos[0], serie.ultimo
     u = "%" if serie.unidad.startswith("%") else f" {serie.unidad}"
     sube = p1.valor >= p0.valor
-    ganchos = [f"{_fmt(p1.valor)}{u}: el dato que nadie mira", f"Nadie habla de este {_fmt(p1.valor)}{u}"]
-    promesas = ["La razón está en este gráfico.", "Pero hay un detalle que cambia todo.", "Te explico con un solo dato."]
-    cierres = ["Y por eso", "Y eso explica por qué", "Así que la pregunta es"]
+    ganchos = [f"{cifra(p1.valor)}{u}: el dato que nadie mira", f"Nadie habla de este {cifra(p1.valor)}{u}"]
+    promesas = ["La razón está en este gráfico.", "Pero hay un detalle clave.", "Te explico con un dato."]
+    cierres = ["Y por eso", "Así que", "Y eso explica"]
     return Guion(
         titulo=f"{serie.indicador} en {serie.pais_nombre}: {p0.anio} vs {p1.anio}"[:60],
         frases=[
-            {"texto": rng.choice(ganchos), "visual": "cifra", "enfasis": [_fmt(p1.valor)], "pausa_despues": 0.2},
+            {"texto": rng.choice(ganchos), "visual": "cifra", "enfasis": [cifra(p1.valor)], "pausa_despues": 0.2},
             {"texto": rng.choice(promesas), "visual": "texto", "enfasis": []},
-            {"texto": f"En {p0.anio} estaba en {_fmt(p0.valor)}{u}.", "visual": "grafico", "enfasis": [str(p0.anio)]},
-            {"texto": f"En {p1.anio} {'subió' if sube else 'bajó'} a {_fmt(p1.valor)}{u}.", "visual": "grafico",
+            {"texto": f"En {p0.anio} era {cifra(p0.valor)}{u}.", "visual": "grafico", "enfasis": [str(p0.anio)]},
+            {"texto": f"Hoy {'subió' if sube else 'bajó'}.", "visual": "grafico",
              "enfasis": ["subió" if sube else "bajó"], "pausa_despues": 0.3},
             {"texto": rng.choice(cierres), "visual": "broll", "broll_busqueda": "city skyline night", "enfasis": []},
         ],

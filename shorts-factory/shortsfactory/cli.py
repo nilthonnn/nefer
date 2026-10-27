@@ -9,7 +9,8 @@
     shortsfactory auth                # obtener YOUTUBE_REFRESH_TOKEN (una vez, en local)
     shortsfactory cuota               # unidades usadas hoy
 
-Códigos de salida: 0 ok · 1 run fallido · 2 configuración · 3 cuota agotada.
+Códigos de salida: 0 ok · 1 run fallido · 2 configuración · 3 cuota agotada ·
+4 no publicable (con --exigir-publicable).
 """
 
 from __future__ import annotations
@@ -54,8 +55,16 @@ def cmd_run(args, cfg: Settings) -> int:
 
     if not args.topic and not args.auto_trend:
         raise ErrorConfiguracion("Indica --topic \"...\" o --auto-trend")
-    opciones = {"tema": args.topic, "publicar": args.publicar, "semilla": args.seed, "serie_archivo": args.serie}
-    return _resumen(Pipeline(cfg).ejecutar(opciones))
+    if args.guion and args.auto_trend:
+        raise ErrorConfiguracion("Un guion editorial va con --topic, no con --auto-trend")
+    opciones = {"tema": args.topic, "publicar": args.publicar, "semilla": args.seed, "serie_archivo": args.serie,
+                "guion_archivo": args.guion}
+    r = Pipeline(cfg).ejecutar(opciones)
+    codigo = _resumen(r)
+    if codigo == 0 and args.exigir_publicable and not r.artefactos.get("publicable"):
+        log.error("el Short NO pasa el filtro de publicación: %s", "; ".join(r.artefactos.get("motivos_no_publicable", [])))
+        return 4
+    return codigo
 
 
 def cmd_reanudar(args, cfg: Settings) -> int:
@@ -140,6 +149,8 @@ def parser() -> argparse.ArgumentParser:
                    help="destino en YouTube (por defecto no se sube)")
     r.add_argument("--seed", type=int, help="semilla del diseño (reproducible)")
     r.add_argument("--serie", help="JSON de una Serie local en lugar del Banco Mundial")
+    r.add_argument("--guion", help="guion editorial (JSON con huecos {ultimo}, {anio_ultimo}...) en lugar del LLM")
+    r.add_argument("--exigir-publicable", action="store_true", help="salir con código 4 si el Short no es publicable")
     r.set_defaults(fn=cmd_run)
 
     s = sub.add_parser("reanudar", help="continuar un run fallido o interrumpido")

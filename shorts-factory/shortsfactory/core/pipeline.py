@@ -22,7 +22,8 @@ from ..memory import Memoria
 from ..models import Guion, Narracion, Serie, Tendencia, Variacion
 from ..publisher import seo
 from ..publisher.cuota import Cuota
-from ..scripts import generador
+from ..scripts import editorial, generador
+from ..scripts.heuristicas import evaluar
 from ..settings import Settings
 from ..sources import tendencias, worldbank
 from ..visuals import render, variacion
@@ -105,18 +106,33 @@ class Pipeline:
         archivo = r.opciones.get("serie_archivo")
         if archivo:  # serie local (pruebas o datos propios ya verificados)
             serie = Serie.model_validate_json(Path(archivo).read_text(encoding="utf-8"))
+            origen = "archivo"
         else:
             t = Tendencia.model_validate(r.artefactos["tendencia"])
-            indicador, pais = worldbank.elegir(t.titulo, self.memoria.indicadores_recientes())
+            fijado = editorial.leer(Path(r.opciones["guion_archivo"])).get("datos") if r.opciones.get("guion_archivo") else None
+            if fijado:
+                indicador = next((i for i in worldbank.CATALOGO if i.id == fijado.get("indicador")), None)
+                if indicador is None:
+                    raise ErrorContenido(f"Indicador desconocido en el guion: {fijado.get('indicador')}")
+                pais = str(fijado.get("pais", "WLD"))
+            else:
+                indicador, pais = worldbank.elegir(t.titulo, self.memoria.indicadores_recientes())
             serie = worldbank.descargar(indicador, pais, sesion=self.sesion_http)
-        log.info("dato: %s · %s (%d puntos)", serie.indicador, serie.pais_nombre, len(serie.puntos))
-        return {"serie": serie.model_dump()}
+            origen = "worldbank"
+        log.info("dato: %s · %s (%d puntos, %s)", serie.indicador, serie.pais_nombre, len(serie.puntos), origen)
+        return {"serie": serie.model_dump(), "serie_origen": origen}
 
     def guion(self, r: Registro) -> dict:
         t = Tendencia.model_validate(r.artefactos["tendencia"])
         serie = Serie.model_validate(r.artefactos["serie"])
         rng = random.Random(r.artefactos["variacion"]["semilla"])
-        g, ev = generador.escribir(self.cfg, t, serie, self.memoria, self.proveedor_llm, rng)
+        if r.opciones.get("guion_archivo"):
+            g = editorial.construir(editorial.leer(Path(r.opciones["guion_archivo"])), serie)
+            ev = evaluar(g, serie, t, self.cfg.duracion_max, self.memoria, self.cfg.similitud_maxima)
+            if not ev.ok:
+                raise ErrorContenido("El guion editorial no pasa las heurísticas:\n- " + "\n- ".join(ev.errores))
+        else:
+            g, ev = generador.escribir(self.cfg, t, serie, self.memoria, self.proveedor_llm, rng)
         if not ev.ok and g.generador != "plantilla":
             raise ErrorContenido("guion inválido: " + "; ".join(ev.errores))
         (self.dir_run(r.run_id) / "guion.json").write_text(g.model_dump_json(indent=2), encoding="utf-8")
@@ -175,6 +191,11 @@ class Pipeline:
         motivos = []
         if r.artefactos["guion"].get("generador") == "plantilla":
             motivos.append("guion de plantilla (solo pruebas)")
+        serie = r.artefactos["serie"]
+        # Un dato solo es publicable si alguien puede comprobarlo: o viene de la
+        # API del Banco Mundial, o el archivo local trae la URL de su fuente.
+        if r.artefactos.get("serie_origen") != "worldbank" and not serie.get("url"):
+            motivos.append("datos locales sin URL de fuente verificable")
         if not r.artefactos.get("voz_publicable"):
             motivos.append("voz de desarrollo (espeak)")
         if r.artefactos.get("evaluacion", {}).get("errores"):

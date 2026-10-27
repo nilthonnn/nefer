@@ -60,6 +60,63 @@ jobs:
           SF_TEST_RENDER: "1"
         run: python -m pytest -q -rs
 
+  # Prueba de fuego en cada PR: un Short REAL (datos del Banco Mundial, voz
+  # Kokoro, guion editorial) que debe salir publicable. No sube nada: deja el
+  # MP4 como artefacto para revisarlo. Falla (código 4) si no pasa el filtro.
+  muestra:
+    name: muestra monetizable (Kokoro + Banco Mundial)
+    needs: pruebas
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      SF_TTS: kokoro
+      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+      HF_HOME: ${{ github.workspace }}/.cache/huggingface
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: shorts-factory/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: shorts-factory/remotion/package-lock.json
+      - name: Binarios del sistema
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg espeak-ng
+      - name: Dependencias (Kokoro con PyTorch CPU)
+        run: |
+          pip install -r requirements.txt -e .
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu "kokoro>=0.7.16" soundfile
+      - name: Caché del modelo de voz
+        uses: actions/cache@v4
+        with:
+          path: .cache/huggingface
+          key: hf-kokoro-v1
+      - name: Remotion y navegador headless
+        working-directory: shorts-factory/remotion
+        run: npm ci && npx remotion browser ensure
+      - run: python -m shortsfactory doctor
+      - name: Short real con guion editorial
+        run: |
+          python -m shortsfactory run --topic "La crisis de los semiconductores" \
+            --guion guiones/crisis-semiconductores.json --publicar no --exigir-publicable --seed 45
+      - name: Video y auditoría
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: muestra-${{ github.run_id }}
+          path: |
+            shorts-factory/runs/*/short.mp4
+            shorts-factory/runs/*/estado.json
+            shorts-factory/runs/*/guion.json
+            shorts-factory/runs/*/auditoria.jsonl
+          retention-days: 14
+          if-no-files-found: warn
+
   producir:
     name: producir y publicar
     needs: pruebas

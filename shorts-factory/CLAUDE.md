@@ -19,6 +19,7 @@ SF_TEST_RENDER=1 python -m pytest -q -m render     # + render real (~1 min; nece
 SF_LLM=plantilla SF_TTS=espeak python -m shortsfactory run --topic "Inflación" --serie ejemplos/serie-sintetica.json
 python -m shortsfactory run --auto-trend --publicar private
 python -m shortsfactory reanudar <run_id>          # continúa en la etapa que falló
+python -m shortsfactory run --topic "..." --guion guiones/crisis-semiconductores.json --exigir-publicable
 ```
 
 En este contenedor de Claude Code: Chromium está en `/opt/pw-browsers/...`; pasa
@@ -49,7 +50,10 @@ se prueban con dobles (están en `tests/`), no en vivo.
   Si tocas `heuristicas.py`, añade el caso a `tests/test_heuristicas.py`.
 - **Errores tipados** (`errors.py`): `ErrorTransitorio` solo para lo que puede resolverse solo (red, 429, 5xx,
   navegador caído). Un 401, una cuota agotada o un guion inválido NO se reintentan.
-- **Nunca publicar** guiones `plantilla` ni voz `espeak` (`qa` lo marca y `publicar` lo bloquea).
+- **Nunca publicar** guiones `plantilla`, voz `espeak` ni datos sin fuente verificable (`qa` lo marca y
+  `publicar` lo bloquea). Los guiones de `guiones/` deben pasar las heurísticas con la serie subiendo,
+  bajando o estable (`tests/test_editorial.py`).
+- **Longitud = palabras habladas** (`heuristicas.palabras_habladas`): las cifras cuentan como se pronuncian.
 - **Privacidad por defecto `private`**. No cambies el default a `public`.
 - No esquivar cuotas con varios proyectos de Google (prohibido por los ToS de la API).
 - Secretos solo por entorno (`SecretStr`); nada de claves en el código, en logs ni en `estado.json`.

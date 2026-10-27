@@ -66,3 +66,12 @@ def test_bloquea_repetir_un_short_del_canal(tmp_path, serie, tendencia):
     memoria.registrar(titulo="Anterior", narracion=guion_bueno().texto)
     ev = _ev(guion_bueno(), serie, tendencia, memoria)
     assert any("Se parece" in e for e in ev.errores)
+
+
+@pytest.mark.parametrize("texto, n", [
+    ("Hola mundo", 2), ("18,5%", 5), ("En 2024 era 3,1%.", 10), ("12.500 dólares", 5), ("100 años", 3), ("¿Y?", 1),
+])
+def test_palabras_habladas(texto, n):
+    from shortsfactory.scripts.heuristicas import palabras_habladas
+
+    assert palabras_habladas(texto) == n

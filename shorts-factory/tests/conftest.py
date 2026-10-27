@@ -45,8 +45,8 @@ def guion_bueno(**cambios) -> Guion:
         "frases": [
             {"texto": "Nadie habla de este 4,4%", "visual": "cifra", "enfasis": ["4,4%"]},
             {"texto": "La razón está en este gráfico.", "visual": "grafico", "enfasis": ["razón"]},
-            {"texto": "En 2014 estaba en 3,1%. En 2022 llegó a 9,5%.", "visual": "grafico", "enfasis": ["9,5%"]},
-            {"texto": "Hoy bajó, pero sigue por encima de hace diez años.", "visual": "broll", "broll_busqueda": "supermarket prices"},
+            {"texto": "En 2022 llegó a 9,5%.", "visual": "grafico", "enfasis": ["9,5%"]},
+            {"texto": "Hoy bajó, pero sigue más alta.", "visual": "broll", "broll_busqueda": "supermarket prices"},
             {"texto": "Y eso explica por qué", "visual": "texto"},
         ],
         "hashtags": ["#inflacion", "economia"],

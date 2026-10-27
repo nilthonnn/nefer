@@ -1,0 +1,15 @@
+{
+  "datos": {"indicador": "TX.VAL.TECH.MF.ZS", "pais": "WLD"},
+  "titulo": "La crisis de los chips explicada con un solo dato",
+  "frases": [
+    {"texto": "¿Qué parte de las manufacturas exportadas es alta tecnología?", "visual": "texto",
+     "enfasis": ["alta", "tecnología"], "pausa_despues": 0.15},
+    {"texto": "{ultimo}%, y ahí está la clave.", "visual": "cifra", "enfasis": ["{ultimo}%", "clave"]},
+    {"texto": "Mira cómo cambió desde {anio_primero}.", "visual": "grafico", "enfasis": ["{anio_primero}"], "pausa_despues": 0.3},
+    {"texto": "Gran parte lleva chips: si faltan, se frena.", "visual": "broll",
+     "broll_busqueda": "semiconductor factory cleanroom", "enfasis": ["chips"]},
+    {"texto": "Y por eso", "visual": "texto"}
+  ],
+  "hashtags": ["#semiconductores", "#economia", "#chips"],
+  "descripcion": "Qué parte de las exportaciones de manufacturas del mundo es alta tecnología ({anio_primero}–{anio_ultimo}) y por qué eso explica que una falta de chips frene industrias enteras."
+}

@@ -27,8 +27,10 @@ from ..memory import Memoria
 from ..models import Guion, Serie, Tendencia
 from ..sources.worldbank import normalizar
 
-PALABRAS_POR_SEGUNDO_MAX = 2.75
-PALABRAS_POR_SEGUNDO_MIN = 1.9
+# Palabras HABLADAS por segundo (las cifras cuentan como se pronuncian).
+# 2,5/s deja margen a voces más pausadas que la media (Kokoro, velocidad 0,96).
+PALABRAS_POR_SEGUNDO_MAX = 2.5
+PALABRAS_POR_SEGUNDO_MIN = 1.7
 
 _ARRANQUES_GASTADOS = ("hola", "bienvenidos", "en este video", "hoy te", "sabias que", "sabias", "hey", "que tal")
 _CONTRASTE = ("nadie", "nunca", "pero", "mentira", "error", "secreto", "realmente", "por que", "cuidado", "mito",
@@ -71,6 +73,27 @@ def numeros(texto: str) -> list[float]:
     return salida
 
 
+def palabras_habladas(texto: str) -> int:
+    """Cuántas palabras dice la voz: "18,5%" son 5 ("dieciocho coma cinco por ciento").
+
+    Contar palabras escritas subestima la duración de los guiones con datos,
+    que son justo los de este canal.
+    """
+    total = 0
+    for token in texto.split():
+        m = re.match(r"^\W*(\d[\d.]*)(?:,(\d+))?(%?)", token)
+        if not m:
+            total += 1 if re.search(r"\w", token) else 0
+            continue
+        entero = m.group(1).replace(".", "")
+        total += 1 if len(entero) <= 2 else 2 if len(entero) == 3 else 3 if len(entero) == 4 else 4
+        if m.group(2):
+            total += 1 + (1 if len(m.group(2)) <= 2 else 2)  # "coma" + decimales
+        if m.group(3) or token.rstrip(".,;:!?…").endswith("%"):
+            total += 2  # "por ciento"
+    return total
+
+
 def _coincide(valor: float, citables: set[float]) -> bool:
     return any(abs(valor - c) <= max(0.051, abs(c) * 0.01) for c in citables)
 
@@ -91,14 +114,15 @@ def evaluar(
     ev = Evaluacion()
     frases = guion.frases
     gancho = normalizar(frases[0].texto)
-    palabras = guion.palabras
+    palabras = palabras_habladas(guion.texto)
 
     maximo = int(duracion_max * PALABRAS_POR_SEGUNDO_MAX)
     minimo = int(duracion_max * PALABRAS_POR_SEGUNDO_MIN)
     if palabras > maximo:
-        ev.errores.append(f"Tiene {palabras} palabras; para {duracion_max:.0f} s el máximo es {maximo}. Recorta.")
+        ev.errores.append(f"Se pronuncian {palabras} palabras (las cifras cuentan como se dicen: '18,5%' son 5); "
+                          f"para {duracion_max:.0f} s el máximo es {maximo}. Recorta.")
     elif palabras < minimo:
-        ev.avisos.append(f"Tiene {palabras} palabras; con menos de {minimo} quedará lento para {duracion_max:.0f} s.")
+        ev.avisos.append(f"Se pronuncian {palabras} palabras; con menos de {minimo} quedará lento para {duracion_max:.0f} s.")
 
     # --- gancho (0–3 s)
     n_gancho = len(frases[0].texto.split())
