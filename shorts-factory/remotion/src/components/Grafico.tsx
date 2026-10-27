@@ -1,5 +1,7 @@
 // Gráfico animado con la serie REAL: línea que se dibuja o barras que crecen.
 // Marca el primer y el último valor: es el "antes y después" del guion.
+// Todo el gráfico cabe por encima del 52 % de la altura: debajo van los
+// subtítulos (su posición mínima es el 55 %) y nunca se tapan.
 import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { formatear, longitud, proyectar, trazo } from "../lib/geometria";
@@ -8,14 +10,14 @@ import type { Diseno, PropsShort } from "../schema";
 export const Grafico: React.FC<{ serie: PropsShort["serie"]; diseno: Diseno }> = ({ serie, diseno }) => {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
-  const W = 900, H = 760;
+  const W = 900, H = 560;
   const avance = interpolate(frame, [4, Math.max(8, durationInFrames * 0.75)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const pts = proyectar(serie.puntos, W, H);
   const { acento, texto, resaltado } = diseno.colores;
   const primero = serie.puntos[0], ultimo = serie.puntos[serie.puntos.length - 1];
   return (
-    <AbsoluteFill style={{ alignItems: "center", paddingTop: 260 }}>
-      <div style={{ fontSize: 54, fontWeight: 800, marginBottom: 30, textAlign: "center", padding: "0 60px" }}>
+    <AbsoluteFill style={{ alignItems: "center", paddingTop: 170 }}>
+      <div style={{ fontSize: 50, fontWeight: 800, marginBottom: 24, textAlign: "center", padding: "0 60px", lineHeight: 1.1 }}>
         {serie.titulo} · {serie.pais}
       </div>
       <svg width={W} height={H + 80} viewBox={`-20 -40 ${W + 40} ${H + 80}`} style={{ overflow: "visible" }}>
