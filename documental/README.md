@@ -146,6 +146,7 @@ duración de cada escena la decide la voz, nunca el guion.
 | `final` | Pantalla final de 20 s con huecos para los elementos de YouTube | se añade sola si falta |
 
 Hay ejemplos en `ejemplos/`:
+- `ia-sin-electricidad.json`: **15 minutos**, tema actual («La inteligencia artificial se está quedando sin electricidad»): 14 capítulos, estructura de misterio, 11 fuentes (IEA, PJM, CSO Irlanda...), ~32 % de visual propio.
 - `guerra-de-las-corrientes.json`: el ejemplo completo y monetizable (9 min, 8 capítulos, estructura de duelo, 7 fuentes, ~37 % de visual propio, sin titulares manuales).
 - `historia-panel-solar.json`: un ejemplo corto (no llega a 8 min).
 - `independencia-energetica.md`: el formato Markdown, más cómodo para escribir a mano.
@@ -211,6 +212,17 @@ La auditoría no garantiza la aprobación: la decide una persona en YouTube.
   clip dura un tramo más el tiempo de la transición, que se solapa con la
   siguiente escena, así que los fundidos nunca desplazan la imagen respecto
   de la voz.
+
+## Voz Kokoro (sin claves) y render en CI
+
+`--voz kokoro` usa Kokoro-82M (licencia Apache-2.0, apta para monetizar), local y sin
+cuenta: `pip install --extra-index-url https://download.pytorch.org/whl/cpu kokoro soundfile`.
+Voz con `DOCUMENTAL_KOKORO_VOZ` (`em_alex`, `em_santa`, `ef_dora`) y ritmo con
+`DOCUMENTAL_KOKORO_VELOCIDAD`. Los subtítulos se sincronizan con la duración de cada fonema.
+
+El workflow `.github/workflows/documental.yml` renderiza el documental completo (Kokoro +
+Remotion) en cada PR que toca `documental/` o a mano (Actions → documental → Run workflow),
+y deja el MP4 con su paquete de publicación como artefacto. No publica nada.
 
 ## Pruebas
 

@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -22,7 +23,12 @@ from .pipeline import Opciones, producir
 log = registro.obtener("cli")
 
 
-def _voz(cfg: m_config.Config, previa: bool):
+def _voz(cfg: m_config.Config, previa: bool, motor: str = "elevenlabs"):
+    if motor == "kokoro" and not previa:
+        from .voz.kokoro import VozKokoro
+
+        return VozKokoro(os.environ.get("DOCUMENTAL_KOKORO_VOZ", "em_alex"),
+                         float(os.environ.get("DOCUMENTAL_KOKORO_VELOCIDAD", "1.0")))
     if previa:
         from .voz.espeak import VozEspeak
 
@@ -77,7 +83,7 @@ def cmd_guion(args, cfg) -> int:
 
 def cmd_render(args, cfg) -> int:
     g = entrada.cargar(Path(args.guion))
-    r = producir(g, cfg, _voz(cfg, args.previa), _opciones(args))
+    r = producir(g, cfg, _voz(cfg, args.previa, args.voz), _opciones(args))
     bloqueos = sum(1 for h in r.hallazgos if h.nivel == "bloqueo")
     print(f"\nVideo: {r.video}  ({r.duracion / 60:.1f} min)")
     if r.video.name.endswith(".previa.mp4"):
@@ -104,7 +110,7 @@ def cmd_cola(args, cfg) -> int:
     elif args.accion == "reintentar":
         print(f"{cola.reintentar_fallidos()} trabajo(s) devueltos a pendiente")
     elif args.accion == "procesar":
-        voz = _voz(cfg, args.previa)
+        voz = _voz(cfg, args.previa, args.voz)
         opciones = _opciones(args)
 
         def ejecutar(ruta: Path) -> dict:
@@ -157,6 +163,8 @@ def construir_parser() -> argparse.ArgumentParser:
 
     def flags_render(sp):
         sp.add_argument("--previa", action="store_true", help="voz local espeak-ng (no publicable, sin costo)")
+        sp.add_argument("--voz", choices=["elevenlabs", "kokoro"], default="elevenlabs",
+                        help="kokoro: voz local Apache-2.0, sin clave (DOCUMENTAL_KOKORO_VOZ, por defecto em_alex)")
         sp.add_argument("--sin-remotion", action="store_true", help="infografías con Pillow en vez de Remotion")
         sp.add_argument("--sin-stock", action="store_true", help="no buscar video de stock")
         sp.add_argument("--estricto", action="store_true", help="abortar si la auditoría encuentra bloqueos")
