@@ -1,0 +1,13 @@
+# Instalación completa para producción/CI. Para desarrollo: pip install -e ".[dev,llm,youtube,edge]"
+pydantic>=2.7,<3
+pydantic-settings>=2.3,<3
+requests>=2.31,<3
+anthropic>=0.40
+openai>=1.40
+edge-tts>=7.0,<8
+google-api-python-client>=2.130,<3
+google-auth>=2.30,<3
+google-auth-oauthlib>=1.2,<2
+pytest>=7.4
+# Kokoro arrastra PyTorch (~800 MB). En CI se instala aparte y se cachea:
+#   pip install --extra-index-url https://download.pytorch.org/whl/cpu "kokoro>=0.7.16" soundfile

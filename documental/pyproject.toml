@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "documental"
+version = "0.1.0"
+description = "Fábrica de documentales para YouTube: guion → voz ElevenLabs → stock (MoneyPrinterTurbo) + infografías (Remotion) → MP4 listo para publicar."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31",
+    "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+# Solo para escribir el guion con Claude a partir de un tema.
+guion = ["anthropic>=0.40"]
+dev = ["pytest>=7.4"]
+
+[project.scripts]
+documental = "documental.cli:main"
+
+[tool.setuptools]
+packages = ["documental", "documental.voz", "documental.visuales", "documental.multimedia"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

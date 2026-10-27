@@ -1,0 +1,215 @@
+name: shortsfactory-autopilot
+
+# Produce un Short cada 6 horas (o a mano) y lo sube a YouTube.
+# Por defecto sube como PRIVADO: revisa y publica desde YouTube Studio.
+# Para cambiarlo sin tocar este archivo: variable de repositorio SF_PUBLICAR
+# (private | unlisted | public | no).
+on:
+  schedule:
+    - cron: "17 */6 * * *"  # minuto 17: evita la congestión de los crons en :00
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Tema (vacío = tendencia automática)"
+        required: false
+        default: ""
+      publicar:
+        description: "Destino en YouTube"
+        type: choice
+        options: [private, unlisted, public, "no"]
+        default: private
+  pull_request:
+    paths: ["shorts-factory/**", ".github/workflows/autopilot.yml"]
+
+# Nunca dos producciones a la vez: compartirían memoria y cuota.
+concurrency:
+  group: shortsfactory-${{ github.event_name == 'pull_request' && github.ref || 'produccion' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: shorts-factory
+
+jobs:
+  pruebas:
+    name: pruebas (Python + Remotion)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: shorts-factory/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: shorts-factory/remotion/package-lock.json
+      - name: Binarios del sistema
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg espeak-ng
+      - run: pip install -r requirements.txt -e .
+      - run: npm ci && npm test
+        working-directory: shorts-factory/remotion
+      - name: Pruebas (incluye un render real con voz de desarrollo)
+        env:
+          SF_TEST_RENDER: "1"
+        run: python -m pytest -q -rs
+
+  # Prueba de fuego en cada PR: un Short REAL (datos del Banco Mundial, voz
+  # Kokoro, guion editorial) que debe salir publicable. No sube nada: deja el
+  # MP4 como artefacto para revisarlo. Falla (código 4) si no pasa el filtro.
+  muestra:
+    name: muestra monetizable (Kokoro + Banco Mundial)
+    needs: pruebas
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      SF_TTS: kokoro
+      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+      HF_HOME: ${{ github.workspace }}/.cache/huggingface
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: shorts-factory/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: shorts-factory/remotion/package-lock.json
+      - name: Binarios del sistema
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg espeak-ng
+      - name: Dependencias (Kokoro con PyTorch CPU)
+        run: |
+          pip install -r requirements.txt -e .
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu "kokoro>=0.7.16" soundfile
+      - name: Caché del modelo de voz
+        uses: actions/cache@v4
+        with:
+          path: .cache/huggingface
+          key: hf-kokoro-v1
+      - name: Remotion y navegador headless
+        working-directory: shorts-factory/remotion
+        run: npm ci && npx remotion browser ensure
+      - run: python -m shortsfactory doctor
+      - name: Short real con guion editorial
+        run: |
+          python -m shortsfactory run --topic "La crisis de los semiconductores" \
+            --guion guiones/crisis-semiconductores.json --publicar no --exigir-publicable --seed 45
+      - name: Video y auditoría
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: muestra-${{ github.run_id }}
+          path: |
+            shorts-factory/runs/*/short.mp4
+            shorts-factory/runs/*/estado.json
+            shorts-factory/runs/*/guion.json
+            shorts-factory/runs/*/auditoria.jsonl
+          retention-days: 14
+          if-no-files-found: warn
+
+  producir:
+    name: producir y publicar
+    needs: pruebas
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+      YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+      YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+      SF_LLM: ${{ vars.SF_LLM || 'anthropic' }}
+      SF_LLM_MODELO: ${{ vars.SF_LLM_MODELO }}
+      SF_TTS: ${{ vars.SF_TTS || 'kokoro' }}
+      SF_KOKORO_VOZ: ${{ vars.SF_KOKORO_VOZ || 'em_alex' }}
+      SF_YOUTUBE_SINTETICO: ${{ vars.SF_YOUTUBE_SINTETICO || 'false' }}
+      PUBLICAR: ${{ github.event.inputs.publicar || vars.SF_PUBLICAR || 'private' }}
+      TEMA: ${{ github.event.inputs.topic }}
+      HF_HOME: ${{ github.workspace }}/.cache/huggingface
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: shorts-factory/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: shorts-factory/remotion/package-lock.json
+      - name: Binarios del sistema
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg espeak-ng
+      - name: Dependencias de Python (Kokoro con PyTorch CPU)
+        run: |
+          pip install -r requirements.txt -e .
+          if [ "$SF_TTS" = "kokoro" ]; then
+            pip install --extra-index-url https://download.pytorch.org/whl/cpu "kokoro>=0.7.16" soundfile
+          fi
+      - name: Caché del modelo de voz
+        uses: actions/cache@v4
+        with:
+          path: .cache/huggingface
+          key: hf-kokoro-v1
+      - name: Remotion y navegador headless
+        working-directory: shorts-factory/remotion
+        run: npm ci && npx remotion browser ensure
+
+      # Memoria del canal (anti-repetición) y contabilidad de cuota entre runs:
+      # se restaura la última y se guarda una nueva al final, aunque falle.
+      - name: Restaurar estado del canal
+        uses: actions/cache/restore@v4
+        with:
+          path: shorts-factory/estado
+          key: sf-estado-${{ github.run_id }}
+          restore-keys: sf-estado-
+
+      - run: python -m shortsfactory doctor
+
+      - name: Producir el Short
+        id: run
+        run: |
+          set +e
+          if [ -n "$TEMA" ]; then
+            python -m shortsfactory run --topic "$TEMA" --publicar "$PUBLICAR"
+          else
+            python -m shortsfactory run --auto-trend --publicar "$PUBLICAR"
+          fi
+          codigo=$?
+          if [ "$codigo" = "3" ]; then
+            echo "::warning::Cuota diaria de YouTube agotada; el próximo run lo intentará de nuevo."
+            exit 0
+          fi
+          exit $codigo
+
+      - name: Guardar estado del canal
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: shorts-factory/estado
+          key: sf-estado-${{ github.run_id }}
+
+      - name: Auditoría (video, estado de la FSM y logs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shortsfactory-${{ github.run_id }}
+          path: |
+            shorts-factory/runs/*/short.mp4
+            shorts-factory/runs/*/estado.json
+            shorts-factory/runs/*/auditoria.jsonl
+            shorts-factory/runs/*/guion.json
+            shorts-factory/estado/historial.jsonl
+          retention-days: 14
+          if-no-files-found: warn

@@ -1,0 +1,7 @@
+.env
+salidas/
+trabajos/
+cache/
+assets/musica/*.mp3
+assets/musica/*.wav
+assets/musica/*.m4a
