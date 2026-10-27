@@ -16,6 +16,16 @@ def test_kokoro_fonemas_a_palabras():
     assert p[1].inicio == pytest.approx(0.50) and p[1].fin == pytest.approx(1.00)
 
 
+def test_kokoro_filtra_fonemas_fuera_del_vocabulario():
+    # "ˈ" (acento) no está en el vocabulario: Kokoro lo descarta y pred_dur no lo trae.
+    vocab = {c: i for i, c in enumerate("ola mundo")}
+    pred = [5] + [4, 4, 4] + [6] + [4, 4, 4, 4, 4] + [3]
+    p = alineacion.desde_fonemas("Hola mundo.", "ˈola ˈmundo", pred, vocab)
+    assert [w.texto for w in p] == ["Hola", "mundo."] and p[1].inicio == pytest.approx(0.50)
+    with pytest.raises(ValueError):
+        alineacion.desde_fonemas("Hola mundo.", "ˈola ˈmundo", pred)  # sin filtrar no cuadra
+
+
 def test_kokoro_desajuste_reparte_sin_salirse():
     # "2024" se pronuncia como varias palabras: no hay 1:1, se reparte el tramo real.
     fonemas = "en dos mil beinte"

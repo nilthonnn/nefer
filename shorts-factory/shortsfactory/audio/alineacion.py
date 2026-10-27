@@ -20,8 +20,15 @@ def _palabras(texto: str) -> list[str]:
     return [p for p in texto.split() if re.search(r"\w", p)]
 
 
-def desde_fonemas(texto: str, fonemas: str, pred_dur: list[int]) -> list[PalabraT]:
-    """Kokoro: ``pred_dur`` tiene len(fonemas)+2 elementos (inicio y fin de secuencia)."""
+def desde_fonemas(texto: str, fonemas: str, pred_dur: list[int], vocab: dict | None = None) -> list[PalabraT]:
+    """Kokoro: ``pred_dur`` tiene un elemento por fonema del VOCABULARIO, más inicio y fin.
+
+    Kokoro descarta en silencio los caracteres fonéticos que no están en su
+    vocabulario antes de predecir duraciones; si se pasa ``vocab`` se aplica
+    el mismo filtro para que ambas secuencias vuelvan a coincidir.
+    """
+    if vocab:
+        fonemas = "".join(c for c in fonemas if c in vocab)
     if len(pred_dur) != len(fonemas) + 2:
         raise ValueError(f"pred_dur ({len(pred_dur)}) no corresponde a los fonemas ({len(fonemas)}+2)")
     t = max(0, pred_dur[0] - 3) * UNIDAD_KOKORO  # mismo desfase que usa Kokoro en inglés

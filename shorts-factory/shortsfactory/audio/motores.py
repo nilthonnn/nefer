@@ -17,10 +17,13 @@ from pathlib import Path
 from typing import Protocol
 
 from ..errors import ErrorConfiguracion, ErrorTransitorio
+from ..logs import obtener
 from ..models import PalabraT
 from ..proc import duracion, ejecutar, ffmpeg
 from ..settings import Settings
 from . import alineacion
+
+log = obtener("voz")
 
 
 class MotorVoz(Protocol):
@@ -47,6 +50,8 @@ class Kokoro:
             raise ErrorConfiguracion("Kokoro no instalado: pip install kokoro soundfile (y espeak-ng)") from e
         self._pipeline = KPipeline(lang_code="e")
         self._voz = voz
+        modelo = getattr(self._pipeline, "model", None)
+        self._vocab: dict | None = getattr(modelo, "vocab", None)
 
     def sintetizar(self, texto, destino, velocidad):
         import numpy as np
@@ -60,9 +65,12 @@ class Kokoro:
             dur = len(audio) / 24_000
             try:
                 pd = [int(x) for x in r.pred_dur.cpu().tolist()]
-                parciales = alineacion.desde_fonemas(r.graphemes, r.phonemes, pd)
+                parciales = alineacion.desde_fonemas(r.graphemes, r.phonemes, pd, self._vocab)
                 exacta = True
-            except (ValueError, AttributeError):
+            except (ValueError, AttributeError) as e:
+                # Se registra el motivo: sin él no hay forma de saber por qué
+                # los subtítulos se sincronizaron por estimación.
+                log.warning("Kokoro: tiempos por estimación (%s)", e)
                 parciales, exacta = alineacion.estimar(r.graphemes, 0.05, dur - 0.05), False
             palabras += [p.model_copy(update={"inicio": p.inicio + desfase, "fin": p.fin + desfase}) for p in parciales]
             audios.append(audio)
