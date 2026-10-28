@@ -18,6 +18,15 @@ on:
         type: choice
         options: [private, unlisted, public, "no"]
         default: private
+      modo:
+        description: "producir = Short del día; muestra = Short de prueba con guion editorial, sin publicar"
+        type: choice
+        options: [producir, muestra]
+        default: producir
+      guion:
+        description: "Solo en modo muestra: guion editorial a usar"
+        required: false
+        default: "guiones/crisis-semiconductores.json"
   pull_request:
     paths: ["shorts-factory/**", ".github/workflows/autopilot.yml"]
 
@@ -60,19 +69,22 @@ jobs:
           SF_TEST_RENDER: "1"
         run: python -m pytest -q -rs
 
-  # Prueba de fuego en cada PR: un Short REAL (datos del Banco Mundial, voz
-  # Kokoro, guion editorial) que debe salir publicable. No sube nada: deja el
-  # MP4 como artefacto para revisarlo. Falla (código 4) si no pasa el filtro.
+  # Prueba de fuego en cada PR (y a mano con modo=muestra): un Short REAL
+  # (datos del Banco Mundial, voz Kokoro, guion editorial) que debe salir
+  # publicable. No sube nada: deja el MP4 como artefacto para revisarlo.
+  # Falla (código 4) si no pasa el filtro.
   muestra:
     name: muestra monetizable (Kokoro + Banco Mundial)
     needs: pruebas
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.modo == 'muestra')
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
       SF_TTS: kokoro
       PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
       HF_HOME: ${{ github.workspace }}/.cache/huggingface
+      TEMA: ${{ github.event.inputs.topic || 'La crisis de los semiconductores' }}
+      GUION: ${{ github.event.inputs.guion || 'guiones/crisis-semiconductores.json' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -102,8 +114,7 @@ jobs:
       - run: python -m shortsfactory doctor
       - name: Short real con guion editorial
         run: |
-          python -m shortsfactory run --topic "La crisis de los semiconductores" \
-            --guion guiones/crisis-semiconductores.json --publicar no --exigir-publicable --seed 45
+          python -m shortsfactory run --topic "$TEMA" --guion "$GUION" --publicar no --exigir-publicable --seed 45
       - name: Video y auditoría
         if: always()
         uses: actions/upload-artifact@v4
@@ -120,7 +131,7 @@ jobs:
   producir:
     name: producir y publicar
     needs: pruebas
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.event.inputs.modo != 'muestra'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:

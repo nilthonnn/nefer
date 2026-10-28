@@ -1,0 +1,126 @@
+name: documental
+
+# Renderiza un documental completo (16:9) con voz Kokoro (Apache-2.0, sin
+# claves) e infografías de Remotion, y lo deja como artefacto para revisarlo.
+# No publica nada. Se lanza a mano o en los PR que tocan documental/.
+on:
+  workflow_dispatch:
+    inputs:
+      guion:
+        description: "Guion a renderizar (ruta dentro de documental/)"
+        required: false
+        default: "ejemplos/ia-sin-electricidad.json"
+      minutos:
+        description: "Duración mínima exigida en minutos (0 = sin comprobar)"
+        required: false
+        default: "0"
+  pull_request:
+    paths: ["documental/**", ".github/workflows/documental.yml"]
+
+concurrency:
+  group: documental-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: documental
+
+jobs:
+  pruebas:
+    name: pruebas (documental)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: documental/pyproject.toml
+      - name: Binarios del sistema
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg espeak-ng
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest -q -rs
+
+  render:
+    name: render del documental (Kokoro + Remotion)
+    needs: pruebas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    env:
+      GUION: ${{ github.event.inputs.guion || 'ejemplos/ia-sin-electricidad.json' }}
+      DOCUMENTAL_SALIDA: ${{ github.workspace }}/documental/salidas
+      # Kokoro habla ~160 palabras/min; a 0,95 queda en el ritmo pausado de un
+      # documental (~150/min), el que usa la estimación de duración del guion.
+      DOCUMENTAL_KOKORO_VELOCIDAD: "0.95"
+      # En los PR se exige que la muestra llegue a 15 min; a mano, lo que se pida.
+      MINUTOS: ${{ github.event_name == 'pull_request' && '15' || github.event.inputs.minutos || '0' }}
+      HF_HOME: ${{ github.workspace }}/.cache/huggingface
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: documental/pyproject.toml
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: documental/remotion/package-lock.json
+      - name: Binarios y tipografías
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ffmpeg espeak-ng
+          sudo apt-get install -y -q fonts-inter || echo "::notice::fonts-inter no disponible; se usa DejaVu"
+      - name: Dependencias (Kokoro con PyTorch CPU)
+        run: |
+          pip install -e ".[dev]"
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu "kokoro>=0.7.16" soundfile
+      - name: Caché del modelo de voz
+        uses: actions/cache@v4
+        with:
+          path: .cache/huggingface
+          key: hf-kokoro-v1
+      - name: Remotion y navegador headless
+        working-directory: documental/remotion
+        run: npm ci && npx remotion browser ensure
+      - name: Configuración de CI (archivo más liviano)
+        # Mismo canal.toml, con compresión algo mayor: el artefacto de 15 min
+        # debe poder descargarse sin esperar gigas.
+        run: |
+          sed -e 's/^crf = 18 /crf = 23 /' -e 's/^preset = "medium"/preset = "veryfast"/' config/canal.toml > "$RUNNER_TEMP/canal-ci.toml"
+          grep -E '^(crf|preset)' "$RUNNER_TEMP/canal-ci.toml"
+      - run: python -m documental validar "$GUION"
+      - name: Render
+        run: python -m documental --config "$RUNNER_TEMP/canal-ci.toml" render "$GUION" --voz kokoro --sin-stock --estricto
+      - name: Comprobar la duración
+        run: |
+          python - <<'PY'
+          import glob, json, os, sys
+          minimo = float(os.environ["MINUTOS"]) * 60
+          meta = json.load(open(glob.glob("salidas/*/metadatos.json")[0], encoding="utf-8"))
+          dur = meta["duracion_segundos"]
+          print(f"duración: {dur / 60:.2f} min (mínimo {minimo / 60:.0f} min)")
+          if minimo and dur < minimo:
+              print(f"::error::El documental dura {dur / 60:.2f} min; se pidieron {minimo / 60:.0f}.")
+              sys.exit(1)
+          PY
+      - name: Video y paquete de publicación
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documental-${{ github.run_id }}
+          path: |
+            documental/salidas/*/*.mp4
+            documental/salidas/*/miniatura.jpg
+            documental/salidas/*/descripcion.txt
+            documental/salidas/*/subtitulos.srt
+            documental/salidas/*/metadatos.json
+            documental/salidas/*/auditoria.md
+            documental/salidas/*/render.log.jsonl
+          retention-days: 14
+          if-no-files-found: warn

@@ -135,6 +135,10 @@ En *Settings → Secrets and variables → Actions*:
 | `SF_LLM`, `SF_LLM_MODELO` | `anthropic`, `claude-opus-5-5` |
 | `SF_TTS`, `SF_KOKORO_VOZ` | `kokoro`, `em_alex` |
 
+Para generar un Short de prueba sin publicar nada: Actions → `shortsfactory-autopilot` →
+**Run workflow** con `modo = muestra` (y, si quieres, otro `guion` editorial). Corre el mismo
+job que en los PR: Kokoro, datos del Banco Mundial y `--exigir-publicable`; el MP4 queda como artefacto.
+
 El workflow corre cada 6 h (minuto 17) o a mano, con tema y destino. Cada ejecución guarda la
 memoria del canal en caché y sube como artefacto el video, el estado, el guion y los logs
 (14 días). Si la cuota está agotada, termina con un aviso y no lo cuenta como fallo.
