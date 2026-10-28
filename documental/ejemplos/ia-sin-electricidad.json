@@ -497,6 +497,15 @@
           }
         },
         {
+          "narracion": "Y no es un fenómeno solo de Estados Unidos: en cualquier país donde la demanda crezca más rápido que la red, la presión sobre los precios aparece tarde o temprano.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "electricity tower city sunset"
+            ]
+          }
+        },
+        {
           "narracion": "Aquí está la paradoja: la inteligencia artificial que usas gratis en tu teléfono puede terminar cobrándose, en parte, en tu factura de luz.",
           "visual": {
             "tipo": "stock",
@@ -624,10 +633,11 @@
         {
           "narracion": "Hay que decirlo con claridad: los reactores modulares todavía no están funcionando a escala comercial. Son apuestas a varios años. Mientras tanto, la demanda crece hoy.",
           "visual": {
-            "tipo": "stock",
-            "busqueda": [
-              "empty construction field sunrise"
-            ]
+            "tipo": "titular",
+            "datos": {
+              "antetitulo": "Ojo",
+              "titulo": "Los reactores modulares aún no operan a escala comercial"
+            }
           },
           "pausa": 0.4
         }
@@ -720,6 +730,15 @@
             "tipo": "stock",
             "busqueda": [
               "river water flowing"
+            ]
+          }
+        },
+        {
+          "narracion": "Algunas empresas ya publican cuánta agua consumen sus centros de datos y prometen devolver más de la que usan. Cumplirlo, y medirlo bien, es otro desafío abierto.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "water reservoir dam"
             ]
           }
         },
@@ -853,6 +872,16 @@
             "busqueda": [
               "city led lights night street"
             ]
+          }
+        },
+        {
+          "narracion": "Por eso, cuando escuches que un nuevo modelo es más eficiente, conviene hacer la pregunta completa: ¿más eficiente por respuesta, o en total?",
+          "visual": {
+            "tipo": "titular",
+            "datos": {
+              "antetitulo": "La pregunta correcta",
+              "titulo": "¿Más eficiente por respuesta, o en total?"
+            }
           }
         },
         {

@@ -10,6 +10,10 @@ on:
         description: "Guion a renderizar (ruta dentro de documental/)"
         required: false
         default: "ejemplos/ia-sin-electricidad.json"
+      minutos:
+        description: "Duración mínima exigida en minutos (0 = sin comprobar)"
+        required: false
+        default: "0"
   pull_request:
     paths: ["documental/**", ".github/workflows/documental.yml"]
 
@@ -52,6 +56,8 @@ jobs:
       # Kokoro habla ~160 palabras/min; a 0,95 queda en el ritmo pausado de un
       # documental (~150/min), el que usa la estimación de duración del guion.
       DOCUMENTAL_KOKORO_VELOCIDAD: "0.95"
+      # En los PR se exige que la muestra llegue a 15 min; a mano, lo que se pida.
+      MINUTOS: ${{ github.event_name == 'pull_request' && '15' || github.event.inputs.minutos || '0' }}
       HF_HOME: ${{ github.workspace }}/.cache/huggingface
     steps:
       - uses: actions/checkout@v4
@@ -91,6 +97,18 @@ jobs:
       - run: python -m documental validar "$GUION"
       - name: Render
         run: python -m documental --config "$RUNNER_TEMP/canal-ci.toml" render "$GUION" --voz kokoro --sin-stock --estricto
+      - name: Comprobar la duración
+        run: |
+          python - <<'PY'
+          import glob, json, os, sys
+          minimo = float(os.environ["MINUTOS"]) * 60
+          meta = json.load(open(glob.glob("salidas/*/metadatos.json")[0], encoding="utf-8"))
+          dur = meta["duracion_segundos"]
+          print(f"duración: {dur / 60:.2f} min (mínimo {minimo / 60:.0f} min)")
+          if minimo and dur < minimo:
+              print(f"::error::El documental dura {dur / 60:.2f} min; se pidieron {minimo / 60:.0f}.")
+              sys.exit(1)
+          PY
       - name: Video y paquete de publicación
         if: always()
         uses: actions/upload-artifact@v4
