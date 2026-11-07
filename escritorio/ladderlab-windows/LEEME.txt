@@ -1,0 +1,29 @@
+LadderLab para Windows
+======================
+
+Curso y simulador de Ladder (LAD) para TIA Portal, con ruta de grupos
+electrogenos y mineria. 24 lecciones, 20 retos que se corrigen solos.
+
+ABRIR
+  Menu Inicio > LadderLab, o el acceso directo del escritorio.
+  Se abre en su propia ventana con Microsoft Edge (modo aplicacion).
+  No necesita internet.
+
+MANUAL
+  Menu Inicio > LadderLab > Manual de uso de LadderLab (PDF).
+
+TU PROGRESO
+  Se guarda en el perfil de Edge de este usuario de Windows.
+  Si borras los datos de navegacion de Edge, se pierde: exporta tus
+  programas desde el Laboratorio (Exportar .json).
+
+ACTUALIZAR
+  Ejecuta el instalador nuevo: se instala encima y conserva el progreso.
+
+DESINSTALAR
+  Menu Inicio > LadderLab > Desinstalar LadderLab,
+  o Configuracion > Aplicaciones > LadderLab > Desinstalar.
+
+TIA Portal, SIMATIC y S7 son marcas de Siemens AG. LadderLab es una
+herramienta de estudio independiente: no reemplaza a TIA Portal ni a
+S7-PLCSIM.

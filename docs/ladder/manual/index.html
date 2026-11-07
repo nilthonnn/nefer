@@ -57,7 +57,7 @@ footer{margin-top:3rem;font-size:.82rem;color:var(--ink3)}
   <p style="text-transform:uppercase;letter-spacing:.12em;font-size:.8rem">Manual de uso</p>
   <h1>LadderLab<br>Ladder para TIA Portal</h1>
   <p>Curso y simulador de programación LAD para PLC S7‑1200/1500, de básico a avanzado, con una ruta aplicada a grupos electrógenos y plantas mineras.</p>
-  <p style="margin-top:1rem;font-size:.9rem">Versión de noviembre de 2026 · Android (APK), web y computadora · 24 lecciones · 20 retos autocorregidos · funciona sin conexión</p>
+  <p style="margin-top:1rem;font-size:.9rem">Versión de noviembre de 2026 · Windows (instalador), Android (APK) y web · 24 lecciones · 20 retos autocorregidos · funciona sin conexión</p>
   <p class="noprint" style="margin-top:1rem"><a href="../index.html">← Volver a la app</a></p>
 </header>
 
@@ -103,7 +103,8 @@ S7‑1200 y S7‑1500. Cada lección combina tres cosas:</p>
 <tr><td><b>Android, instalada (recomendado)</b></td><td>APK: descárgalo desde <code>github.com/nilthonnn/nefer/releases</code> (busca <i>LadderLab</i>), ábrelo y acepta instalar.</td><td>Sí</td></tr>
 <tr><td>Android, desde Chrome</td><td>Abre la dirección web y toca <b>⤓ Instalar en este equipo</b> o <i>menú ⋮ → Instalar app</i>.</td><td>Sí</td></tr>
 <tr><td>Android, sin instalar</td><td>Abre <code>LadderLab.html</code> (un solo archivo) desde Descargas con Chrome.</td><td>Puede perderse al cerrar</td></tr>
-<tr><td>Computadora</td><td>Descomprime <code>LadderLab-demo.zip</code> y abre <code>LadderLab.html</code> o <code>LadderLab/index.html</code>.</td><td>Sí, en ese navegador</td></tr>
+<tr><td><b>Windows 10/11, instalada (recomendado)</b></td><td>Instalador <code>LadderLab-Setup.exe</code>: menú Inicio y escritorio, ventana propia con Edge.</td><td>Sí</td></tr>
+<tr><td>Computadora, sin instalar</td><td>Descomprime <code>LadderLab-demo.zip</code> y abre <code>LadderLab.html</code> o <code>LadderLab/index.html</code>.</td><td>Sí, en ese navegador</td></tr>
 </table>
 <p class="warn"><b>En Android no abras <code>LadderLab/index.html</code> desde la carpeta del .zip.</b> Android entrega ese archivo a Chrome como
 <code>content://</code>, y desde ahí Chrome no deja cargar los archivos de al lado (<code>lecciones.js</code>, <code>energia.js</code>): la página se queda
@@ -118,10 +119,19 @@ en blanco. Usa el APK, la versión web o <code>LadderLab.html</code>, que lleva 
 <p>La app no pide permiso de Internet: todo va dentro. El botón <i>atrás</i> del teléfono cierra el editor y el menú, vuelve al inicio, y
 con dos toques sale. <i>Exportar .json</i> guarda en Descargas e <i>Importar .json</i> abre el selector de archivos. Si al actualizar Android dice que
 el paquete <i>entra en conflicto</i>, desinstala la versión anterior (las de prueba van con firma provisional).</p>
-<h3>2.2 Versión web e instalación desde Chrome</h3>
+<h3>2.2 Instalador para Windows</h3>
+<ol>
+  <li>Descarga <b>LadderLab-Setup.exe</b> desde <code>github.com/nilthonnn/nefer/releases</code> (busca <i>LadderLab para Windows</i>) y ábrelo.</li>
+  <li>Si aparece <i>«Windows protegió su PC»</i>, toca <b>Más información → Ejecutar de todas formas</b>: el instalador no lleva un certificado comercial.</li>
+  <li>Sigue el asistente (en español). No pide permisos de administrador: se instala para tu usuario en <code>%LOCALAPPDATA%\Programs\LadderLab</code>.</li>
+  <li>Abre <b>LadderLab</b> desde el menú Inicio o el escritorio. Se abre en su propia ventana con Microsoft Edge (modo aplicación) y funciona sin internet. En el mismo grupo del menú Inicio está el manual en PDF.</li>
+</ol>
+<p>Para actualizar, ejecuta el instalador nuevo: se instala encima y conserva tu progreso, que vive en el perfil de Edge. Para quitarla:
+<i>Configuración → Aplicaciones → LadderLab → Desinstalar</i>. Si el equipo no tiene Edge ni Chrome, los accesos abren la app con el navegador predeterminado.</p>
+<h3>2.3 Versión web e instalación desde Chrome o Edge</h3>
 <p>Abre <code>https://nilthonnn.github.io/nefer/ladder/</code> (disponible cuando se publique la versión). En Android aparece el botón
 <b>⤓ Instalar en este equipo</b> en el inicio, o usa <i>menú ⋮ → Instalar app</i>. Queda como una app y abre sin señal después de la primera visita.</p>
-<h3>2.3 Sin instalar: el archivo único y el .zip</h3>
+<h3>2.4 Sin instalar: el archivo único y el .zip</h3>
 <ol>
   <li><b>Android:</b> descarga <code>LadderLab.html</code>, ábrelo desde Descargas y elige <b>Chrome</b> si pregunta con qué abrirlo.</li>
   <li><b>Computadora:</b> descomprime <code>LadderLab-demo.zip</code> en una carpeta y haz doble clic en <code>LadderLab.html</code> o en <code>LadderLab/index.html</code>. Funciona en Chrome, Edge, Firefox y Safari, sin conexión.</li>
@@ -303,6 +313,7 @@ direcciones, copia los segmentos instrucción por instrucción, compila y pruéb
 <table>
 <tr><th>Síntoma</th><th>Solución</th></tr>
 <tr><td>En Android, la app se ve en blanco</td><td>Abriste <code>LadderLab/index.html</code> desde la carpeta: Android no le deja cargar sus archivos. Usa el APK, la web o <code>LadderLab.html</code> (sección 2).</td></tr>
+<tr><td>Windows no deja ejecutar el instalador</td><td>En el aviso «Windows protegió su PC», toca <b>Más información → Ejecutar de todas formas</b>. Si tu empresa bloquea instaladores, usa el .zip: no instala nada.</td></tr>
 <tr><td>En la computadora se ve en blanco</td><td>Descomprime toda la carpeta (no abras el archivo desde dentro del .zip) y usa un navegador actualizado.</td></tr>
 <tr><td>Android no deja instalar el APK</td><td>Activa <i>Instalar apps desconocidas</i> para Chrome o Archivos en Ajustes. Si dice que hay un conflicto de paquete, desinstala la versión anterior.</td></tr>
 <tr><td>No se guarda mi progreso</td><td>La navegación privada o el bloqueo de datos del sitio impiden guardar. Usa una ventana normal.</td></tr>

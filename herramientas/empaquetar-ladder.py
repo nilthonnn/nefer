@@ -55,7 +55,13 @@ EN UN CELULAR ANDROID
   NO abras "LadderLab/index.html" en el celular: Android no deja que esa pagina
   cargue los archivos de al lado y se queda en blanco.
 
-EN UNA COMPUTADORA (Windows, Mac o Linux)
+EN WINDOWS 10 / 11 - instalar (recomendado)
+  Descarga "LadderLab-Setup.exe" desde
+     https://github.com/nilthonnn/nefer/releases?q=ladderlab-windows&expanded=true
+  Si aparece "Windows protegio su PC": Mas informacion > Ejecutar de todas formas.
+  Queda en el menu Inicio y el escritorio, y se abre en su propia ventana.
+
+EN UNA COMPUTADORA, SIN INSTALAR (Windows, Mac o Linux)
   1. Descomprime todo este .zip en una carpeta (no lo abras desde dentro del .zip).
   2. Haz doble clic en "LadderLab.html", o en "LadderLab/index.html".
   3. Se abre en tu navegador (Chrome, Edge, Firefox o Safari). No necesita internet.
