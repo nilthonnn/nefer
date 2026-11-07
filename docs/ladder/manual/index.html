@@ -57,8 +57,8 @@ footer{margin-top:3rem;font-size:.82rem;color:var(--ink3)}
   <p style="text-transform:uppercase;letter-spacing:.12em;font-size:.8rem">Manual de uso</p>
   <h1>LadderLab<br>Ladder para TIA Portal</h1>
   <p>Curso y simulador de programación LAD para PLC S7‑1200/1500, de básico a avanzado, con una ruta aplicada a grupos electrógenos y plantas mineras.</p>
-  <p style="margin-top:1rem;font-size:.9rem">Versión de noviembre de 2026 · 24 lecciones · 20 retos autocorregidos · funciona sin conexión</p>
-  <p class="noprint" style="margin-top:1rem"><a href="../">← Volver a la app</a></p>
+  <p style="margin-top:1rem;font-size:.9rem">Versión de noviembre de 2026 · Android (APK), web y computadora · 24 lecciones · 20 retos autocorregidos · funciona sin conexión</p>
+  <p class="noprint" style="margin-top:1rem"><a href="../index.html">← Volver a la app</a></p>
 </header>
 
 <nav class="toc" aria-label="Contenido">
@@ -98,18 +98,36 @@ S7‑1200 y S7‑1500. Cada lección combina tres cosas:</p>
 <p class="tip">TIA Portal, SIMATIC y S7 son marcas de Siemens AG. LadderLab es una herramienta de estudio independiente: no reemplaza a TIA Portal ni a S7‑PLCSIM.</p>
 
 <h2 id="abrir">2. Abrir la app</h2>
-<h3>2.1 Demo descargable (sin internet)</h3>
+<table>
+<tr><th>Dónde</th><th>Cómo</th><th>Progreso guardado</th></tr>
+<tr><td><b>Android, instalada (recomendado)</b></td><td>APK: descárgalo desde <code>github.com/nilthonnn/nefer/releases</code> (busca <i>LadderLab</i>), ábrelo y acepta instalar.</td><td>Sí</td></tr>
+<tr><td>Android, desde Chrome</td><td>Abre la dirección web y toca <b>⤓ Instalar en este equipo</b> o <i>menú ⋮ → Instalar app</i>.</td><td>Sí</td></tr>
+<tr><td>Android, sin instalar</td><td>Abre <code>LadderLab.html</code> (un solo archivo) desde Descargas con Chrome.</td><td>Puede perderse al cerrar</td></tr>
+<tr><td>Computadora</td><td>Descomprime <code>LadderLab-demo.zip</code> y abre <code>LadderLab.html</code> o <code>LadderLab/index.html</code>.</td><td>Sí, en ese navegador</td></tr>
+</table>
+<p class="warn"><b>En Android no abras <code>LadderLab/index.html</code> desde la carpeta del .zip.</b> Android entrega ese archivo a Chrome como
+<code>content://</code>, y desde ahí Chrome no deja cargar los archivos de al lado (<code>lecciones.js</code>, <code>energia.js</code>): la página se queda
+en blanco. Usa el APK, la versión web o <code>LadderLab.html</code>, que lleva todo dentro.</p>
+<h3>2.1 APK para Android</h3>
 <ol>
-  <li>Descomprime <code>LadderLab-demo.zip</code> en cualquier carpeta.</li>
-  <li>Abre la carpeta <code>LadderLab</code> y haz doble clic en <code>index.html</code>. Se abre en tu navegador.</li>
-  <li>Listo: no necesita instalación, servidor ni conexión.</li>
+  <li>En el teléfono, abre <code>https://github.com/nilthonnn/nefer/releases?q=ladderlab</code> y descarga <b>ladderlab.apk</b> de la versión más reciente.</li>
+  <li>Ábrelo desde la notificación de descarga o desde <i>Archivos → Descargas</i>.</li>
+  <li>Android pedirá permitir <i>instalar apps desconocidas</i> desde Chrome o Archivos: acéptalo para esa fuente y toca <b>Instalar</b>.</li>
+  <li>Abre <b>LadderLab</b> desde el cajón de aplicaciones.</li>
 </ol>
-<p>Funciona en Chrome, Edge, Firefox y Safari actualizados. El progreso se guarda en ese navegador y en esa carpeta: si
-mueves la carpeta o usas otro navegador, empiezas de cero (puedes exportar tus programas desde el Laboratorio).</p>
-<h3>2.2 Versión web e instalación en el celular</h3>
-<p>En la versión publicada (<code>https://nilthonnn.github.io/nefer/ladder/</code>, disponible cuando se publique la rama) abre el enlace
-en el teléfono y elige <b>Agregar a pantalla de inicio</b> (Chrome) o <b>Compartir → Agregar a inicio</b> (Safari). Queda
-como una app y abre sin señal después de la primera visita.</p>
+<p>La app no pide permiso de Internet: todo va dentro. El botón <i>atrás</i> del teléfono cierra el editor y el menú, vuelve al inicio, y
+con dos toques sale. <i>Exportar .json</i> guarda en Descargas e <i>Importar .json</i> abre el selector de archivos. Si al actualizar Android dice que
+el paquete <i>entra en conflicto</i>, desinstala la versión anterior (las de prueba van con firma provisional).</p>
+<h3>2.2 Versión web e instalación desde Chrome</h3>
+<p>Abre <code>https://nilthonnn.github.io/nefer/ladder/</code> (disponible cuando se publique la versión). En Android aparece el botón
+<b>⤓ Instalar en este equipo</b> en el inicio, o usa <i>menú ⋮ → Instalar app</i>. Queda como una app y abre sin señal después de la primera visita.</p>
+<h3>2.3 Sin instalar: el archivo único y el .zip</h3>
+<ol>
+  <li><b>Android:</b> descarga <code>LadderLab.html</code>, ábrelo desde Descargas y elige <b>Chrome</b> si pregunta con qué abrirlo.</li>
+  <li><b>Computadora:</b> descomprime <code>LadderLab-demo.zip</code> en una carpeta y haz doble clic en <code>LadderLab.html</code> o en <code>LadderLab/index.html</code>. Funciona en Chrome, Edge, Firefox y Safari, sin conexión.</li>
+</ol>
+<p>El progreso se guarda en el navegador del equipo. Si cambias de navegador o de forma de abrirla, empiezas de cero; tus programas los puedes
+llevar con <i>Exportar / Importar .json</i> del Laboratorio.</p>
 <p>En pantallas angostas, el menú de lecciones está en el botón <kbd>☰</kbd>, y cada lección tiene el enlace
 <b>▶ Ir al simulador</b> para saltar la teoría.</p>
 <figure class="small"><img src="m12-movil.jpg" alt="La app en un celular: simulador con HMI de reparto de carga, entradas, salidas y segmentos"><figcaption>La app en un celular: lección de reparto de carga.</figcaption></figure>
@@ -284,7 +302,9 @@ direcciones, copia los segmentos instrucción por instrucción, compila y pruéb
 <h2 id="problemas">13. Solución de problemas</h2>
 <table>
 <tr><th>Síntoma</th><th>Solución</th></tr>
-<tr><td>Al abrir <code>index.html</code> se ve en blanco</td><td>Verifica que descomprimiste toda la carpeta (no abras el archivo desde dentro del .zip) y que el navegador está actualizado.</td></tr>
+<tr><td>En Android, la app se ve en blanco</td><td>Abriste <code>LadderLab/index.html</code> desde la carpeta: Android no le deja cargar sus archivos. Usa el APK, la web o <code>LadderLab.html</code> (sección 2).</td></tr>
+<tr><td>En la computadora se ve en blanco</td><td>Descomprime toda la carpeta (no abras el archivo desde dentro del .zip) y usa un navegador actualizado.</td></tr>
+<tr><td>Android no deja instalar el APK</td><td>Activa <i>Instalar apps desconocidas</i> para Chrome o Archivos en Ajustes. Si dice que hay un conflicto de paquete, desinstala la versión anterior.</td></tr>
 <tr><td>No se guarda mi progreso</td><td>La navegación privada o el bloqueo de datos del sitio impiden guardar. Usa una ventana normal.</td></tr>
 <tr><td>«⚠ falla de planta: pulsa Reiniciar»</td><td>Tu programa provocó una condición peligrosa en el modelo (lee el mensaje del HMI). Corrige y pulsa <b>Reiniciar</b>.</td></tr>
 <tr><td>Una instrucción muestra <code>&lt;??.?&gt;</code> en rojo</td><td>Le falta el operando: activa Editar, tócala y escríbelo.</td></tr>

@@ -1,0 +1,8 @@
+# Generados por la compilacion
+build/
+.gradle/
+local.properties
+
+# La pantalla se copia aqui desde docs/fixmate/ronda en cada compilacion:
+# versionar la copia seria tener dos veces el mismo archivo y que se separen.
+app/src/main/assets/

@@ -165,7 +165,7 @@ table.t th{color:var(--ink2);font-weight:600;font-size:.8rem;text-transform:uppe
 @media (max-width:560px){.io{grid-template-columns:1fr}.io>div+div{border-left:0;border-top:1px solid var(--line)}}
 .ins,.outs{display:flex;flex-wrap:wrap;gap:.45rem}
 .in{display:flex;flex-direction:column;gap:.2rem;min-width:112px;flex:1 1 112px;max-width:180px}
-.pb{border:1px solid var(--line);background:var(--canvas);border-radius:10px;padding:.45rem .5rem;cursor:pointer;font-weight:600;font-size:.85rem;text-align:left;touch-action:none;user-select:none;-webkit-user-select:none;display:flex;align-items:center;gap:.45rem;line-height:1.2}
+.pb{-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;border:1px solid var(--line);background:var(--canvas);border-radius:10px;padding:.45rem .5rem;cursor:pointer;font-weight:600;font-size:.85rem;text-align:left;touch-action:none;user-select:none;-webkit-user-select:none;display:flex;align-items:center;gap:.45rem;line-height:1.2}
 .pb .k{width:20px;height:20px;border-radius:50%;flex:none;background:var(--lamp);border:3px solid var(--canvas);box-shadow:0 0 0 1.5px var(--ink3);transition:transform .05s}
 .pb.sw .k{border-radius:5px}
 .pb.pressed .k{transform:scale(.85);background:var(--acc)}
@@ -320,6 +320,11 @@ const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const clone = o => JSON.parse(JSON.stringify(o));
+/* Dentro del APK de Android la app corre en un WebView con un puente nativo. */
+const EN_APK = typeof window.PuenteLadder === "object" && window.PuenteLadder !== null;
+const APK_URL = "https://github.com/nilthonnn/nefer/releases?q=ladderlab&expanded=true";
+/* La versión en un solo archivo (descargas/LadderLab.html) no tiene carpetas al lado. */
+const UN_ARCHIVO = false;
 
 /* ===================== almacenamiento ===================== */
 const KEY = "ladderlab.v1";
@@ -768,6 +773,7 @@ function Sim(root, opts) {
         if (sw) b.addEventListener("click", () => set(!eng.pressed[i.addr]));
       else {
         const cb = $("input", d);
+        b.addEventListener("contextmenu", ev => ev.preventDefault());
         b.addEventListener("pointerdown", ev => { ev.preventDefault(); try { b.setPointerCapture(ev.pointerId); } catch (e) {} set(1); });
         const up = () => { if (!me.latched[i.addr]) set(0); };
         b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up); b.addEventListener("lostpointercapture", up);
@@ -977,7 +983,7 @@ function renderNav(cur) {
     LECCIONES.filter(L => L.nivel === N.id).forEach(L => { const e = estado(L);
       h += `<a href="#/l/${L.id}" class="${cur === L.id ? "cur" : ""}"><span class="ck ${e}">${e === "done" ? "✓" : ""}</span>${esc(L.titulo)}</a>`; });
   }
-  h += `<h4>Herramientas</h4><a href="#/lab" class="${cur === "lab" ? "cur" : ""}"><span class="ck">⚙</span>Laboratorio libre</a><a href="#/ref" class="${cur === "ref" ? "cur" : ""}"><span class="ck">≡</span>Referencia de instrucciones</a><a href="manual/"><span class="ck">?</span>Manual de uso</a><a href="descargas/LadderLab-demo.zip" download><span class="ck">↓</span>Descargar demo (.zip)</a>`;
+  h += `<h4>Herramientas</h4><a href="#/lab" class="${cur === "lab" ? "cur" : ""}"><span class="ck">⚙</span>Laboratorio libre</a><a href="#/ref" class="${cur === "ref" ? "cur" : ""}"><span class="ck">≡</span>Referencia de instrucciones</a><a href="manual/index.html"><span class="ck">?</span>Manual de uso</a>${EN_APK || UN_ARCHIVO ? "" : `<a href="descargas/LadderLab.html" download><span class="ck">↓</span>App en un archivo (.html)</a><a href="descargas/LadderLab-demo.zip" download><span class="ck">↓</span>Descargar demo (.zip)</a>`}`;
   $("#nav").innerHTML = h; updProgress();
 }
 $("#menuBtn").addEventListener("click", () => $("#nav").classList.toggle("open"));
@@ -993,7 +999,7 @@ function viewHome() {
   <section class="hero"><div>
     <h1>Ladder para TIA Portal, de cero a la planta minera</h1>
     <p>Aprende LAD como se programa un S7‑1200/1500 y llévalo a lo que se ve en campo: grupos electrógenos, transferencia red‑grupo, sincronismo en paralelo, fajas y bombas. Un PLC simulado con modelo de planta corrige tus retos ciclo por ciclo.</p>
-    <div class="btns"><a class="btn" href="#/l/${(cont && estado(cont) !== "done" ? cont : next).id}">${ST.last ? "Continuar" : "Empezar"}: ${esc((cont && estado(cont) !== "done" ? cont : next).titulo)}</a><a class="btn ghost" href="#/lab">Laboratorio libre</a><a class="btn ghost" href="manual/">Manual de uso</a></div>
+    <div class="btns"><a class="btn" href="#/l/${(cont && estado(cont) !== "done" ? cont : next).id}">${ST.last ? "Continuar" : "Empezar"}: ${esc((cont && estado(cont) !== "done" ? cont : next).titulo)}</a><a class="btn ghost" href="#/lab">Laboratorio libre</a><a class="btn ghost" href="manual/index.html">Manual de uso</a><button class="btn ghost b-inst" ${PEDIR_INSTALAR ? "" : "hidden"}>⤓ Instalar en este equipo</button>${EN_APK || !/Android/i.test(navigator.userAgent) ? "" : `<a class="btn ghost" href="${APK_URL}">Descargar APK para Android</a>`}</div>
   </div>${art}</section>
   ${(() => { const R = rango(), pct = Math.round(100 * (R.x - R.desde) / (R.hasta - R.desde)), rc = racha(), nb = BADGES.filter(b => (ST.badges || []).includes(b.id)).length;
     return `<div class="stats"><div class="card"><p class="sub" style="margin:0">Tu rango</p><div class="rk">${esc(R.nombre)}</div>
@@ -1081,7 +1087,17 @@ function viewLab() {
     <div class="simbox"></div>`;
   const sim = Sim($(".simbox"), { prog: ST.lab ? clone(ST.lab) : def, tags: [], editable: true, edit: true, onChange: p => { ST.lab = p; save(); } });
   $(".b-new").onclick = () => { if (!confirm("¿Empezar un programa vacío?")) return; const p = [SEG("", S())]; ST.lab = p; save(); sim.load(p, []); };
-  $(".b-exp").onclick = () => { const b = new Blob([JSON.stringify({ ladderlab: 1, prog: sim.prog }, null, 1)], { type: "application/json" }); const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "programa-ladder.json"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
+  $(".b-exp").onclick = () => {
+    const txt = JSON.stringify({ ladderlab: 1, prog: sim.prog }, null, 1), nombre = "programa-ladder-" + hoy() + ".json";
+    if (EN_APK) {
+      /* En un WebView una descarga blob: no llega a ningún lado: los bytes van por el puente a Descargas. */
+      let r; try { r = window.PuenteLadder.guardar(nombre, btoa(unescape(encodeURIComponent(txt))), "application/json"); } catch (e) { r = String(e.message || e); }
+      toast(r ? "No se guardó: " + r : "Guardado en Descargas: " + nombre); return;
+    }
+    const b = new Blob([txt], { type: "application/json" }), a = document.createElement("a");
+    a.href = URL.createObjectURL(b); a.download = nombre; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
   $(".b-imp").onchange = ev => { const f = ev.target.files[0]; if (!f) return; f.text().then(t => { const j = JSON.parse(t); if (!j || !Array.isArray(j.prog)) throw new Error("formato"); ST.lab = j.prog; save(); sim.load(j.prog, []); toast("Programa importado"); }).catch(() => toast("Ese archivo no es un programa de LadderLab")); };
   renderNav("lab");
 }
@@ -1106,9 +1122,25 @@ function route() {
   else if (h === "ref") viewRef();
   else viewHome();
 }
+/* Botón «atrás» del teléfono (lo llama el APK). Cierto si había algo que cerrar o a dónde volver. */
+function atras() {
+  if (!$("#sheet").hidden) { closeSheet(); return true; }
+  if ($("#nav").classList.contains("open")) { $("#nav").classList.remove("open"); return true; }
+  if (location.hash && location.hash !== "#/" && location.hash !== "#") { location.hash = "#/"; return true; }
+  return false;
+}
+window.atras = atras;
+/* Instalar desde Chrome (Android y escritorio) cuando el navegador lo ofrece. */
+let PEDIR_INSTALAR = null;
+window.addEventListener("beforeinstallprompt", ev => { ev.preventDefault(); PEDIR_INSTALAR = ev; $$(".b-inst").forEach(b => { b.hidden = false; }); });
+window.addEventListener("appinstalled", () => { PEDIR_INSTALAR = null; $$(".b-inst").forEach(b => { b.hidden = true; }); toast("LadderLab quedó instalada"); });
+document.addEventListener("click", ev => {
+  const b = ev.target.closest && ev.target.closest(".b-inst"); if (!b || !PEDIR_INSTALAR) return;
+  PEDIR_INSTALAR.prompt(); PEDIR_INSTALAR.userChoice.finally(() => { PEDIR_INSTALAR = null; $$(".b-inst").forEach(x => { x.hidden = true; }); });
+});
 window.addEventListener("hashchange", route);
 route();
-if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+if ("serviceWorker" in navigator && window.isSecureContext && location.protocol !== "file:" && !EN_APK) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 /* Guarda la app en el equipo para que abra sin conexión. El progreso vive en
    localStorage, así que abrir desde la copia no pierde nada. */
-var CACHE = "ladderlab-2026-11-07e";
-var PIEZAS = ["./", "./index.html", "./lecciones.js", "./energia.js", "./manifest.webmanifest", "./icono.svg", "./icono-192.png", "./icono-512.png", "./manual/"];
+var CACHE = "ladderlab-2026-11-07f";
+var PIEZAS = ["./", "./index.html", "./lecciones.js", "./energia.js", "./manifest.webmanifest", "./icono.svg", "./icono-192.png", "./icono-512.png", "./manual/index.html"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE)
