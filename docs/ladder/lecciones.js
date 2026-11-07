@@ -418,7 +418,10 @@ usa la propia <code>C1.Q</code> o un pulsador en R. Si R está activo, el contad
 <p>Las cajas tienen una entrada <b>EN</b> (habilitación) y una salida <b>ENO</b>. Si EN = 0, la caja no se
 ejecuta y OUT conserva su valor. ENO = 1 cuando se ejecutó sin errores (por ejemplo, un desbordamiento lo pone a 0).</p>
 <div class="tip"><b>Cuidado con MOVE y ADD sin flanco:</b> un <code>ADD %MW10 + 1 → %MW10</code> con un pulsador sin flanco suma 1
-<b>en cada ciclo</b> mientras esté pulsado: cientos de veces por segundo. Para sumar una vez por pulsación, pon un contacto P delante.</div>`,
+<b>en cada ciclo</b> mientras esté pulsado: cientos de veces por segundo. Para sumar una vez por pulsación, pon un contacto P delante.</div>
+<div class="tip"><b>Desbordamiento:</b> un Int llega a 32 767. Si el resultado no cabe, la caja pone <b>ENO = 0</b> y el valor de
+OUT ya no es fiable: no lo uses. Conecta ENO a una alarma o, mejor, calcula en <b>DInt</b> y limita el resultado antes de
+guardarlo en un Int. En este simulador, OUT se queda en el límite (32 767 o −32 768).</div>`,
   ejemplo: { tags: [TAG("%I0.0", "Sumar", "push"), TAG("%I0.1", "Borrar", "push"), TAG("%MW10", "Cuenta"), TAG("%Q0.0", "Mayor_3")],
     prog: [SEG("Sumar 1 por pulsación", S(PC("%I0.0", "%M10.0"), MATH("ADD", "%MW10", "1", "%MW10"))),
       SEG("Borrar", S(NO("%I0.1"), MOVE("0", "%MW10"))),

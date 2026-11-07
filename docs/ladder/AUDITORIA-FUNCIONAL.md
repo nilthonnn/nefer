@@ -25,12 +25,13 @@ medir.
 | Medida | Antes | Después |
 |---|---:|---:|
 | Hallazgos mayores | 3 | **0** |
-| Hallazgos menores | 3 | 0 en el contenido; 2 ejercicios propuestos |
-| Observaciones | 3 | 0 |
-| Puntos abiertos (sección 6) | — | 6 |
+| Hallazgos menores | 3 | **0** |
+| Observaciones | 3 | **0** |
+| Puntos abiertos de la primera revisión | 6 | **3**, que no se pueden cerrar desde aquí (sección 6) |
 | Instrucciones conformes con IEC 61131‑3 (pruebas dirigidas) | 10/10 | **10/10** |
-| Retos: la solución pasa y el programa inicial falla | 17/17 | **17/17** |
-| Errores típicos que el corrector rechaza | 7/7 | **7/7** |
+| Retos: la solución pasa y el programa inicial falla | 17/17 | **20/20** |
+| Errores típicos que el corrector rechaza | 7/7 | **11/11** |
+| Editor usable solo con teclado (WCAG 2.1.1, 2.4.3) | No | **Sí** |
 | Contraste mínimo de texto, tema claro (WCAG 1.4.3 pide 4,5:1) | 3,18:1 | **4,51:1** |
 | Errores de JavaScript en todas las pantallas | 0 | 0 |
 
@@ -44,8 +45,9 @@ tres se corrigieron.
 
 ## 2. Alcance y método
 
-**Objeto:** `index.html`, `lecciones.js` y `energia.js`: 21 lecciones, 17 retos,
-6 modelos de planta y el motor del PLC simulado.
+**Objeto:** `index.html`, `lecciones.js` y `energia.js`. En la primera revisión
+eran 21 lecciones, 17 retos y 6 modelos de planta; tras el cierre son 24
+lecciones, 20 retos y 9 modelos de planta, más el motor del PLC simulado.
 
 **Método:**
 
@@ -66,19 +68,19 @@ tres se corrigieron.
 
 | Norma | Qué se verificó | Resultado |
 |---|---|---|
-| **IEC 61131‑3** (lenguajes de PLC) | Símbolos LAD; TON, TOF, TP, CTU, CTD, flancos, MOVE, aritmética, EN/ENO | Conforme. El desbordamiento de Int está abierto (6.1) |
+| **IEC 61131‑3** (lenguajes de PLC) | Símbolos LAD; TON, TOF, TP, CTU, CTD, flancos, MOVE, aritmética, EN/ENO | Conforme. Desbordamiento: ENO = 0 conforme; el valor de OUT, por confirmar en PLCSIM (6.1) |
 | **IEC 60617 / IEC 61082** (símbolos) | Contactos, bobinas y cajas del editor | Conforme |
 | **IEEE C37.2** (números de función ANSI) | 25, 25A, 27, 32, 52, 59, 81 | Conforme |
 | **IEEE 1547‑2018**, **IEEE C50.12/C50.13** (sincronismo) | Ventanas de ΔV, Δf y Δφ del reto y de la lección | **Mayor A1, corregido** |
-| **ISO 8528** (grupos electrógenos), **ISO 3046‑1** | Potencias, derrateo por altura, protecciones | Menor A5: corregido en la teoría; ejercicio propuesto |
+| **ISO 8528** (grupos electrógenos), **ISO 3046‑1** | Potencias, derrateo por altura, protecciones | Menor A5, **cerrado** con el reto de falla de arranque |
 | **NFPA 110** (sistemas de emergencia) | Tipo 10 (10 s), protecciones mínimas, enfriamiento | Conforme tras A5 |
-| **IEC 60947‑6‑1**, **UL 1008** (equipos de transferencia) | Abrir antes de cerrar, enclavamientos, retransferencia | Menor A6: corregido en la teoría; modelo pendiente (6.4) |
+| **IEC 60947‑6‑1**, **UL 1008** (equipos de transferencia) | Abrir antes de cerrar, enclavamientos, retransferencia | Menor A6, **cerrado**: tensión residual en el modelo y reto de discrepancia |
 | **IEC 60204‑1** (equipo eléctrico de máquinas) | Paro NC, sin rearranque automático tras un paro | Conforme |
 | **ISO 13850** (parada de emergencia), **EN 620** (fajas de granel) | Pull‑cord enclavado con rearme manual | **Mayor A2, corregido** |
 | **ISO 13849‑1 / IEC 62061** (seguridad funcional) | Que las funciones de seguridad no se presenten como lógica estándar | Conforme: la teoría lo advierte (6.2) |
 | **MSHA 30 CFR 56.14201** (aviso antes de arrancar fajas) | Sirena de prearranque | Observación A7: aclarado |
 | **ISO/IEC 25010** (calidad de producto) | Corrección funcional y fiabilidad de la evaluación | Menor A4, corregido |
-| **WCAG 2.2 AA** | 1.4.3 contraste; 1.4.1 color; 2.4.3 orden del foco | **Mayor A3, corregido**. 2.4.3 abierto (6.3) |
+| **WCAG 2.2 AA** | 1.4.3 contraste; 1.4.1 color; 2.4.3 orden del foco | **Mayor A3, corregido**. 2.1.1 y 2.4.3 **cerrados** (A10) |
 
 ---
 
@@ -148,8 +150,11 @@ app lo avisa al cargar la solución.
 NFPA 110 e ISO 8528‑4 incluyen la parada por **falla de arranque**
 (*overcrank*) y una **parada de emergencia** cableada que corta el combustible.
 
-**Corrección:** las dos se explican en la lección. La falla de arranque queda
-propuesta como ejercicio con un CTU y dos TON (6.5).
+**Corrección:** las dos se explican en la lección, y hay una lección nueva,
+**«Falla de arranque: ciclos de arranque y reposo»**, con su reto: ciclos de
+10 s (5 s de arranque y 5 s de reposo) y alarma tras el tercer intento fallido.
+El modelo de planta detecta dos fallas: el arrancador que sigue engranado con
+el motor en marcha y el que pasa más de 6 s seguidos energizado.
 
 ### A6 · Menor · TTA sin supervisión de discrepancia — **corregido en la teoría**
 
@@ -158,8 +163,17 @@ siempre. Tampoco se explicaba que, con cargas de motores, hay que esperar a que
 decaiga la tensión residual antes de reconectar: transición con retardo o
 monitor en fase (IEC 60947‑6‑1).
 
-**Corrección:** ambos puntos se explican en la lección. Modelarlos en la
-planta queda pendiente (6.4).
+**Corrección:**
+- **Tensión residual:** el modelo de la TTA simula la tensión que dejan los
+  motores de la barra al quedar sin alimentación, decayendo con τ = 0,4 s.
+  Rechaza cualquier cierre mientras quede más del 25 %. El reto exige ahora
+  **transición con retardo**: 52R cierra 1 s después de cumplir las condiciones.
+  La solución anterior, sin retardo, ahora falla en el paso 8 con el mensaje
+  «Cierre contra la tensión residual de los motores (78 %)».
+- **Discrepancia:** hay una lección nueva, **«Supervisión de interruptores:
+  discrepancia orden‑estado»**, con su reto. Pide 0,5 s de tolerancia, alarma
+  memorizada, retiro y bloqueo de la orden, y detección del interruptor que no
+  cierra o que se dispara estando cerrado.
 
 ### A7 · Observación · Duración de la sirena de prearranque — **aclarado**
 
@@ -176,6 +190,32 @@ pude confirmar. Ahora indica la ruta del menú contextual.
 
 Había una condición que nunca cambiaba el resultado. Se eliminó sin cambio de
 comportamiento, como confirma la prueba 5.1.
+
+### A10 · Accesibilidad del editor (WCAG 2.1.1, 2.4.3) — **cerrado**
+
+- Cada instrucción del segmento es enfocable con Tab y se edita con Enter o
+  Espacio.
+- El cuadro de edición retiene el foco: Tab y Shift+Tab circulan dentro de él.
+- Al cerrarlo con Esc, el foco vuelve a la instrucción editada, aunque el
+  segmento se haya vuelto a dibujar. Una prueba automática lo confirma.
+
+### A11 · Desbordamiento de Int (IEC 61131‑3) — **cerrado en lo que se puede verificar**
+
+La documentación de Siemens confirma que ADD pone ENO = 0 cuando el resultado
+se sale del rango. La lección de datos enseña ahora a tratarlo:
+- comprobar ENO;
+- no usar el valor de OUT tras un desbordamiento;
+- calcular en DInt y limitar el resultado antes de guardarlo en un Int.
+
+El valor exacto que TIA deja en OUT sigue sin confirmar (6.1).
+
+### A12 · Reparto de carga (ejercicio propuesto) — **cerrado**
+
+Hay una lección nueva, **«Reparto de carga entre grupos en paralelo»**:
+gobernador y kW, AVR y kVAr, isócrono frente a *droop* (ISO 8528‑5), y banda
+muerta. El reto pide igualar los kW de dos grupos ante cambios de demanda. El
+modelo de planta dispara la protección 32 (potencia inversa) si G2 queda
+motorizado más de 0,5 s.
 
 ---
 
@@ -198,9 +238,9 @@ comportamiento, como confirma la prueba 5.1.
 
 ### 5.2 Retos
 
-Los 17 retos se probaron: la solución de referencia pasa y el programa inicial
-falla. Esto incluye los 6 de la ruta de grupos y minería, con la nueva ventana
-de sincronismo.
+Los 20 retos se probaron: la solución de referencia pasa y el programa inicial
+falla. Esto incluye los 9 de la ruta de grupos y minería, con la ventana de
+sincronismo de IEEE 1547 y la transición con retardo de la TTA.
 
 ### 5.3 Errores típicos que el corrector rechaza
 
@@ -213,26 +253,37 @@ de sincronismo.
 | TTA sin confirmación de falla | Paso 2: el grupo arranca por un microcorte |
 | TTA sin enfriamiento | Paso 8: el grupo para sin enfriarse |
 | Arranque por demanda sin temporizador | Paso 2: G2 arranca por un pico |
+| TTA sin transición con retardo | Paso 8: «Cierre contra la tensión residual de los motores (78 %)» |
+| Arrancador sin límite de tiempo ni reposo | Paso 7: el arrancador no descansa |
+| Discrepancia sin tiempo de tolerancia | Paso 2: alarma falsa en una maniobra normal |
+| Reparto de carga con subir y bajar invertidos | Paso 1: G2 baja en vez de subir |
+
+### 5.4 Teclado
+
+| Prueba | Resultado |
+|---|---|
+| Enter sobre una instrucción enfocada abre el editor con el foco dentro | ✓ |
+| 30 pulsaciones de Tab no sacan el foco del cuadro de edición | ✓ |
+| Esc cierra y devuelve el foco a la misma instrucción | ✓ |
 
 ---
 
 ## 6. Lo que queda abierto
 
-1. **Desbordamiento de Int.** El simulador da ENO = 0 y satura el resultado en
-   32 767. No pude confirmar qué valor escribe TIA Portal en OUT al desbordar.
-   Hay que comprobarlo en S7‑PLCSIM e igualarlo.
-2. **Seguridad funcional.** Los pull‑cord, paros y emergencias se programan en
-   lógica estándar, como ejercicio. La teoría advierte que en planta van por un
-   relé o PLC de seguridad (F‑CPU), con el nivel PL/SIL que fije la evaluación
-   de riesgos (ISO 13849‑1, IEC 62061). Simular una F‑CPU queda fuera del
-   alcance.
-3. **Foco del editor (WCAG 2.4.3).** El cuadro de edición no retiene el foco
-   del teclado ni lo devuelve al elemento editado al cerrarse.
-4. **TTA y sincronismo en el modelo de planta.** Faltan dos cosas: la
-   supervisión de discrepancia entre orden y realimentación del interruptor
-   (con su tiempo límite) y la tensión residual de motores.
-5. **Ejercicios propuestos:** falla de arranque del grupo (*overcrank*) y
-   reparto de carga activa y reactiva entre grupos.
-6. **Validación en un equipo real.** La comparación se hizo contra la
+De los seis puntos de la primera revisión se cerraron tres: el foco del editor
+(A10), el modelo de la TTA (A6) y los ejercicios propuestos (A5 y A12). Los
+otros tres no se pueden cerrar desde aquí:
+
+1. **Valor de OUT al desbordar un Int.** Lo que se puede verificar (ENO = 0) es
+   conforme, y la app enseña a no usar OUT en ese caso. Para igualar el valor
+   exacto que deja TIA hace falta medirlo en S7‑PLCSIM o en una CPU.
+2. **Seguridad funcional (fuera de alcance).** Los pull‑cord, paros y
+   emergencias se programan en lógica estándar, como ejercicio. La teoría
+   advierte que en planta van por un relé o PLC de seguridad (F‑CPU), con el
+   nivel PL/SIL que fije la evaluación de riesgos (ISO 13849‑1, IEC 62061).
+   Simular una F‑CPU y su certificación está fuera del alcance de una app de
+   estudio.
+3. **Validación en un equipo real.** La comparación se hizo contra la
    especificación de IEC 61131‑3 y la documentación del fabricante, no contra
-   un S7‑1200 o un PLCSIM. Lo ideal es repetir 5.1 en PLCSIM.
+   un S7‑1200 o un PLCSIM. Para hacerla: repetir las pruebas de 5.1 en
+   S7‑PLCSIM y anotar las diferencias.

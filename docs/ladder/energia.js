@@ -59,8 +59,15 @@ var PLANTAS = {
       if (e.v["%Q0.0"]) s.run = (s.run || 0) + e.dt; else s.run = 0;
       var gok = s.run >= 3000 && !e.pressed["%I0.1"];
       e.forced["%I0.1"] = gok ? 1 : 0;
+      var red = !!e.v["%I0.0"], r0 = !!e.forced["%I0.2"], g0 = !!e.forced["%I0.3"];
+      var barra = (red && r0) || (gok && g0);
+      /* los motores de la barra siguen girando y generan tensión residual que decae (τ = 0,4 s) */
+      s.vres = barra ? 1 : (s.vres || 0) * Math.exp(-e.dt / 400);
       maniobra(e, s, "tr", "%Q0.1", "%I0.2", 100);
       maniobra(e, s, "tg", "%Q0.2", "%I0.3", 100, gok);
+      var r1 = !!e.forced["%I0.2"], g1 = !!e.forced["%I0.3"];
+      if (!barra && s.vres > 0.25 && ((r1 && !r0 && !g1) || (g1 && !g0 && !r1)))
+        e.fault = "Cierre contra la tensión residual de los motores (" + Math.round(s.vres * 100) + " %): falta la transición con retardo";
       if (!gok && e.forced["%I0.3"]) e.forced["%I0.3"] = 0;
       if (e.forced["%I0.2"] && e.forced["%I0.3"]) e.fault = "52R y 52G cerrados a la vez: la red queda en paralelo con el grupo sin sincronizar";
     },
@@ -77,6 +84,7 @@ var PLANTAS = {
         HM.ln(50, 112, 350, 112, barra, 6) + HM.tx(355, 116, "Barra", { a: "start", s: 9.5, c: "var(--ink3)" }) +
         HM.ln(200, 112, 200, 140, barra) + '<path d="M192 138 L200 150 L208 138 Z" style="fill:' + (barra ? "var(--on)" : "var(--ink3)") + '"/>' +
         HM.tx(200, 166, "Cargas críticas: chancado, bombas, sala eléctrica", { s: 10, c: "var(--ink2)" }) +
+        (!barra && (e.ps.vres || 0) > 0.02 ? HM.tx(214, 132, "tensión residual " + Math.round(e.ps.vres * 100) + " %", { a: "start", s: 9.5, w: 700, c: e.ps.vres > 0.25 ? "var(--bad)" : "var(--ink2)" }) : "") +
         HM.tx(200, 186, "Alimentadas por: " + fuente, { w: 800, s: 12, c: barra ? "var(--on)" : "var(--bad)" }) + HM.falla(e, 196));
     }
   },
@@ -266,13 +274,13 @@ no cerrar contra un motor que aún gira desfasado. Los equipos de transferencia 
 <p>Variantes: <b>transición cerrada</b> (sincroniza y hace un paralelo breve, menos de 100 ms, sin corte), y
 retransferencia manual. En sistemas de emergencia, normas como NFPA 110 exigen que el grupo tome carga en un
 tiempo máximo (10 s para la clase más exigente), lo que limita los retardos que puedes programar.</p>
-<p>En el ejemplo ya está la detección de falla con confirmación: apaga la red unos instantes y luego más de 3 s.</p>`,
+<p>En el ejemplo ya está la detección de falla con confirmación: apaga la red unos instantes y luego más de 3 s. Si devuelves la red al instante, el HMI muestra la <b>tensión residual</b> de la barra decayendo.</p>`,
   ejemplo: { planta: "tta", tags: [TAG("%I0.0", "Red_OK", "switch", "", { def: 1 }), TAG("%I0.1", "Grupo_OK", "plant"), TAG("%I0.2", "52R_Cerrado", "plant"), TAG("%I0.3", "52G_Cerrado", "plant"), TAG("%Q0.0", "Arranque_Grupo"), TAG("%Q0.1", "Cerrar_52R"), TAG("%Q0.2", "Cerrar_52G"), TAG("%M0.0", "Falla_Red_Conf")],
     prog: [SEG("Falla de red confirmada (3 s)", S(NC("%I0.0"), TON("T_FallaRed", "T#3s"), COIL("%M0.0"))),
       SEG("Arranque del grupo mientras dure la falla", S(NO("%M0.0"), COIL("%Q0.0"))),
       SEG("52R cerrado con red presente", S(NO("%I0.0"), NC("%I0.3"), COIL("%Q0.1")))] },
   reto: { planta: "tta",
-    enunciado: "Programa la TTA completa. Falla de red (<code>\"Red_OK\" %I0.0</code> = 0) confirmada <b>3 s</b> → arrancar el grupo (<code>%Q0.0</code>). Con <code>\"Grupo_OK\" %I0.1</code> y <b>52R abierto</b> (<code>%I0.2</code> = 0) → cerrar 52G (<code>%Q0.2</code>). Red de vuelta y estable <b>10 s</b> → abrir 52G y, con 52G abierto (<code>%I0.3</code> = 0), cerrar 52R (<code>%Q0.1</code>). Tras retransferir, el grupo sigue <b>5 s</b> en enfriamiento y para. Un microcorte de 1 s no debe arrancar el grupo. <i>Pista: marcas para “falla confirmada”, “red estable” y “pedir grupo” (Set/Reset); TOF para el enfriamiento.</i>",
+    enunciado: "Programa la TTA completa. Falla de red (<code>\"Red_OK\" %I0.0</code> = 0) confirmada <b>3 s</b> → arrancar el grupo (<code>%Q0.0</code>). Con <code>\"Grupo_OK\" %I0.1</code> y <b>52R abierto</b> (<code>%I0.2</code> = 0) → cerrar 52G (<code>%Q0.2</code>). Red de vuelta y estable <b>10 s</b> → abrir 52G y, con 52G abierto (<code>%I0.3</code> = 0), cerrar 52R (<code>%Q0.1</code>). Tras retransferir, el grupo sigue <b>5 s</b> en enfriamiento y para. Un microcorte de 1 s no debe arrancar el grupo. <b>Transición con retardo:</b> 52R solo se cierra después de <b>1 s</b> con las condiciones cumplidas, para que decaiga la tensión residual de los motores (el modelo de planta la vigila). <i>Pista: marcas para “falla confirmada”, “red estable” y “pedir grupo” (Set/Reset); TOF para el enfriamiento.</i>",
     tags: [TAG("%I0.0", "Red_OK", "switch", "", { def: 1 }), TAG("%I0.1", "Grupo_OK", "plant"), TAG("%I0.2", "52R_Cerrado", "plant"), TAG("%I0.3", "52G_Cerrado", "plant"), TAG("%Q0.0", "Arranque_Grupo"), TAG("%Q0.1", "Cerrar_52R"), TAG("%Q0.2", "Cerrar_52G"), TAG("%M0.0", "Falla_Red_Conf"), TAG("%M0.1", "Red_Estable"), TAG("%M0.2", "Pedir_Grupo")],
     inicio: [SEG("Falla de red confirmada", S()), SEG("Red estable", S()), SEG("Pedir grupo (Set)", S()), SEG("Liberar grupo (Reset)", S()), SEG("Arranque del grupo + enfriamiento", S()), SEG("Cerrar 52G", S()), SEG("Cerrar 52R", S(NO("%I0.0"), COIL("%Q0.1")))],
     solucion: [SEG("Falla de red confirmada", S(NC("%I0.0"), TON("T_FallaRed", "T#3s"), COIL("%M0.0"))),
@@ -281,18 +289,18 @@ tiempo máximo (10 s para la clase más exigente), lo que limita los retardos qu
       SEG("Liberar grupo (Reset)", S(NO("%M0.1"), RST("%M0.2"))),
       SEG("Arranque del grupo + enfriamiento", S(NO("%M0.2"), TOF("T_Enfriar", "T#5s"), COIL("%Q0.0"))),
       SEG("Cerrar 52G", S(NO("%M0.2"), NO("%I0.1"), NC("%I0.2"), COIL("%Q0.2"))),
-      SEG("Cerrar 52R", S(NC("%M0.2"), NO("%I0.0"), NC("%I0.3"), COIL("%Q0.1")))],
+      SEG("Cerrar 52R", S(NC("%M0.2"), NO("%I0.0"), NC("%I0.3"), TON("T_Retardo", "T#1s"), COIL("%Q0.1")))],
     nunca: [["%Q0.1", "%Q0.2"]],
     pasos: [
-      { in: {}, t: 500, ex: { "%Q0.1": 1, "%I0.2": 1, "%Q0.0": 0, "%Q0.2": 0 }, d: "Red normal: la carga va por la red (52R cerrado)." },
+      { in: {}, t: 1500, ex: { "%Q0.1": 1, "%I0.2": 1, "%Q0.0": 0, "%Q0.2": 0 }, d: "Red normal: la carga va por la red (52R cerrado tras 1 s)." },
       { in: { "%I0.0": 0 }, t: 1000, ex: { "%Q0.0": 0 }, d: "Microcorte de 1 s: el grupo NO arranca." },
-      { in: { "%I0.0": 1 }, t: 500, ex: { "%Q0.1": 1, "%Q0.0": 0 }, d: "Vuelve la red: sigue por la red." },
+      { in: { "%I0.0": 1 }, t: 1500, ex: { "%Q0.1": 1, "%Q0.0": 0 }, d: "Vuelve la red: 52R cierra de nuevo con retardo, sin arrancar el grupo." },
       { in: { "%I0.0": 0 }, t: 2800, ex: { "%Q0.0": 0 }, d: "Falla de red: a los 2,8 s todavía se confirma." },
       { in: {}, t: 400, ex: { "%Q0.0": 1 }, d: "3,2 s: arranca el grupo." },
       { in: {}, t: 3500, ex: { "%Q0.2": 1, "%I0.3": 1, "%Q0.1": 0 }, d: "Grupo en tensión: 52G cerrado, la carga va por el grupo." },
       { in: { "%I0.0": 1 }, t: 5000, ex: { "%Q0.2": 1, "%Q0.1": 0 }, d: "Vuelve la red: a los 5 s todavía espera estabilidad." },
-      { in: {}, t: 5500, ex: { "%Q0.2": 0, "%Q0.1": 1, "%I0.2": 1, "%Q0.0": 1 }, d: "10,5 s: retransferencia a red; el grupo queda en enfriamiento." },
-      { in: {}, t: 5000, ex: { "%Q0.0": 0, "%Q0.1": 1 }, d: "Enfriamiento terminado: el grupo se detiene." }
+      { in: {}, t: 6500, ex: { "%Q0.2": 0, "%Q0.1": 1, "%I0.2": 1, "%Q0.0": 1 }, d: "11,5 s: abrió 52G, esperó 1 s y cerró 52R; el grupo queda en enfriamiento." },
+      { in: {}, t: 4000, ex: { "%Q0.0": 0, "%Q0.1": 1 }, d: "Enfriamiento terminado (5 s): el grupo se detiene." }
     ] },
   quiz: [
     { q: "¿Para qué sirve el tiempo de confirmación de falla de red?", o: ["Para calentar el grupo", "Para no arrancar el grupo por un microcorte", "Para sincronizar"], a: 1, e: "Los huecos de tensión de 100 ms o 1 s son frecuentes y no justifican una transferencia." },
@@ -500,3 +508,182 @@ por horas de marcha y el reemplazo automático si la principal falla (térmico, 
     { q: "¿Por qué la bomba para con el nivel bajo y no con el alto?", o: ["Por histéresis: bombea de alto a bajo y evita arranques continuos", "Porque el sensor alto falla", "Da igual"], a: 0, e: "La banda entre ambos niveles da ciclos largos." }
   ] }
 );
+
+/* ===================== ampliación: falla de arranque, discrepancia y reparto de carga ===================== */
+PLANTAS.arranque = {
+  /* el motor arranca tras 1,5 s de arrancador con combustible, salvo que se simule la falla */
+  model: function (e) { var s = e.ps, fuel = !!e.v["%Q0.0"], crank = !!e.v["%Q0.1"];
+    if (!fuel) { s.run = 0; s.n = 0; }
+    if (crank && !s.prev) s.n = (s.n || 0) + 1; s.prev = crank;
+    s.ct = crank ? (s.ct || 0) + e.dt : 0;
+    if (fuel && crank && s.ct >= 1500 && !e.pressed["%I0.1"]) s.run = 1;
+    e.forced["%I0.1"] = s.run ? 1 : 0;
+    s.eng = crank && s.run ? (s.eng || 0) + e.dt : 0;
+    if (s.eng > 300) e.fault = "Arrancador engranado con el motor en marcha: se destruye el piñón";
+    if (s.ct > 6000) e.fault = "Arrancador más de 6 s seguidos: se recalienta (usa ciclos de arranque y reposo)";
+  },
+  hmi: function (e) { var s = e.ps, ct = s.ct || 0;
+    return HM.svg(150, HM.gen(50, 60, !!s.run, "") + HM.tx(50, 100, s.run ? "Motor en marcha" : e.v["%Q0.1"] ? "Girando con arrancador" : "Parado", { w: 700, c: s.run ? "var(--on)" : "var(--ink2)" }) +
+      HM.lamp(130, 30, e.v["%Q0.0"], "Solenoide de combustible", "var(--on)") + HM.lamp(130, 52, e.v["%Q0.1"], "Arrancador (motor de arranque)", "var(--acc)") +
+      HM.lamp(130, 74, e.v["%Q0.2"], "ALARMA · falla de arranque", "var(--bad)") +
+      HM.tx(130, 104, "Intento n.º " + (s.n || 0) + " · arrancador " + (ct / 1000).toFixed(1) + " s", { a: "start", s: 11, w: 700, m: 1 }) +
+      '<rect x="130" y="112" width="240" height="10" rx="3" style="fill:var(--box);stroke:var(--line)"/><rect x="130" y="112" width="' + Math.min(240, ct / 6000 * 240) + '" height="10" rx="3" style="fill:' + (ct > 5000 ? "var(--bad)" : "var(--acc)") + '"/>' +
+      HM.tx(370, 136, "límite térmico 6 s", { a: "end", s: 9, c: "var(--ink3)" }) + HM.falla(e, 146));
+  }
+};
+PLANTAS.disc = {
+  /* interruptor de 80 ms; con la falla simulada no cierra, o se dispara si estaba cerrado */
+  model: function (e) { var s = e.ps; if (e.pressed["%I0.1"]) { e.forced["%I0.1"] = 0; s.t = 0; return; } maniobra(e, s, "t", "%Q0.0", "%I0.1", 80); },
+  hmi: function (e) { var o = !!e.v["%Q0.0"], f = !!e.forced["%I0.1"], d = o !== f;
+    return HM.svg(120, HM.ln(60, 10, 60, 45, true) + HM.brk(60, 58, f, "52") + HM.ln(60, 68, 60, 105, f) +
+      HM.tx(150, 30, "Orden del PLC", { a: "start", s: 10, c: "var(--ink2)" }) + HM.tx(380, 30, o ? "CERRAR" : "ABRIR", { a: "end", w: 800, m: 1 }) +
+      HM.tx(150, 52, "Estado real (contacto auxiliar)", { a: "start", s: 10, c: "var(--ink2)" }) + HM.tx(380, 52, f ? "CERRADO" : "ABIERTO", { a: "end", w: 800, m: 1, c: f ? "var(--bad)" : "var(--on)" }) +
+      HM.lamp(150, 76, d, d ? "Discrepancia orden ≠ estado" : "Orden y estado coinciden", "#FFC83D") + HM.lamp(150, 98, e.v["%Q0.1"], "ALARMA de discrepancia (bloqueo)", "var(--bad)") + HM.falla(e, 116));
+  }
+};
+PLANTAS.reparto = {
+  /* G2 en paralelo con G1: el gobernador de G2 se sube o baja; G1 toma el resto de la carga */
+  model: function (e) { var s = e.ps, tot = e.ana["%IW70"] | 0; if (s.p2 == null) s.p2 = 100;
+    if (e.v["%Q0.1"]) s.p2 += 100 * e.dt / 1000; if (e.v["%Q0.2"]) s.p2 -= 100 * e.dt / 1000;
+    s.p2 = Math.max(-200, Math.min(tot, s.p2));
+    s.rp = s.p2 < 0 ? (s.rp || 0) + e.dt : 0;
+    if (s.rp > 500) e.fault = "Potencia inversa en G2 (" + Math.round(s.p2) + " kW): G2 quedó motorizado, dispara la protección 32";
+    e.ana["%IW64"] = Math.round(tot - s.p2); e.ana["%IW66"] = Math.round(s.p2);
+  },
+  hmi: function (e) { var p1 = e.ana["%IW64"] | 0, p2 = e.ana["%IW66"] | 0, X = function (v) { return Math.max(0, Math.min(220, v / 1000 * 200)); };
+    var bar = function (y, n, p) { return HM.gen(34, y + 6, true, "") + HM.tx(64, y, n, { a: "start", w: 700 }) + '<rect x="64" y="' + (y + 6) + '" width="200" height="14" rx="3" style="fill:var(--box);stroke:var(--line)"/><rect x="64" y="' + (y + 6) + '" width="' + X(p) + '" height="14" rx="3" style="fill:' + (p < 0 || p > 1000 ? "var(--bad)" : "var(--acc)") + '"/>' + HM.tx(390, y + 17, p + " kW · " + Math.round(p / 10) + " %", { a: "end", w: 800, m: 1, s: 10.5, c: p < 0 || p > 1000 ? "var(--bad)" : "var(--ink)" }); };
+    return HM.svg(150, bar(22, "G1 · 1000 kW", p1) + bar(66, "G2 · 1000 kW", p2) +
+      HM.tx(64, 112, "Diferencia G1 − G2: " + (p1 - p2) + " kW", { a: "start", w: 700 }) +
+      HM.lamp(250, 108, e.v["%Q0.1"], "Subir G2 ▲", "var(--acc)") + HM.lamp(330, 108, e.v["%Q0.2"], "Bajar ▼", "var(--acc)") + HM.falla(e, 144));
+  }
+};
+
+LECCIONES.push(
+{ id: "arranque", nivel: "energia", titulo: "Falla de arranque: ciclos de arranque y reposo", min: 30,
+  teoria: `
+<p>Cuando el grupo recibe la orden de marcha abre el combustible y energiza el <b>arrancador</b> (motor de arranque). Si el
+diésel no prende, no se puede dar arranque sin fin: el arrancador se recalienta y la batería se agota. NFPA 110 e ISO 8528‑4
+piden <b>ciclos de arranque y reposo</b> limitados y, si se agotan, una parada con alarma de <b>falla de arranque</b>
+(<i>overcrank</i>).</p>
+<ul>
+  <li><b>Arranque:</b> arrancador energizado unos segundos (aquí 5 s; en planta, lo que indique el fabricante).</li>
+  <li><b>Desacople:</b> en cuanto el motor gira solo (señal de velocidad o frecuencia), el arrancador se suelta <b>de inmediato</b>; si sigue engranado, el piñón se destruye.</li>
+  <li><b>Reposo:</b> pausa entre intentos para que el arrancador se enfríe y la batería se recupere.</li>
+  <li><b>Límite:</b> tras el último intento fallido, se corta el combustible y se memoriza la alarma.</li>
+</ul>
+<div class="tip">Este patrón (un temporizador de ciclo que se reinicia solo, un comparador sobre su ET y un contador de intentos)
+sirve para cualquier reintento automático: rearranque de bombas, reconexión de un alimentador, reintento de comunicación.</div>
+<p>La <b>parada de emergencia</b> del grupo, en cambio, va cableada y corta el combustible sin pasar por el programa.</p>`,
+  ejemplo: { planta: "arranque", tags: [TAG("%I0.0", "Arrancar", "push"), TAG("%I0.1", "Motor_Girando", "plant", "pulsa = el motor no prende", { falla: 1 }), TAG("%I0.3", "Parar", "pushNC", "NC cableado"), TAG("%Q0.0", "Combustible"), TAG("%Q0.1", "Arrancador")],
+    prog: [SEG("Marcha", S(P([NO("%I0.0")], [NO("%Q0.0")]), NO("%I0.3"), COIL("%Q0.0"))),
+      SEG("Arrancador hasta que el motor gire (¡sin límite de tiempo!)", S(NO("%Q0.0"), NC("%I0.1"), COIL("%Q0.1")))] },
+  reto: { planta: "arranque",
+    enunciado: "Con la demanda <code>%M0.0</code> (Arrancar <code>%I0.0</code>, Parar <code>%I0.3</code> NC, se cae con alarma) abre el combustible <code>%Q0.0</code> y da <b>ciclos de 10 s</b>: arrancador <code>%Q0.1</code> los primeros <b>5 s</b> y reposo los otros 5 s, mientras el motor no gire (<code>\"Motor_Girando\" %I0.1</code>). Cuenta los intentos; si al terminar el <b>3.º</b> el motor no gira, Set de <code>\"Falla_Arranque\" %Q0.2</code> (que corta todo). <code>\"Reset\" %I0.2</code> borra la alarma. <i>Pista: TON T_Ciclo de 10 s que se reinicia solo, CMP sobre T_Ciclo.ET, CTU con R = %M0.1 (sin demanda).</i>",
+    tags: [TAG("%I0.0", "Arrancar", "push"), TAG("%I0.1", "Motor_Girando", "plant", "pulsa = el motor no prende", { falla: 1 }), TAG("%I0.2", "Reset", "push"), TAG("%I0.3", "Parar", "pushNC", "NC cableado"), TAG("%Q0.0", "Combustible"), TAG("%Q0.1", "Arrancador"), TAG("%Q0.2", "Falla_Arranque"), TAG("%M0.0", "Demanda"), TAG("%M0.1", "Sin_Demanda")],
+    inicio: [SEG("Demanda de marcha", S(P([NO("%I0.0")], [NO("%M0.0")]), NO("%I0.3"), NC("%Q0.2"), COIL("%M0.0"))), SEG("Sin demanda (reset del contador)", S(NC("%M0.0"), COIL("%M0.1"))), SEG("Combustible", S(NO("%M0.0"), COIL("%Q0.0"))),
+      SEG("Ciclo de 10 s", S()), SEG("Arrancador", S()), SEG("Contar intentos", S()), SEG("Falla de arranque", S()), SEG("Reset de la alarma", S())],
+    solucion: [SEG("Demanda de marcha", S(P([NO("%I0.0")], [NO("%M0.0")]), NO("%I0.3"), NC("%Q0.2"), COIL("%M0.0"))), SEG("Sin demanda (reset del contador)", S(NC("%M0.0"), COIL("%M0.1"))), SEG("Combustible", S(NO("%M0.0"), COIL("%Q0.0"))),
+      SEG("Ciclo de 10 s", S(NO("%M0.0"), NC("%I0.1"), NC("T_Ciclo.Q"), TON("T_Ciclo", "T#10s"))),
+      SEG("Arrancador", S(NO("%M0.0"), NC("%I0.1"), CMP("<", "T_Ciclo.ET", "T#5s"), COIL("%Q0.1"))),
+      SEG("Contar intentos", S(NO("%Q0.1"), CTU("C_Int", "%M0.1", 3))),
+      SEG("Falla de arranque", S(CMP(">=", "C_Int.CV", "3"), CMP(">=", "T_Ciclo.ET", "T#5s"), NC("%I0.1"), SET("%Q0.2"))),
+      SEG("Reset de la alarma", S(NO("%I0.2"), RST("%Q0.2")))],
+    reglas: [{ si: "%Q0.1", sin: "%Q0.0", d: "Arrancador energizado sin combustible" }],
+    pasos: [
+      { in: {}, t: 100, ex: { "%Q0.0": 0, "%Q0.1": 0, "%Q0.2": 0 }, d: "Grupo parado." },
+      { in: { "%I0.0": 1 }, t: 200, ex: { "%Q0.0": 1, "%Q0.1": 1 }, d: "Arrancar: combustible y arrancador." },
+      { in: { "%I0.0": 0 }, t: 1500, ex: { "%Q0.0": 1, "%Q0.1": 0, "%I0.1": 1 }, d: "El motor prende a los 1,5 s: el arrancador se suelta." },
+      { in: { "%I0.3": 1 }, t: 100, ex: { "%Q0.0": 0 }, d: "Parar." },
+      { in: { "%I0.3": 0, "%I0.1": 1, "%I0.0": 1 }, t: 200, ex: { "%Q0.1": 1 }, d: "Motor que no prende: 1.er intento." },
+      { in: { "%I0.0": 0 }, t: 4500, ex: { "%Q0.1": 1 }, d: "4,7 s: sigue el 1.er intento." },
+      { in: {}, t: 600, ex: { "%Q0.1": 0, "%Q0.0": 1, "%Q0.2": 0 }, d: "5,3 s: reposo." },
+      { in: {}, t: 5000, ex: { "%Q0.1": 1 }, d: "10,3 s: 2.º intento." },
+      { in: {}, t: 10000, ex: { "%Q0.1": 1, "%Q0.2": 0 }, d: "20,3 s: 3.er intento." },
+      { in: {}, t: 5000, ex: { "%Q0.2": 1, "%Q0.0": 0, "%Q0.1": 0 }, d: "25,3 s: falla de arranque, todo cortado." },
+      { in: { "%I0.1": 0, "%I0.2": 1 }, t: 200, ex: { "%Q0.2": 0, "%Q0.0": 0 }, d: "Reset: alarma borrada, sin rearranque solo." }
+    ] },
+  quiz: [
+    { q: "¿Por qué el arranque se hace en ciclos con reposo?", o: ["Para ahorrar combustible", "Para no recalentar el arrancador ni agotar la batería", "Por estética"], a: 1, e: "El arrancador es un motor de servicio corto." },
+    { q: "Cuando el motor ya gira solo, el arrancador…", o: ["Sigue unos segundos más", "Se suelta de inmediato", "Se queda engranado"], a: 1, e: "Arrastrado por el motor, el piñón se destruye." },
+    { q: "¿Cómo se llama la alarma tras agotar los intentos?", o: ["Overcrank / falla de arranque", "Sobrevelocidad", "Potencia inversa"], a: 0, e: "NFPA 110 la incluye entre las paradas obligatorias." }
+  ] },
+{ id: "discrepancia", nivel: "energia", titulo: "Supervisión de interruptores: discrepancia orden‑estado", min: 25,
+  teoria: `
+<p>El PLC <b>ordena</b> cerrar un interruptor, pero eso no significa que se haya cerrado: el resorte puede estar descargado, la
+bobina quemada, el interruptor extraído o disparado por una protección. Por eso cada maniobra se <b>supervisa</b>:</p>
+<ul>
+  <li>Se compara la <b>orden</b> con el <b>contacto auxiliar</b> (52a / 52b).</li>
+  <li>Durante la maniobra son distintos unos milisegundos: se da un <b>tiempo de tolerancia</b> (aquí 0,5 s) antes de alarmar.</li>
+  <li>Si la discrepancia persiste: <b>alarma memorizada</b>, se <b>retira la orden</b> y la secuencia se <b>bloquea</b> hasta que el operador reconozca.</li>
+  <li>Si el interruptor <b>se abre solo</b> estando la orden de cerrar, también es discrepancia: un disparo.</li>
+</ul>
+<div class="tip">Es la pieza que le falta a la TTA y al sincronizador para no quedar esperando para siempre una realimentación que
+nunca llega. En TIA se suele encapsular en un FB «Interruptor» reutilizable con su DB de instancia.</div>`,
+  ejemplo: { planta: "disc", tags: [TAG("%I0.0", "Orden_Cerrar", "switch"), TAG("%I0.1", "52_Cerrado", "plant", "pulsa = interruptor no cierra / dispara", { falla: 1 }), TAG("%Q0.0", "Cerrar_52")],
+    prog: [SEG("Orden sin supervisión", S(NO("%I0.0"), COIL("%Q0.0")))] },
+  reto: { planta: "disc",
+    enunciado: "Supervisa el interruptor 52. La orden <code>\"Cerrar_52\" %Q0.0</code> sigue al selector <code>\"Orden_Cerrar\" %I0.0</code>, salvo que haya alarma. Si la orden y el contacto auxiliar <code>\"52_Cerrado\" %I0.1</code> difieren durante <b>más de 0,5 s</b>, Set de <code>\"Alarma_Disc\" %Q0.1</code>, que retira la orden y la bloquea. <code>\"Reconocer\" %I0.2</code> borra la alarma.",
+    tags: [TAG("%I0.0", "Orden_Cerrar", "switch"), TAG("%I0.1", "52_Cerrado", "plant", "pulsa = interruptor no cierra / dispara", { falla: 1 }), TAG("%I0.2", "Reconocer", "push"), TAG("%Q0.0", "Cerrar_52"), TAG("%Q0.1", "Alarma_Disc")],
+    inicio: [SEG("Discrepancia orden ≠ estado", S()), SEG("Reconocer", S()), SEG("Orden de cierre", S(NO("%I0.0"), COIL("%Q0.0")))],
+    solucion: [SEG("Discrepancia orden ≠ estado", S(P([NO("%Q0.0"), NC("%I0.1")], [NC("%Q0.0"), NO("%I0.1")]), TON("T_Disc", "T#500ms"), SET("%Q0.1"))),
+      SEG("Reconocer", S(NO("%I0.2"), RST("%Q0.1"))),
+      SEG("Orden de cierre", S(NO("%I0.0"), NC("%Q0.1"), COIL("%Q0.0")))],
+    pasos: [
+      { in: {}, t: 200, ex: { "%Q0.0": 0, "%Q0.1": 0 }, d: "Abierto, sin orden." },
+      { in: { "%I0.0": 1 }, t: 300, ex: { "%Q0.0": 1, "%I0.1": 1, "%Q0.1": 0 }, d: "Cierra y confirma en 80 ms: sin alarma." },
+      { in: { "%I0.0": 0 }, t: 300, ex: { "%Q0.0": 0, "%I0.1": 0, "%Q0.1": 0 }, d: "Abre y confirma: sin alarma." },
+      { in: { "%I0.1": 1, "%I0.0": 1 }, t: 400, ex: { "%Q0.0": 1, "%Q0.1": 0 }, d: "Ordena cerrar pero no cierra: a los 0,4 s aún tolera." },
+      { in: {}, t: 300, ex: { "%Q0.1": 1, "%Q0.0": 0 }, d: "0,7 s sin confirmación: alarma y orden retirada." },
+      { in: { "%I0.1": 0 }, t: 300, ex: { "%Q0.1": 1, "%Q0.0": 0 }, d: "Reparado: sigue bloqueado hasta reconocer." },
+      { in: { "%I0.2": 1 }, t: 300, ex: { "%Q0.1": 0, "%Q0.0": 1, "%I0.1": 1 }, d: "Reconocer: vuelve a cerrar." },
+      { in: { "%I0.2": 0, "%I0.1": 1 }, t: 700, ex: { "%Q0.1": 1, "%Q0.0": 0 }, d: "Se dispara estando cerrado: discrepancia y bloqueo." }
+    ] },
+  quiz: [
+    { q: "¿Por qué hace falta un tiempo de tolerancia antes de alarmar?", o: ["Porque la maniobra tarda unos milisegundos y en ese lapso orden y estado difieren", "Para que el operador no vea la alarma", "No hace falta"], a: 0, e: "Sin tolerancia, cada maniobra normal daría alarma." },
+    { q: "El interruptor se abre solo con la orden de cerrar activa. Es…", o: ["Normal", "Una discrepancia (disparo) que debe alarmar y bloquear", "Un error del contacto auxiliar siempre"], a: 1, e: "Puede ser una protección actuando: no se debe recerrar a ciegas." }
+  ] },
+{ id: "reparto", nivel: "energia", titulo: "Reparto de carga entre grupos en paralelo", min: 30,
+  teoria: `
+<p>Con dos grupos en la misma barra, la <b>frecuencia es común</b>: ninguno puede ir “más rápido” que el otro. Subir la
+consigna del gobernador de un grupo no cambia la frecuencia: hace que ese grupo <b>tome más kW</b> y el otro, menos. Del mismo
+modo, el AVR reparte los <b>kVAr</b> (la potencia reactiva).</p>
+<h3>Isócrono o <i>droop</i></h3>
+<ul>
+  <li><b>Isócrono con líneas de reparto:</b> los controladores mantienen 60 Hz exactos y se reparten la carga entre ellos.</li>
+  <li><b>Droop</b> (estatismo, típicamente 3‑5 %, ISO 8528‑5): la frecuencia baja un poco con la carga, y eso reparte de forma natural.</li>
+</ul>
+<p>Cuando el reparto lo hace la planta, el PLC compara las potencias y da pulsos de <b>subir/bajar</b> al gobernador del grupo
+que se ajusta, con una <b>banda muerta</b> para no estar corrigiendo siempre.</p>
+<div class="tip"><b>Cuidado con la potencia inversa:</b> si se baja demasiado un grupo, deja de entregar y pasa a
+<b>absorber</b> potencia (funciona como motor). La protección <b>32</b> lo dispara. El modelo de planta la vigila.</div>`,
+  ejemplo: { planta: "reparto", tags: [TAG("%IW70", "Carga_Planta", "analog", "", { min: 0, max: 2000, unit: "kW", def: 1200 }), TAG("%I0.0", "Subir_Manual", "push"), TAG("%I0.1", "Bajar_Manual", "push"), TW("%IW64", "kW_G1", { unit: "kW" }), TW("%IW66", "kW_G2", { unit: "kW" }), TAG("%Q0.1", "Subir_G2"), TAG("%Q0.2", "Bajar_G2")],
+    prog: [SEG("Subir G2 a mano", S(NO("%I0.0"), COIL("%Q0.1"))), SEG("Bajar G2 a mano (prueba la potencia inversa)", S(NO("%I0.1"), COIL("%Q0.2")))] },
+  reto: { planta: "reparto",
+    enunciado: "Iguala la carga de los dos grupos. Calcula <code>\"Dif_kW\" %MW10 = kW_G1 − kW_G2</code> (<code>%IW64</code> − <code>%IW66</code>). Si <b>Dif_kW &gt; 50</b>, <code>\"Subir_G2\" %Q0.1</code>; si <b>Dif_kW &lt; −50</b>, <code>\"Bajar_G2\" %Q0.2</code>; entre ambos, nada (banda muerta). La demanda total la fijas con <code>\"Carga_Planta\" %IW70</code>.",
+    tags: [TAG("%IW70", "Carga_Planta", "analog", "", { min: 0, max: 2000, unit: "kW", def: 1200 }), TW("%IW64", "kW_G1", { unit: "kW" }), TW("%IW66", "kW_G2", { unit: "kW" }), TAG("%Q0.1", "Subir_G2"), TAG("%Q0.2", "Bajar_G2"), TAG("%MW10", "Dif_kW")],
+    inicio: [SEG("Diferencia de carga", S()), SEG("Subir G2", S()), SEG("Bajar G2", S())],
+    solucion: [SEG("Diferencia de carga", S(MATH("SUB", "%IW64", "%IW66", "%MW10"))),
+      SEG("Subir G2", S(CMP(">", "%MW10", "50"), COIL("%Q0.1"))),
+      SEG("Bajar G2", S(CMP("<", "%MW10", "-50"), COIL("%Q0.2")))],
+    nunca: [["%Q0.1", "%Q0.2"]],
+    pasos: [
+      { in: {}, t: 300, ex: { "%Q0.1": 1, "%Q0.2": 0 }, d: "1200 kW: G1 lleva 1100 y G2 100 → subir G2." },
+      { in: {}, t: 6000, ex: { "%IW66": [550, 650], "%Q0.1": 0, "%Q0.2": 0 }, d: "Repartido: cada grupo cerca de 600 kW, en banda muerta." },
+      { in: { "%IW70": 600 }, t: 5000, ex: { "%IW66": [250, 350], "%Q0.2": 0 }, d: "Baja la demanda a 600 kW: se baja G2 hasta ~300 kW." },
+      { in: { "%IW70": 1600 }, t: 6000, ex: { "%IW66": [750, 850] }, d: "Sube a 1600 kW: ~800 kW cada uno." },
+      { in: { "%IW70": 200 }, t: 4000, ex: { "%IW66": [50, 150] }, d: "Cae a 200 kW: G2 baja sin llegar a potencia inversa." }
+    ] },
+  quiz: [
+    { q: "Dos grupos en paralelo: subir la consigna de velocidad de G2…", o: ["Sube la frecuencia de la barra", "Hace que G2 tome más kW y G1 menos", "No hace nada"], a: 1, e: "La frecuencia es común; cambia el reparto." },
+    { q: "¿Qué reparte el AVR?", o: ["kW", "kVAr (reactiva)", "La frecuencia"], a: 1, e: "Gobernador → kW; AVR → kVAr." },
+    { q: "Si un grupo pasa a absorber potencia…", o: ["Ahorra combustible", "Dispara la protección de potencia inversa (32)", "Mejora el factor de potencia"], a: 1, e: "Queda motorizado por el otro grupo." }
+  ] }
+);
+
+/* orden pedagógico de la ruta */
+(function () {
+  var orden = ["grupo", "arranque", "tta", "discrepancia", "sincronismo", "reparto", "demanda", "faja", "bombas"];
+  var otros = LECCIONES.filter(function (l) { return l.nivel !== "energia"; });
+  var ruta = orden.map(function (id) { return LECCIONES.find(function (l) { return l.id === id; }); });
+  LECCIONES.length = 0; otros.concat(ruta).forEach(function (l) { LECCIONES.push(l); });
+})();

@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Manual de uso de LadderLab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Manual de uso de LadderLab: curso y simulador de Ladder (LAD) para TIA Portal con ruta de grupos electrógenos y minería.">
+<link rel="icon" href="../icono.svg" type="image/svg+xml">
+<style>
+:root{--bg:#F2F5F7;--panel:#fff;--ink:#13202A;--ink2:#465867;--ink3:#5E6D79;--line:#D8E0E6;--acc:#0A7F86;--acc2:#DDF1F1;--box:#EEF3F7;--warn2:#FFF4DE;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E151A;--panel:#151F26;--ink:#E4ECF1;--ink2:#A7B6C1;--ink3:#8B9BA7;--line:#2A3842;--acc:#3FC1C6;--acc2:#123236;--box:#1B2831;--warn2:#33270F}}
+:root[data-theme="dark"]{--bg:#0E151A;--panel:#151F26;--ink:#E4ECF1;--ink2:#A7B6C1;--ink3:#8B9BA7;--line:#2A3842;--acc:#3FC1C6;--acc2:#123236;--box:#1B2831;--warn2:#33270F}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:52rem;margin:0 auto;padding:2rem 1rem 4rem}
+header.cover{background:linear-gradient(135deg,#0B3C49,#0A7F86);color:#fff;border-radius:16px;padding:1.6rem 1.6rem 1.3rem;margin-bottom:1.5rem}
+header.cover h1{margin:0 0 .3rem;font-size:clamp(1.7rem,1.3rem+2vw,2.5rem);line-height:1.1}
+header.cover p{margin:.2rem 0;opacity:.92}
+header.cover a{color:#fff}
+h2{font-size:1.35rem;margin:2.2rem 0 .5rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.05rem;margin:1.3rem 0 .3rem}
+a{color:var(--acc)}
+code,kbd{font-family:var(--mono);font-size:.88em;background:var(--box);padding:.05em .35em;border-radius:4px}
+kbd{border:1px solid var(--line);border-bottom-width:2px}
+figure{margin:1rem 0 1.3rem}
+figure img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+figure.small img{max-width:380px;margin:0 auto}
+figure.mid img{max-width:640px;margin:0 auto}
+figcaption{font-size:.85rem;color:var(--ink2);margin-top:.35rem;text-align:center}
+table{border-collapse:collapse;width:100%;font-size:.92rem;margin:.6rem 0 1rem;display:block;overflow-x:auto}
+th,td{border-bottom:1px solid var(--line);padding:.4rem .55rem;text-align:left;vertical-align:top}
+th{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink2)}
+.tip{border-left:4px solid var(--acc);background:var(--acc2);padding:.6rem .9rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.warn{border-left:4px solid #C98A00;background:var(--warn2);padding:.6rem .9rem;border-radius:0 8px 8px 0;margin:1rem 0}
+nav.toc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.8rem 1.2rem}
+nav.toc ol{margin:.3rem 0;padding-left:1.3rem;columns:2;column-gap:2rem}
+@media (max-width:640px){nav.toc ol{columns:1}}
+.legend{display:inline-block;width:2.2em;height:0;vertical-align:middle;margin-right:.3em}
+.k{display:inline-block;width:.8em;height:.8em;border-radius:50%;vertical-align:-.05em;margin-right:.25em}
+footer{margin-top:3rem;font-size:.82rem;color:var(--ink3)}
+@media print{
+  body{background:#fff;color:#000;font-size:11pt}
+  main{max-width:none;padding:0}
+  header.cover{break-after:page;min-height:85vh;display:flex;flex-direction:column;justify-content:center;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  nav.toc{break-after:page}
+  h2{break-before:page;border-top:0}
+  h2,h3{break-after:avoid}
+  figure,table,.tip,.warn{break-inside:avoid}
+  a{color:inherit;text-decoration:none}
+  .noprint{display:none}
+}
+</style>
+</head>
+<body>
+<main>
+<header class="cover">
+  <p style="text-transform:uppercase;letter-spacing:.12em;font-size:.8rem">Manual de uso</p>
+  <h1>LadderLab<br>Ladder para TIA Portal</h1>
+  <p>Curso y simulador de programación LAD para PLC S7‑1200/1500, de básico a avanzado, con una ruta aplicada a grupos electrógenos y plantas mineras.</p>
+  <p style="margin-top:1rem;font-size:.9rem">Versión de noviembre de 2026 · 24 lecciones · 20 retos autocorregidos · funciona sin conexión</p>
+  <p class="noprint" style="margin-top:1rem"><a href="../">← Volver a la app</a></p>
+</header>
+
+<nav class="toc" aria-label="Contenido">
+<b>Contenido</b>
+<ol>
+  <li><a href="#que-es">Qué es LadderLab</a></li>
+  <li><a href="#abrir">Abrir la app (demo descargable, web y celular)</a></li>
+  <li><a href="#inicio">La pantalla de inicio</a></li>
+  <li><a href="#leccion">Cómo está hecha una lección</a></li>
+  <li><a href="#simulador">El simulador del PLC</a></li>
+  <li><a href="#editor">El editor de segmentos LAD</a></li>
+  <li><a href="#retos">Los retos y el corrector</a></li>
+  <li><a href="#ruta">La ruta de grupos electrógenos y minería</a></li>
+  <li><a href="#lab">Laboratorio libre y referencia</a></li>
+  <li><a href="#progreso">Progreso, rangos e insignias</a></li>
+  <li><a href="#tia">De LadderLab a TIA Portal</a></li>
+  <li><a href="#limites">Límites del simulador</a></li>
+  <li><a href="#problemas">Solución de problemas</a></li>
+</ol>
+</nav>
+
+<h2 id="que-es">1. Qué es LadderLab</h2>
+<p>LadderLab enseña a programar en <b>Ladder (LAD, IEC 61131‑3)</b> tal como se hace en <b>TIA Portal</b> para los PLC Siemens
+S7‑1200 y S7‑1500. Cada lección combina tres cosas:</p>
+<ul>
+  <li><b>Teoría breve</b> con las notas de cómo se hace en TIA Portal y en planta.</li>
+  <li><b>Un PLC simulado</b> que corre en el navegador: lee entradas, ejecuta el programa segmento por segmento y escribe salidas cada 10 ms, como el ciclo de scan real.</li>
+  <li><b>Un reto que se corrige solo</b>: el corrector ejecuta tu programa con una secuencia de entradas y tiempos, y en los procesos de la ruta minera, contra un <b>modelo de planta</b> que responde y detecta fallas peligrosas.</li>
+</ul>
+<table>
+<tr><th>Nivel</th><th>Lecciones</th><th>Contenido</th></tr>
+<tr><td>Básico</td><td>6</td><td>Ciclo de scan, TIA Portal y direcciones, contactos NA/NC, AND/OR, autorretención, Set/Reset</td></tr>
+<tr><td>Intermedio</td><td>5</td><td>Flancos, TON/TOF/TP, CTU/CTD, comparar/mover/calcular, estrella‑triángulo</td></tr>
+<tr><td>Avanzado</td><td>4</td><td>OB/FC/FB/DB, secuencias, analógicas (NORM_X, SCALE_X), puesta en marcha y diagnóstico</td></tr>
+<tr><td>Grupos y minería</td><td>9</td><td>Protecciones del grupo, falla de arranque, TTA red‑grupo, discrepancia de interruptores, sincronismo, reparto de carga, arranque por demanda, fajas y bombas</td></tr>
+</table>
+<p class="tip">TIA Portal, SIMATIC y S7 son marcas de Siemens AG. LadderLab es una herramienta de estudio independiente: no reemplaza a TIA Portal ni a S7‑PLCSIM.</p>
+
+<h2 id="abrir">2. Abrir la app</h2>
+<h3>2.1 Demo descargable (sin internet)</h3>
+<ol>
+  <li>Descomprime <code>LadderLab-demo.zip</code> en cualquier carpeta.</li>
+  <li>Abre la carpeta <code>LadderLab</code> y haz doble clic en <code>index.html</code>. Se abre en tu navegador.</li>
+  <li>Listo: no necesita instalación, servidor ni conexión.</li>
+</ol>
+<p>Funciona en Chrome, Edge, Firefox y Safari actualizados. El progreso se guarda en ese navegador y en esa carpeta: si
+mueves la carpeta o usas otro navegador, empiezas de cero (puedes exportar tus programas desde el Laboratorio).</p>
+<h3>2.2 Versión web e instalación en el celular</h3>
+<p>En la versión publicada (<code>https://nilthonnn.github.io/nefer/ladder/</code>, disponible cuando se publique la rama) abre el enlace
+en el teléfono y elige <b>Agregar a pantalla de inicio</b> (Chrome) o <b>Compartir → Agregar a inicio</b> (Safari). Queda
+como una app y abre sin señal después de la primera visita.</p>
+<p>En pantallas angostas, el menú de lecciones está en el botón <kbd>☰</kbd>, y cada lección tiene el enlace
+<b>▶ Ir al simulador</b> para saltar la teoría.</p>
+<figure class="small"><img src="m12-movil.jpg" alt="La app en un celular: simulador con HMI de reparto de carga, entradas, salidas y segmentos"><figcaption>La app en un celular: lección de reparto de carga.</figcaption></figure>
+
+<h2 id="inicio">3. La pantalla de inicio</h2>
+<figure><img src="m01-inicio.jpg" alt="Pantalla de inicio con portada, tarjeta de rango, insignias, ruta de grupos y minería y niveles"><figcaption>Inicio: rango y experiencia, insignias, la ruta aplicada y los cuatro niveles.</figcaption></figure>
+<ul>
+  <li><b>Barra superior:</b> tu experiencia (XP), la racha de días seguidos 🔥 y las lecciones completadas.</li>
+  <li><b>Continuar:</b> abre la última lección que estabas haciendo, o la siguiente pendiente.</li>
+  <li><b>Tu rango:</b> sube cada 250 XP, de <i>Aprendiz</i> a <i>Maestro LAD</i>.</li>
+  <li><b>Insignias:</b> en gris las que faltan; pasa el puntero (o mantén el dedo) para ver cómo se gana cada una.</li>
+  <li><b>Ruta aplicada:</b> acceso directo a la siguiente lección pendiente de grupos y minería.</li>
+  <li><b>Niveles:</b> todas las lecciones, con su duración y si tienen reto. El círculo verde ✓ marca las completadas.</li>
+</ul>
+
+<h2 id="leccion">4. Cómo está hecha una lección</h2>
+<figure><img src="m02-leccion.jpg" alt="Lección de marcha‑paro: teoría a la izquierda y simulador a la derecha"><figcaption>Lección: la teoría a la izquierda y el simulador a la derecha (debajo, en pantallas angostas).</figcaption></figure>
+<ol>
+  <li><b>Teoría:</b> lee el texto; los recuadros de color son las notas clave y las prácticas de planta.</li>
+  <li><b>Ejemplo:</b> la pestaña <i>Ejemplo</i> carga un programa ya hecho. Pruébalo con las entradas; puedes editarlo sin miedo, se restablece al volver a la lección.</li>
+  <li><b>Reto:</b> la pestaña <i>Reto</i> tiene el enunciado, las variables y un programa inicial. Tu avance se guarda solo.</li>
+  <li><b>Cuestionario:</b> al pie de la teoría. Pulsa <b>Corregir</b>: verás la respuesta correcta y la explicación de cada pregunta.</li>
+</ol>
+<p class="tip">Una lección se marca como <b>completada</b> cuando superas su reto (si tiene) <b>y</b> aciertas al menos dos tercios del cuestionario.</p>
+
+<h2 id="simulador">5. El simulador del PLC</h2>
+<figure class="mid"><img src="m03-simulador.jpg" alt="Simulador: barra de la CPU, entradas, salidas, segmento LAD con flujo de corriente y tabla de observación"><figcaption>El simulador en RUN: el motor quedó enclavado tras soltar Marcha.</figcaption></figure>
+<h3>5.1 Barra de la CPU</h3>
+<table>
+<tr><th>Control</th><th>Qué hace</th></tr>
+<tr><td><b>RUN / STOP</b></td><td>Pone la CPU en marcha o la detiene. En STOP las salidas van a 0, como en un PLC real.</td></tr>
+<tr><td><b>Reiniciar</b></td><td>Borra marcas, temporizadores, contadores y el estado del modelo de planta (y una falla de planta). Conserva el programa y las entradas.</td></tr>
+<tr><td><b>✎ Editar</b></td><td>Activa el modo edición (sección 6). El PLC sigue en RUN mientras editas.</td></tr>
+<tr><td>Contador de ciclos</td><td>Ciclo de 10 ms y número de ciclos ejecutados; si hay una falla de planta, lo avisa aquí.</td></tr>
+</table>
+<h3>5.2 Entradas</h3>
+<table>
+<tr><th>Tipo</th><th>Cómo se usa</th><th>Señal</th></tr>
+<tr><td>Pulsador NA</td><td>Mantén pulsado (ratón, dedo, o <kbd>Espacio</kbd>). La casilla <i>mantener pulsado</i> lo deja apretado.</td><td>1 mientras se pulsa</td></tr>
+<tr><td>Pulsador NC cableado <span class="k" style="background:#D23B3B"></span></td><td>Paros, térmicos. Igual que el NA.</td><td>1 en reposo, 0 al pulsar</td></tr>
+<tr><td>Selector (botón cuadrado)</td><td>Un toque lo cambia de posición.</td><td>1 / 0</td></tr>
+<tr><td>Pull‑cord (NC, enclava)</td><td>Un toque lo dispara y queda disparado; otro toque lo rearma (como en el propio interruptor de la faja).</td><td>1 normal, 0 disparado</td></tr>
+<tr><td>Señal de planta</td><td>La mueve el modelo de planta (realimentación de interruptores, grupo en tensión…). Si dice <i>pulsa = simular falla</i>, el botón provoca esa falla.</td><td>La decide la planta</td></tr>
+<tr><td>Analógica</td><td>Barra deslizante (nivel en bruto 0…27648, o kW). Las medidas de planta (frecuencia, ángulo, kW) solo se leen.</td><td>Valor entero</td></tr>
+</table>
+<h3>5.3 Salidas, segmentos y tabla de observación</h3>
+<ul>
+  <li><b>Salidas:</b> lámparas que se encienden con la salida <code>%Q</code> en 1.</li>
+  <li><b>Segmentos:</b> el programa dibujado como en la vista online de TIA.
+    <span class="legend" style="border-top:3px solid #11803A"></span>verde continua = llega corriente;
+    <span class="legend" style="border-top:2px dashed #3A6CD0"></span>azul punteada = no llega. Junto a las cajas se ven en vivo <code>ET</code> y <code>CV</code>.</li>
+  <li><b>Tabla de observación:</b> despliégala para ver el valor de todas las variables, incluidas las de los temporizadores y contadores (<code>T1.ET</code>, <code>C1.CV</code>…).</li>
+  <li><b>HMI del proceso:</b> en la ruta de grupos y minería aparece arriba una pantalla del proceso (sección 8).</li>
+</ul>
+
+<h2 id="editor">6. El editor de segmentos LAD</h2>
+<figure><img src="m04-editor.jpg" alt="Cuadro de edición de un contacto NA con su operando y las acciones de insertar, rama paralela, cambiar tipo y eliminar"><figcaption>Al tocar una instrucción en modo edición se abre su cuadro de propiedades.</figcaption></figure>
+<ol>
+  <li>Pulsa <b>✎ Editar</b> (en los retos ya viene activado).</li>
+  <li>Toca una instrucción, o el recuadro <b>+</b> de un segmento vacío.</li>
+  <li>Escribe los <b>operandos</b>: una dirección (<code>%I0.0</code>, <code>%Q0.1</code>, <code>%M10.0</code>, <code>%MW10</code>, <code>%IW64</code>), un nombre simbólico de la tabla del reto (<code>"Marcha"</code> o <code>Marcha</code>), un miembro de instancia (<code>T1.Q</code>, <code>T1.ET</code>, <code>C1.CV</code>) o un literal (<code>1500</code>, <code>-10</code>, <code>T#5s</code>, <code>T#500ms</code>). La lista sugiere los que ya existen.</li>
+  <li>Usa las acciones:</li>
+</ol>
+<table>
+<tr><th>Acción</th><th>Resultado</th></tr>
+<tr><td>⟵ Insertar antes / Insertar después ⟶</td><td>Agrega una instrucción en serie (AND) a la izquierda o a la derecha.</td></tr>
+<tr><td>⑂ Rama paralela aquí</td><td>Abre una rama en paralelo (OR) con esa instrucción.</td></tr>
+<tr><td>＋ Otra rama paralela</td><td>Agrega una rama más al mismo paralelo.</td></tr>
+<tr><td>Extender rama → siguiente</td><td>La rama paralela abarca también la instrucción siguiente (por ejemplo, para que C salte sobre A y B).</td></tr>
+<tr><td>← Acortar rama</td><td>Lo contrario: saca de la rama su última instrucción.</td></tr>
+<tr><td>⇄ Cambiar tipo</td><td>Reemplaza la instrucción conservando el operando.</td></tr>
+<tr><td>🗑 Eliminar</td><td>La quita; las ramas vacías se cierran solas.</td></tr>
+</table>
+<p>Con el editor activo, cada segmento tiene un campo de <b>comentario</b> y una <b>✕</b> para borrarlo; abajo está
+<b>+ Segmento</b>.</p>
+<h3>Instrucciones disponibles</h3>
+<p>Contactos NA, NC, flanco P, flanco N y NOT · bobina, bobina negada, Set y Reset · TON, TOF y TP · CTU y CTD · comparador
+(<code>==</code>, <code>&lt;&gt;</code>, <code>&gt;</code>, <code>&lt;</code>, <code>&gt;=</code>, <code>&lt;=</code>, también con tiempos) · MOVE · ADD, SUB, MUL y DIV.</p>
+<h3>Con teclado</h3>
+<p><kbd>Tab</kbd> recorre las instrucciones del segmento; <kbd>Enter</kbd> o <kbd>Espacio</kbd> abre el editor; dentro,
+<kbd>Tab</kbd> recorre los campos y botones; <kbd>Esc</kbd> cierra y vuelve a la instrucción.</p>
+
+<h2 id="retos">7. Los retos y el corrector</h2>
+<figure class="mid"><img src="m05-resultado.jpg" alt="Resultado de un reto superado con la lista de pasos en verde"><figcaption>Reto superado: cada paso de la prueba aparece en verde.</figcaption></figure>
+<ol>
+  <li>Lee el enunciado y la lista de variables (las marcadas <i>NC</i> o <i>selector</i> se comportan como tales).</li>
+  <li>Programa en el simulador y pruébalo a mano con las entradas.</li>
+  <li>Pulsa <b>▶ Comprobar</b>. El corrector ejecuta tu programa en un PLC aparte, ciclo a ciclo (10 ms), con una secuencia fija de acciones y tiempos.</li>
+</ol>
+<p>Si un paso falla, el corrector se detiene y te dice <b>qué esperaba y qué dio tu programa</b>. Además vigila en
+<b>cada ciclo</b> condiciones que nunca deben ocurrir (dos contactores enclavados a la vez, una faja descargando sobre otra
+parada) y, en la ruta minera, las <b>fallas del modelo de planta</b>:</p>
+<figure class="mid"><img src="m08-falla.jpg" alt="Reto fallido: el modelo de planta informa un cierre fuera de sincronismo"><figcaption>Un programa que cierra el interruptor sin verificar el sincronismo: el modelo de planta lo detecta.</figcaption></figure>
+<table>
+<tr><th>Botón</th><th>Qué hace</th></tr>
+<tr><td>Reiniciar reto</td><td>Vuelve al programa inicial (pide confirmación; pierdes lo hecho).</td></tr>
+<tr><td>Ver solución</td><td>Carga la solución de referencia. El reto se puede completar igual, pero <b>no suma XP ni da su insignia</b>.</td></tr>
+</table>
+<p class="warn">Si el modelo de planta registra una falla mientras pruebas a mano (por ejemplo, un cierre fuera de fase), el
+simulador lo avisa en el HMI y en la barra de la CPU. Pulsa <b>Reiniciar</b> para borrarla.</p>
+
+<h2 id="ruta">8. La ruta de grupos electrógenos y minería</h2>
+<p>Nueve lecciones con casos de planta concentradora y de respaldo de energía, como los de las operaciones mineras del sur del
+Perú. Cada una tiene un HMI y un modelo de planta que responde a tu programa.</p>
+<table>
+<tr><th>Lección</th><th>Qué practicas</th><th>Qué detecta el modelo de planta</th></tr>
+<tr><td>El grupo visto desde el PLC</td><td>Protecciones con inhibición de la presión de aceite en el arranque; alarmas memorizadas</td><td>La presión sube 3 s después de arrancar</td></tr>
+<tr><td>Falla de arranque</td><td>Ciclos de arranque y reposo, contador de intentos, alarma <i>overcrank</i></td><td>Arrancador engranado con el motor en marcha; arrancador más de 6 s seguidos</td></tr>
+<tr><td>TTA red‑grupo</td><td>Confirmación de falla, abrir antes de cerrar, retorno con red estable, enfriamiento, transición con retardo</td><td>Red y grupo cerrados a la vez; cierre contra la tensión residual de los motores</td></tr>
+<tr><td>Discrepancia orden‑estado</td><td>Supervisión de interruptores con tolerancia, alarma y bloqueo</td><td>Interruptor que no cierra o que se dispara</td></tr>
+<tr><td>Sincronismo en paralelo</td><td>Subir/bajar velocidad y cierre dentro de la ventana de IEEE 1547 (Δf ≤ 0,1 Hz, Δφ ±10°)</td><td>Cierre fuera de fase, con deslizamiento o con tensión fuera de rango</td></tr>
+<tr><td>Reparto de carga</td><td>Igualar kW con banda muerta</td><td>Potencia inversa (protección 32)</td></tr>
+<tr><td>Arranque por demanda</td><td>Arrancar/liberar G2 con histéresis y tiempos; deslastre</td><td>G2 tarda 4 s en entrar en barra</td></tr>
+<tr><td>Fajas en cascada</td><td>Sirena de prearranque, arranque contra el flujo, vaciado, pull‑cord</td><td>Chutes atollados (faja en marcha sobre otra parada)</td></tr>
+<tr><td>Bombas de pozo</td><td>Histéresis por niveles, alternancia principal/reserva</td><td>—</td></tr>
+</table>
+<figure class="mid"><img src="m06-tta.jpg" alt="HMI de la TTA: unifilar con red en falla, 52R abierto, grupo en carga y 52G cerrado"><figcaption>TTA: la red falló y la carga pasó al grupo. Interruptores: rojo = cerrado, verde = abierto (convención ANSI).</figcaption></figure>
+<figure class="mid"><img src="m07-sincro.jpg" alt="HMI de sincronismo con sincronoscopio, frecuencias, deslizamiento y ángulo"><figcaption>Sincronismo: la aguja gira con el deslizamiento; el sector verde es la ventana de ±10°.</figcaption></figure>
+<figure class="mid"><img src="m13-reparto.jpg" alt="HMI de reparto de carga con las barras de kW de G1 y G2"><figcaption>Reparto de carga: G1 sobrecargado (en rojo) antes de que el programa iguale los grupos.</figcaption></figure>
+<figure class="mid"><img src="m09-faja.jpg" alt="HMI de fajas: tolva, alimentador, CV‑01, CV‑02 y pila de gruesos"><figcaption>Fajas: las que están en marcha se animan; la sirena parpadea durante el prearranque.</figcaption></figure>
+<p class="tip">Los tiempos están acortados a segundos para poder practicar (en planta, el retorno de red es de 5 a 30 min y la
+sirena de prearranque de 10 a 30 s). Cada lección lo indica.</p>
+
+<h2 id="lab">9. Laboratorio libre y referencia</h2>
+<figure><img src="m10-lab.jpg" alt="Laboratorio libre con un programa de marcha‑paro y la tabla de observación abierta"><figcaption>Laboratorio: un OB1 en blanco para practicar.</figcaption></figure>
+<ul>
+  <li><b>Laboratorio libre</b> (menú → Herramientas): programa lo que quieras. Las entradas y salidas aparecen solas al usarlas; los <code>%I</code> nuevos son pulsadores NA (marca <i>mantener pulsado</i> para usarlos como selector). Se guarda solo.</li>
+  <li><b>Programa nuevo</b> vacía el laboratorio. <b>Exportar .json</b> descarga tu programa; <b>Importar .json</b> lo recupera en otro equipo o navegador.</li>
+  <li><b>Referencia de instrucciones:</b> cada instrucción dibujada, qué hace y dónde está en la pestaña <i>Instrucciones</i> de TIA Portal.</li>
+</ul>
+<figure><img src="m11-ref.jpg" alt="Referencia de instrucciones con tarjetas de contactos y bobinas"><figcaption>Referencia de instrucciones.</figcaption></figure>
+
+<h2 id="progreso">10. Progreso, rangos e insignias</h2>
+<table>
+<tr><th>Acción</th><th>Experiencia</th></tr>
+<tr><td>Respuesta correcta en un cuestionario (se cuenta tu mejor intento)</td><td>10 XP</td></tr>
+<tr><td>Reto superado (niveles básico a avanzado)</td><td>50 XP</td></tr>
+<tr><td>Reto superado de la ruta de grupos y minería</td><td>80 XP</td></tr>
+<tr><td>Reto superado con la solución a la vista</td><td>0 XP</td></tr>
+</table>
+<p>La <b>racha</b> cuenta los días seguidos en que abriste una lección, respondiste un cuestionario o superaste un reto.
+Hay 12 insignias: por niveles completos, por los retos clave de la ruta minera, por rachas de 3 y 7 días y por 30 respuestas correctas.</p>
+<p><b>Dónde se guarda:</b> todo vive en el almacenamiento del navegador, en tu equipo; no se envía a ningún servidor. Para
+empezar de cero, borra los datos del sitio desde la configuración del navegador.</p>
+
+<h2 id="tia">11. De LadderLab a TIA Portal</h2>
+<table>
+<tr><th>En LadderLab</th><th>En TIA Portal</th></tr>
+<tr><td>Segmento</td><td>Segmento (Network) del bloque <code>Main [OB1]</code></td></tr>
+<tr><td>Variables del reto</td><td>Tabla de variables PLC (nombre, tipo, dirección)</td></tr>
+<tr><td>Nombre sobre una caja de temporizador (<code>T1</code>)</td><td>Su DB de instancia (<code>"IEC_Timer_0_DB"</code>) o una multiinstancia en un FB</td></tr>
+<tr><td><code>T1.Q</code>, <code>T1.ET</code>, <code>C1.CV</code></td><td><code>"T1".Q</code>, <code>"T1".ET</code>, <code>"C1".CV</code></td></tr>
+<tr><td>Bit de marca del flanco P/N</td><td>El operando que se escribe bajo el contacto <code>--|P|--</code></td></tr>
+<tr><td>Comparador <code>CMP</code></td><td>Comparación → CMP ==, &lt;&gt;, &gt;… (elige el tipo de dato)</td></tr>
+<tr><td>RUN / STOP, verde/azul en los segmentos</td><td>S7‑PLCSIM y <i>Activar observación</i> (gafas)</td></tr>
+<tr><td>Tabla de observación</td><td>Tabla de observación y forzado</td></tr>
+<tr><td>Entradas de planta y HMI</td><td>Señales de campo y pantallas WinCC (o PLCSIM Advanced con un modelo de planta)</td></tr>
+</table>
+<p>Para llevar un reto a TIA Portal: crea el proyecto con tu CPU, declara las variables del enunciado con las mismas
+direcciones, copia los segmentos instrucción por instrucción, compila y pruébalo en S7‑PLCSIM.</p>
+
+<h2 id="limites">12. Límites del simulador</h2>
+<ul>
+  <li>Simula un subconjunto de LAD: no incluye CTUD, R_TRIG/F_TRIG, NORM_X/SCALE_X, CONVERT, Real ni DInt como instrucciones (se explican en la teoría). Las palabras son Int de 16 bits.</li>
+  <li>Al desbordar un Int pone ENO = 0, como TIA; el valor que deja en OUT (saturado en el límite) puede diferir del de la CPU real.</li>
+  <li>El ciclo es fijo de 10 ms; no simula tiempos de ciclo variables, OB de alarma cíclica, diagnóstico ni comunicaciones.</li>
+  <li>Las funciones de seguridad (paradas de emergencia, pull‑cord) se practican en lógica estándar. En planta van por un relé o PLC de seguridad (F‑CPU), según la evaluación de riesgos (ISO 13849‑1, IEC 62061).</li>
+  <li>Los modelos de planta son didácticos: reproducen el comportamiento que importa para el ejercicio, no la dinámica completa de un grupo o una faja.</li>
+</ul>
+<p>El detalle está en la <a href="../AUDITORIA-FUNCIONAL.md">auditoría funcional</a>, que revisa la app contra IEC 61131‑3, IEEE 1547, NFPA 110, ISO 13850, EN 620, WCAG 2.2 y otras normas.</p>
+
+<h2 id="problemas">13. Solución de problemas</h2>
+<table>
+<tr><th>Síntoma</th><th>Solución</th></tr>
+<tr><td>Al abrir <code>index.html</code> se ve en blanco</td><td>Verifica que descomprimiste toda la carpeta (no abras el archivo desde dentro del .zip) y que el navegador está actualizado.</td></tr>
+<tr><td>No se guarda mi progreso</td><td>La navegación privada o el bloqueo de datos del sitio impiden guardar. Usa una ventana normal.</td></tr>
+<tr><td>«⚠ falla de planta: pulsa Reiniciar»</td><td>Tu programa provocó una condición peligrosa en el modelo (lee el mensaje del HMI). Corrige y pulsa <b>Reiniciar</b>.</td></tr>
+<tr><td>Una instrucción muestra <code>&lt;??.?&gt;</code> en rojo</td><td>Le falta el operando: activa Editar, tócala y escríbelo.</td></tr>
+<tr><td>El reto falla en un paso que «a mano» funciona</td><td>Lee el mensaje: el corrector usa tiempos exactos. Revisa los PT de los temporizadores y que la salida se escriba en un solo segmento.</td></tr>
+<tr><td>Un pulsador queda «pegado»</td><td>Desmarca <i>mantener pulsado</i>.</td></tr>
+<tr><td>Quiero empezar de cero</td><td>Borra los datos del sitio en la configuración del navegador.</td></tr>
+</table>
+
+<footer>LadderLab · manual de uso · noviembre de 2026. TIA Portal, SIMATIC y S7 son marcas de Siemens AG; esta es una herramienta de estudio independiente.</footer>
+</main>
+</body>
+</html>
