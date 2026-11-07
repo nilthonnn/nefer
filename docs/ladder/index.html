@@ -45,6 +45,8 @@ button{font:inherit;color:inherit}
 .brand svg{width:28px;height:28px;flex:none}
 .brand small{display:block;font-weight:500;color:var(--ink3);font-size:.72rem;line-height:1}
 .top .sp{flex:1}
+.xp{font-size:.8rem;color:var(--ink2);white-space:nowrap}
+.xp b{color:var(--acc)}
 .prog-mini{display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--ink2);white-space:nowrap}
 .bar{height:6px;width:90px;background:var(--box);border-radius:9px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--acc);border-radius:9px;transition:width .4s}
@@ -87,7 +89,7 @@ main#main{min-width:0;padding:1.4rem 1.5rem 4rem}
 .btn.sm{padding:.3rem .65rem;font-size:.82rem;font-weight:600}
 .btn.bad{background:var(--bad);color:#fff}
 .btn:disabled{opacity:.5;cursor:default}
-.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-top:1.2rem}
+.levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:1rem;margin-top:1.2rem}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem;box-shadow:var(--shadow)}
 .card h2{margin:0;font-size:1.1rem}
 .card .sub{color:var(--ink2);font-size:.88rem;margin:.15rem 0 .7rem}
@@ -201,6 +203,14 @@ table.t th{color:var(--ink2);font-weight:600;font-size:.8rem;text-transform:uppe
 .watch td.v{font-family:var(--mono)}
 .watch td.v.t{color:var(--on);font-weight:700}
 .watch td.a{font-family:var(--mono);color:var(--ink3)}
+.hmi{border-bottom:1px solid var(--line);background:var(--canvas);padding:.5rem .7rem}
+.hmi h5{margin:0 0 .2rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink3)}
+.hmi svg{display:block;width:100%;height:auto;max-height:260px;font-family:ui-sans-serif,system-ui,sans-serif}
+.pb.ro{cursor:default;background:var(--box)}
+.pb.ro.lit .k{background:var(--on)}
+.pb.pf .k{background:var(--on)}
+.pb.pf.pressed .k{background:var(--bad)}
+.meter .av{font-weight:700;color:var(--acc)}
 .edithint{font-size:.78rem;color:var(--ink2);background:var(--warn2);padding:.35rem .7rem;border-bottom:1px solid var(--line)}
 
 /* SVG LAD */
@@ -260,6 +270,23 @@ svg.lad .ph text{fill:var(--acc);font-size:18px;font-weight:700;text-anchor:midd
 
 .toast{position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:.55rem 1rem;border-radius:10px;font-weight:600;font-size:.9rem;z-index:60;opacity:0;pointer-events:none;transition:opacity .25s}
 .toast.show{opacity:1}
+.stats{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1.6fr);gap:1rem;margin-top:1rem}
+@media (max-width:760px){.stats{grid-template-columns:1fr}}
+.rk{font-size:1.25rem;font-weight:800;margin:.1rem 0}
+.kpis{display:flex;gap:1.2rem;margin:.6rem 0 .2rem;flex-wrap:wrap}
+.kpis div{font-size:.78rem;color:var(--ink2)}
+.kpis b{display:block;font-size:1.3rem;color:var(--ink)}
+.xpbar{height:8px;background:var(--box);border-radius:9px;overflow:hidden;margin:.4rem 0 .2rem}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc),var(--on));border-radius:9px}
+.bdg{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:.45rem;margin-top:.5rem}
+.bdg div{border:1px solid var(--line);border-radius:10px;padding:.4rem .5rem;font-size:.74rem;line-height:1.25;color:var(--ink2)}
+.bdg div b{display:block;color:var(--ink);font-size:.8rem}
+.bdg div span{font-size:1.3rem}
+.bdg div.off{opacity:.42;filter:grayscale(1)}
+.ruta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1rem;align-items:center;margin-top:1rem;border:2px solid var(--acc);background:linear-gradient(135deg,var(--acc2),var(--panel))}
+.ruta .big{font-size:2.4rem}
+.ruta h2{margin:0 0 .2rem}
+.ruta p{margin:.1rem 0 .6rem;color:var(--ink2);font-size:.92rem}
 h2.sec{font-size:1.2rem;margin:1.6rem 0 .2rem}
 p.lead{color:var(--ink2);margin:.2rem 0 0}
 </style>
@@ -272,6 +299,7 @@ p.lead{color:var(--ink2);margin:.2rem 0 0}
     <span>LadderLab<small>LAD para TIA Portal</small></span>
   </a>
   <span class="sp"></span>
+  <span class="xp" id="xpTxt" title="Experiencia y racha de días"></span>
   <span class="prog-mini"><span id="progTxt">0/0</span><span class="bar"><i id="progBar" style="width:0"></i></span></span>
 </header>
 <div class="layout">
@@ -283,6 +311,7 @@ p.lead{color:var(--ink2);margin:.2rem 0 0}
 <div class="toast" id="toast"></div>
 
 <script src="lecciones.js"></script>
+<script src="energia.js"></script>
 <script>
 "use strict";
 const $ = (s, r = document) => r.querySelector(s);
@@ -292,7 +321,7 @@ const clone = o => JSON.parse(JSON.stringify(o));
 
 /* ===================== almacenamiento ===================== */
 const KEY = "ladderlab.v1";
-let ST = { reto: {}, quiz: {}, work: {}, lab: null, last: null };
+let ST = { reto: {}, quiz: {}, work: {}, lab: null, last: null, days: [], badges: [] };
 try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && typeof s === "object") ST = Object.assign(ST, s); } catch (e) {}
 function save() { try { localStorage.setItem(KEY, JSON.stringify(ST)); } catch (e) {} }
 
@@ -341,7 +370,12 @@ const OPFIELDS = ["op", "mem", "r", "ld", "a", "b", "in", "in1", "in2", "out", "
 /* ===================== motor del PLC ===================== */
 class Engine {
   constructor(prog, tags) { this.prog = prog; this.tags = tags || []; this.reset(); }
-  reset() { this.v = {}; this.inst = {}; this.pressed = {}; this.ana = {}; this.scans = 0; this.t = 0; this.pf = new Map(); this.dt = 10; this.refresh(); }
+  reset() {
+    this.v = {}; this.inst = {}; this.pressed = {}; this.ana = {}; this.scans = 0; this.t = 0; this.pf = new Map(); this.dt = 10;
+    this.forced = {}; this.ps = {}; this.fault = null;
+    for (const t of this.tags) { const a = t.addr.toUpperCase(); if (t.def != null) { if (isWord(a)) this.ana[a] = t.def; else this.pressed[a] = t.def ? 1 : 0; } }
+    this.refresh();
+  }
   sym(x) {
     x = String(x == null ? "" : x).trim().replace(/^"(.*)"$/, "$1"); if (!x) return "";
     const lx = x.toLowerCase();
@@ -372,7 +406,7 @@ class Engine {
   }
   refresh() {
     const seen = new Map();
-    for (const t of this.tags) { const a = t.addr.toUpperCase(); if (/^%I/.test(a)) seen.set(a, { addr: a, type: t.type || (isWord(a) ? "analog" : "push"), name: t.name, note: t.note }); }
+    for (const t of this.tags) { const a = t.addr.toUpperCase(); if (/^%I/.test(a)) seen.set(a, { addr: a, type: t.type || (isWord(a) ? "analog" : "push"), name: t.name, note: t.note, tag: t }); }
     for (const op of collectOps(this.prog)) {
       const a = this.sym(op);
       if (/^%I/.test(a) && (isBit(a) || isWord(a)) && !seen.has(a)) seen.set(a, { addr: a, type: isWord(a) ? "analog" : "push", name: "" });
@@ -381,8 +415,10 @@ class Engine {
   }
   scan(dt) {
     this.dt = dt;
+    if (this.plant) this.plant(this, dt);
     for (const i of this.inputs) {
-      if (isWord(i.addr)) this.v[i.addr] = this.ana[i.addr] | 0;
+      if (i.addr in this.forced) this.v[i.addr] = this.forced[i.addr];
+      else if (isWord(i.addr)) this.v[i.addr] = this.ana[i.addr] | 0;
       else { const p = !!this.pressed[i.addr]; this.v[i.addr] = (i.type === "pushNC" ? !p : p) ? 1 : 0; }
     }
     this.pf = new Map();
@@ -462,7 +498,15 @@ function addrCmp(a, b) {
 /* ===================== corrector de retos ===================== */
 function grade(reto, prog) {
   const en = new Engine(clone(prog), reto.tags), dt = 10, res = [];
-  const viol = () => { for (const p of reto.nunca || []) if (en.B(p[0]) && en.B(p[1])) return p; return null; };
+  const pl = reto.planta && typeof PLANTAS !== "undefined" && PLANTAS[reto.planta];
+  if (pl && pl.model) en.plant = pl.model;
+  const nm = a => { const t = reto.tags.find(t => t.addr === a); return t ? `"${t.name}" ${a}` : a; };
+  const viol = () => {
+    if (en.fault) return "Modelo de planta: " + en.fault;
+    for (const p of reto.nunca || []) if (en.B(p[0]) && en.B(p[1])) return `${nm(p[0])} y ${nm(p[1])} se activaron a la vez`;
+    for (const r of reto.reglas || []) if (en.B(r.si) && !en.B(r.sin)) return r.d;
+    return null;
+  };
   const run = ms => { const n = Math.max(1, Math.round(ms / dt)); for (let i = 0; i < n; i++) { en.scan(dt); const b = viol(); if (b) return b; } return null; };
   let ok = true;
   for (const st of reto.pasos) {
@@ -474,7 +518,9 @@ function grade(reto, prog) {
       bad = run(st.t || 60);
     }
     const wrong = [];
-    for (const a in st.ex) { let g = en.get(a); if (isBit(a)) g = g ? 1 : 0; if (g !== st.ex[a]) wrong.push({ a, exp: st.ex[a], got: g }); }
+    for (const a in st.ex) { let g = en.get(a); if (isBit(a)) g = g ? 1 : 0; const x = st.ex[a];
+      const ok = Array.isArray(x) ? g >= x[0] && g <= x[1] : g === x;
+      if (!ok) wrong.push({ a, n: nm(a), exp: Array.isArray(x) ? `entre ${x[0]} y ${x[1]}` : x, got: g }); }
     const pass = !bad && !wrong.length;
     res.push({ d: st.d, pass, wrong, bad });
     if (!pass) { ok = false; break; }
@@ -642,6 +688,8 @@ function Sim(root, opts) {
   const me = { prog: opts.prog, tags: opts.tags || [], edit: !!opts.edit, run: true, sel: null, dead: false, latched: {} };
   const eng = new Engine(me.prog, me.tags);
   me.eng = eng;
+  const PL = opts.planta && typeof PLANTAS !== "undefined" ? PLANTAS[opts.planta] : null;
+  if (PL && PL.model) eng.plant = PL.model;
   root.innerHTML = `<div class="sim${me.edit ? " editing" : ""}">
     <div class="simbar">
       <span class="cpu"><span class="led run"></span><span class="mode">RUN</span></span>
@@ -651,6 +699,7 @@ function Sim(root, opts) {
       <span class="sp"></span><span class="scan"></span>
     </div>
     <div class="edithint" ${me.edit ? "" : "hidden"}>Modo edición: toca una instrucción para cambiarla, insertar otra a su lado o abrir una rama paralela. El PLC sigue en RUN mientras editas.</div>
+    ${PL && PL.hmi ? `<div class="hmi"><h5>HMI del proceso${PL.model ? " · modelo de planta activo" : ""}</h5><div class="hmisvg"></div></div>` : ""}
     <div class="io"><div><h5>Entradas · pulsa o mantén</h5><div class="ins"></div></div><div><h5>Salidas</h5><div class="outs"></div></div></div>
     <div class="segs"></div>
     <button class="btn sm ghost addseg" ${me.edit ? "" : "hidden"}>+ Segmento</button>
@@ -682,7 +731,25 @@ function Sim(root, opts) {
     const ins = $(".ins", R); ins.innerHTML = "";
     if (!eng.inputs.length) ins.innerHTML = `<span class="empty">El programa no usa entradas %I.</span>`;
     for (const i of eng.inputs) {
-      const nm = i.name || i.addr;
+      const nm = i.name || i.addr, tg = i.tag || {};
+      const fmtW = v => tg.div ? (v / tg.div).toFixed(2) + " " + (tg.unit || "") : v + (tg.unit ? " " + tg.unit : "");
+      if (isWord(i.addr) && i.type === "plantw") {
+        const d = document.createElement("div"); d.className = "ana meter"; d.dataset.w = i.addr;
+        d.innerHTML = `<div class="row"><b>${esc(nm)} <small>${i.addr}</small></b><span class="av"></span></div>`;
+        d._fmt = fmtW; ins.appendChild(d); continue;
+      }
+      if (isWord(i.addr) && (tg.min != null || tg.max != null)) {
+        const mn = tg.min || 0, mx = tg.max != null ? tg.max : 27648;
+        const d = document.createElement("div"); d.className = "ana";
+        d.innerHTML = `<div class="row"><b>${esc(nm)} <small>${i.addr}</small></b><span class="av"></span></div><input type="range" min="${mn}" max="${mx}" step="1" value="${eng.ana[i.addr] | 0}" aria-label="${esc(nm)}"><div class="row"><span>${fmtW(mn)}</span><span>${fmtW(mx)}</span></div>`;
+        const rg = $("input", d), upd = () => { eng.ana[i.addr] = +rg.value; $(".av", d).textContent = fmtW(+rg.value); };
+        rg.addEventListener("input", upd); upd(); ins.appendChild(d); continue;
+      }
+      if (i.type === "plant" && !tg.falla) {
+        const d = document.createElement("div"); d.className = "in"; d.dataset.a = i.addr;
+        d.innerHTML = `<div class="pb ro"><span class="k"></span><span class="nm">${esc(nm)}</span></div><div class="sig"><span>${i.addr} · planta</span><b>0</b></div>`;
+        ins.appendChild(d); continue;
+      }
       if (isWord(i.addr)) {
         const d = document.createElement("div"); d.className = "ana";
         d.innerHTML = `<div class="row"><b>${esc(nm)} <small>${i.addr}</small></b><span class="av">${eng.ana[i.addr] | 0}</span></div><input type="range" min="0" max="32767" step="1" value="${eng.ana[i.addr] | 0}" aria-label="${esc(nm)}"><div class="row"><span>0</span><span class="pct"></span><span>27648</span></div>`;
@@ -692,11 +759,12 @@ function Sim(root, opts) {
       }
       const d = document.createElement("div"); d.className = "in"; d.dataset.a = i.addr;
       const sw = i.type === "switch", nc = i.type === "pushNC";
-      d.innerHTML = `<button class="pb${sw ? " sw" : ""}${nc ? " nc" : ""}" aria-pressed="false"><span class="k"></span><span class="nm">${esc(nm)}</span></button>
-        <div class="sig"><span>${i.addr}${nc ? " · NC" : sw ? " · selector" : ""}</span><b>0</b></div>
+      const pf = i.type === "plant";
+      d.innerHTML = `<button class="pb${sw ? " sw" : ""}${nc ? " nc" : ""}${pf ? " pf" : ""}" aria-pressed="false"><span class="k"></span><span class="nm">${esc(nm)}</span></button>
+        <div class="sig"><span>${i.addr}${nc ? " · NC" : sw ? " · selector" : pf ? " · planta" : ""}</span><b>0</b></div>${pf ? `<div class="sig"><span>${esc(i.note || "pulsa = simular falla")}</span></div>` : ""}
         ${sw ? "" : `<label><input type="checkbox"> mantener pulsado</label>`}`;
       const b = $(".pb", d), set = v => { eng.pressed[i.addr] = v ? 1 : 0; };
-      if (sw) b.addEventListener("click", () => set(!eng.pressed[i.addr]));
+        if (sw) b.addEventListener("click", () => set(!eng.pressed[i.addr]));
       else {
         const cb = $("input", d);
         b.addEventListener("pointerdown", ev => { ev.preventDefault(); try { b.setPointerCapture(ev.pointerId); } catch (e) {} set(1); });
@@ -734,14 +802,17 @@ function Sim(root, opts) {
     const c = ctx();
     me.prog.forEach((r, i) => { const s = rungSVG(r.net, c); if (force || s !== lastSvg[i]) { segEls[i].innerHTML = s; lastSvg[i] = s; } });
     $$(".in", R).forEach(d => { const a = d.dataset.a, p = !!eng.pressed[a], v = me.run ? eng.v[a] : (eng.inputs.find(i => i.addr === a) || {}).type === "pushNC" ? (p ? 0 : 1) : (p ? 1 : 0);
-      const b = $(".pb", d); b.classList.toggle("pressed", p); b.setAttribute("aria-pressed", p);
+      const b = $(".pb", d); b.classList.toggle("pressed", p); if (b.tagName === "BUTTON") b.setAttribute("aria-pressed", p);
+      if (b.classList.contains("ro")) b.classList.toggle("lit", !!v);
       const sg = $(".sig b", d); sg.textContent = v ? "1" : "0"; sg.classList.toggle("h", !!v); });
     $$(".lamp", R).forEach(d => { const a = d.dataset.a, v = me.run ? eng.v[a] || 0 : 0; d.classList.toggle("on", isBit(a) && !!v); if (isWord(a)) $("small", d).textContent = a + " = " + v; });
     const tds = $$(".watch td.v", R);
     watchRows.forEach((r, i) => { const v = eng.get(r.k); const td = tds[i]; if (!td) return;
       const txt = r.time ? fmtTime(v) : (r.bool || isBit(r.a)) ? (v ? "TRUE" : "FALSE") : String(v);
       if (td.textContent !== txt) td.textContent = txt; td.classList.toggle("t", (r.bool || isBit(r.a)) && !!v); });
-    $(".scan", R).textContent = me.run ? `ciclo 10 ms · ${eng.scans} ciclos` : "CPU en STOP";
+    $$(".meter", R).forEach(d => { const t = d._fmt(eng.ana[d.dataset.w] | 0), av = $(".av", d); if (av.textContent !== t) av.textContent = t; });
+    if (PL && PL.hmi) { const h = PL.hmi(eng), box = $(".hmisvg", R); if (h !== me.lastHmi) { box.innerHTML = h; me.lastHmi = h; } }
+    $(".scan", R).textContent = eng.fault ? "⚠ falla de planta: pulsa Reiniciar" : me.run ? `ciclo 10 ms · ${eng.scans} ciclos` : "CPU en STOP";
   }
   function changed(soft) { if (!soft) { buildStatic(); } if (opts.onChange) opts.onChange(me.prog); }
   me.changed = changed;
@@ -753,7 +824,7 @@ function Sim(root, opts) {
     $(".led", R).classList.toggle("run", me.run); $(".mode", R).textContent = me.run ? "RUN" : "STOP";
     $(".b-run", R).textContent = me.run ? "STOP" : "RUN"; paint(true);
   });
-  $(".b-rst", R).addEventListener("click", () => { const pr = eng.pressed, an = eng.ana; eng.reset(); eng.pressed = pr; eng.ana = an; paint(true); toast("Memoria borrada"); });
+  $(".b-rst", R).addEventListener("click", () => { const pr = eng.pressed, an = eng.ana; eng.reset(); eng.pressed = pr; eng.ana = an; paint(true); toast("Memoria y planta reiniciadas"); });
   const te = $(".tg-edit", R);
   if (te) te.addEventListener("click", () => { me.edit = !me.edit; te.setAttribute("aria-pressed", me.edit); R.classList.toggle("editing", me.edit); $(".edithint", R).hidden = !me.edit; $(".addseg", R).hidden = !me.edit; buildStatic(); });
   $(".addseg", R).addEventListener("click", () => { me.prog.push(SEG("", S())); changed(); });
@@ -840,7 +911,43 @@ function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add("s
 const nivelDe = id => NIVELES.find(n => n.id === id);
 function quizOk(L) { const s = ST.quiz[L.id]; return s != null && s >= Math.ceil(L.quiz.length * 0.66); }
 function estado(L) { const r = L.reto ? !!ST.reto[L.id] : true, q = quizOk(L); return r && q ? "done" : (ST.reto[L.id] || ST.quiz[L.id] != null) ? "half" : ""; }
+/* ---- experiencia, rango, racha e insignias ---- */
+const hoy = (d = new Date()) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+function marcarDia() { const h = hoy(); if (!Array.isArray(ST.days)) ST.days = []; if (!ST.days.includes(h)) { ST.days.push(h); ST.days = ST.days.slice(-120); save(); } }
+function racha() {
+  const set = new Set(ST.days || []); let n = 0; const d = new Date();
+  if (!set.has(hoy(d))) d.setDate(d.getDate() - 1);
+  while (set.has(hoy(d))) { n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function xp() { let x = 0; for (const L of LECCIONES) { x += (ST.quiz[L.id] || 0) * 10; if (ST.reto[L.id]) x += L.nivel === "energia" ? 80 : 50; } return x; }
+const RANGOS = ["Aprendiz", "Ayudante electricista", "Técnico de mantenimiento", "Técnico de control", "Especialista en automatización", "Ingeniero de control", "Maestro LAD"];
+function rango() { const x = xp(), n = Math.min(RANGOS.length - 1, Math.floor(x / 250)); return { n, nombre: RANGOS[n], desde: n * 250, hasta: (n + 1) * 250, x }; }
+const nivelHecho = id => LECCIONES.filter(L => L.nivel === id).every(L => estado(L) === "done");
+const BADGES = [
+  { id: "primer", ic: "⚡", n: "Primer contacto", d: "Supera tu primer reto", ok: () => Object.keys(ST.reto).length >= 1 },
+  { id: "basico", ic: "🔌", n: "Base sólida", d: "Completa el nivel básico", ok: () => nivelHecho("basico") },
+  { id: "inter", ic: "⏱", n: "Dueño del tiempo", d: "Completa el nivel intermedio", ok: () => nivelHecho("intermedio") },
+  { id: "avanz", ic: "🧩", n: "Programa estructurado", d: "Completa el nivel avanzado", ok: () => nivelHecho("avanzado") },
+  { id: "grupo", ic: "🛢", n: "Guardián del diésel", d: "Supera el reto de protecciones del grupo", ok: () => !!ST.reto.grupo },
+  { id: "tta", ic: "🔀", n: "Sin apagón", d: "Supera el reto de transferencia red‑grupo", ok: () => !!ST.reto.tta },
+  { id: "sincro", ic: "🎯", n: "Mano firme", d: "Sincroniza G2 a la barra sin cierre fuera de fase", ok: () => !!ST.reto.sincronismo },
+  { id: "faja", ic: "⛏", n: "Mineral en movimiento", d: "Arranca las fajas en cascada sin atollar chutes", ok: () => !!ST.reto.faja },
+  { id: "energia", ic: "🏭", n: "Jefe de turno eléctrico", d: "Completa toda la ruta Grupos y minería", ok: () => nivelHecho("energia") },
+  { id: "racha3", ic: "🔥", n: "Constancia", d: "Estudia 3 días seguidos", ok: () => racha() >= 3 },
+  { id: "racha7", ic: "🏆", n: "Semana completa", d: "Estudia 7 días seguidos", ok: () => racha() >= 7 },
+  { id: "quiz30", ic: "🧠", n: "Cerebro de PLC", d: "Acumula 30 respuestas correctas", ok: () => Object.values(ST.quiz).reduce((a, b) => a + b, 0) >= 30 }
+];
+function revisarInsignias() {
+  if (!Array.isArray(ST.badges)) ST.badges = [];
+  const nuevas = BADGES.filter(b => !ST.badges.includes(b.id) && b.ok());
+  if (!nuevas.length) return;
+  nuevas.forEach(b => ST.badges.push(b.id)); save();
+  nuevas.forEach((b, i) => setTimeout(() => toast(b.ic + " Insignia nueva: " + b.n), 900 + i * 2400));
+}
+function actividad() { marcarDia(); revisarInsignias(); updProgress(); }
 function updProgress() {
+  const r = racha(); $("#xpTxt").innerHTML = `<b>${xp()}</b> XP${r ? ` · 🔥 ${r}` : ""}`;
   const d = LECCIONES.filter(L => estado(L) === "done").length;
   $("#progTxt").textContent = `${d}/${LECCIONES.length}`; $("#progBar").style.width = (100 * d / LECCIONES.length) + "%";
 }
@@ -865,10 +972,19 @@ function viewHome() {
   const art = `<svg class="art" viewBox="0 0 220 130" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M10 10v110"/><path d="M10 40h40m20 0h40m20 0h30" stroke="#7CF0A6"/><path d="M50 28v24M70 28v24M110 28v24M130 28v24" stroke="#7CF0A6"/><path d="M168 28c-7 7-7 17 0 24m24-24c7 7 7 17 0 24" stroke="#7CF0A6"/><path d="M192 40h18" stroke="#7CF0A6"/><path d="M30 40v50h20m20 0h40v-50" stroke-dasharray="5 4" stroke="#BFD9FF"/><path d="M50 78v24M70 78v24" stroke="#BFD9FF"/></g></svg>`;
   $("#main").innerHTML = `
   <section class="hero"><div>
-    <h1>Ladder para TIA Portal, de cero a avanzado</h1>
-    <p>Aprende LAD como se programa un S7‑1200/1500: teoría breve, un PLC simulado que corre en tu navegador y retos que se corrigen solos, ciclo por ciclo.</p>
+    <h1>Ladder para TIA Portal, de cero a la planta minera</h1>
+    <p>Aprende LAD como se programa un S7‑1200/1500 y llévalo a lo que se ve en campo: grupos electrógenos, transferencia red‑grupo, sincronismo en paralelo, fajas y bombas. Un PLC simulado con modelo de planta corrige tus retos ciclo por ciclo.</p>
     <div class="btns"><a class="btn" href="#/l/${(cont && estado(cont) !== "done" ? cont : next).id}">${ST.last ? "Continuar" : "Empezar"}: ${esc((cont && estado(cont) !== "done" ? cont : next).titulo)}</a><a class="btn ghost" href="#/lab">Laboratorio libre</a></div>
   </div>${art}</section>
+  ${(() => { const R = rango(), pct = Math.round(100 * (R.x - R.desde) / (R.hasta - R.desde)), rc = racha(), nb = BADGES.filter(b => (ST.badges || []).includes(b.id)).length;
+    return `<div class="stats"><div class="card"><p class="sub" style="margin:0">Tu rango</p><div class="rk">${esc(R.nombre)}</div>
+      <div class="xpbar"><i style="width:${R.n === RANGOS.length - 1 ? 100 : pct}%"></i></div><p class="sub" style="margin:0">${R.x} XP${R.n < RANGOS.length - 1 ? ` · faltan ${R.hasta - R.x} para «${esc(RANGOS[R.n + 1])}»` : " · rango máximo"}</p>
+      <div class="kpis"><div><b>🔥 ${rc}</b>día${rc === 1 ? "" : "s"} seguidos</div><div><b>${Object.keys(ST.reto).length}/${LECCIONES.filter(L => L.reto).length}</b>retos</div><div><b>${nb}/${BADGES.length}</b>insignias</div></div>
+      <p class="sub" style="margin:.3rem 0 0;font-size:.78rem">Cuestionario: 10 XP por respuesta correcta. Reto: 50 XP; 80 XP en la ruta de grupos y minería.</p></div>
+      <div class="card"><p class="sub" style="margin:0">Insignias</p><div class="bdg">${BADGES.map(b => `<div class="${(ST.badges || []).includes(b.id) ? "" : "off"}" title="${esc(b.d)}"><span>${b.ic}</span><b>${esc(b.n)}</b>${esc(b.d)}</div>`).join("")}</div></div></div>`; })()}
+  <div class="card ruta"><div class="big">⚡⛏</div><div><h2>Ruta aplicada: grupos electrógenos y minería</h2>
+    <p>Protecciones del grupo, <b>TTA red‑grupo</b>, <b>sincronismo de grupos en paralelo</b> con sincronoscopio, arranque por demanda con deslastre, fajas de mineral en cascada con pull‑cord y bombas de relaves con alternancia: casos de planta concentradora como los de las operaciones del sur del Perú. Cada reto corre contra un modelo de planta que responde y detecta cierres fuera de fase o chutes atollados.</p>
+    <a class="btn" href="#/l/${(LECCIONES.find(L => L.nivel === "energia" && estado(L) !== "done") || LECCIONES.find(L => L.nivel === "energia")).id}">Ir a la ruta</a> <span class="sub" style="font-size:.82rem">Recomendado tras el nivel intermedio</span></div></div>
   <div class="levels">${NIVELES.map(N => { const ls = LECCIONES.filter(L => L.nivel === N.id), d = ls.filter(L => estado(L) === "done").length;
     return `<div class="card"><h2>${N.nombre}</h2><p class="sub">${esc(N.desc)} · ${d}/${ls.length}</p><ol>${ls.map(L => { const e = estado(L);
       return `<li><a href="#/l/${L.id}"><span class="pill ${e === "done" ? "ok" : ""}">${e === "done" ? "✓" : LECCIONES.indexOf(L) + 1}</span>${esc(L.titulo)}<span class="tg">${L.reto ? "reto · " : ""}${L.min} min</span></a></li>`; }).join("")}</ol></div>`; }).join("")}</div>
@@ -876,13 +992,14 @@ function viewHome() {
     <div class="card"><h2>Simulador con ciclo de scan</h2><p>Lee entradas, ejecuta segmento por segmento y escribe salidas cada 10 ms. Verde = conduce, azul punteado = no, como la observación online de TIA.</p></div>
     <div class="card"><h2>Editor LAD</h2><p>Contactos, flancos, bobinas S/R, TON/TOF/TP, CTU/CTD, comparadores, MOVE y aritmética, con ramas paralelas.</p><a class="btn sm ghost" href="#/ref">Ver instrucciones</a></div>
     <div class="card"><h2>Retos autocorregidos</h2><p>Cada reto se prueba con una secuencia de entradas y tiempos. Si falla, te dice en qué paso y qué salida esperaba.</p></div>
+    <div class="card"><h2>HMI y modelo de planta</h2><p>Unifilar de la TTA, sincronoscopio, tacómetro del grupo, fajas animadas y pozo de bombeo: el proceso responde a tu programa como en campo.</p></div>
   </div>
   <p class="lead" style="margin-top:1.2rem;font-size:.85rem">Tu progreso se guarda en este equipo. La app funciona sin conexión una vez abierta. TIA Portal, SIMATIC y S7 son marcas de Siemens AG; esta es una herramienta de estudio independiente.</p>`;
   renderNav("home");
 }
 function viewLesson(id) {
   const L = LECCIONES.find(x => x.id === id); if (!L) return viewHome();
-  ST.last = id; save();
+  ST.last = id; save(); marcarDia();
   const i = LECCIONES.indexOf(L), N = nivelDe(L.nivel), prev = LECCIONES[i - 1], next = LECCIONES[i + 1];
   $("#main").innerHTML = `<article class="lesson">
     <div class="crumbs"><a href="#/">Inicio</a> › ${N.nombre} › Lección ${i + 1}</div>
@@ -904,19 +1021,18 @@ function viewLesson(id) {
   const show = t => {
     tabs.forEach(b => b.classList.toggle("cur", b.dataset.t === t));
     const rb = $(".retobox");
-    if (t === "ej") { rb.innerHTML = ""; Sim($(".simbox"), { prog: clone(L.ejemplo.prog), tags: L.ejemplo.tags, editable: true }); return; }
+    if (t === "ej") { rb.innerHTML = ""; Sim($(".simbox"), { prog: clone(L.ejemplo.prog), tags: L.ejemplo.tags, planta: L.ejemplo.planta, editable: true }); return; }
     const R = L.reto;
     rb.innerHTML = `<div class="reto"><h3>Reto</h3><p class="en">${R.enunciado}</p>
       <div class="tagt">${R.tags.map(t => `<span><b>${esc(t.name)}</b> ${t.addr}${t.type === "pushNC" ? " (NC)" : t.type === "switch" ? " (selector)" : ""}</span>`).join("")}</div>
       <div class="acts"><button class="btn b-chk">▶ Comprobar</button><button class="btn ghost b-ini">Reiniciar reto</button><button class="btn ghost b-sol">Ver solución</button></div>
       <div class="out"></div></div>`;
-    const sim = Sim($(".simbox"), { prog: ST.work[id] ? clone(ST.work[id]) : clone(R.inicio), tags: R.tags, editable: true, edit: true, onChange: p => { ST.work[id] = p; save(); } });
+    const sim = Sim($(".simbox"), { prog: ST.work[id] ? clone(ST.work[id]) : clone(R.inicio), tags: R.tags, planta: R.planta, editable: true, edit: true, onChange: p => { ST.work[id] = p; save(); } });
     $(".b-chk", rb).onclick = () => {
       let g; try { g = grade(R, sim.prog); } catch (e) { $(".out", rb).innerHTML = `<div class="banner ko">Error al simular: ${esc(e.message)}</div>`; return; }
-      const nm = a => { const t = R.tags.find(t => t.addr === a); return t ? `"${t.name}" ${a}` : a; };
-      $(".out", rb).innerHTML = `<ul class="res">${g.res.map((r, k) => `<li class="${r.pass ? "ok" : "ko"}">${r.pass ? "✓" : "✗"} Paso ${k + 1}: ${esc(r.d)}${r.bad ? `<span class="why">${esc(nm(r.bad[0]))} y ${esc(nm(r.bad[1]))} se activaron a la vez</span>` : ""}${r.wrong.map(w => `<span class="why">${esc(nm(w.a))}: esperaba ${w.exp}, el programa da ${w.got}</span>`).join("")}</li>`).join("")}</ul>
+      $(".out", rb).innerHTML = `<ul class="res">${g.res.map((r, k) => `<li class="${r.pass ? "ok" : "ko"}">${r.pass ? "✓" : "✗"} Paso ${k + 1}: ${esc(r.d)}${r.bad ? `<span class="why">${esc(r.bad)}</span>` : ""}${r.wrong.map(w => `<span class="why">${esc(w.n)}: esperaba ${esc(w.exp)}, el programa da ${w.got}</span>`).join("")}</li>`).join("")}</ul>
         <div class="banner ${g.ok ? "ok" : "ko"}">${g.ok ? "¡Reto superado! Todos los pasos se cumplen." : `Falla en el paso ${g.res.length} de ${g.total}. Revisa tu lógica y vuelve a probar.`}</div>`;
-      if (g.ok) { const first = !ST.reto[id]; ST.reto[id] = true; save(); setSt(); tabs.forEach(b => { if (b.dataset.t === "reto") b.textContent = "Reto ✓"; }); if (first) toast("Reto superado ✓"); }
+      if (g.ok) { const first = !ST.reto[id]; ST.reto[id] = true; save(); setSt(); actividad(); tabs.forEach(b => { if (b.dataset.t === "reto") b.textContent = "Reto ✓"; }); if (first) toast("Reto superado ✓"); }
     };
     $(".b-ini", rb).onclick = () => { if (!confirm("¿Volver al programa inicial del reto? Se pierde lo que hiciste.")) return; delete ST.work[id]; save(); sim.load(clone(R.inicio), R.tags); $(".out", rb).innerHTML = ""; };
     $(".b-sol", rb).onclick = () => { if (!confirm("¿Cargar la solución? Reemplaza tu programa del reto.")) return; const p = clone(R.solucion); ST.work[id] = p; save(); sim.load(p, R.tags); $(".out", rb).innerHTML = `<div class="banner ok" style="background:var(--warn2);color:var(--warn)">Solución cargada. Pruébala con las entradas y pulsa Comprobar.</div>`; };
@@ -933,7 +1049,7 @@ function renderQuiz(L, box, done) {
     L.quiz.forEach((q, k) => { const d = $(`.qq[data-k="${k}"]`, box), sel = $("input:checked", d), v = sel ? +sel.value : -1;
       $$("label", d).forEach((lb, j) => { lb.classList.toggle("ok", j === q.a); lb.classList.toggle("ko", j === v && v !== q.a); });
       if (v === q.a) ok++; const ex = $(".ex", d); ex.hidden = false; ex.textContent = (v === q.a ? "✓ " : "✗ ") + q.e; });
-    ST.quiz[L.id] = Math.max(ST.quiz[L.id] || 0, ok); save();
+    ST.quiz[L.id] = Math.max(ST.quiz[L.id] || 0, ok); save(); actividad();
     $(".qr", box).textContent = `${ok}/${L.quiz.length} correctas` + (ok >= Math.ceil(L.quiz.length * 0.66) ? " · aprobado ✓" : " · necesitas " + Math.ceil(L.quiz.length * 0.66));
     done();
   };

@@ -24,8 +24,14 @@ var MATH = function (k, a, b, o) { return E(k, { in1: String(a), in2: String(b),
 function SEG(title, net) { return { title: title, net: net }; }
 
 /* tipos de entrada: push (pulsador NA), pushNC (pulsador cableado NC),
-   switch (selector), analog (palabra 0..27648) */
-function TAG(addr, name, type, note) { return { addr: addr, name: name, type: type || "", note: note || "" }; }
+   switch (selector), analog (palabra que mueve el alumno), plant / plantw (bit o
+   palabra que mueve el modelo de planta). Opciones: def (valor inicial),
+   min/max/unit/div (escala de una palabra), falla (botón para simular falla). */
+function TAG(addr, name, type, note, o) {
+  var t = { addr: addr, name: name, type: type || "", note: note || "" };
+  for (var k in (o || {})) t[k] = o[k];
+  return t;
+}
 
 var NIVELES = [
   { id: "basico", nombre: "Básico", desc: "El PLC, TIA Portal y la lógica de contactos." },
