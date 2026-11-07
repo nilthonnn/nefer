@@ -96,7 +96,7 @@ var PLANTAS = {
       if (orden && !cerrado) { s.tc = (s.tc || 0) + e.dt;
         if (s.tc >= 80) { s.tc = 0; var df = s.f2 - fb;
           if (Math.abs(s.ph) > 15) e.fault = "Cierre fuera de sincronismo: Δφ = " + Math.round(s.ph) + "° al cerrar (máx. ±15°)";
-          else if (df < -30 || df > 40) e.fault = "Cierre con deslizamiento excesivo: Δf = " + (df / 100).toFixed(2) + " Hz";
+          else if (df < -5 || df > 15) e.fault = "Cierre con deslizamiento fuera de ventana: Δf = " + (df / 100).toFixed(2) + " Hz";
           else if (!e.v["%I0.1"]) e.fault = "Cierre con diferencia de tensión fuera de rango (Tension_OK = 0)";
           e.forced["%I0.2"] = 1; } }
       else if (!orden && cerrado) { e.forced["%I0.2"] = 0; s.tc = 0; }
@@ -115,7 +115,7 @@ var PLANTAS = {
         HM.tx(cx - 50, cy + 74, "⟲ lento", { s: 9.5, c: "var(--ink3)" }) + HM.tx(cx + 50, cy + 74, "rápido ⟳", { s: 9.5, c: "var(--ink3)" }) + HM.tx(cx, 22, "SINCRONOSCOPIO", { s: 9, w: 800, c: "var(--ink3)" }) +
         HM.tx(190, 28, "Barra (G1 en servicio)", { a: "start", s: 10, c: "var(--ink2)" }) + HM.tx(390, 28, "60.00 Hz", { a: "end", w: 800, m: 1 }) +
         HM.tx(190, 48, "G2 entrante", { a: "start", s: 10, c: "var(--ink2)" }) + HM.tx(390, 48, (f2 / 100).toFixed(2) + " Hz", { a: "end", w: 800, m: 1 }) +
-        HM.tx(190, 68, "Deslizamiento Δf", { a: "start", s: 10, c: "var(--ink2)" }) + HM.tx(390, 68, (df >= 0 ? "+" : "") + df.toFixed(2) + " Hz", { a: "end", w: 800, m: 1, c: df >= 0 && df <= 0.25 ? "var(--on)" : "var(--ink)" }) +
+        HM.tx(190, 68, "Deslizamiento Δf", { a: "start", s: 10, c: "var(--ink2)" }) + HM.tx(390, 68, (df >= 0 ? "+" : "") + df.toFixed(2) + " Hz", { a: "end", w: 800, m: 1, c: df >= 0 && df <= 0.1 ? "var(--on)" : "var(--ink)" }) +
         HM.tx(190, 88, "Ángulo Δφ", { a: "start", s: 10, c: "var(--ink2)" }) + HM.tx(390, 88, Math.round(ph) + "°", { a: "end", w: 800, m: 1, c: ok ? "var(--on)" : "var(--ink)" }) +
         HM.lamp(196, 110, e.v["%Q0.1"], "Subir velocidad ▲", "var(--acc)") + HM.lamp(330, 110, e.v["%Q0.2"], "Bajar ▼", "var(--acc)") +
         HM.lamp(196, 130, e.v["%I0.1"], "ΔV dentro de rango", "var(--on)") +
@@ -199,6 +199,10 @@ controlador propio) y ejecutar la lógica de planta: transferencias, arranque po
 <p>Un motor diésel parado <b>no tiene presión de aceite</b>. Si la protección de baja presión estuviera activa desde
 el primer instante, el grupo se dispararía en cada arranque. Por eso se <b>inhibe</b> durante unos segundos
 (habitualmente 8‑15 s) tras la orden de marcha. Temperatura alta y sobrevelocidad, en cambio, actúan siempre.</p>
+<p>Normas como <b>NFPA 110</b> e <b>ISO 8528‑4</b> piden además la parada por <b>falla de arranque</b>
+(<i>overcrank</i>: ciclos de arranque y reposo limitados, y si el motor no arranca, alarma) y una
+<b>parada de emergencia</b> cableada que corta el combustible sin pasar por el programa. El reto de esta lección se centra
+en las tres protecciones de marcha; la falla de arranque es un buen ejercicio extra con un CTU y dos TON.</p>
 <p>Las paradas por protección quedan <b>memorizadas</b> (Set/Reset) y solo se rearman con un reset y con la causa
 desaparecida: así el operador sabe qué pasó y el grupo no rearranca solo con la falla presente.</p>
 <div class="tip"><b>En altura:</b> a más de 3 000 m, como en las operaciones del sur del Perú (Quellaveco, en Moquegua),
@@ -254,6 +258,11 @@ críticas: la <b>red</b> o el <b>grupo</b>. Es uno de los programas más pedidos
 <div class="tip"><b>Enclavamiento triple:</b> 52R y 52G jamás cerrados a la vez sin sincronizar. Se enclavan
 <b>mecánicamente</b>, <b>eléctricamente</b> (contactos auxiliares en las bobinas de cierre) y <b>en el PLC</b>,
 usando la <b>realimentación</b> del otro interruptor, no solo su orden.</div>
+<p><b>Supervisión de discrepancia:</b> si un interruptor no confirma la maniobra en su tiempo (por ejemplo 0,5 s),
+el programa debe alarmar y bloquear la secuencia, no esperar para siempre. Y con <b>cargas de motores</b> la transición
+abierta debe dejar decaer la tensión residual antes de reconectar (<i>transición con retardo</i> o monitor en fase), para
+no cerrar contra un motor que aún gira desfasado. Los equipos de transferencia se fabrican según
+<b>IEC 60947‑6‑1</b> (y UL 1008 en Norteamérica).</p>
 <p>Variantes: <b>transición cerrada</b> (sincroniza y hace un paralelo breve, menos de 100 ms, sin corte), y
 retransferencia manual. En sistemas de emergencia, normas como NFPA 110 exigen que el grupo tome carga en un
 tiempo máximo (10 s para la clase más exigente), lo que limita los retardos que puedes programar.</p>
@@ -299,10 +308,14 @@ las dos tensiones deben ser prácticamente iguales. Hay que igualar <b>cuatro</b
 <table class="t">
 <tr><th>Condición</th><th>Ventana típica</th><th>Quién la ajusta</th></tr>
 <tr><td>Secuencia de fases</td><td>Idéntica (se verifica en la puesta en marcha)</td><td>Cableado</td></tr>
-<tr><td>Tensión (ΔV)</td><td>±3 a ±5 %</td><td>Regulador de tensión (AVR)</td></tr>
-<tr><td>Frecuencia (deslizamiento Δf)</td><td>0,05 a 0,2 Hz</td><td>Regulador de velocidad (gobernador)</td></tr>
-<tr><td>Ángulo de fase (Δφ)</td><td>±10°</td><td>Se espera a que el deslizamiento lo lleve a 0</td></tr>
+<tr><td>Tensión (ΔV)</td><td>3 % a 10 % según potencia</td><td>Regulador de tensión (AVR)</td></tr>
+<tr><td>Frecuencia (deslizamiento Δf)</td><td>0,1 a 0,3 Hz según potencia</td><td>Regulador de velocidad (gobernador)</td></tr>
+<tr><td>Ángulo de fase (Δφ)</td><td>±10° a ±20° según potencia</td><td>Se espera a que el deslizamiento lo lleve a 0</td></tr>
 </table>
+<p>Las ventanas dependen del tamaño. <b>IEEE 1547‑2018</b> (tabla de límites de sincronización) admite
+Δf 0,3 Hz, ΔV 10 % y Δφ 20° hasta 500 kVA; 0,2 Hz, 5 % y 15° de 500 a 1 500 kVA; y <b>0,1 Hz, 3 % y 10°</b>
+por encima de 1 500 kVA. Para máquinas síncronas grandes, IEEE C50.12/C50.13 piden aún menos deslizamiento
+(≈ 0,067 Hz). Los grupos de una planta minera suelen superar 1 500 kVA: el reto usa la ventana más estricta.</p>
 <h3>Cómo se ve en el sincronoscopio</h3>
 <p>Con Δf ≠ 0 el ángulo entre G2 y la barra <b>gira</b>: una vuelta cada 1/Δf segundos. Si G2 va más rápido, la aguja
 gira hacia “rápido”. Se busca que G2 vaya <b>ligeramente más rápido</b> (deslizamiento positivo): así, al cerrar,
@@ -324,19 +337,19 @@ cierra cuando la aguja esté en la zona verde. Si cierras fuera de fase, el mode
       SEG("Cerrar 52G2 a mano (¡mira el sincronoscopio!)", S(NO("%I0.5"), SET("%Q0.0"))),
       SEG("Abrir 52G2", S(NO("%I0.6"), RST("%Q0.0")))] },
   reto: { planta: "sincro",
-    enunciado: "Sincronizador automático. Con <code>\"Modo_Sincro\" %I0.0</code> activo y <code>52G2</code> abierto (<code>%I0.2</code> = 0): calcula <code>Δf = Frec_G2 − Frec_Barra</code> en <code>%MW10</code> (centésimas de Hz); si <b>Δf &lt; 5</b> activa <code>\"Subir_Vel\" %Q0.1</code>; si <b>Δf &gt; 20</b> activa <code>\"Bajar_Vel\" %Q0.2</code>. Da la orden de cierre (<b>Set</b> de <code>\"Cerrar_52G2\" %Q0.0</code>) solo con <code>\"Tension_OK\" %I0.1</code>, <b>0 ≤ Δf ≤ 25</b> y <b>−10 ≤ Dif_Fase ≤ 10</b> (<code>%IW68</code>, grados). Al quitar Modo_Sincro, Reset del cierre. <i>El modelo de planta detecta cualquier cierre fuera de sincronismo.</i>",
+    enunciado: "Sincronizador automático. Con <code>\"Modo_Sincro\" %I0.0</code> activo y <code>52G2</code> abierto (<code>%I0.2</code> = 0): calcula <code>Δf = Frec_G2 − Frec_Barra</code> en <code>%MW10</code> (centésimas de Hz); si <b>Δf &lt; 5</b> activa <code>\"Subir_Vel\" %Q0.1</code>; si <b>Δf &gt; 10</b> activa <code>\"Bajar_Vel\" %Q0.2</code>. Da la orden de cierre (<b>Set</b> de <code>\"Cerrar_52G2\" %Q0.0</code>) solo con <code>\"Tension_OK\" %I0.1</code>, <b>0 ≤ Δf ≤ 10</b> (0,1 Hz) y <b>−10 ≤ Dif_Fase ≤ 10</b> (<code>%IW68</code>, grados): la ventana de IEEE 1547 para más de 1 500 kVA. Al quitar Modo_Sincro, Reset del cierre. <i>El modelo de planta detecta cualquier cierre fuera de sincronismo.</i>",
     tags: [TAG("%I0.0", "Modo_Sincro", "switch"), TAG("%I0.1", "Tension_OK", "switch"), TAG("%I0.2", "52G2_Cerrado", "plant"), TW("%IW64", "Frec_Barra", { div: 100, unit: "Hz" }), TW("%IW66", "Frec_G2", { div: 100, unit: "Hz" }), TW("%IW68", "Dif_Fase", { unit: "°" }), TAG("%Q0.0", "Cerrar_52G2"), TAG("%Q0.1", "Subir_Vel"), TAG("%Q0.2", "Bajar_Vel"), TAG("%MW10", "Dif_Frec")],
     inicio: [SEG("Δf = f G2 − f barra", S(MATH("SUB", "%IW66", "%IW64", "%MW10"))), SEG("Subir velocidad", S()), SEG("Bajar velocidad", S()), SEG("Orden de cierre (verificación de sincronismo)", S()), SEG("Reset del cierre", S())],
     solucion: [SEG("Δf = f G2 − f barra", S(MATH("SUB", "%IW66", "%IW64", "%MW10"))),
       SEG("Subir velocidad", S(NO("%I0.0"), NC("%I0.2"), CMP("<", "%MW10", "5"), COIL("%Q0.1"))),
-      SEG("Bajar velocidad", S(NO("%I0.0"), NC("%I0.2"), CMP(">", "%MW10", "20"), COIL("%Q0.2"))),
-      SEG("Orden de cierre (verificación de sincronismo)", S(NO("%I0.0"), NO("%I0.1"), CMP(">=", "%MW10", "0"), CMP("<=", "%MW10", "25"), CMP(">=", "%IW68", "-10"), CMP("<=", "%IW68", "10"), SET("%Q0.0"))),
+      SEG("Bajar velocidad", S(NO("%I0.0"), NC("%I0.2"), CMP(">", "%MW10", "10"), COIL("%Q0.2"))),
+      SEG("Orden de cierre (verificación de sincronismo)", S(NO("%I0.0"), NO("%I0.1"), CMP(">=", "%MW10", "0"), CMP("<=", "%MW10", "10"), CMP(">=", "%IW68", "-10"), CMP("<=", "%IW68", "10"), SET("%Q0.0"))),
       SEG("Reset del cierre", S(NC("%I0.0"), RST("%Q0.0")))],
     nunca: [["%Q0.1", "%Q0.2"]],
     pasos: [
       { in: {}, t: 500, ex: { "%Q0.0": 0, "%Q0.1": 0, "%Q0.2": 0 }, d: "Sin Modo_Sincro: no se regula ni se cierra." },
       { in: { "%I0.0": 1 }, t: 1000, ex: { "%Q0.1": 1, "%Q0.0": 0 }, d: "Modo_Sincro: G2 está a 59,40 Hz → sube velocidad." },
-      { in: {}, t: 20000, ex: { "%Q0.0": 0, "%IW66": [6003, 6022] }, d: "Sin Tension_OK no cierra; la frecuencia quedó en la ventana (60,03‑60,22 Hz)." },
+      { in: {}, t: 20000, ex: { "%Q0.0": 0, "%IW66": [6004, 6010] }, d: "Sin Tension_OK no cierra; la frecuencia quedó en la ventana (60,04‑60,10 Hz)." },
       { in: { "%I0.1": 1 }, t: 30000, ex: { "%Q0.0": 1, "%I0.2": 1 }, d: "Con tensión OK cierra dentro de la ventana de fase: G2 en paralelo." },
       { in: { "%I0.0": 0 }, t: 300, ex: { "%Q0.0": 0, "%I0.2": 0 }, d: "Sin Modo_Sincro: se abre el 52G2." }
     ] },
@@ -401,8 +414,8 @@ y de ahí a la molienda. Las fajas se enclavan entre sí para no <b>atollar los 
 <ul>
   <li><b>Arranque contra el flujo:</b> primero la faja de aguas abajo (la que descarga a la pila), luego la anterior, y al final el alimentador.</li>
   <li><b>Parada a favor del flujo:</b> primero el alimentador; las fajas siguen un tiempo para <b>vaciarse</b>.</li>
-  <li><b>Sirena de prearranque:</b> suena unos segundos antes de mover cualquier faja (seguridad de las personas en el recorrido).</li>
-  <li><b>Pull‑cord (interruptor de tirón):</b> cable a lo largo de la faja; quien tira de él la detiene. Va cableado <b>NC</b>, y al dispararse para esa faja y todo lo que la alimenta.</li>
+  <li><b>Sirena de prearranque:</b> aviso audible y visible antes de mover cualquier faja cuyo recorrido completo no se vea desde el mando (lo exige, por ejemplo, MSHA 30 CFR 56.14201, y los reglamentos mineros nacionales piden lo equivalente). En planta dura lo suficiente para que el personal se retire, del orden de 10 a 30 s; el reto usa 5 s para que la práctica sea ágil.</li>
+  <li><b>Pull‑cord (interruptor de tirón):</b> cable a lo largo de la faja; quien tira de él la detiene. Va cableado <b>NC</b>, y al dispararse para esa faja y todo lo que la alimenta. El interruptor <b>queda enclavado</b> y se rearma a mano en el propio interruptor (EN 620, ISO 13850): en el simulador, un toque lo dispara y otro lo rearma. Rearmarlo no vuelve a arrancar nada: hace falta una orden de marcha nueva.</li>
   <li>Otros enclavamientos reales: desalineamiento, velocidad cero (rotura o patinaje), chute atollado y rasgado de banda.</li>
 </ul>
 <div class="tip">El corrector comprueba en <b>cada ciclo</b> que nunca haya una faja en marcha descargando sobre otra parada, ni el
@@ -410,11 +423,11 @@ alimentador sin su faja. En planta eso es un chute atollado y horas de limpieza.
 <p>Los pull‑cord y las paradas de emergencia de fajas forman parte de la seguridad de las personas: en minería se
 cablean a circuitos de seguridad (relé o PLC de seguridad). El programa estándar los lee para el
 enclavamiento y el diagnóstico.</p>`,
-  ejemplo: { planta: "faja", tags: [TAG("%I0.0", "Arranque", "push"), TAG("%I0.1", "Parada", "pushNC", "NC cableado"), TAG("%I0.2", "Pullcord_CV02", "pushNC", "tirar = disparo"), TAG("%I0.3", "Pullcord_CV01", "pushNC", "tirar = disparo"), TAG("%Q0.0", "Sirena"), TAG("%Q0.1", "CV02"), TAG("%Q0.2", "CV01"), TAG("%Q0.3", "Alimentador")],
+  ejemplo: { planta: "faja", tags: [TAG("%I0.0", "Arranque", "push"), TAG("%I0.1", "Parada", "pushNC", "NC cableado"), TAG("%I0.2", "Pullcord_CV02", "pullcord"), TAG("%I0.3", "Pullcord_CV01", "pullcord"), TAG("%Q0.0", "Sirena"), TAG("%Q0.1", "CV02"), TAG("%Q0.2", "CV01"), TAG("%Q0.3", "Alimentador")],
     prog: [SEG("Sirena mientras se pulsa Arranque", S(NO("%I0.0"), COIL("%Q0.0"))), SEG("Solo CV‑02 con autorretención y pull‑cord", S(P([NO("%I0.0")], [NO("%Q0.1")]), NO("%I0.1"), NO("%I0.2"), COIL("%Q0.1")))] },
   reto: { planta: "faja",
     enunciado: "Secuencia de fajas. <code>\"Arranque\" %I0.0</code> memoriza la marcha del sistema; <code>\"Parada\" %I0.1</code> o cualquier pull‑cord (<code>%I0.2</code>, <code>%I0.3</code>, NC) la cancela. Al arrancar: <b>sirena</b> <code>%Q0.0</code> durante 5 s → <b>CV‑02</b> <code>%Q0.1</code> → 3 s después <b>CV‑01</b> <code>%Q0.2</code> → 3 s después <b>Alimentador</b> <code>%Q0.3</code>. Al parar: el alimentador para al instante, CV‑01 se vacía <b>5 s</b> y CV‑02 <b>10 s</b>. El pull‑cord de una faja la para de inmediato (y todo lo que descarga en ella). Nunca una faja en marcha sobre otra parada.",
-    tags: [TAG("%I0.0", "Arranque", "push"), TAG("%I0.1", "Parada", "pushNC", "NC cableado"), TAG("%I0.2", "Pullcord_CV02", "pushNC", "tirar = disparo"), TAG("%I0.3", "Pullcord_CV01", "pushNC", "tirar = disparo"), TAG("%Q0.0", "Sirena"), TAG("%Q0.1", "CV02"), TAG("%Q0.2", "CV01"), TAG("%Q0.3", "Alimentador"), TAG("%M0.0", "Sistema_Marcha")],
+    tags: [TAG("%I0.0", "Arranque", "push"), TAG("%I0.1", "Parada", "pushNC", "NC cableado"), TAG("%I0.2", "Pullcord_CV02", "pullcord"), TAG("%I0.3", "Pullcord_CV01", "pullcord"), TAG("%Q0.0", "Sirena"), TAG("%Q0.1", "CV02"), TAG("%Q0.2", "CV01"), TAG("%Q0.3", "Alimentador"), TAG("%M0.0", "Sistema_Marcha")],
     inicio: [SEG("Marcha del sistema", S()), SEG("Sirena de prearranque", S()), SEG("CV‑02 (aguas abajo)", S()), SEG("CV‑01", S()), SEG("Alimentador", S())],
     solucion: [SEG("Marcha del sistema", S(P([NO("%I0.0")], [NO("%M0.0")]), NO("%I0.1"), NO("%I0.2"), NO("%I0.3"), COIL("%M0.0"))),
       SEG("Sirena de prearranque", S(NO("%M0.0"), P([TON("T_Sirena", "T#5s")], [NC("T_Sirena.Q"), COIL("%Q0.0")]))),

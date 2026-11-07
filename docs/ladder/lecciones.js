@@ -618,7 +618,7 @@ convierte en un <b>Int</b> en una palabra de entrada, por ejemplo <code>%IW64</c
   <li><b>Observación online</b> (gafas): ve el flujo de corriente en LAD, como en este simulador.</li>
   <li><b>Tabla de observación y forzado</b>: lee y <i>modifica</i> variables una vez (útil para probar un paso).</li>
   <li><b>Forzado permanente</b>: impone el valor de una E/S aunque el programa diga otra cosa. La CPU enciende el LED MAINT. <b>Peligroso</b>: quítalo siempre al terminar y avisa.</li>
-  <li><b>Referencias cruzadas</b> (F11 en un operando): dónde se lee y dónde se escribe una variable. La herramienta nº 1 para encontrar “¿quién apaga esta salida?”.</li>
+  <li><b>Referencias cruzadas</b> (clic derecho sobre el operando → <i>Referencias cruzadas</i>): dónde se lee y dónde se escribe una variable. La herramienta nº 1 para encontrar “¿quién apaga esta salida?”.</li>
   <li><b>Búfer de diagnóstico</b> de la CPU: el historial de errores, paradas y cambios de modo.</li>
   <li><b>Trace</b>: graba señales en el tiempo como un osciloscopio.</li>
 </ul>

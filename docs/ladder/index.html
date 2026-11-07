@@ -11,22 +11,22 @@
 <link rel="apple-touch-icon" href="icono-192.png">
 <style>
 :root{
-  --bg:#F2F5F7; --panel:#FFFFFF; --ink:#13202A; --ink2:#465867; --ink3:#7B8A96; --line:#D8E0E6;
-  --acc:#0A7F86; --acc-ink:#FFFFFF; --acc2:#DDF1F1; --on:#169C46; --off:#3A6CD0; --canvas:#FFFFFF;
+  --bg:#F2F5F7; --panel:#FFFFFF; --ink:#13202A; --ink2:#465867; --ink3:#5E6D79; --line:#D8E0E6;
+  --acc:#0A7F86; --acc-ink:#FFFFFF; --acc2:#DDF1F1; --on:#11803A; --off:#3A6CD0; --canvas:#FFFFFF;
   --box:#EEF3F7; --bad:#C62828; --bad2:#FDECEC; --good2:#E5F5EA; --warn:#9A5B00; --warn2:#FFF4DE;
   --lamp:#C9D2D9; --hover:rgba(10,127,134,.10); --shadow:0 1px 2px rgba(16,32,42,.06),0 4px 14px rgba(16,32,42,.06);
   --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0E151A; --panel:#151F26; --ink:#E4ECF1; --ink2:#A7B6C1; --ink3:#7D8D99; --line:#2A3842;
+    --bg:#0E151A; --panel:#151F26; --ink:#E4ECF1; --ink2:#A7B6C1; --ink3:#8B9BA7; --line:#2A3842;
     --acc:#3FC1C6; --acc-ink:#062226; --acc2:#123236; --on:#3DDC74; --off:#5E8DF0; --canvas:#10191F;
     --box:#1B2831; --bad:#FF6B6B; --bad2:#3A1C1F; --good2:#14301F; --warn:#F3B455; --warn2:#33270F;
     --lamp:#33424C; --hover:rgba(63,193,198,.12); --shadow:none;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0E151A; --panel:#151F26; --ink:#E4ECF1; --ink2:#A7B6C1; --ink3:#7D8D99; --line:#2A3842;
+  --bg:#0E151A; --panel:#151F26; --ink:#E4ECF1; --ink2:#A7B6C1; --ink3:#8B9BA7; --line:#2A3842;
   --acc:#3FC1C6; --acc-ink:#062226; --acc2:#123236; --on:#3DDC74; --off:#5E8DF0; --canvas:#10191F;
   --box:#1B2831; --bad:#FF6B6B; --bad2:#3A1C1F; --good2:#14301F; --warn:#F3B455; --warn2:#33270F;
   --lamp:#33424C; --hover:rgba(63,193,198,.12); --shadow:none;
@@ -419,7 +419,7 @@ class Engine {
     for (const i of this.inputs) {
       if (i.addr in this.forced) this.v[i.addr] = this.forced[i.addr];
       else if (isWord(i.addr)) this.v[i.addr] = this.ana[i.addr] | 0;
-      else { const p = !!this.pressed[i.addr]; this.v[i.addr] = (i.type === "pushNC" ? !p : p) ? 1 : 0; }
+      else { const p = !!this.pressed[i.addr]; this.v[i.addr] = (i.type === "pushNC" || i.type === "pullcord" ? !p : p) ? 1 : 0; }
     }
     this.pf = new Map();
     for (const r of this.prog) this.evS(r.net, true);
@@ -467,7 +467,6 @@ class Engine {
       if (p && !s.pin && !s.run) { s.run = 1; s.ET = 0; }
       if (s.run) { s.ET = Math.min(pt, s.ET + dt); if (s.ET >= pt) s.run = 0; } else if (!p) s.ET = 0;
       s.Q = s.run;
-      if (s.run === 0 && s.ET >= pt && p) s.Q = 0;
     }
     s.pin = p ? 1 : 0; return !!s.Q;
   }
@@ -758,10 +757,10 @@ function Sim(root, opts) {
         rg.addEventListener("input", upd); upd(); ins.appendChild(d); continue;
       }
       const d = document.createElement("div"); d.className = "in"; d.dataset.a = i.addr;
-      const sw = i.type === "switch", nc = i.type === "pushNC";
+      const pc = i.type === "pullcord", sw = i.type === "switch" || pc, nc = i.type === "pushNC" || pc;
       const pf = i.type === "plant";
       d.innerHTML = `<button class="pb${sw ? " sw" : ""}${nc ? " nc" : ""}${pf ? " pf" : ""}" aria-pressed="false"><span class="k"></span><span class="nm">${esc(nm)}</span></button>
-        <div class="sig"><span>${i.addr}${nc ? " · NC" : sw ? " · selector" : pf ? " · planta" : ""}</span><b>0</b></div>${pf ? `<div class="sig"><span>${esc(i.note || "pulsa = simular falla")}</span></div>` : ""}
+        <div class="sig"><span>${i.addr}${pc ? " · NC, enclava" : nc ? " · NC" : sw ? " · selector" : pf ? " · planta" : ""}</span><b>0</b></div>${pf ? `<div class="sig"><span>${esc(i.note || "pulsa = simular falla")}</span></div>` : ""}
         ${sw ? "" : `<label><input type="checkbox"> mantener pulsado</label>`}`;
       const b = $(".pb", d), set = v => { eng.pressed[i.addr] = v ? 1 : 0; };
         if (sw) b.addEventListener("click", () => set(!eng.pressed[i.addr]));
@@ -801,7 +800,7 @@ function Sim(root, opts) {
   function paint(force) {
     const c = ctx();
     me.prog.forEach((r, i) => { const s = rungSVG(r.net, c); if (force || s !== lastSvg[i]) { segEls[i].innerHTML = s; lastSvg[i] = s; } });
-    $$(".in", R).forEach(d => { const a = d.dataset.a, p = !!eng.pressed[a], v = me.run ? eng.v[a] : (eng.inputs.find(i => i.addr === a) || {}).type === "pushNC" ? (p ? 0 : 1) : (p ? 1 : 0);
+    $$(".in", R).forEach(d => { const a = d.dataset.a, p = !!eng.pressed[a], v = me.run ? eng.v[a] : /^(pushNC|pullcord)$/.test((eng.inputs.find(i => i.addr === a) || {}).type) ? (p ? 0 : 1) : (p ? 1 : 0);
       const b = $(".pb", d); b.classList.toggle("pressed", p); if (b.tagName === "BUTTON") b.setAttribute("aria-pressed", p);
       if (b.classList.contains("ro")) b.classList.toggle("lit", !!v);
       const sg = $(".sig b", d); sg.textContent = v ? "1" : "0"; sg.classList.toggle("h", !!v); });
@@ -920,19 +919,20 @@ function racha() {
   while (set.has(hoy(d))) { n++; d.setDate(d.getDate() - 1); }
   return n;
 }
-function xp() { let x = 0; for (const L of LECCIONES) { x += (ST.quiz[L.id] || 0) * 10; if (ST.reto[L.id]) x += L.nivel === "energia" ? 80 : 50; } return x; }
+function xp() { let x = 0; for (const L of LECCIONES) { x += (ST.quiz[L.id] || 0) * 10; if (ST.reto[L.id] && !(ST.sol || {})[L.id]) x += L.nivel === "energia" ? 80 : 50; } return x; }
 const RANGOS = ["Aprendiz", "Ayudante electricista", "Técnico de mantenimiento", "Técnico de control", "Especialista en automatización", "Ingeniero de control", "Maestro LAD"];
 function rango() { const x = xp(), n = Math.min(RANGOS.length - 1, Math.floor(x / 250)); return { n, nombre: RANGOS[n], desde: n * 250, hasta: (n + 1) * 250, x }; }
 const nivelHecho = id => LECCIONES.filter(L => L.nivel === id).every(L => estado(L) === "done");
+const propio = id => !!ST.reto[id] && !(ST.sol || {})[id];
 const BADGES = [
-  { id: "primer", ic: "⚡", n: "Primer contacto", d: "Supera tu primer reto", ok: () => Object.keys(ST.reto).length >= 1 },
+  { id: "primer", ic: "⚡", n: "Primer contacto", d: "Supera tu primer reto", ok: () => Object.keys(ST.reto).some(propio) },
   { id: "basico", ic: "🔌", n: "Base sólida", d: "Completa el nivel básico", ok: () => nivelHecho("basico") },
   { id: "inter", ic: "⏱", n: "Dueño del tiempo", d: "Completa el nivel intermedio", ok: () => nivelHecho("intermedio") },
   { id: "avanz", ic: "🧩", n: "Programa estructurado", d: "Completa el nivel avanzado", ok: () => nivelHecho("avanzado") },
-  { id: "grupo", ic: "🛢", n: "Guardián del diésel", d: "Supera el reto de protecciones del grupo", ok: () => !!ST.reto.grupo },
-  { id: "tta", ic: "🔀", n: "Sin apagón", d: "Supera el reto de transferencia red‑grupo", ok: () => !!ST.reto.tta },
-  { id: "sincro", ic: "🎯", n: "Mano firme", d: "Sincroniza G2 a la barra sin cierre fuera de fase", ok: () => !!ST.reto.sincronismo },
-  { id: "faja", ic: "⛏", n: "Mineral en movimiento", d: "Arranca las fajas en cascada sin atollar chutes", ok: () => !!ST.reto.faja },
+  { id: "grupo", ic: "🛢", n: "Guardián del diésel", d: "Supera el reto de protecciones del grupo", ok: () => propio("grupo") },
+  { id: "tta", ic: "🔀", n: "Sin apagón", d: "Supera el reto de transferencia red‑grupo", ok: () => propio("tta") },
+  { id: "sincro", ic: "🎯", n: "Mano firme", d: "Sincroniza G2 a la barra sin cierre fuera de fase", ok: () => propio("sincronismo") },
+  { id: "faja", ic: "⛏", n: "Mineral en movimiento", d: "Arranca las fajas en cascada sin atollar chutes", ok: () => propio("faja") },
   { id: "energia", ic: "🏭", n: "Jefe de turno eléctrico", d: "Completa toda la ruta Grupos y minería", ok: () => nivelHecho("energia") },
   { id: "racha3", ic: "🔥", n: "Constancia", d: "Estudia 3 días seguidos", ok: () => racha() >= 3 },
   { id: "racha7", ic: "🏆", n: "Semana completa", d: "Estudia 7 días seguidos", ok: () => racha() >= 7 },
@@ -1024,7 +1024,7 @@ function viewLesson(id) {
     if (t === "ej") { rb.innerHTML = ""; Sim($(".simbox"), { prog: clone(L.ejemplo.prog), tags: L.ejemplo.tags, planta: L.ejemplo.planta, editable: true }); return; }
     const R = L.reto;
     rb.innerHTML = `<div class="reto"><h3>Reto</h3><p class="en">${R.enunciado}</p>
-      <div class="tagt">${R.tags.map(t => `<span><b>${esc(t.name)}</b> ${t.addr}${t.type === "pushNC" ? " (NC)" : t.type === "switch" ? " (selector)" : ""}</span>`).join("")}</div>
+      <div class="tagt">${R.tags.map(t => `<span><b>${esc(t.name)}</b> ${t.addr}${t.type === "pushNC" ? " (NC)" : t.type === "pullcord" ? " (pull‑cord NC, enclava)" : t.type === "switch" ? " (selector)" : ""}</span>`).join("")}</div>
       <div class="acts"><button class="btn b-chk">▶ Comprobar</button><button class="btn ghost b-ini">Reiniciar reto</button><button class="btn ghost b-sol">Ver solución</button></div>
       <div class="out"></div></div>`;
     const sim = Sim($(".simbox"), { prog: ST.work[id] ? clone(ST.work[id]) : clone(R.inicio), tags: R.tags, planta: R.planta, editable: true, edit: true, onChange: p => { ST.work[id] = p; save(); } });
@@ -1035,7 +1035,7 @@ function viewLesson(id) {
       if (g.ok) { const first = !ST.reto[id]; ST.reto[id] = true; save(); setSt(); actividad(); tabs.forEach(b => { if (b.dataset.t === "reto") b.textContent = "Reto ✓"; }); if (first) toast("Reto superado ✓"); }
     };
     $(".b-ini", rb).onclick = () => { if (!confirm("¿Volver al programa inicial del reto? Se pierde lo que hiciste.")) return; delete ST.work[id]; save(); sim.load(clone(R.inicio), R.tags); $(".out", rb).innerHTML = ""; };
-    $(".b-sol", rb).onclick = () => { if (!confirm("¿Cargar la solución? Reemplaza tu programa del reto.")) return; const p = clone(R.solucion); ST.work[id] = p; save(); sim.load(p, R.tags); $(".out", rb).innerHTML = `<div class="banner ok" style="background:var(--warn2);color:var(--warn)">Solución cargada. Pruébala con las entradas y pulsa Comprobar.</div>`; };
+    $(".b-sol", rb).onclick = () => { if (!confirm("¿Cargar la solución? Reemplaza tu programa del reto.")) return; const p = clone(R.solucion); ST.work[id] = p; ST.sol = ST.sol || {}; ST.sol[id] = true; save(); sim.load(p, R.tags); $(".out", rb).innerHTML = `<div class="banner ok" style="background:var(--warn2);color:var(--warn)">Solución cargada. Pruébala y pulsa Comprobar. Un reto resuelto con la solución a la vista cuenta como completado, pero no suma XP ni insignia.</div>`; };
   };
   tabs.forEach(b => b.onclick = () => show(b.dataset.t));
   show("ej");
