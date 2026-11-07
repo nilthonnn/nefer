@@ -1,0 +1,267 @@
+name: apk de LadderLab
+
+# El .apk de LadderLab, el curso de Ladder para TIA Portal. Es la misma
+# envoltura que la ronda CIL y el camal: un WebView que sirve `docs/ladder`
+# desde dentro, sin permiso de INTERNET. Se compila aquí y no en la máquina
+# de nadie: el SDK de Android son cientos de megas.
+#
+# A diferencia de la ronda, publica también desde las ramas (como
+# prepublicación): el APK es la forma de instalar LadderLab en Android, y hace
+# falta poder descargarlo antes de que la rama se fusione.
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "movil/ladderlab/**"
+      - "docs/ladder/**"
+      - "herramientas/empaquetar-ladder.py"
+      - "tests/test_ladder_android.py"
+      - ".github/workflows/apk-ladderlab.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: apk-ladderlab-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  ARCHIVO: ladderlab.apk
+
+jobs:
+  apk:
+    name: compilar, comprobar y publicar el .apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Las descargas se arman desde la app: si alguien cambió la app y no
+      # volvió a armarlas, el archivo único de Android quedaría viejo.
+      - name: Las descargas están al día
+        run: |
+          set -euo pipefail
+          python3 herramientas/empaquetar-ladder.py
+          if ! git diff --quiet -- docs/ladder/descargas; then
+            echo "::error::docs/ladder/descargas no está al día. Corre python3 herramientas/empaquetar-ladder.py y vuelve a subir."
+            git --no-pager diff --stat -- docs/ladder/descargas
+            exit 1
+          fi
+
+      # El puente, el botón atrás, el archivo único sin vecinos y la app
+      # instalada sin señal, en un navegador de verdad, antes de envolverla.
+      - name: La app, antes de envolverla
+        run: |
+          set -euo pipefail
+          pip install -e ".[navegador]"
+          python -m playwright install --with-deps chromium
+          python -m pytest -q -rs tests/test_ladder_android.py | tee salida.txt
+          if grep -qE '[0-9]+ skipped' salida.txt; then
+            echo "::error::alguna prueba se saltó; aquí eso cuenta como fallo"
+            exit 1
+          fi
+
+      # La imagen del runner ya trae el SDK; se busca el sdkmanager en vez de
+      # adivinar la carpeta, que cambia entre versiones de la imagen.
+      - name: SDK de Android
+        run: |
+          set -euo pipefail
+          raiz="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_HOME=$raiz" >> "$GITHUB_ENV"
+          gestor=$(ls "$raiz"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1)
+          [ -n "$gestor" ] || { echo "::error::no hay sdkmanager en $raiz"; exit 1; }
+          yes | "$gestor" --licenses > /dev/null 2>&1 || true
+          "$gestor" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+          echo "SDK: $raiz"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      # Sin llave propia el .apk se firma con una provisional, y entonces
+      # instalar una versión nueva encima exige desinstalar la anterior.
+      - name: Preparar la llave de firma
+        id: llave
+        env:
+          ALMACEN: ${{ secrets.ANDROID_ALMACEN_BASE64 }}
+          CLAVE_ALMACEN: ${{ secrets.ANDROID_CLAVE_ALMACEN }}
+          ALIAS: ${{ secrets.ANDROID_ALIAS }}
+          CLAVE_LLAVE: ${{ secrets.ANDROID_CLAVE_LLAVE }}
+        run: |
+          set -euo pipefail
+          ruta="$RUNNER_TEMP/firma.jks"
+          if [ -n "${ALMACEN:-}" ] && [ -n "${CLAVE_ALMACEN:-}" ] \
+             && [ -n "${ALIAS:-}" ] && [ -n "${CLAVE_LLAVE:-}" ]; then
+            printf '%s' "$ALMACEN" | base64 -d > "$ruta"
+            echo "propia=sí" >> "$GITHUB_OUTPUT"
+            echo "CLAVE_ALMACEN=$CLAVE_ALMACEN" >> "$GITHUB_ENV"
+            echo "ALIAS_LLAVE=$ALIAS" >> "$GITHUB_ENV"
+            echo "CLAVE_LLAVE=$CLAVE_LLAVE" >> "$GITHUB_ENV"
+            echo "Se firma con la llave del repositorio."
+          else
+            keytool -genkeypair -v -keystore "$ruta" \
+              -alias ladderlab -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass provisional -keypass provisional \
+              -dname "CN=LadderLab, OU=Formacion, O=LadderLab, L=Lima, C=PE"
+            echo "propia=no" >> "$GITHUB_OUTPUT"
+            echo "CLAVE_ALMACEN=provisional" >> "$GITHUB_ENV"
+            echo "ALIAS_LLAVE=ladderlab" >> "$GITHUB_ENV"
+            echo "CLAVE_LLAVE=provisional" >> "$GITHUB_ENV"
+            echo "::warning::sin llave propia: el .apk sale con una firma"\
+                 "provisional y actualizar encima exigirá desinstalar antes."
+          fi
+          echo "ALMACEN_LLAVES=$ruta" >> "$GITHUB_ENV"
+
+      - name: Compilar
+        working-directory: movil/ladderlab/android
+        run: |
+          gradle --no-daemon :app:assembleRelease \
+            -PcodigoVersion=${{ github.run_number }} \
+            -PnombreVersion=1.${{ github.run_number }} \
+            -PalmacenLlaves="$ALMACEN_LLAVES" \
+            -PclaveAlmacen="$CLAVE_ALMACEN" \
+            -PaliasLlave="$ALIAS_LLAVE" \
+            -PclaveLlave="$CLAVE_LLAVE"
+
+      # Un .apk que compila puede estar vacío por dentro: si la copia de la
+      # app no hizo nada, lo que se instala es una pantalla en blanco.
+      - name: Comprobar lo que lleva dentro
+        run: |
+          set -euo pipefail
+          apk=$(ls movil/ladderlab/android/app/build/outputs/apk/release/*.apk | head -1)
+          herramientas=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+
+          echo "::group::identidad"
+          "$herramientas/aapt2" dump badging "$apk" | \
+            grep -E "^(package|application-label|launchable-activity|uses-permission|sdkVersion|targetSdkVersion)"
+          if "$herramientas/aapt2" dump badging "$apk" | grep -q "android.permission.INTERNET"; then
+            echo "::error::el .apk pide permiso de INTERNET y no debe"; exit 1
+          fi
+          echo "::endgroup::"
+
+          echo "::group::firma"
+          "$herramientas/apksigner" verify --verbose --print-certs "$apk"
+          echo "::endgroup::"
+
+          echo "::group::la app va dentro"
+          python3 - "$apk" <<'PY'
+          import hashlib, pathlib, sys, zipfile
+
+          apk = zipfile.ZipFile(sys.argv[1])
+          dentro = {n[len("assets/www/"):]: apk.read(n)
+                    for n in apk.namelist() if n.startswith("assets/www/")}
+          web = pathlib.Path("docs/ladder")
+          fuera = {str(a.relative_to(web)): a.read_bytes()
+                   for a in web.rglob("*")
+                   if a.is_file() and a.name != "sw.js" and "descargas" not in a.parts}
+
+          faltan = sorted(set(fuera) - set(dentro))
+          sobran = sorted(set(dentro) - set(fuera))
+          distintos = sorted(n for n in fuera if n in dentro and fuera[n] != dentro[n])
+          for titulo, lista in (("faltan", faltan), ("sobran", sobran), ("distintos", distintos)):
+              if lista:
+                  print(f"::error::{titulo} en el .apk: {lista[:8]}")
+          if faltan or sobran or distintos:
+              sys.exit("el .apk no lleva la misma app que se publica")
+
+          indice = dentro["index.html"].decode("utf-8")
+          for senal in ("PuenteLadder", "function atras()", "Sincronismo de grupos"):
+              if senal not in indice + dentro["energia.js"].decode("utf-8"):
+                  sys.exit(f"la app de dentro no está completa: falta {senal}")
+          print(f"{len(dentro)} archivos, index.html {len(dentro['index.html'])} B, "
+                f"sha256 {hashlib.sha256(dentro['index.html']).hexdigest()[:16]}")
+          PY
+          echo "::endgroup::"
+
+          cp "$apk" "$RUNNER_TEMP/$ARCHIVO"
+          echo "APK=$RUNNER_TEMP/$ARCHIVO" >> "$GITHUB_ENV"
+          echo "SHA=$(sha256sum "$apk" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          echo "PESO=$(du -h "$apk" | cut -f1)" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ladderlab-apk
+          path: ${{ env.APK }}
+          retention-days: 90
+          if-no-files-found: error
+
+      # Una publicación por compilación, con el .apk dentro desde el primer
+      # momento: las publicaciones de este repositorio nacen inmutables. Desde
+      # una rama sale como prepublicación; nunca como «última», que esa
+      # dirección es de las actas de RD RENTAL.
+      - name: Publicar para descargar
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FIRMA_PROPIA: ${{ steps.llave.outputs.propia }}
+        run: |
+          set -euo pipefail
+          etiqueta="ladderlab-v${{ github.run_number }}"
+          pre=""
+          [ "${{ github.ref }}" = "refs/heads/main" ] || pre="--prerelease"
+          notas="$RUNNER_TEMP/notas.md"
+          {
+            echo "LadderLab — curso de Ladder (LAD) para TIA Portal, con ruta de grupos electrógenos y minería, para Android."
+            echo
+            echo "- Versión **1.${{ github.run_number }}**"
+            echo "- Compilada de \`${{ github.sha }}\` (\`${{ github.ref_name }}\`)"
+            echo "- SHA-256 \`$SHA\`"
+            echo
+            echo "## Cómo se instala"
+            echo
+            echo "1. Descargue **$ARCHIVO** desde el teléfono."
+            echo "2. Ábralo desde Archivos o Descargas."
+            echo "3. Android pedirá permitir instalar desde esa fuente: acepte."
+            echo
+            echo "No pide permiso de INTERNET: las 24 lecciones, el simulador y el manual van dentro,"
+            echo "y el progreso se queda en el teléfono. Los programas exportados se guardan en Descargas."
+            echo
+            echo "Sin instalar nada: abra \`LadderLab.html\` (en las descargas del sitio) con Chrome."
+            if [ "$FIRMA_PROPIA" != "sí" ]; then
+              echo
+              echo "> **Firma provisional.** Para instalar una versión nueva hay que"
+              echo "> desinstalar antes la anterior."
+            fi
+          } > "$notas"
+
+          gh release create "$etiqueta" "$APK" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "${{ github.sha }}" \
+            --title "LadderLab 1.${{ github.run_number }}" \
+            --notes-file "$notas" \
+            --latest=false $pre
+
+          # Si el archivo no quedó dentro, la dirección da 404 y nadie se entera
+          # hasta que alguien intenta instalarla.
+          sleep 3
+          gh release view "$etiqueta" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[].name' | grep -qx "$ARCHIVO" || {
+              echo "::error::la publicación $etiqueta salió sin el .apk"
+              exit 1
+            }
+
+          descarga="https://github.com/$GITHUB_REPOSITORY/releases/download/$etiqueta/$ARCHIVO"
+          {
+            echo "## APK listo"
+            echo ""
+            echo "**Descarga:** $descarga"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Versión | 1.${{ github.run_number }} |"
+            echo "| Tamaño | $PESO |"
+            echo "| SHA-256 | \`$SHA\` |"
+            echo "| Firma propia | $FIRMA_PROPIA |"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,212 @@
+name: instalador de LadderLab para Windows
+
+# Compila LadderLab-Setup.exe con Inno Setup, lo INSTALA de verdad en una
+# máquina Windows, abre la app instalada con Microsoft Edge y la recorre, la
+# desinstala, y recién entonces lo publica. Un instalador que compila pero no
+# instala, o que instala accesos que no abren nada, no se nota hasta que
+# alguien lo prueba en su PC.
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "escritorio/ladderlab-windows/**"
+      - "docs/ladder/**"
+      - "herramientas/empaquetar-ladder.py"
+      - ".github/workflows/windows-ladderlab.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: windows-ladderlab-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  ARCHIVO: LadderLab-Setup.exe
+
+jobs:
+  instalador:
+    name: compilar, instalar, probar y publicar
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      # El instalador lleva el archivo único tal como está en el repositorio.
+      # Que esté al día respecto de la app lo exige el flujo del APK
+      # (apk-ladderlab.yml); aquí no se rehace porque Git en Windows cambia
+      # los fines de línea al sacar los archivos y la comparación mentiría.
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup *\ISCC.exe", "$env:ProgramFiles\Inno Setup *\ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $iscc) {
+            choco install innosetup --no-progress -y | Out-Null
+            $iscc = Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup *\ISCC.exe", "$env:ProgramFiles\Inno Setup *\ISCC.exe" | Select-Object -First 1
+          }
+          if (-not $iscc) { Write-Error "no hay ISCC.exe"; exit 1 }
+          "ISCC=$($iscc.FullName)" | Out-File -Append $env:GITHUB_ENV
+          Write-Host "Inno Setup: $($iscc.FullName)"
+
+      - name: Compilar el instalador
+        shell: pwsh
+        working-directory: escritorio/ladderlab-windows
+        run: |
+          & $env:ISCC "/DVersion=1.${{ github.run_number }}" LadderLab.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Get-Item salida\LadderLab-Setup.exe | Format-List Name, Length
+
+      # Se instala en silencio como lo haría una persona (sin administrador),
+      # y se mira qué quedó: archivos, accesos y a qué apuntan.
+      - name: Instalar y revisar
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $p = Start-Process -Wait -PassThru escritorio\ladderlab-windows\salida\LadderLab-Setup.exe `
+                 -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/TASKS=escritorio','/LOG=instalacion.log'
+          if ($p.ExitCode -ne 0) { Get-Content instalacion.log -Tail 40; throw "el instalador terminó con $($p.ExitCode)" }
+          $app = "$env:LOCALAPPDATA\Programs\LadderLab"
+          foreach ($f in 'LadderLab.html','Manual-de-uso-LadderLab.pdf','ladderlab.ico','LEEME.txt','unins000.exe') {
+            if (-not (Test-Path "$app\$f")) { throw "falta $app\$f" }
+          }
+          $shell = New-Object -ComObject WScript.Shell
+          $inicio = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\LadderLab"
+          $escritorio = [Environment]::GetFolderPath('Desktop')
+          foreach ($lnk in "$inicio\LadderLab.lnk", "$escritorio\LadderLab.lnk") {
+            if (-not (Test-Path $lnk)) { throw "falta el acceso $lnk" }
+            $a = $shell.CreateShortcut($lnk)
+            Write-Host "$lnk -> $($a.TargetPath) $($a.Arguments)"
+            if ($a.TargetPath -notmatch 'msedge\.exe$') { throw "el acceso no abre con Edge: $($a.TargetPath)" }
+            if ($a.Arguments -notmatch '^--app="file:///.+/LadderLab\.html"$') { throw "argumentos inesperados: $($a.Arguments)" }
+            if (-not (Test-Path $a.TargetPath)) { throw "el acceso apunta a un Edge que no existe" }
+          }
+          foreach ($lnk in "Manual de uso de LadderLab.lnk", "Desinstalar LadderLab.lnk") {
+            if (-not (Test-Path "$inicio\$lnk")) { throw "falta $lnk" }
+          }
+          $url = ($shell.CreateShortcut("$inicio\LadderLab.lnk").Arguments -replace '^--app="(.+)"$', '$1')
+          "URL_APP=$url" | Out-File -Append $env:GITHUB_ENV
+
+      # La app instalada, abierta con el mismo Edge que usan los accesos.
+      - name: Abrir la app instalada con Edge y recorrerla
+        shell: bash
+        run: |
+          set -euo pipefail
+          pip install playwright
+          python - <<'PY'
+          import os
+          from playwright.sync_api import sync_playwright
+          url = os.environ["URL_APP"]
+          with sync_playwright() as pw:
+              nav = pw.chromium.launch(channel="msedge")
+              pag = nav.new_page(viewport={"width": 1366, "height": 768})
+              errores = []
+              pag.on("pageerror", lambda e: errores.append(str(e)))
+              pag.goto(url)
+              pag.wait_for_selector(".hero")
+              lecciones = pag.evaluate("LECCIONES.length")
+              retos = pag.evaluate("LECCIONES.filter(l => l.reto).map(l => [l.id, grade(l.reto, l.reto.solucion).ok])")
+              pag.goto(url + "#/l/enclavamiento")
+              pag.wait_for_selector(".sim .in .pb")
+              pag.click('.in[data-a="%I0.0"] input[type=checkbox]')
+              pag.wait_for_timeout(200)
+              motor = pag.evaluate("SIM.eng.v['%Q0.0']")
+              # el progreso queda guardado entre aperturas
+              pag.evaluate("localStorage.setItem('prueba-windows', '1')")
+              pag.reload()
+              guardado = pag.evaluate("localStorage.getItem('prueba-windows')")
+              print(f"Edge {nav.version}: {lecciones} lecciones, retos {sum(ok for _, ok in retos)}/{len(retos)}, motor={motor}, progreso={guardado}")
+              assert lecciones == 24, lecciones
+              assert len(retos) == 20 and all(ok for _, ok in retos), retos
+              assert motor == 1, "el pulsador no arrancó el motor"
+              assert guardado == "1", "localStorage no persiste"
+              assert not errores, errores
+              nav.close()
+          PY
+
+      - name: Desinstalar y revisar
+        shell: pwsh
+        run: |
+          $app = "$env:LOCALAPPDATA\Programs\LadderLab"
+          $p = Start-Process -Wait -PassThru "$app\unins000.exe" -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
+          # unins000.exe se relanza desde una copia temporal y vuelve antes de
+          # terminar: se espera a que la carpeta quede vacía.
+          for ($i = 0; $i -lt 30 -and (Test-Path "$app\LadderLab.html"); $i++) { Start-Sleep -Seconds 1 }
+          if (Test-Path "$app\LadderLab.html") { throw "la desinstalación dejó la app" }
+          if (Test-Path "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\LadderLab\LadderLab.lnk") { throw "quedó el acceso del menú Inicio" }
+          if (Test-Path ([Environment]::GetFolderPath('Desktop') + "\LadderLab.lnk")) { throw "quedó el acceso del escritorio" }
+          Write-Host "desinstalada sin restos"
+
+      - name: Datos del instalador
+        shell: bash
+        run: |
+          set -euo pipefail
+          exe=escritorio/ladderlab-windows/salida/$ARCHIVO
+          echo "EXE=$exe" >> "$GITHUB_ENV"
+          echo "SHA=$(sha256sum "$exe" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          echo "PESO=$(du -h "$exe" | cut -f1)" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ladderlab-windows
+          path: ${{ env.EXE }}
+          retention-days: 90
+          if-no-files-found: error
+
+      # Una publicación por compilación. Desde una rama sale como
+      # prepublicación, y nunca como «última».
+      - name: Publicar para descargar
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          etiqueta="ladderlab-windows-v${{ github.run_number }}"
+          pre=""
+          [ "${{ github.ref }}" = "refs/heads/main" ] || pre="--prerelease"
+          notas="$RUNNER_TEMP/notas.md"
+          {
+            echo "LadderLab para **Windows 10 y 11** — curso y simulador de Ladder (LAD) para TIA Portal, con ruta de grupos electrógenos y minería."
+            echo
+            echo "- Versión **1.${{ github.run_number }}**"
+            echo "- Compilada de \`${{ github.sha }}\` (\`${{ github.ref_name }}\`)"
+            echo "- SHA-256 \`$SHA\`"
+            echo "- Probada en la integración: se instaló, se abrió con Edge (24 lecciones, 20 retos correctos), se desinstaló sin restos."
+            echo
+            echo "## Cómo se instala"
+            echo
+            echo "1. Descargue **$ARCHIVO** y ábralo."
+            echo "2. Si Windows muestra «Windows protegió su PC», toque **Más información → Ejecutar de todas formas** (el instalador no está firmado con un certificado comercial)."
+            echo "3. Siga el asistente. No pide permisos de administrador."
+            echo "4. Abra **LadderLab** desde el menú Inicio o el escritorio: se abre en su propia ventana con Microsoft Edge, sin internet."
+          } > "$notas"
+
+          gh release create "$etiqueta" "$EXE" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "${{ github.sha }}" \
+            --title "LadderLab para Windows 1.${{ github.run_number }}" \
+            --notes-file "$notas" \
+            --latest=false $pre
+
+          sleep 3
+          gh release view "$etiqueta" --repo "$GITHUB_REPOSITORY" \
+            --json assets --jq '.assets[].name' | grep -qx "$ARCHIVO" || {
+              echo "::error::la publicación $etiqueta salió sin el instalador"
+              exit 1
+            }
+          {
+            echo "## Instalador listo"
+            echo ""
+            echo "**Descarga:** https://github.com/$GITHUB_REPOSITORY/releases/download/$etiqueta/$ARCHIVO"
+            echo ""
+            echo "| Versión | 1.${{ github.run_number }} |"
+            echo "|---|---|"
+            echo "| Tamaño | $PESO |"
+            echo "| SHA-256 | \`$SHA\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
