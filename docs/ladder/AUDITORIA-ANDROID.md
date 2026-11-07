@@ -24,7 +24,7 @@ volver a correr.
 |---|---|---|
 | `.zip` → `LadderLab/index.html` en Android | **No abre** (página en blanco) | Sigue sin abrir: es una limitación de Android. El LEEME y el manual lo advierten y ofrecen las alternativas |
 | Archivo único `LadderLab.html` en Android | No existía | **Abre**: los 20 retos se corrigen bien, funciona al tacto y no pide ningún archivo vecino |
-| APK instalable | No existía | **Proyecto y compilación en la integración**: se publica en cada subida (sección 6.1) |
+| APK instalable | No existía | **Compilado y publicado**: `ladderlab-v1`, 2,1 MB, compilación en verde (sección 5) |
 | Instalar desde Chrome (PWA) | Solo en `https:`; la dirección aún no está publicada | Funciona en cualquier contexto seguro y **abre sin señal**; hay botón «Instalar» |
 | Enlace web `nilthonnn.github.io/nefer/ladder/` | 404 hasta fusionar el PR | Igual: depende de la fusión (sección 6.2) |
 | Pruebas automáticas de Android | 0 | **15**, todas aprobadas |
@@ -174,6 +174,13 @@ Además se repitieron las pruebas anteriores, con el mismo resultado:
 - el editor funciona con teclado;
 - las 41 pruebas existentes de los otros APK del repositorio siguen pasando.
 
+**Compilación del APK** (ejecución 42387039829 de `apk-ladderlab.yml`, en verde): las
+pruebas pasaron antes de envolver la app, el APK se compiló y no pide INTERNET. Su
+contenido coincide archivo por archivo con `docs/ladder`, sin `sw.js` ni `descargas/`,
+y se verificó también después de descargarlo. Se publicó como
+[`ladderlab-v1`](https://github.com/nilthonnn/nefer/releases/tag/ladderlab-v1): 2 113 601 bytes,
+SHA-256 `40deba451533a54d9ea6083cfcd1c333b42aef7843652f0a40f6411bf06e58ff`.
+
 Las descargas son **reproducibles**: dos ejecuciones de `empaquetar-ladder.py`
 dan el mismo `.zip` byte a byte. Por eso la integración puede exigir que estén
 al día.
@@ -182,16 +189,16 @@ al día.
 
 ## 6. Lo que queda abierto
 
-1. **La compilación del APK.** Aquí no hay SDK de Android. El proyecto copia
-   una envoltura que ya compila en este repositorio, pero el APK de LadderLab
-   solo existe cuando corre `apk-ladderlab.yml`. Hay que confirmar que esa
-   ejecución sale en verde y que la publicación trae `ladderlab.apk`.
+1. **Compilación del APK — cerrado.** `apk-ladderlab.yml` salió en verde y
+   publicó `ladderlab-v1` con `ladderlab.apk` (sección 5).
 2. **La dirección web** depende de fusionar el PR #47 y de que GitHub Pages
    publique `main`.
 3. **Prueba en un teléfono físico.** Todo lo de arriba se probó en emulación
    de Chrome móvil. Falta instalar el APK en un equipo real y recorrer una
    lección, un reto y exportar e importar un programa.
-4. **Firma.** Si el repositorio no tiene los secretos `ANDROID_*`, el APK sale
-   con firma provisional, y cada versión nueva exige desinstalar la anterior
-   (y con ella, el progreso). Para producción conviene cargar una llave
-   propia; `herramientas/crear-llave-android.sh` la genera.
+4. **Firma provisional (confirmado).** El repositorio no tiene los secretos
+   `ANDROID_*`, así que `ladderlab-v1` salió con firma provisional. Cada
+   versión nueva exige desinstalar la anterior, y con ella se pierde el
+   progreso; exporta antes tus programas. Para producción hay que cargar una
+   llave propia en los secretos del repositorio:
+   `herramientas/crear-llave-android.sh` la genera.
