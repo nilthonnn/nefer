@@ -409,3 +409,69 @@ def test_laminas_publicadas_salen_del_generador():
         assert publicada == laminas.lamina_html(tipo, p), (
             f"lamina-{tipo}.html no esta al dia: python -m nefer sincronismo "
             f"lamina {tipo} ejemplos/sincronismo/planta-dse-cat.json -o ...")
+
+
+# --- parametros -------------------------------------------------------------
+
+from nefer.sincronismo import parametros
+
+
+def test_catalogos_completos_y_sin_claves_repetidas():
+    for tipo, cat in parametros.CATALOGOS.items():
+        claves = [p.clave for p in cat]
+        assert len(claves) == len(set(claves)), tipo
+        for p in cat:
+            assert p.que_hace and p.como_decidir and p.si_queda_mal and p.verificacion
+
+
+def test_revision_rampa_bajo_la_32():
+    obs = parametros.revisar("sincronismo", {"nivel_apertura": 5, "p32_pickup": 8})
+    assert any(o["parametro"] == "nivel_apertura" and o["severidad"] == "detiene"
+               for o in obs)
+
+
+def test_revision_ventanas_contra_ieee():
+    planta = {"unidades": [{"id": "A", "kw_nominal": 800, "kva_nominal": 1000}]}
+    obs = parametros.revisar("sincronismo", {"sync_angulo": 20, "sync_df": 0.2,
+                                              "sync_dv": 5}, planta)
+    assert [o["parametro"] for o in obs if o["severidad"] != "oportunidad"] == ["sync_angulo"]
+
+
+def test_revision_deslizamiento_negativo_y_adelanto():
+    obs = parametros.revisar("sincronismo", {"sync_desliz_obj": -0.05})
+    assert obs[0]["severidad"] == "detiene"
+    obs = parametros.revisar("sincronismo", {"sync_desliz_obj": 0.2, "t_cierre": 150,
+                                              "sync_angulo": 10, "sync_df": 0.3})
+    assert any(o["parametro"] == "t_cierre" for o in obs)
+
+
+def test_revision_tta():
+    obs = parametros.revisar("tta", {"t_transferencia": 0, "t_retorno": 3,
+                                     "t_transitorio": 5, "red_sub_v": 400,
+                                     "red_sobre_v": 420}, {"v_nominal": 380})
+    claves = {o["parametro"] for o in obs if o["severidad"] != "oportunidad"}
+    assert claves == {"t_transferencia", "t_retorno", "red_sub_v"}
+
+
+def test_revision_lista_lo_no_declarado_sin_suponer():
+    obs = parametros.revisar("tta", {})
+    assert len(obs) == 1 and obs[0]["severidad"] == "oportunidad"
+    assert str(len(parametros.TTA)) in obs[0]["texto"]
+
+
+@pytest.mark.parametrize("tipo", ["sincronismo", "tta"])
+def test_hojas(tipo):
+    p = informe.cargar_planta(EJ / "planta-dse-cat.json")
+    md = parametros.hoja_markdown(tipo, p)
+    assert md.count("**Valor ajustado:**") == len(parametros.CATALOGOS[tipo])
+    html = parametros.hoja_html(tipo, p)
+    assert html.startswith("<!doctype html>")
+    assert (EJ / f"parametros-{tipo}.html").read_text(encoding="utf-8") == html
+    assert (EJ / f"hoja-parametros-{tipo}.md").read_text(encoding="utf-8").rstrip("\n") == \
+        parametros.hoja_markdown(tipo).rstrip("\n")
+
+
+def test_cli_parametros_revisar():
+    assert main(["sincronismo", "parametros", "sincronismo",
+                 str(EJ / "planta-dse-cat.json"), "--revisar"]) == 1   # rampa < 32
+    assert main(["sincronismo", "parametros", "tta", "--revisar"]) == 2

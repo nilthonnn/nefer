@@ -139,5 +139,28 @@
     "modulo": "DSE7320 MKII",
     "polos": 4,
     "bornes": {}
+  },
+  "parametros": {
+    "sincronismo": {
+      "sync_df": 0.2,
+      "sync_dv": 5,
+      "sync_angulo": 20,
+      "sync_desliz_obj": 0.1,
+      "t_cierre": 120,
+      "nivel_apertura": 5,
+      "p32_pickup": 8,
+      "p32_retardo": 3,
+      "modo_reparto": "isocrono_compartido",
+      "barra_muerta": true
+    },
+    "tta": {
+      "red_sub_v": 330,
+      "red_sobre_v": 420,
+      "t_transitorio": 5,
+      "t_retorno": 3,
+      "t_transferencia": 1,
+      "t_enfriamiento": 180,
+      "red_secuencia": true
+    }
   }
 }

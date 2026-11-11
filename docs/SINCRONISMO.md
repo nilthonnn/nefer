@@ -191,6 +191,31 @@ Tiempos y umbrales quedan como «configurable», y los bornes remiten al
 manual del módulo: una cifra típica en una lámina se copia como si fuera
 la norma.
 
+## Parámetros de configuración (sincronismo y TTA)
+
+```bash
+python -m nefer sincronismo parametros sincronismo planta.json --html -o parametros.html
+python -m nefer sincronismo parametros tta planta.json --revisar
+```
+
+La hoja lista lo que se configura en el módulo —ventanas del sincronizador,
+deslizamiento, tiempo de cierre, barra muerta, modo de reparto, estatismos,
+rampas y nivel de apertura, arranque por demanda, protecciones 32/40/27/59/81,
+falla de MSC; en la TTA, umbrales de red, temporizadores de falla, arranque,
+calentamiento, transferencia, retorno y enfriamiento, salidas, auxiliares y
+ejercicio— con qué hace cada uno, cómo decidir el valor, qué pasa si queda
+mal y cómo se comprueba. La columna «valor ajustado» se llena frente a DSE
+Configuration Suite (los nombres DSE orientan la búsqueda; el manual es el
+057-238 para el 8610 MKII).
+
+Con los valores en `planta.json` (bloque `"parametros": {"sincronismo": {…},
+"tta": {…}}`), `--revisar` comprueba las reglas que relacionan unos con
+otros: rampa que abre por debajo del pickup de la 32, ventanas más anchas
+que IEEE 1547, deslizamiento negativo, adelanto del interruptor que se come
+la ventana, 81O por debajo de la f en vacío, retorno de red más corto que la
+confirmación de falla, tiempo muerto nulo, umbrales de red que no encierran
+la nominal. Lo no declarado se lista; no se supone.
+
 ## Lo que falta (siguiente etapa)
 
 1. **Lectura directa del controlador.** Hoy los datos entran por JSON/CSV.

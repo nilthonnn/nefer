@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import diagramas, diagnostico, informe, laminas, protecciones, reparto, tendencias, verificacion
+from . import diagramas, diagnostico, informe, laminas, parametros, protecciones, reparto, tendencias, verificacion
 
 
 def _salida(texto: str, ruta: str | None) -> None:
@@ -190,6 +190,26 @@ def cmd_lamina(a) -> int:
     return 0
 
 
+def cmd_parametros(a) -> int:
+    planta = informe.cargar_planta(a.planta) if a.planta else None
+    if a.revisar:
+        if planta is None:
+            print("--revisar necesita la planta con su bloque «parametros».", file=sys.stderr)
+            return 2
+        obs = parametros.revisar(a.tipo, (planta.get("parametros") or {}).get(a.tipo, {}),
+                                 planta)
+        for o in obs:
+            print(f"  [{o['severidad']}] {o['texto']}")
+        if not obs:
+            print("  Sin observaciones.")
+        return 1 if any(o["severidad"] == "detiene" for o in obs) else 0
+    if a.html:
+        _salida(parametros.hoja_html(a.tipo, planta), a.salida or f"parametros-{a.tipo}.html")
+    else:
+        _salida(parametros.hoja_markdown(a.tipo, planta), a.salida)
+    return 0
+
+
 def agregar_subcomando(sub) -> None:
     s = sub.add_parser("sincronismo",
                        help="grupos electrogenos en paralelo: cierre, reparto, "
@@ -282,6 +302,16 @@ def agregar_subcomando(sub) -> None:
     lm.add_argument("planta", nargs="?")
     lm.add_argument("-o", "--salida", help="por defecto, lamina-<tipo>.html")
     lm.set_defaults(func=cmd_lamina)
+
+    pa = o.add_parser("parametros",
+                      help="hoja de configuracion de sincronismo o TTA, y su revision")
+    pa.add_argument("tipo", choices=["sincronismo", "tta"])
+    pa.add_argument("planta", nargs="?")
+    pa.add_argument("--html", action="store_true", help="hoja en HTML (para imprimir)")
+    pa.add_argument("--revisar", action="store_true",
+                    help="revisar la coherencia de los valores declarados en la planta")
+    pa.add_argument("-o", "--salida")
+    pa.set_defaults(func=cmd_parametros)
 
     pr = o.add_parser("protocolo", help="protocolo de puesta en marcha del paralelo")
     pr.add_argument("planta", nargs="?")
