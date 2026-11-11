@@ -164,6 +164,13 @@ def cmd_protocolo(a) -> int:
     return 0
 
 
+def cmd_plantilla(a) -> int:
+    p = informe.plantilla(a.unidades, a.kw, a.kva, a.v, a.f, a.controlador,
+                          a.modelo_controlador, a.motor, a.modelo_motor, a.modo)
+    _salida(json.dumps(p, ensure_ascii=False, indent=2) + "\n", a.salida)
+    return 0
+
+
 def agregar_subcomando(sub) -> None:
     s = sub.add_parser("sincronismo",
                        help="grupos electrogenos en paralelo: cierre, reparto, "
@@ -229,6 +236,21 @@ def agregar_subcomando(sub) -> None:
     i.add_argument("-o", "--salida")
     i.add_argument("--json", action="store_true")
     i.set_defaults(func=cmd_informe)
+
+    pl = o.add_parser("plantilla", help="planta.json en blanco para llenar")
+    pl.add_argument("-n", "--unidades", type=int, default=2)
+    pl.add_argument("--kw", type=float, help="potencia de placa, kW")
+    pl.add_argument("--kva", type=float, help="potencia de placa, kVA")
+    pl.add_argument("--v", type=float, default=380.0, help="tension nominal (380)")
+    pl.add_argument("--f", type=float, default=60.0, help="frecuencia nominal (60)")
+    pl.add_argument("--controlador", default="DSE")
+    pl.add_argument("--modelo-controlador")
+    pl.add_argument("--motor", default="CAT")
+    pl.add_argument("--modelo-motor")
+    pl.add_argument("--modo", default="isocrono_compartido",
+                    choices=["isocrono_compartido", "droop", "isocrono"])
+    pl.add_argument("-o", "--salida")
+    pl.set_defaults(func=cmd_plantilla)
 
     pr = o.add_parser("protocolo", help="protocolo de puesta en marcha del paralelo")
     pr.add_argument("planta", nargs="?")

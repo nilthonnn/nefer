@@ -41,7 +41,10 @@ class Unidad:
     kw: float | None = None
     kvar: float | None = None
     # Estatismo: solo para predecir.
-    modo: str = "droop"                 # "droop" o "isocrono"
+    # "droop", "isocrono" (una sola, sin enlace) o "isocrono_compartido"
+    # (varias en isocrono que reparten por enlace entre controladores: el
+    # enlace MSC de DSE, lineas analogicas de reparto o bus intercontrolador).
+    modo: str = "droop"
     f_vacio: float | None = None        # consigna de frecuencia en vacio, Hz
     estatismo_pct: float | None = None  # estatismo de velocidad, %
     v_vacio: float | None = None        # consigna de tension en vacio, V
@@ -175,12 +178,14 @@ def _resolver(unidades, carga, nominal, vacio_de, estatismo_de, potencia_de,
     hallazgos = []
     toma: dict[str, float] = {}
 
-    if len(isocronas) > 1:
+    solas = [u for u in isocronas if u.modo != "isocrono_compartido"]
+    if len(solas) > 1 or (solas and len(isocronas) > len(solas)):
         hallazgos.append(_hallazgo(
             "detiene", ",".join(u.id for u in isocronas),
-            f"{len(isocronas)} unidades en isocrono: sin lineas de reparto "
-            "entre ellas no hay punto de equilibrio y se disputan la carga. "
-            "Deje una sola en isocrono o reparta por lineas (load sharing)."))
+            f"{len(solas)} unidad(es) en isocrono sin enlace de reparto junto a "
+            "otras isocronas: no hay punto de equilibrio y se disputan la "
+            "carga. Deje una sola en isocrono, o ponga todas en isocrono "
+            "compartido por el enlace entre controladores."))
 
     ids_iso = {u.id for u in isocronas}
     rectas = []
@@ -200,8 +205,10 @@ def _resolver(unidades, carga, nominal, vacio_de, estatismo_de, potencia_de,
         for u, vacio, k in rectas:
             toma[u.id] = (vacio - ref) * k
         resto = carga - sum(toma.values())
+        # El enlace reparte en proporcion a la placa de cada una.
+        placa_iso = sum(potencia_de(u) for u in isocronas)
         for u in isocronas:
-            toma[u.id] = resto / len(isocronas)
+            toma[u.id] = resto * potencia_de(u) / placa_iso
     else:
         suma_k = sum(k for _, _, k in rectas)
         ref = (sum(k * v for _, v, k in rectas) - carga) / suma_k
@@ -250,7 +257,7 @@ def _resolver(unidades, carga, nominal, vacio_de, estatismo_de, potencia_de,
 def predecir_estatismo(unidades: list[Unidad], carga_kw: float,
                        f_nominal: float = 60.0) -> Prediccion:
     """Frecuencia de barra y kW que toma cada unidad, para una carga dada."""
-    iso = [u for u in unidades if u.modo == "isocrono"]
+    iso = [u for u in unidades if u.modo in ("isocrono", "isocrono_compartido")]
     return _resolver(unidades, carga_kw, f_nominal,
                      lambda u: u.f_vacio, lambda u: u.estatismo_pct,
                      lambda u: u.kw_nominal, iso, "kW")

@@ -37,7 +37,49 @@ def cargar_planta(ruta: str | Path) -> dict:
     ids = [u.get("id") for u in planta["unidades"]]
     if None in ids or len(set(ids)) != len(ids):
         raise ValueError(f"{ruta}: cada unidad necesita un id unico")
+    sin_placa = [u["id"] for u in planta["unidades"]
+                 if not isinstance(u.get("kw_nominal"), (int, float))
+                 or u["kw_nominal"] <= 0]
+    if sin_placa:
+        raise ValueError(f"{ruta}: falta kw_nominal (de la placa) en "
+                         f"{', '.join(sin_placa)}")
     return planta
+
+
+def plantilla(unidades: int = 2, kw: float | None = None, kva: float | None = None,
+              v_nominal: float = 380.0, f_nominal: float = 60.0,
+              controlador: str = "DSE", modelo_controlador: str | None = None,
+              motor: str = "CAT", modelo_motor: str | None = None,
+              modo: str = "isocrono_compartido") -> dict:
+    """Una planta en blanco para llenar con los datos de placa y del controlador.
+
+    Lo que no se sabe va en null: el cargador exige kw_nominal y la revision
+    de protecciones marca «falta anotar» en cada ajuste vacio. Nada se
+    rellena con un valor tipico, porque un valor tipico en este archivo se
+    leeria como el ajuste real del equipo.
+    """
+    if unidades < 1:
+        raise ValueError("al menos una unidad")
+    funciones = {"25": {}, "32": {"pickup_pct": None, "retardo_s": None},
+                 "40": {"retardo_s": None}, "27": {"pickup_pct": None},
+                 "59": {"pickup_pct": None}, "81U": {"pickup_pct": None},
+                 "81O": {"pickup_pct": None}}
+    lista = []
+    for n in range(1, unidades + 1):
+        u = {"id": f"GE-{n:02d}", "kw_nominal": kw, "kva_nominal": kva,
+             "controlador": {"marca": controlador, "modelo": modelo_controlador},
+             "motor": {"marca": motor, "modelo": modelo_motor},
+             "kw": None, "kvar": None, "modo": modo,
+             "t_cierre_s": None,
+             "protecciones": json.loads(json.dumps(funciones))}
+        if modo == "droop":
+            u.update({"f_vacio": None, "estatismo_pct": None})
+        lista.append(u)
+    return {"planta": "____", "f_nominal": f_nominal, "v_nominal": v_nominal,
+            "cargas_a_predecir_pct": [25, 50, 75, 100],
+            "limites": {"tiempo_sincronizacion_s": 30, "desbalance_kw_pct": 5,
+                        "desbalance_kvar_pct": 10},
+            "unidades": lista}
 
 
 def analizar(planta: dict, registros: list | None = None,
@@ -60,7 +102,8 @@ def analizar(planta: dict, registros: list | None = None,
         agregar("reparto actual", rep.hallazgos)
 
     # 2. Reparto previsto por estatismo a cada escalon.
-    if all(u.modo == "isocrono" or (u.f_vacio and u.estatismo_pct) for u in unidades):
+    if all(u.modo.startswith("isocrono") or (u.f_vacio and u.estatismo_pct)
+           for u in unidades):
         total = sum(u.kw_nominal for u in unidades)
         previstos = []
         # Un hallazgo por unidad y severidad: el del escalon mas alto, con la

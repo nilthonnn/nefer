@@ -116,6 +116,32 @@ le declara límite.
   `nefer fixmate indexar` igual que un manual, y la búsqueda del teléfono la
   encuentra.
 
+## Planta DSE + motor CAT a 380 V
+
+```bash
+python -m nefer sincronismo plantilla -n 3 --kw 400 --kva 500 \
+    --modelo-controlador "8610 MKII" --modelo-motor C15 -o planta.json
+```
+
+Deja una planta de 380 V / 60 Hz con el controlador DSE y el motor CAT en cada
+unidad. Lo que no se sabe queda en `null`, no se rellena con valores típicos.
+Sin `kw_nominal` el análisis no arranca, y cada ajuste de protección vacío
+aparece como «falta anotar».
+
+El modo por defecto es `isocrono_compartido`: varias unidades en isócrono
+que reparten la carga por el enlace entre controladores (en DSE, el enlace
+MSC). Ahí la frecuencia queda en la nominal y la carga se reparte en
+proporción a la placa de cada unidad. Si la planta trabaja en estatismo, se
+usa `--modo droop` y se llenan `f_vacio` y `estatismo_pct`. El ajuste del
+estatismo vive en el DSE: el motor CAT recibe la consigna de velocidad
+desde el controlador (por J1939 o por señal analógica, según cómo esté
+cableado).
+
+El historial de eventos del DSE todavía no se importa solo. El formato de la
+exportación cambia según el modelo y la versión de DSE Configuration Suite,
+y aquí no se escribe un lector a ciegas: con una exportación real se hace el
+importador que la convierta en `registro.csv`.
+
 ## Lo que falta (siguiente etapa)
 
 1. **Lectura directa del controlador.** Hoy los datos entran por JSON/CSV.

@@ -273,3 +273,40 @@ def test_cli(capsys, tmp_path):
                  str(EJ / "registro.csv"), "-o", str(salida)]) == 0
     assert salida.read_text(encoding="utf-8").startswith("# Informe")
     assert main(["sincronismo", "diagnostico", "no", "sincroniza"]) == 0
+
+
+# --- isocrono compartido (enlace DSE MSC) y plantilla -----------------------
+
+def test_isocrono_compartido_reparte_por_placa_sin_alarma():
+    us = [reparto.Unidad("A", 500, modo="isocrono_compartido"),
+          reparto.Unidad("B", 1000, modo="isocrono_compartido")]
+    p = reparto.predecir_estatismo(us, 900, 60)
+    assert p.referencia == 60
+    assert p.toma == {"A": 300.0, "B": 600.0}
+    assert not p.hallazgos
+
+
+def test_isocrono_suelto_junto_a_compartidas_se_marca():
+    us = [reparto.Unidad("A", 500, modo="isocrono"),
+          reparto.Unidad("B", 500, modo="isocrono_compartido")]
+    p = reparto.predecir_estatismo(us, 500, 60)
+    assert any(h["severidad"] == "detiene" for h in p.hallazgos)
+
+
+def test_plantilla_380v_dse_cat(tmp_path):
+    f = tmp_path / "planta.json"
+    assert main(["sincronismo", "plantilla", "-n", "3", "-o", str(f)]) == 0
+    p = json.loads(f.read_text(encoding="utf-8"))
+    assert p["v_nominal"] == 380 and p["f_nominal"] == 60
+    assert [u["id"] for u in p["unidades"]] == ["GE-01", "GE-02", "GE-03"]
+    u = p["unidades"][0]
+    assert u["controlador"]["marca"] == "DSE" and u["motor"]["marca"] == "CAT"
+    assert u["modo"] == "isocrono_compartido"
+    # Sin potencia de placa no se analiza nada: se pide, no se supone.
+    with pytest.raises(ValueError, match="kw_nominal"):
+        informe.cargar_planta(f)
+    for u in p["unidades"]:
+        u["kw_nominal"] = 400
+    f.write_text(json.dumps(p), encoding="utf-8")
+    obs = protecciones.revisar("GE-01", p["unidades"][0]["protecciones"])
+    assert obs and all(o.severidad == "oportunidad" for o in obs)  # «falta anotar»
