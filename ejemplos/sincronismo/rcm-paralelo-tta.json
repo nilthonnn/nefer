@@ -72,7 +72,35 @@
               "decision": {
                 "probable": true
               },
-              "tarea_propuesta": "Prueba de arranque semanal registrando la tension minima de bateria durante el arranque; medicion de densidad o impedancia mensual."
+              "tarea_propuesta": "Prueba de arranque semanal registrando la tension minima de bateria durante el arranque; medicion de densidad o impedancia mensual.",
+              "controles_actuales": {
+                "prevencion": "Cargador de flotacion",
+                "deteccion": "Ninguna hasta la demanda"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Prueba de arranque con registro de tension minima de bateria",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de grupos",
+                  "plazo_dias": 7,
+                  "verificacion": "Registro de 4 pruebas consecutivas en la hoja de ronda",
+                  "intervalo": "semanal"
+                },
+                {
+                  "accion": "Medir impedancia o densidad y reemplazar baterias por condicion",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 30,
+                  "verificacion": "Informe de medicion archivado",
+                  "intervalo": "mensual"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_catalogo": "ELE.NO_ARRANCA.BATERIA"
             },
             {
               "descripcion": "Cargador de baterias fallado",
@@ -81,8 +109,8 @@
                 "subsistema": "baterias",
                 "componente": "cargador de flotacion"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Falla electronica o fusible del cargador",
+              "mecanismo": "Envejecimiento de componentes",
               "evidente": false,
               "efecto": {
                 "local": "La bateria pierde carga dia a dia",
@@ -112,7 +140,34 @@
               "decision": {
                 "probable": true
               },
-              "tarea_propuesta": "En cada ronda: corriente y tension de flotacion del cargador anotadas; alarma de falla de cargador cableada al modulo."
+              "tarea_propuesta": "En cada ronda: corriente y tension de flotacion del cargador anotadas; alarma de falla de cargador cableada al modulo.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Inspeccion visual ocasional"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Cablear la alarma de falla de cargador a una entrada del modulo",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 30,
+                  "verificacion": "Simular falla de cargador: el modulo alarma"
+                },
+                {
+                  "accion": "Anotar tension y corriente de flotacion en la ronda",
+                  "tipo": "deteccion",
+                  "responsable": "Operador",
+                  "plazo_dias": 7,
+                  "verificacion": "Hoja de ronda con el dato",
+                  "intervalo": "semanal"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 3,
+                "deteccion": 2
+              },
+              "codigo_planta": "ELE.NO_ARRANCA.CARGADOR"
             },
             {
               "descripcion": "Modulo dejado en MANUAL o STOP despues de un mantenimiento",
@@ -121,8 +176,8 @@
                 "subsistema": "control",
                 "componente": "modulo DSE"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Procedimiento de cierre de OT sin paso de restitucion a AUTO",
+              "mecanismo": "Error humano",
               "evidente": false,
               "efecto": {
                 "local": "El modulo ignora la falla de red",
@@ -152,7 +207,34 @@
               "decision": {
                 "probable": true
               },
-              "tarea_propuesta": "Verificar modo AUTO al cerrar cada orden de trabajo y en cada ronda; alarma «no disponible» al SCADA."
+              "tarea_propuesta": "Verificar modo AUTO al cerrar cada orden de trabajo y en cada ronda; alarma «no disponible» al SCADA.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Ninguna"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Paso obligatorio «modulo en AUTO» en el cierre de cada orden de trabajo",
+                  "tipo": "prevencion",
+                  "responsable": "Supervisor de mantenimiento",
+                  "plazo_dias": 7,
+                  "verificacion": "Auditoria de 10 OT cerradas: todas con el paso"
+                },
+                {
+                  "accion": "Alarma «no disponible / no en automatico» al SCADA o a un indicador visible",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 30,
+                  "verificacion": "Pasar a MANUAL: la alarma llega",
+                  "intervalo": "en cada ronda"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_planta": "CTL.NO_DISPONIBLE.MODO"
             },
             {
               "descripcion": "Combustible contaminado con agua o aire en el circuito",
@@ -193,7 +275,35 @@
                 "detectable": true,
                 "viable": true
               },
-              "tarea_propuesta": "Drenaje del separador de agua en cada ronda; analisis de combustible del tanque cada seis meses; reponer y rotar el combustible almacenado."
+              "tarea_propuesta": "Drenaje del separador de agua en cada ronda; analisis de combustible del tanque cada seis meses; reponer y rotar el combustible almacenado.",
+              "controles_actuales": {
+                "prevencion": "Filtros de combustible",
+                "deteccion": "Alarma de baja presion de combustible"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Drenar el separador de agua y anotar lo drenado",
+                  "tipo": "deteccion",
+                  "responsable": "Operador",
+                  "plazo_dias": 7,
+                  "verificacion": "Registro en la ronda",
+                  "intervalo": "semanal"
+                },
+                {
+                  "accion": "Analisis de combustible del tanque y pulido si no cumple",
+                  "tipo": "prevencion",
+                  "responsable": "Jefe de mantenimiento",
+                  "plazo_dias": 60,
+                  "verificacion": "Informe de laboratorio",
+                  "intervalo": "semestral"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_catalogo": "COM.CONTAMINACION.AGUA"
             }
           ]
         },
@@ -239,7 +349,34 @@
                 "detectable": true,
                 "viable": true
               },
-              "tarea_propuesta": "Inspeccion visual de mangueras y nivel de refrigerante en cada ronda; cambio de mangueras segun estado."
+              "tarea_propuesta": "Inspeccion visual de mangueras y nivel de refrigerante en cada ronda; cambio de mangueras segun estado.",
+              "controles_actuales": {
+                "prevencion": "Cambio de refrigerante por horas",
+                "deteccion": "Alarma de alta temperatura y bajo nivel"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Inspeccion de mangueras del calentador y nivel en la ronda",
+                  "tipo": "deteccion",
+                  "responsable": "Operador",
+                  "plazo_dias": 7,
+                  "verificacion": "Registro en la ronda",
+                  "intervalo": "semanal"
+                },
+                {
+                  "accion": "Reemplazo de mangueras por estado (cuarteadas, blandas)",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico de grupos",
+                  "plazo_dias": 90,
+                  "verificacion": "OT cerrada con foto"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_catalogo": "TER.FUGA.REFRIGERANTE"
             },
             {
               "descripcion": "Wet stacking por operacion prolongada en baja carga",
@@ -248,8 +385,8 @@
                 "subsistema": "escape",
                 "componente": "escape y turbo"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Pruebas sin carga y grupo sobredimensionado para la carga real",
+              "mecanismo": "Combustion incompleta",
               "evidente": true,
               "efecto": {
                 "local": "Hollin y combustible sin quemar en el escape",
@@ -280,7 +417,27 @@
                 "detectable": true,
                 "viable": true
               },
-              "tarea_propuesta": "Registrar el % de carga en las pruebas; si queda bajo de forma sostenida, prueba con banco de carga."
+              "tarea_propuesta": "Registrar el % de carga en las pruebas; si queda bajo de forma sostenida, prueba con banco de carga.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Inspeccion visual del escape"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Registrar % de carga en cada prueba; banco de carga si queda bajo de forma sostenida",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de grupos",
+                  "plazo_dias": 30,
+                  "verificacion": "Registro de carga en las pruebas",
+                  "intervalo": "anual"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 3,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_planta": "ESC.CARBONIZACION.BAJA_CARGA"
             }
           ]
         }
@@ -301,8 +458,8 @@
                 "subsistema": "excitacion",
                 "componente": "puente rectificador rotativo"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Sobretension transitoria o envejecimiento termico de los diodos",
+              "mecanismo": "Falla electrica",
               "evidente": true,
               "efecto": {
                 "local": "Cae la corriente de campo",
@@ -334,7 +491,26 @@
                 "intervalo_edad": false
               },
               "tarea_propuesta": "Tener el puente de diodos y el supresor en stock; medir cada diodo desconectado cuando la unidad salga por 40.",
-              "sintoma_guia": "S5"
+              "sintoma_guia": "S5",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Alarma 40 / subtension"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Mantener en stock puente de diodos y supresor de cada modelo de alternador",
+                  "tipo": "prevencion",
+                  "responsable": "Almacen",
+                  "plazo_dias": 30,
+                  "verificacion": "Repuesto en almacen con codigo"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 4
+              },
+              "codigo_planta": "ALT.PERDIDA_EXCITACION.DIODOS"
             }
           ]
         },
@@ -348,8 +524,8 @@
                 "subsistema": "AVR",
                 "componente": "TC de compensacion"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Conexion invertida en montaje o estatismo distinto entre AVR",
+              "mecanismo": "Error de conexion o de ajuste",
               "evidente": true,
               "efecto": {
                 "local": "Reactiva circulante entre unidades",
@@ -381,7 +557,34 @@
                 "viable": true
               },
               "tarea_propuesta": "Revisar el reparto de kVAr en cada ronda (nefer sincronismo reparto) y su tendencia; verificar polaridad del TC tras cada intervencion.",
-              "sintoma_guia": "S4"
+              "sintoma_guia": "S4",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Lectura de kVAr en el modulo"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Revisar reparto de kVAr y su tendencia (nefer sincronismo reparto)",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 7,
+                  "verificacion": "Informe semanal sin desvio > 10 %",
+                  "intervalo": "semanal"
+                },
+                {
+                  "accion": "Verificar polaridad del TC de compensacion tras cada intervencion en el alternador",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 30,
+                  "verificacion": "Protocolo firmado"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 3,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_planta": "ALT.REACTIVA_CIRCULANTE.TC"
             }
           ]
         }
@@ -402,8 +605,8 @@
                 "subsistema": "gobernador",
                 "componente": "actuador / ECM"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Ganancias mal ajustadas, juego en el varillaje o actuador gastado",
+              "mecanismo": "Inestabilidad del lazo de control",
               "evidente": true,
               "efecto": {
                 "local": "La frecuencia oscila y el angulo no se queda en ventana",
@@ -435,7 +638,27 @@
                 "viable": true
               },
               "tarea_propuesta": "Registrar el tiempo de sincronizacion de cada arranque y proyectar su tendencia (nefer sincronismo tendencia).",
-              "sintoma_guia": "S1"
+              "sintoma_guia": "S1",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Alarma de falla de sincronismo"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Registrar el tiempo de sincronizacion de cada arranque y proyectar tendencia",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 7,
+                  "verificacion": "Informe de tendencia sin cruce en 30 dias",
+                  "intervalo": "semanal"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 3,
+                "frecuencia": 2,
+                "deteccion": 1
+              },
+              "codigo_planta": "SIN.NO_SINCRONIZA.GOBERNADOR"
             },
             {
               "descripcion": "Interruptor 52G no cierra: resorte sin cargar, bobina YC o tension de mando",
@@ -444,8 +667,8 @@
                 "subsistema": "interruptor",
                 "componente": "52G"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Motor de carga de resortes, bobina YC abierta o falta de tension de mando",
+              "mecanismo": "Desgaste o falla electrica",
               "evidente": true,
               "efecto": {
                 "local": "La orden de cierre no mueve el interruptor",
@@ -479,7 +702,27 @@
                 "viable": true
               },
               "tarea_propuesta": "Mantenimiento del interruptor por numero de maniobras o anual: lubricacion, prueba de bobinas y de tiempos.",
-              "sintoma_guia": "S1"
+              "sintoma_guia": "S1",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Alarma de falla de interruptor"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Mantenimiento del interruptor: lubricacion, bobinas y prueba de tiempos",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 90,
+                  "verificacion": "Protocolo de tiempos dentro de placa",
+                  "intervalo": "anual o por numero de maniobras"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 1,
+                "deteccion": 3
+              },
+              "codigo_planta": "SIN.NO_CIERRA.INTERRUPTOR"
             }
           ]
         },
@@ -493,8 +736,8 @@
                 "subsistema": "medicion",
                 "componente": "TP de barra"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Intervencion en TP, barras o cableado sin verificacion de fase",
+              "mecanismo": "Error de conexion",
               "evidente": false,
               "efecto": {
                 "local": "El modulo da permiso con angulo real grande",
@@ -525,7 +768,42 @@
                 "probable": true
               },
               "tarea_propuesta": "Despues de cada intervencion en el tablero: primer cierre con interruptor en prueba y sincronoscopio externo; verificar secuencia a los dos lados.",
-              "sintoma_guia": "S6"
+              "sintoma_guia": "S6",
+              "controles_actuales": {
+                "prevencion": "Permisivo 25 del modulo",
+                "deteccion": "Ninguna hasta el cierre"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Procedimiento: tras toda intervencion en TP, TC o barras, primer cierre con interruptor en prueba y sincronoscopio externo",
+                  "tipo": "deteccion",
+                  "responsable": "Supervisor de mantenimiento",
+                  "plazo_dias": 15,
+                  "verificacion": "Procedimiento aprobado y registro del primer cierre",
+                  "intervalo": "tras cada intervencion"
+                },
+                {
+                  "accion": "Verificar secuencia de fases a ambos lados del 52G en el mismo procedimiento",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 15,
+                  "verificacion": "Registro de secuencimetro",
+                  "intervalo": "tras cada intervencion"
+                },
+                {
+                  "accion": "Agregar rele de verificacion de sincronismo (25) independiente, en serie con el circuito de cierre del 52G",
+                  "tipo": "rediseno",
+                  "responsable": "Ingenieria de mantenimiento",
+                  "plazo_dias": 120,
+                  "verificacion": "Prueba de bloqueo con angulo fuera de ventana"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 5,
+                "frecuencia": 1,
+                "deteccion": 1
+              },
+              "codigo_planta": "SIN.FUERA_DE_FASE.MEDICION"
             }
           ]
         },
@@ -539,8 +817,8 @@
                 "subsistema": "ajustes",
                 "componente": "modulo DSE"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Deslizamiento objetivo negativo o nivel de apertura menor que el pickup de la 32",
+              "mecanismo": "Error de ajuste",
               "evidente": true,
               "efecto": {
                 "local": "La unidad absorbe potencia",
@@ -572,7 +850,34 @@
                 "viable": true
               },
               "tarea_propuesta": "Revisar ajustes con nefer sincronismo parametros --revisar; anotar el deslizamiento de cada cierre.",
-              "sintoma_guia": "S2"
+              "sintoma_guia": "S2",
+              "controles_actuales": {
+                "prevencion": "Ajustes del sincronizador",
+                "deteccion": "Disparo 32"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Revisar coherencia de ajustes (nefer sincronismo parametros --revisar) y corregir",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 15,
+                  "verificacion": "Revision sin observaciones «detiene»"
+                },
+                {
+                  "accion": "Anotar deslizamiento y kW en cada cierre y vigilar su tendencia",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 7,
+                  "verificacion": "Registro de cierres sin kW negativos",
+                  "intervalo": "en cada arranque"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 3,
+                "frecuencia": 1,
+                "deteccion": 2
+              },
+              "codigo_planta": "SIN.POTENCIA_INVERSA.AJUSTE"
             }
           ]
         }
@@ -593,8 +898,8 @@
                 "subsistema": "reparto",
                 "componente": "gobernadores / enlace MSC"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Estatismos o ganancias distintos; malla del enlace aterrada en dos extremos o sin terminacion",
+              "mecanismo": "Error de ajuste o de instalacion",
               "evidente": true,
               "efecto": {
                 "local": "Los kW pasan de una unidad a otra",
@@ -626,7 +931,34 @@
                 "viable": true
               },
               "tarea_propuesta": "Comparar el reparto medido con el previsto (nefer sincronismo estatismo) en cada ronda; verificar malla y terminacion del enlace.",
-              "sintoma_guia": "S3"
+              "sintoma_guia": "S3",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Lectura de kW por unidad"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Comparar reparto medido con el previsto (nefer sincronismo estatismo) e igualar estatismos y ganancias",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 15,
+                  "verificacion": "Desvio de kW < 5 % en 25/50/75/100 %",
+                  "intervalo": "mensual"
+                },
+                {
+                  "accion": "Revisar malla y terminacion del enlace MSC (60 ohm entre H y L)",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 30,
+                  "verificacion": "Medicion registrada"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 3,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_planta": "SIN.REPARTO_INESTABLE.ESTATISMO"
             }
           ]
         }
@@ -647,8 +979,8 @@
                 "subsistema": "protecciones",
                 "componente": "modulo DSE"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Funcion deshabilitada en la puesta en marcha o en un cambio de configuracion",
+              "mecanismo": "Error de configuracion",
               "evidente": false,
               "efecto": {
                 "local": "La unidad sigue en barra en falla",
@@ -678,7 +1010,35 @@
               "decision": {
                 "probable": true
               },
-              "tarea_propuesta": "Prueba por inyeccion de las funciones 32 y 40 al poner en marcha y una vez al año; revisar con nefer sincronismo protecciones."
+              "tarea_propuesta": "Prueba por inyeccion de las funciones 32 y 40 al poner en marcha y una vez al año; revisar con nefer sincronismo protecciones.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Ninguna"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Prueba por inyeccion de las funciones 32 y 40",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de protecciones",
+                  "plazo_dias": 60,
+                  "verificacion": "Protocolo de inyeccion con tiempos medidos",
+                  "intervalo": "anual"
+                },
+                {
+                  "accion": "Revisar habilitacion con nefer sincronismo protecciones",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 15,
+                  "verificacion": "Sin observaciones «detiene»",
+                  "intervalo": "tras cada cambio de configuracion"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_planta": "SIN.PROTECCION_INACTIVA.AJUSTE"
             }
           ]
         }
@@ -699,8 +1059,8 @@
                 "subsistema": "potencia",
                 "componente": "KM1 / KM2"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Falta de ejercicio con carga, resortes debilitados o transferencias con alta corriente",
+              "mecanismo": "Soldadura de contactos",
               "evidente": false,
               "efecto": {
                 "local": "El contactor no abre o no cierra",
@@ -735,7 +1095,42 @@
               "decision": {
                 "probable": true
               },
-              "tarea_propuesta": "Ejercicio mensual con transferencia real de carga; inspeccion de contactos y resortes una vez al año."
+              "tarea_propuesta": "Ejercicio mensual con transferencia real de carga; inspeccion de contactos y resortes una vez al año.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Ninguna hasta la transferencia"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Ejercicio con transferencia real de carga",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de grupos",
+                  "plazo_dias": 30,
+                  "verificacion": "Registro de ejercicio con carga",
+                  "intervalo": "mensual"
+                },
+                {
+                  "accion": "Inspeccion de contactos principales y resortes de KM1/KM2",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 90,
+                  "verificacion": "Protocolo con fotos",
+                  "intervalo": "anual"
+                },
+                {
+                  "accion": "Cablear auxiliares de KM1 y KM2 al modulo: alarma de contactor soldado y bloqueo del cierre del otro",
+                  "tipo": "rediseno",
+                  "responsable": "Ingenieria de mantenimiento",
+                  "plazo_dias": 90,
+                  "verificacion": "Simular contactor que no abre: el otro no cierra y alarma"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 5,
+                "frecuencia": 1,
+                "deteccion": 1
+              },
+              "codigo_planta": "TTA.NO_TRANSFIERE.CONTACTOS"
             },
             {
               "descripcion": "Falla del circuito de mando: fusible, bobina o borne flojo",
@@ -780,7 +1175,35 @@
               "decision": {
                 "probable": true
               },
-              "tarea_propuesta": "Prueba de transferencia con el ejercicio; reapriete de bornes de mando al año."
+              "tarea_propuesta": "Prueba de transferencia con el ejercicio; reapriete de bornes de mando al año.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Ninguna hasta la transferencia"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Prueba de transferencia en el ejercicio mensual",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de grupos",
+                  "plazo_dias": 30,
+                  "verificacion": "Registro de ejercicio",
+                  "intervalo": "mensual"
+                },
+                {
+                  "accion": "Reapriete de bornes de mando y revision de fusibles",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 90,
+                  "verificacion": "OT cerrada",
+                  "intervalo": "anual"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_catalogo": "ELE.FALSO_CONTACTO.ARNES"
             },
             {
               "descripcion": "Fusible de medicion de red abierto: el modulo ve falla con la red buena",
@@ -789,8 +1212,8 @@
                 "subsistema": "medicion",
                 "componente": "fusibles F1-F3"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Fusible de TP abierto por sobretension o falla de aislamiento",
+              "mecanismo": "Falla electrica",
               "evidente": true,
               "efecto": {
                 "local": "El modulo mide una fase en cero",
@@ -821,7 +1244,27 @@
                 "detectable": true,
                 "viable": true
               },
-              "tarea_propuesta": "En la ronda: comparar la tension de red del modulo con un medidor; fusibles de repuesto en el tablero."
+              "tarea_propuesta": "En la ronda: comparar la tension de red del modulo con un medidor; fusibles de repuesto en el tablero.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Arranque no esperado"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Comparar V red del modulo con medidor en la ronda; fusibles de repuesto en el tablero",
+                  "tipo": "deteccion",
+                  "responsable": "Operador",
+                  "plazo_dias": 7,
+                  "verificacion": "Registro en la ronda",
+                  "intervalo": "semanal"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 2,
+                "frecuencia": 2,
+                "deteccion": 1
+              },
+              "codigo_planta": "TTA.FALSA_FALLA.SENSADO"
             }
           ]
         },
@@ -835,8 +1278,8 @@
                 "subsistema": "enclavamiento",
                 "componente": "enclavamiento KM1-KM2"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Contacto auxiliar soldado, enclavamiento mecanico roto o puenteado",
+              "mecanismo": "Falla mecanica o de mando",
               "evidente": false,
               "efecto": {
                 "local": "Ambos contactores cerrados",
@@ -871,7 +1314,34 @@
               "decision": {
                 "probable": true
               },
-              "tarea_propuesta": "Prueba del enclavamiento con la potencia aislada en cada mantenimiento: forzar un contactor y ordenar el otro."
+              "tarea_propuesta": "Prueba del enclavamiento con la potencia aislada en cada mantenimiento: forzar un contactor y ordenar el otro.",
+              "controles_actuales": {
+                "prevencion": "Enclavamiento mecanico y electrico",
+                "deteccion": "Ninguna"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Prueba del enclavamiento con la potencia aislada (forzar un contactor y ordenar el otro)",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 30,
+                  "verificacion": "Protocolo de prueba firmado",
+                  "intervalo": "semestral"
+                },
+                {
+                  "accion": "Sumar realimentacion de auxiliares al enclavamiento (bloqueo por estado real del contactor, no solo por orden)",
+                  "tipo": "rediseno",
+                  "responsable": "Ingenieria de mantenimiento",
+                  "plazo_dias": 90,
+                  "verificacion": "Prueba de enclavamiento con contactor forzado"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 5,
+                "frecuencia": 1,
+                "deteccion": 1
+              },
+              "codigo_planta": "TTA.PARALELO_FUENTES.ENCLAVAMIENTO"
             }
           ]
         },
@@ -885,8 +1355,8 @@
                 "subsistema": "potencia",
                 "componente": "terminales de cable"
               },
-              "causa": "",
-              "mecanismo": "",
+              "causa": "Ciclos termicos y vibracion sin reapriete",
+              "mecanismo": "Aflojamiento",
               "evidente": true,
               "efecto": {
                 "local": "Sube la temperatura del terminal",
@@ -917,7 +1387,41 @@
                 "detectable": true,
                 "viable": true
               },
-              "tarea_propuesta": "Termografia con carga cada seis meses; reapriete al par del fabricante si la termografia lo indica."
+              "tarea_propuesta": "Termografia con carga cada seis meses; reapriete al par del fabricante si la termografia lo indica.",
+              "controles_actuales": {
+                "prevencion": "Apriete en montaje",
+                "deteccion": "Ninguna"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Termografia con carga de bornes de potencia",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 30,
+                  "verificacion": "Informe termografico sin delta T fuera de criterio",
+                  "intervalo": "semestral"
+                },
+                {
+                  "accion": "Reapriete al par del fabricante donde la termografia lo indique",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 60,
+                  "verificacion": "OT cerrada con par aplicado"
+                },
+                {
+                  "accion": "Sensores de temperatura permanentes en bornes de potencia con alarma",
+                  "tipo": "rediseno",
+                  "responsable": "Ingenieria de mantenimiento",
+                  "plazo_dias": 120,
+                  "verificacion": "Alarma probada con fuente de calor"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 5,
+                "frecuencia": 1,
+                "deteccion": 1
+              },
+              "codigo_planta": "TTA.PUNTO_CALIENTE.BORNES"
             }
           ]
         }

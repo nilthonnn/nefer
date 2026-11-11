@@ -28,7 +28,7 @@ from xml.sax.saxutils import escape
 
 from ..fixmate import cargador, fmeca
 from ..fixmate.criticidad import PRIORIDAD_EJEMPLO, RPN_EJEMPLO, evaluar
-from . import diagnostico
+from . import diagnostico, plan_accion
 
 COLOR_ESTRATEGIA = {
     "cbm": "#059669", "restauracion": "#2563eb", "descarte": "#7c3aed",
@@ -48,8 +48,13 @@ def datos(ruta: str | Path) -> dict:
     niveles = {f.clave: {n.valor: (n.etiqueta, n.descripcion) for n in f.niveles}
                for f in RPN_EJEMPLO.factores}
 
+    amef = {f.modo_id: f for f in plan_accion.amef(ruta)}
+    plan = plan_accion.plan(list(amef.values()), analisis.fecha)
+    resumen_plan = plan_accion.resumen(list(amef.values()))
+
     modos = []
     for modo, fila, extra in zip(analisis.modos, filas, extras):
+        af = amef.get(modo.id)
         v = dict(modo.criticidad.valores) or dict(extra.get("criticidad") or {})
         npr = evaluar(RPN_EJEMPLO, v) if v else None
         ap = evaluar(PRIORIDAD_EJEMPLO, v) if v else None
@@ -83,6 +88,13 @@ def datos(ruta: str | Path) -> dict:
             "estado": modo.estado,
             "guia": ({"id": sintoma.id, "titulo": sintoma.titulo,
                       "causas": [c.causa for c in sintoma.causas]} if sintoma else None),
+            "controles": extra.get("controles_actuales") or {},
+            "acciones": list(extra.get("plan_accion") or []),
+            "residual": ({"s": af.severidad_r, "o": af.ocurrencia_r, "d": af.deteccion_r,
+                          "npr": af.npr_r, "ap": af.ap_r, "reduccion": af.reduccion_npr_pct}
+                         if af and af.npr_r is not None else None),
+            "observaciones": [o.__dict__ for o in af.observaciones] if af else [],
+            "codigo": (af.codigo_catalogo if af else ""),
         })
 
     return {
@@ -94,6 +106,8 @@ def datos(ruta: str | Path) -> dict:
         "umbrales_npr": [list(u) for u in RPN_EJEMPLO.umbrales],
         "colores": COLOR_ESTRATEGIA,
         "modos": modos,
+        "plan": plan,
+        "resumen_plan": resumen_plan,
     }
 
 
@@ -156,6 +170,14 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--bo
 .pareto i{display:inline-block;height:10px;border-radius:3px;background:var(--acento);vertical-align:middle}
 .tabla{overflow-x:auto}
 section{max-width:1200px;margin:0 auto;padding:0 16px 24px}
+.antesdespues{display:grid;grid-template-columns:1fr auto 1fr 1fr;gap:8px;align-items:center;margin:10px 0}
+@media (max-width:620px){.antesdespues{grid-template-columns:1fr}.flecha{display:none}}
+.flecha{font-size:2rem;color:var(--suave)}
+.obs li{color:var(--alta)}.ok{color:var(--baja);font-weight:600}
+.chip.no{background:#6b7280}
+#tamef td,#tamef th{font-size:.8rem;min-width:70px}
+details.sec{background:var(--panel);border:1px solid var(--borde);border-radius:10px;padding:10px 14px;margin:10px 0}
+details.sec summary{cursor:pointer;font-weight:700;font-size:1.05rem}
 """
 
 JS = r"""
@@ -222,19 +244,51 @@ function mostrar(id, desplazar) {
     <ol class="arbol">${camino}</ol>
     <div class="estr" style="background:${color}"><b>${esc(m.estrategia_rotulo)}</b>${m.por_defecto ? ' · accion por defecto' : ''}<br>${esc(m.motivo)}</div>
     <div class="rejilla">
-      <div class="caja"><b>Tarea propuesta</b>${esc(m.tarea) || '—'}</div>${guia}
+      <div class="caja"><b>Tarea propuesta (RCM)</b>${esc(m.tarea) || '—'}</div>${guia}
     </div>
+    <h3>Solucion: controles, plan de accion y riesgo residual</h3>
+    <div class="rejilla">
+      <div class="caja"><b>Control de prevencion actual</b>${esc(m.controles.prevencion) || '—'}</div>
+      <div class="caja"><b>Control de deteccion actual</b>${esc(m.controles.deteccion) || '—'}</div>
+    </div>
+    <div class="tabla"><table><tr><th>Accion</th><th>Tipo</th><th>Responsable</th><th>Plazo</th><th>Intervalo</th><th>Como se verifica</th></tr>
+    ${m.acciones.map(a => `<tr><td>${esc(a.accion)}</td><td>${esc(a.tipo)}</td><td>${esc(a.responsable)}</td><td>${esc(a.plazo_dias)} d</td><td>${esc(a.intervalo || '—')}</td><td>${esc(a.verificacion)}</td></tr>`).join('') || '<tr><td colspan="6">Sin acciones</td></tr>'}</table></div>
+    ${m.residual ? `<div class="antesdespues">
+      <div class="f"><small>Antes</small><div class="n">${m.npr}</div><small>S${m.sod.severidad.valor} · O${m.sod.frecuencia.valor} · D${m.sod.deteccion.valor} · prioridad ${esc(m.ap)}</small></div>
+      <div class="flecha">→</div>
+      <div class="f"><small>Despues de las acciones</small><div class="n">${m.residual.npr}</div><small>S${m.residual.s} · O${m.residual.o} · D${m.residual.d} · prioridad ${esc(m.residual.ap)}</small></div>
+      <div class="f"><small>Reduccion del NPR</small><div class="n">${m.residual.reduccion} %</div><small>la severidad solo baja con rediseño</small></div>
+    </div>` : ''}
+    ${m.observaciones.length ? `<ul class="obs">${m.observaciones.map(o => `<li><b>${esc(o.regla)}</b> ${esc(o.texto)}</li>`).join('')}</ul>` : '<p class="ok">El plan cumple las reglas R1–R7 (IEC 60812 / AIAG-VDA / SAE JA1011).</p>'}
     <h3>Fuentes</h3><ul>${fuentes}</ul>`;
   menu();
   if (desplazar && window.innerWidth < 820) $('#detalle').scrollIntoView({behavior: 'smooth'});
 }
 
+function tablas() {
+  const ap = {alta: 0, media: 1, baja: 2};
+  $('#tplan').innerHTML = `<tr><th>#</th><th>Prioridad</th><th>S</th><th>Accion</th><th>Falla</th><th>Tipo</th><th>Responsable</th><th>Fecha objetivo</th><th>Intervalo</th><th>Verificacion</th></tr>` +
+    D.plan.map((a, i) => `<tr><td>${i+1}</td><td><span class="chip ${a.prioridad}">${esc(a.prioridad)}</span></td><td>${a.severidad}</td><td>${esc(a.accion)}</td>
+      <td><a href="#" data-id="${a.modo_id}">${esc(a.modo_falla)}</a></td><td>${esc(a.tipo)}</td><td>${esc(a.responsable)}</td>
+      <td>${esc(a.fecha_objetivo)}</td><td>${esc(a.intervalo || '—')}</td><td>${esc(a.verificacion)}</td></tr>`).join('');
+  $('#tamef').innerHTML = `<tr><th>Sistema</th><th>Funcion</th><th>Falla funcional</th><th>Efecto</th><th>S</th><th>Modo / causa</th><th>Prevencion actual</th><th>O</th><th>Deteccion actual</th><th>D</th><th>NPR</th><th>AP</th><th>Estrategia</th><th>Acciones</th><th>S'</th><th>O'</th><th>D'</th><th>NPR'</th><th>AP'</th></tr>` +
+    D.modos.map(m => `<tr><td>${esc(m.sistema)}</td><td>${esc(m.funcion)}</td><td>${esc(m.falla)}</td><td>${esc(m.efecto.local)}</td>
+      <td>${m.sod.severidad.valor}</td><td><a href="#" data-id="${m.id}">${esc(m.modo)}</a><br><small>${esc(m.causa)}</small></td>
+      <td>${esc(m.controles.prevencion)}</td><td>${m.sod.frecuencia.valor}</td><td>${esc(m.controles.deteccion)}</td><td>${m.sod.deteccion.valor}</td>
+      <td><b>${m.npr}</b></td><td><span class="chip ${m.ap}">${esc(m.ap)}</span></td><td>${esc(m.estrategia_rotulo)}</td>
+      <td>${m.acciones.map(a => '• ' + esc(a.accion)).join('<br>')}</td>
+      <td>${m.residual?.s ?? ''}</td><td>${m.residual?.o ?? ''}</td><td>${m.residual?.d ?? ''}</td><td><b>${m.residual?.npr ?? ''}</b></td>
+      <td>${m.residual ? `<span class="chip ${m.residual.ap}">${esc(m.residual.ap)}</span>` : ''}</td></tr>`).join('');
+  document.querySelectorAll('#tplan a, #tamef a').forEach(a => a.addEventListener('click', e => {
+    e.preventDefault(); mostrar(a.dataset.id, false); window.scrollTo({top: 0, behavior: 'smooth'}); }));
+}
+
 function pareto() {
   const ms = [...D.modos].sort((a, b) => (b.npr ?? 0) - (a.npr ?? 0));
   const max = Math.max(...ms.map(m => m.npr || 0), 1);
-  $('#pareto').innerHTML = `<tr><th>NPR</th><th>Modo de falla</th><th>Sistema</th><th>Prioridad</th><th>Estrategia</th></tr>` +
+  $('#pareto').innerHTML = `<tr><th>NPR</th><th>Modo de falla</th><th>Sistema</th><th>Prioridad</th><th>Estrategia</th><th>NPR despues</th></tr>` +
     ms.map(m => `<tr><td class="pareto"><i style="width:${Math.round(80*(m.npr||0)/max)}px;background:var(--${m.npr_etiqueta})"></i> ${m.npr ?? '—'}</td>
-      <td><a href="#" data-id="${m.id}">${esc(m.modo)}</a></td><td>${esc(m.sistema)}</td><td>${esc(m.ap)}</td><td>${esc(m.estrategia_rotulo)}</td></tr>`).join('');
+      <td><a href="#" data-id="${m.id}">${esc(m.modo)}</a></td><td>${esc(m.sistema)}</td><td>${esc(m.ap)}</td><td>${esc(m.estrategia_rotulo)}</td><td>${m.residual ? m.residual.npr + ' (' + esc(m.residual.ap) + ')' : '—'}</td></tr>`).join('');
   document.querySelectorAll('#pareto a').forEach(a => a.addEventListener('click', e => {
     e.preventDefault(); mostrar(a.dataset.id, false); window.scrollTo({top: 0, behavior: 'smooth'}); }));
 }
@@ -242,6 +296,7 @@ function pareto() {
 $('#buscar').addEventListener('input', menu);
 $('#orden').addEventListener('change', menu);
 pareto();
+tablas();
 const primero = [...D.modos].sort((a, b) => (b.npr ?? 0) - (a.npr ?? 0))[0];
 mostrar(primero.id, false);
 """
@@ -259,6 +314,9 @@ def pagina(ruta: str | Path) -> str:
     kpis = [("Modos de falla", len(ms)), ("Ocultos", n_ocultos),
             ("Con consecuencia de seguridad", n_graves), ("Prioridad alta", n_alta)]
     kpis += sorted(reparto.items(), key=lambda x: -x[1])
+    rp = d["resumen_plan"]
+    kpis += [("NPR total antes → despues", f"{rp['npr_total_inicial']} → {rp['npr_total_residual']}"),
+             ("Prioridad alta antes → despues", f"{rp['ap_inicial']['alta']} → {rp['ap_residual']['alta']}")]
     datos_json = json.dumps(d, ensure_ascii=False).replace("</", "<\\/")
     a = d["activo"]
     return f"""<!doctype html>
@@ -280,7 +338,16 @@ def pagina(ruta: str | Path) -> str:
 </nav>
 <main class="det" id="detalle"></main>
 </div>
-<section><h2>Pareto de riesgo (NPR)</h2><div class="tabla"><table id="pareto"></table></div>
+<section>
+<details class="sec" open><summary>Plan de accion priorizado ({len(d['plan'])} acciones)</summary>
+<p class="sub">Orden: prioridad de accion, luego severidad, luego NPR. Fecha objetivo = fecha del analisis + plazo.
+NPR total {d['resumen_plan']['npr_total_inicial']} → {d['resumen_plan']['npr_total_residual']}
+({d['resumen_plan']['reduccion_pct']} % menos) · prioridad alta {d['resumen_plan']['ap_inicial']['alta']} →
+{d['resumen_plan']['ap_residual']['alta']}.</p>
+<div class="tabla"><table id="tplan"></table></div></details>
+<details class="sec"><summary>AMEF completa (IEC 60812 / AIAG-VDA)</summary>
+<div class="tabla"><table id="tamef"></table></div></details>
+<h2>Pareto de riesgo (NPR)</h2><div class="tabla"><table id="pareto"></table></div>
 <p class="sub" style="margin-top:12px">Generado por <code>nefer sincronismo fallas</code> sobre el motor RCM de FixMate
 (SAE JA1011). Escalas de criticidad de EJEMPLO: reescriba sus niveles con lo que significan en su planta,
 y reemplace la ocurrencia propuesta con el historial propio.</p></section>

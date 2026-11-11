@@ -525,3 +525,81 @@ def test_cli_fallas(tmp_path):
     assert main(["sincronismo", "fallas", str(RCM_EJ), "-o", str(destino)]) == 0
     assert "Menu de fallas" in destino.read_text(encoding="utf-8")
     assert main(["sincronismo", "fallas", str(tmp_path / "no-existe.json")]) == 2
+
+
+# --- AMEF completa, plan de accion y auditoria -----------------------------
+
+from nefer.sincronismo import auditoria, plan_accion
+
+
+def test_amef_completa_y_plan_sin_observaciones():
+    filas = plan_accion.amef(RCM_EJ)
+    assert len(filas) == 19
+    assert all(f.npr == f.severidad * f.ocurrencia * f.deteccion for f in filas)
+    assert all(f.npr_r is not None and f.npr_r <= f.npr for f in filas)
+    assert not [o for f in filas for o in f.observaciones]
+    r = plan_accion.resumen(filas)
+    assert r["npr_total_residual"] < r["npr_total_inicial"]
+    assert r["ap_residual"]["alta"] < r["ap_inicial"]["alta"]
+
+
+def _fila(**kw):
+    base = dict(modo_id="X", sistema="", componente="", funcion="", falla_funcional="",
+                efecto="", severidad=4, modo_falla="", causa="", prevencion_actual="",
+                ocurrencia=3, deteccion_actual="", deteccion=3, npr=36, ap="alta",
+                estrategia="", acciones=[], severidad_r=None, ocurrencia_r=None,
+                deteccion_r=None, npr_r=None, ap_r="no evaluada", reduccion_npr_pct=None,
+                codigo_catalogo="")
+    base.update(kw)
+    return plan_accion.FilaAMEF(**base)
+
+
+def test_reglas_del_plan():
+    reglas = lambda f, ev=True, e=None: {o.regla for o in plan_accion.revisar_modo(f, ev, e)}
+    assert "R1" in reglas(_fila())                                   # alta sin acciones
+    acc = [{"accion": "x", "tipo": "deteccion", "responsable": "", "plazo_dias": 0,
+            "verificacion": ""}]
+    assert "R2" in reglas(_fila(acciones=acc))
+    ok = [{"accion": "x", "tipo": "deteccion", "responsable": "r", "plazo_dias": 5,
+           "verificacion": "v", "intervalo": "mensual"}]
+    # La severidad no baja con una inspeccion.
+    assert "R3" in reglas(_fila(acciones=ok, severidad_r=2, ocurrencia_r=3, deteccion_r=2))
+    # Oculta sin prueba con intervalo.
+    sin_int = [dict(ok[0], intervalo="")]
+    assert "R5" in reglas(_fila(acciones=sin_int, severidad_r=4, ocurrencia_r=3,
+                                deteccion_r=2), ev=False)
+    # Rediseño exigido por el arbol y ausente del plan.
+    assert "R6" in reglas(_fila(acciones=ok, severidad_r=4, ocurrencia_r=2,
+                                deteccion_r=2), e="rediseno")
+    # Severidad critica que sigue en prioridad alta.
+    assert "R7" in reglas(_fila(severidad=5, acciones=ok, severidad_r=5, ocurrencia_r=2,
+                                deteccion_r=2, ap_r="alta"))
+
+
+def test_csv_amef_y_plan():
+    filas = plan_accion.amef(RCM_EJ)
+    csv_amef = plan_accion.a_csv_amef(filas)
+    assert csv_amef.splitlines()[0].startswith("Sistema;Componente;Funcion")
+    assert len(csv_amef.splitlines()) == 20
+    acciones = plan_accion.plan(filas, "2026-11-11")
+    orden = [plan_accion.ORDEN_AP[a["prioridad"]] for a in acciones]
+    assert orden == sorted(orden)
+    assert all(a["fecha_objetivo"] for a in acciones)
+
+
+def test_auditoria_funcionalidad_completa_y_correcta():
+    res = auditoria.auditar(EJ)
+    iso25010 = [r for r in res["requisitos"] if r["norma"] == "ISO/IEC 25010"]
+    assert iso25010 and all(r["resultado"] == "cumple" for r in iso25010), \
+        [r for r in iso25010 if r["resultado"] != "cumple"]
+    ja = [r for r in res["requisitos"] if r["norma"] == "SAE JA1011"]
+    assert all(r["resultado"] == "cumple" for r in ja)
+    # Lo que no depende del software se declara, no se esconde.
+    pendientes = {r["requisito"] for r in res["requisitos"] if r["resultado"] != "cumple"}
+    assert any("historial" in p for p in pendientes)
+
+
+def test_auditoria_publicada_esta_al_dia():
+    publicada = (RAIZ / "docs" / "AUDITORIA-SINCRONISMO.md").read_text(encoding="utf-8")
+    assert publicada == auditoria.a_markdown(auditoria.auditar(EJ)), \
+        "docs/AUDITORIA-SINCRONISMO.md no esta al dia: python -m nefer sincronismo auditoria -o ..."

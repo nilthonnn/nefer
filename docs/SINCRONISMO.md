@@ -244,6 +244,33 @@ propuesta, las causas a descartar de la guía de síntomas y el Pareto de
 riesgo de toda la planta. Todo sale del motor RCM de FixMate: con
 consecuencia de seguridad, «operar hasta la falla» no es una salida.
 
+## AMEF completa, plan de acción y auditoría
+
+```bash
+python -m nefer sincronismo amef -o amef-completa.csv --plan plan-accion.csv
+python -m nefer sincronismo auditoria --html -o auditoria.html
+```
+
+Cada modo de falla del análisis lleva sus **controles actuales** (prevención y
+detección), su **plan de acción** (acción, tipo, responsable, plazo,
+intervalo y cómo se verifica) y su **re-evaluación** (S', O', D' después de
+las acciones). `amef` exporta la AMEF completa con las columnas de IEC 60812 /
+AIAG-VDA y el plan ordenado por prioridad de acción, severidad y NPR, con
+fecha objetivo. El plan se revisa con siete reglas: prioridad alta con
+acciones (R1), responsable, plazo y verificación (R2), la severidad solo baja
+con rediseño (R3), re-evaluación coherente (R4), falla oculta con prueba
+periódica (R5), acción coherente con la estrategia RCM (R6) y severidad
+crítica que no queda en prioridad alta sin escalar (R7). En el ejemplo, el
+NPR total baja de 600 a 236 y las prioridades altas de 12 a 2.
+
+`auditoria` ejecuta cada función del módulo con los datos de ejemplo
+(ISO/IEC 25010, completitud), compara cálculos con respuestas conocidas
+(corrección) y revisa el análisis contra SAE JA1011, IEC 60812:2018,
+AIAG-VDA 2019, ISO 14224, IEEE 1547-2018, IEEE C37.2 y NFPA 110 como
+referencia. El resultado vigente está en
+[AUDITORIA-SINCRONISMO.md](AUDITORIA-SINCRONISMO.md). Es una autoevaluación
+reproducible, no una certificación.
+
 ## Lo que falta (siguiente etapa)
 
 1. **Lectura directa del controlador.** Hoy los datos entran por JSON/CSV.

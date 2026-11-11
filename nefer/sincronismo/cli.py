@@ -6,7 +6,8 @@ import json
 import sys
 from pathlib import Path
 
-from . import diagramas, diagnostico, informe, laminas, menu_fallas, parametros, protecciones, reparto, tendencias, verificacion
+from . import (auditoria, diagramas, diagnostico, informe, laminas, menu_fallas,
+               parametros, plan_accion, protecciones, reparto, tendencias, verificacion)
 
 
 def _salida(texto: str, ruta: str | None) -> None:
@@ -221,6 +222,39 @@ def cmd_fallas(a) -> int:
     return 0
 
 
+def cmd_amef(a) -> int:
+    from ..fixmate.cargador import ErrorCargador
+    try:
+        filas = plan_accion.amef(a.analisis)
+    except (OSError, ErrorCargador, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    fecha = a.fecha or json.loads(Path(a.analisis).read_text(encoding="utf-8")).get("fecha")
+    acciones = plan_accion.plan(filas, fecha)
+    _salida(plan_accion.a_csv_amef(filas), a.salida or "amef.csv")
+    if a.plan:
+        _salida(plan_accion.a_csv_plan(acciones), a.plan)
+    r = plan_accion.resumen(filas)
+    print(f"NPR total {r['npr_total_inicial']} -> {r['npr_total_residual']} "
+          f"({r['reduccion_pct']} % menos); prioridad alta {r['ap_inicial']['alta']} -> "
+          f"{r['ap_residual']['alta']}; {r['acciones']} acciones")
+    for f in filas:
+        for o in f.observaciones:
+            print(f"  [{o.severidad}] {o.regla} {o.modo_id}: {o.texto}")
+    return 1 if r["observaciones"]["detiene"] else 0
+
+
+def cmd_auditoria(a) -> int:
+    ejemplos = Path(a.ejemplos)
+    res = auditoria.auditar(ejemplos, Path(a.analisis) if a.analisis else None)
+    texto = auditoria.a_html(res) if a.html else auditoria.a_markdown(res)
+    _salida(texto, a.salida)
+    print(f"Conformidad {res['cumple']}/{res['total']} ({res['conformidad_pct']} %)",
+          file=sys.stderr)
+    return 1 if any(r["resultado"] == "no cumple" and r["norma"] == "ISO/IEC 25010"
+                    for r in res["requisitos"]) else 0
+
+
 def agregar_subcomando(sub) -> None:
     s = sub.add_parser("sincronismo",
                        help="grupos electrogenos en paralelo: cierre, reparto, "
@@ -331,6 +365,22 @@ def agregar_subcomando(sub) -> None:
                     help="analisis RCM en el formato de FixMate")
     mf.add_argument("-o", "--salida", help="por defecto, menu-fallas.html")
     mf.set_defaults(func=cmd_fallas)
+
+    am = o.add_parser("amef", help="AMEF completa (CSV) y plan de accion priorizado")
+    am.add_argument("analisis", nargs="?", default="ejemplos/sincronismo/rcm-paralelo-tta.json")
+    am.add_argument("-o", "--salida", help="AMEF en CSV (por defecto, amef.csv)")
+    am.add_argument("--plan", help="plan de accion en CSV")
+    am.add_argument("--fecha", help="fecha base de los plazos (por defecto, la del analisis)")
+    am.set_defaults(func=cmd_amef)
+
+    au = o.add_parser("auditoria",
+                      help="auditoria de funcionalidad contra normas internacionales")
+    au.add_argument("--ejemplos", default="ejemplos/sincronismo",
+                    help="carpeta con los datos con que se ejecuta cada funcion")
+    au.add_argument("--analisis", help="analisis RCM a auditar (por defecto, el de ejemplo)")
+    au.add_argument("--html", action="store_true")
+    au.add_argument("-o", "--salida")
+    au.set_defaults(func=cmd_auditoria)
 
     pr = o.add_parser("protocolo", help="protocolo de puesta en marcha del paralelo")
     pr.add_argument("planta", nargs="?")

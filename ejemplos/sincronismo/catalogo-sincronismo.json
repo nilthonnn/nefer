@@ -1,0 +1,178 @@
+[
+  {
+    "codigo": "ELE.NO_ARRANCA.CARGADOR",
+    "sistema": "electrico",
+    "modo": "No arranca",
+    "mecanismo": "Descarga de bateria",
+    "causa": "Cargador de baterias fallado",
+    "pistas": [
+      "cargador",
+      "flotacion"
+    ]
+  },
+  {
+    "codigo": "CTL.NO_DISPONIBLE.MODO",
+    "sistema": "control",
+    "modo": "No responde a la demanda",
+    "mecanismo": "Error humano",
+    "causa": "Modulo fuera de automatico",
+    "pistas": [
+      "manual",
+      "automatico",
+      "stop"
+    ]
+  },
+  {
+    "codigo": "ESC.CARBONIZACION.BAJA_CARGA",
+    "sistema": "escape",
+    "modo": "Hollin y goteo en escape",
+    "mecanismo": "Combustion incompleta",
+    "causa": "Operacion prolongada en baja carga",
+    "pistas": [
+      "wet stacking",
+      "baja carga"
+    ]
+  },
+  {
+    "codigo": "ALT.PERDIDA_EXCITACION.DIODOS",
+    "sistema": "alternador",
+    "modo": "Perdida de excitacion",
+    "mecanismo": "Falla electrica",
+    "causa": "Diodos rotativos o supresor",
+    "pistas": [
+      "diodos",
+      "excitacion",
+      "40"
+    ]
+  },
+  {
+    "codigo": "ALT.REACTIVA_CIRCULANTE.TC",
+    "sistema": "alternador",
+    "modo": "Reparto de kVAr desigual",
+    "mecanismo": "Error de conexion o ajuste",
+    "causa": "Polaridad de TC o estatismo del AVR",
+    "pistas": [
+      "kvar",
+      "reactivos",
+      "factor de potencia"
+    ]
+  },
+  {
+    "codigo": "SIN.NO_SINCRONIZA.GOBERNADOR",
+    "sistema": "sincronismo",
+    "modo": "No sincroniza",
+    "mecanismo": "Inestabilidad de control",
+    "causa": "Gobernador, actuador o varillaje",
+    "pistas": [
+      "no sincroniza",
+      "oscila",
+      "gobernador"
+    ]
+  },
+  {
+    "codigo": "SIN.NO_CIERRA.INTERRUPTOR",
+    "sistema": "sincronismo",
+    "modo": "Interruptor no cierra",
+    "mecanismo": "Desgaste o falla de mando",
+    "causa": "Resorte, bobina o tension de mando",
+    "pistas": [
+      "52g",
+      "no cierra",
+      "bobina"
+    ]
+  },
+  {
+    "codigo": "SIN.FUERA_DE_FASE.MEDICION",
+    "sistema": "sincronismo",
+    "modo": "Cierre fuera de fase",
+    "mecanismo": "Error de conexion",
+    "causa": "TP de barra o fase cruzada",
+    "pistas": [
+      "fuera de fase",
+      "golpe",
+      "tp"
+    ]
+  },
+  {
+    "codigo": "SIN.POTENCIA_INVERSA.AJUSTE",
+    "sistema": "sincronismo",
+    "modo": "Disparo por potencia inversa",
+    "mecanismo": "Error de ajuste",
+    "causa": "Deslizamiento negativo o rampa bajo la 32",
+    "pistas": [
+      "potencia inversa",
+      "32"
+    ]
+  },
+  {
+    "codigo": "SIN.REPARTO_INESTABLE.ESTATISMO",
+    "sistema": "sincronismo",
+    "modo": "Reparto oscilante",
+    "mecanismo": "Error de ajuste",
+    "causa": "Estatismo o ganancias distintos, enlace con ruido",
+    "pistas": [
+      "reparto",
+      "msc",
+      "pendulea"
+    ]
+  },
+  {
+    "codigo": "SIN.PROTECCION_INACTIVA.AJUSTE",
+    "sistema": "sincronismo",
+    "modo": "Proteccion no dispara",
+    "mecanismo": "Error de ajuste",
+    "causa": "Funcion 32 o 40 deshabilitada",
+    "pistas": [
+      "32",
+      "40",
+      "proteccion"
+    ]
+  },
+  {
+    "codigo": "TTA.NO_TRANSFIERE.CONTACTOS",
+    "sistema": "tta",
+    "modo": "No transfiere",
+    "mecanismo": "Soldadura o traba",
+    "causa": "Falta de ejercicio",
+    "pistas": [
+      "soldados",
+      "contactor",
+      "no transfiere"
+    ]
+  },
+  {
+    "codigo": "TTA.FALSA_FALLA.SENSADO",
+    "sistema": "tta",
+    "modo": "Transferencia innecesaria",
+    "mecanismo": "Falla electrica",
+    "causa": "Fusible de medicion de red",
+    "pistas": [
+      "fusible",
+      "sensado",
+      "red"
+    ]
+  },
+  {
+    "codigo": "TTA.PARALELO_FUENTES.ENCLAVAMIENTO",
+    "sistema": "tta",
+    "modo": "Red y grupo en paralelo",
+    "mecanismo": "Falla mecanica o de mando",
+    "causa": "Enclavamiento",
+    "pistas": [
+      "enclavamiento",
+      "paralelo"
+    ]
+  },
+  {
+    "codigo": "TTA.PUNTO_CALIENTE.BORNES",
+    "sistema": "tta",
+    "modo": "Calentamiento de conexion",
+    "mecanismo": "Aflojamiento",
+    "causa": "Bornes de potencia flojos",
+    "pistas": [
+      "bornes",
+      "termografia",
+      "caliente"
+    ]
+  }
+]
