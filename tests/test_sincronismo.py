@@ -726,3 +726,27 @@ def test_flota_publicada_esta_al_dia():
     f = _flota.cargar(EJ / "flota.json")
     assert (EJ / "flota.html").read_text(encoding="utf-8") == \
         _flota.a_html(f, _flota.analizar(f, RCM_EJ))
+
+
+# --- tablero de inicio y publicacion ----------------------------------------
+
+from nefer.sincronismo import tablero
+
+
+def test_publicar_genera_todo_y_sin_enlaces_rotos(tmp_path):
+    escritos = tablero.publicar(EJ, tmp_path)
+    nombres = {p.name for p in escritos}
+    assert "index.html" in nombres
+    for archivo, _, _ in tablero.HERRAMIENTAS:
+        assert archivo in nombres and (tmp_path / archivo).stat().st_size > 0
+    index = (tmp_path / "index.html").read_text(encoding="utf-8")
+    assert "Detiene la maquina ahora" in index and "GE-11" in index
+    assert "cruza 30" in index                      # lo predictivo llega al tablero
+
+
+def test_publicacion_en_docs_esta_al_dia(tmp_path):
+    tablero.publicar(EJ, tmp_path)
+    publicado = RAIZ / "docs" / "sincronismo"
+    for p in tmp_path.iterdir():
+        assert (publicado / p.name).read_text(encoding="utf-8") == p.read_text(encoding="utf-8"), \
+            f"docs/sincronismo/{p.name} no esta al dia: python -m nefer sincronismo publicar"

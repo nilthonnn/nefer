@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 782" width="1200" height="782" font-family="Arial">
+<title>Sincronismo — Ejemplo 3 x CAT C15 con DSE 8610 MKII (ficticio)</title>
+
+  <style>
+    .fondo { fill: #ffffff; }
+    .pot { stroke: #1f2937; stroke-width: 3; fill: none; }
+    .ctl { stroke: #2563eb; stroke-width: 1.6; fill: none; stroke-dasharray: 6 4; }
+    .com { stroke: #059669; stroke-width: 2; fill: none; stroke-dasharray: 2 3; }
+    .med { stroke: #b45309; stroke-width: 1.6; fill: none; }
+    .caja { fill: #f8fafc; stroke: #334155; stroke-width: 1.5; }
+    .mod { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.8; }
+    .gen { fill: #fefce8; stroke: #854d0e; stroke-width: 2; }
+    .red { fill: #f0fdf4; stroke: #166534; stroke-width: 2; }
+    text { font-family: Arial, Helvetica, sans-serif; fill: #111827; }
+    .t { font-size: 13px; font-weight: bold; }
+    .s { font-size: 10.5px; }
+    .r { font-size: 9.5px; fill: #475569; }
+    .titulo { font-size: 18px; font-weight: bold; }
+  </style>
+
+<rect width="100%" height="100%" class="fondo"/>
+<text x="20" y="32" class="titulo" text-anchor="start">Sincronismo — Ejemplo 3 x CAT C15 con DSE 8610 MKII (ficticio)</text>
+<line x1="140" y1="300" x2="1010" y2="300" class="pot"/>
+<text x="140" y="292" class="t" text-anchor="start">BARRA COMUN 380 V 60 Hz</text>
+<line x1="1010" y1="300" x2="1010" y2="340" class="pot"/>
+<rect x="960" y="340" width="100" height="32" rx="6" class="caja"/>
+<text x="1010" y="361" class="t" text-anchor="middle">CARGA</text>
+<circle cx="200" cy="100" r="30" class="gen"/>
+<text x="200" y="105" class="t" text-anchor="middle">G</text>
+<text x="200" y="148" class="t" text-anchor="middle">GE-01</text>
+<text x="200" y="162" class="r" text-anchor="middle">CAT C15 · 400 kW</text>
+<line x1="200" y1="130" x2="200" y2="200" class="pot"/>
+<circle cx="194" cy="168" r="6" class="med"/>
+<circle cx="206" cy="168" r="6" class="med"/>
+<text x="218" y="172" class="r" text-anchor="start">TC</text>
+<line x1="200" y1="200" x2="200" y2="210" class="pot"/>
+<circle cx="200" cy="210" r="2.5" fill="#1f2937"/>
+<line x1="200" y1="210" x2="212" y2="230" class="pot"/>
+<circle cx="200" cy="230" r="2.5" fill="#1f2937"/>
+<line x1="200" y1="230" x2="200" y2="240" class="pot"/>
+<text x="182" y="225" class="s" text-anchor="end">52G-1</text>
+<line x1="200" y1="240" x2="200" y2="300" class="pot"/>
+<rect x="105" y="420" width="190" height="112" rx="6" class="mod"/>
+<text x="200" y="440" class="t" text-anchor="middle">DSE 8610 MKII</text>
+<text x="200" y="456" class="r" text-anchor="middle">GE-01</text>
+<path d="M200,150 L130,150 L130,420" class="med"/>
+<text x="126" y="372" class="r" text-anchor="end">V gen</text>
+<text x="126" y="384" class="r" text-anchor="end">borne: 057-254</text>
+<path d="M218,300 L218,340 L270,340 L270,420" class="med"/>
+<text x="274" y="372" class="r" text-anchor="start">V barra</text>
+<text x="274" y="384" class="r" text-anchor="start">borne: 057-254</text>
+<path d="M212,168 L245,168 L245,420" class="med"/>
+<path d="M125,532 L125,558 L90,558 L90,220 L196,220" class="ctl"/>
+<text x="200" y="476" class="r" text-anchor="middle">cerrar / abrir 52G  ·  aux 52a</text>
+<text x="200" y="490" class="r" text-anchor="middle">borne: 057-254</text>
+<text x="200" y="508" class="r" text-anchor="middle">J1939 -&gt; ECM CAT (bias velocidad)</text>
+<text x="200" y="522" class="r" text-anchor="middle">salida analogica -&gt; AVR (bias tension)</text>
+<path d="M295,510 L315,510 L315,70 L230,70 L230,85" class="com"/>
+<circle cx="520" cy="100" r="30" class="gen"/>
+<text x="520" y="105" class="t" text-anchor="middle">G</text>
+<text x="520" y="148" class="t" text-anchor="middle">GE-02</text>
+<text x="520" y="162" class="r" text-anchor="middle">CAT C15 · 400 kW</text>
+<line x1="520" y1="130" x2="520" y2="200" class="pot"/>
+<circle cx="514" cy="168" r="6" class="med"/>
+<circle cx="526" cy="168" r="6" class="med"/>
+<text x="538" y="172" class="r" text-anchor="start">TC</text>
+<line x1="520" y1="200" x2="520" y2="210" class="pot"/>
+<circle cx="520" cy="210" r="2.5" fill="#1f2937"/>
+<line x1="520" y1="210" x2="532" y2="230" class="pot"/>
+<circle cx="520" cy="230" r="2.5" fill="#1f2937"/>
+<line x1="520" y1="230" x2="520" y2="240" class="pot"/>
+<text x="502" y="225" class="s" text-anchor="end">52G-2</text>
+<line x1="520" y1="240" x2="520" y2="300" class="pot"/>
+<rect x="425" y="420" width="190" height="112" rx="6" class="mod"/>
+<text x="520" y="440" class="t" text-anchor="middle">DSE 8610 MKII</text>
+<text x="520" y="456" class="r" text-anchor="middle">GE-02</text>
+<path d="M520,150 L450,150 L450,420" class="med"/>
+<text x="446" y="372" class="r" text-anchor="end">V gen</text>
+<text x="446" y="384" class="r" text-anchor="end">borne: 057-254</text>
+<path d="M538,300 L538,340 L590,340 L590,420" class="med"/>
+<text x="594" y="372" class="r" text-anchor="start">V barra</text>
+<text x="594" y="384" class="r" text-anchor="start">borne: 057-254</text>
+<path d="M532,168 L565,168 L565,420" class="med"/>
+<path d="M445,532 L445,558 L410,558 L410,220 L516,220" class="ctl"/>
+<text x="520" y="476" class="r" text-anchor="middle">cerrar / abrir 52G  ·  aux 52a</text>
+<text x="520" y="490" class="r" text-anchor="middle">borne: 057-254</text>
+<text x="520" y="508" class="r" text-anchor="middle">J1939 -&gt; ECM CAT (bias velocidad)</text>
+<text x="520" y="522" class="r" text-anchor="middle">salida analogica -&gt; AVR (bias tension)</text>
+<path d="M615,510 L635,510 L635,70 L550,70 L550,85" class="com"/>
+<circle cx="840" cy="100" r="30" class="gen"/>
+<text x="840" y="105" class="t" text-anchor="middle">G</text>
+<text x="840" y="148" class="t" text-anchor="middle">GE-03</text>
+<text x="840" y="162" class="r" text-anchor="middle">CAT C15 · 400 kW</text>
+<line x1="840" y1="130" x2="840" y2="200" class="pot"/>
+<circle cx="834" cy="168" r="6" class="med"/>
+<circle cx="846" cy="168" r="6" class="med"/>
+<text x="858" y="172" class="r" text-anchor="start">TC</text>
+<line x1="840" y1="200" x2="840" y2="210" class="pot"/>
+<circle cx="840" cy="210" r="2.5" fill="#1f2937"/>
+<line x1="840" y1="210" x2="852" y2="230" class="pot"/>
+<circle cx="840" cy="230" r="2.5" fill="#1f2937"/>
+<line x1="840" y1="230" x2="840" y2="240" class="pot"/>
+<text x="822" y="225" class="s" text-anchor="end">52G-3</text>
+<line x1="840" y1="240" x2="840" y2="300" class="pot"/>
+<rect x="745" y="420" width="190" height="112" rx="6" class="mod"/>
+<text x="840" y="440" class="t" text-anchor="middle">DSE 8610 MKII</text>
+<text x="840" y="456" class="r" text-anchor="middle">GE-03</text>
+<path d="M840,150 L770,150 L770,420" class="med"/>
+<text x="766" y="372" class="r" text-anchor="end">V gen</text>
+<text x="766" y="384" class="r" text-anchor="end">borne: 057-254</text>
+<path d="M858,300 L858,340 L910,340 L910,420" class="med"/>
+<text x="914" y="372" class="r" text-anchor="start">V barra</text>
+<text x="914" y="384" class="r" text-anchor="start">borne: 057-254</text>
+<path d="M852,168 L885,168 L885,420" class="med"/>
+<path d="M765,532 L765,558 L730,558 L730,220 L836,220" class="ctl"/>
+<text x="840" y="476" class="r" text-anchor="middle">cerrar / abrir 52G  ·  aux 52a</text>
+<text x="840" y="490" class="r" text-anchor="middle">borne: 057-254</text>
+<text x="840" y="508" class="r" text-anchor="middle">J1939 -&gt; ECM CAT (bias velocidad)</text>
+<text x="840" y="522" class="r" text-anchor="middle">salida analogica -&gt; AVR (bias tension)</text>
+<path d="M935,510 L955,510 L955,70 L870,70 L870,85" class="com"/>
+<path d="M200,532 L200,582 L520,582 L840,582" class="com"/>
+<line x1="520" y1="532" x2="520" y2="582" class="com"/>
+<line x1="840" y1="532" x2="840" y2="582" class="com"/>
+<text x="140" y="600" class="r" text-anchor="start">Enlace MSC (reparto de kW/kVAr entre modulos): en cadena, malla aterrada en un extremo, terminacion en los dos extremos segun el manual.</text>
+<rect x="20" y="622" width="1160" height="100" rx="6" class="caja"/>
+<text x="30" y="642" class="t" text-anchor="start">Verificaciones de cableado antes del primer cierre</text>
+<text x="30" y="662" class="r" text-anchor="start">1. V barra se toma DESPUES del interruptor (lado barra); V gen ANTES. Invertirlos permite cerrar fuera de fase.</text>
+<text x="30" y="676" class="r" text-anchor="start">2. Misma fase de referencia en V gen y V barra de todas las unidades; verificar con sincronoscopio externo en el primer cierre.</text>
+<text x="30" y="690" class="r" text-anchor="start">3. TC en el lado generador del interruptor, con la relacion y polaridad declaradas en el modulo (kW negativos = polaridad).</text>
+<text x="30" y="704" class="r" text-anchor="start">4. Contacto auxiliar 52a de cada interruptor al modulo: sin el, el modulo no sabe que cerro.</text>
+<text x="30" y="718" class="r" text-anchor="start">5. Interruptor que abre por falta de tension de mando (bobina de minima o logica equivalente).</text>
+<line x1="20" y1="746" x2="60" y2="746" class="pot"/>
+<text x="66" y="750" class="r" text-anchor="start">Potencia 3F+N</text>
+<line x1="170" y1="746" x2="210" y2="746" class="med"/>
+<text x="216" y="750" class="r" text-anchor="start">Medicion (TP/TC)</text>
+<line x1="330" y1="746" x2="370" y2="746" class="ctl"/>
+<text x="376" y="750" class="r" text-anchor="start">Mando / señal</text>
+<line x1="470" y1="746" x2="510" y2="746" class="com"/>
+<text x="516" y="750" class="r" text-anchor="start">Comunicacion</text>
+<text x="20" y="770" class="r" text-anchor="start">Diagrama de arquitectura generado por nefer sincronismo. Los bornes y calibres se verifican contra el manual del modulo y el plano del tablero antes de cablear.</text>
+</svg>

@@ -158,7 +158,8 @@ python -m nefer sincronismo diagnostico "dispara por potencia inversa"
 Permisivo de cierre ANSI 25 con el ángulo juzgado en el contacto, reparto de
 kW/kVAr en % de placa, predicción del reparto por estatismo, revisión de
 protecciones del paralelo (25, 32, 40, 27/59, 81) y la deriva del registro
-proyectada a una fecha. Detalle en **[docs/SINCRONISMO.md](docs/SINCRONISMO.md)**.
+proyectada a una fecha. Todo junto, con un tablero de inicio, en `docs/sincronismo/`
+(`python -m nefer sincronismo publicar`). Detalle en **[docs/SINCRONISMO.md](docs/SINCRONISMO.md)**.
 
 ### Otros comandos
 

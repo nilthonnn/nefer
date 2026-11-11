@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sincronismo de grupos en paralelo</title><style>
+:root{--fondo:#f4f6f8;--panel:#ffffff;--tinta:#111827;--suave:#4b5563;--borde:#d1d5db;
+--acento:#2563eb}
+@media (prefers-color-scheme:dark){:root{--fondo:#0f172a;--panel:#1e293b;--tinta:#e5e7eb;
+--suave:#9ca3af;--borde:#334155;--acento:#60a5fa}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);
+font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+main{max-width:1060px;margin:0 auto;padding:16px}
+h1{font-size:1.45rem;margin:.2rem 0}
+h2{font-size:1.15rem;margin:1.6rem 0 .6rem}
+.sub{color:var(--suave);margin:0 0 1rem}
+.botones{display:flex;flex-wrap:wrap;gap:8px;margin:.6rem 0}
+.botones button{border:2px solid var(--borde);background:var(--panel);color:var(--tinta);
+border-radius:999px;padding:6px 14px;font:inherit;cursor:pointer}
+.botones button[aria-pressed=true]{border-color:var(--c,var(--acento));
+box-shadow:inset 0 0 0 1px var(--c,var(--acento));font-weight:600}
+.lienzo{background:#fff;border:1px solid var(--borde);border-radius:10px;overflow-x:auto}
+.esquema{display:block;width:100%;min-width:760px;height:auto}
+.esquema text{font-family:Arial,Helvetica,sans-serif;fill:#111827}
+.esquema .t{font-size:13px;font-weight:700}.esquema .big{font-size:20px;font-weight:700}
+.esquema .r{font-size:10.5px;fill:#374151}.esquema .p{font-size:10px;font-weight:700;fill:#1e3a8a}
+.esquema .s{font-size:11px}
+.l-pot{stroke:#1f2937;stroke-width:3.2;fill:none}
+.l-med{stroke:#b45309;stroke-width:1.8;fill:none}
+.l-man{stroke:#2563eb;stroke-width:1.8;fill:none}
+.l-com{stroke:#059669;stroke-width:2.2;fill:none;stroke-dasharray:7 4}
+.caja{fill:#f8fafc;stroke:#475569;stroke-width:1.4}
+.mod{fill:#eff6ff;stroke:#2563eb;stroke-width:2}
+.gen{fill:#fef9c3;stroke:#854d0e;stroke-width:2.2}
+.red{fill:#dcfce7;stroke:#166534;stroke-width:2}
+.ecm{fill:#ecfdf5;stroke:#059669;stroke-width:1.6}
+.fus{fill:#fff7ed;stroke:#b45309;stroke-width:1.4}
+.bornera{fill:#fff7ed;stroke:#b45309;stroke-width:1.4}
+.bob{fill:#fff;stroke:#2563eb;stroke-width:1.8}
+.anillo{fill:none;stroke:#b45309;stroke-width:2}
+.punto{fill:#1f2937}.pin{fill:#1e3a8a}
+.capa{transition:opacity .2s}
+.lienzo[data-ver]:not([data-ver=todo]) .capa{opacity:.1}
+.lienzo[data-ver=pot] .capa[data-capa=pot],.lienzo[data-ver=med] .capa[data-capa=med],
+.lienzo[data-ver=man] .capa[data-capa=man],.lienzo[data-ver=com] .capa[data-capa=com]{opacity:1}
+.tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.tarjeta{background:var(--panel);border:1px solid var(--borde);border-left:5px solid var(--c);
+border-radius:10px;padding:12px 14px;cursor:pointer}
+.tarjeta h3{margin:0 0 .4rem;font-size:1rem;color:var(--c)}
+.tarjeta p{margin:.3rem 0;font-size:.92rem}
+.tarjeta b{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;
+color:var(--suave);margin-top:.5rem}
+ol.pasos{padding-left:1.4rem}
+ol.pasos li{background:var(--panel);border:1px solid var(--borde);border-radius:8px;
+padding:8px 12px;margin:6px 0;cursor:pointer}
+ol.pasos li[aria-current=true]{border-color:var(--acento);box-shadow:0 0 0 2px var(--acento)}
+.etq{display:inline-block;font-size:.75rem;border-radius:999px;padding:1px 8px;
+margin-left:6px;color:#fff;background:var(--c)}
+.nota{color:var(--suave);font-size:.85rem;margin-top:1.5rem}
+</style></head>
+<body><main>
+<h1>Sincronismo de grupos en paralelo</h1>
+<p class="sub">Ejemplo 3 x CAT C15 con DSE 8610 MKII (ficticio) · Toque una capa para estudiarla sola, o un paso de la secuencia para ver que actua.</p>
+<div class="botones" role="group" aria-label="Capas"><button data-capa="todo" style="--c:#6b7280">Todo</button><button data-capa="pot" style="--c:#1f2937">Potencia</button><button data-capa="med" style="--c:#b45309">Medicion</button><button data-capa="man" style="--c:#2563eb">Mando</button><button data-capa="com" style="--c:#059669">Comunicacion</button></div>
+<div class="lienzo" data-ver="todo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 540" role="img" class="esquema"><rect x="430" y="140" width="300" height="300" rx="8" class="mod"/>
+<text x="444" y="164" class="t" text-anchor="start">DSE 8610 MKII</text>
+<text x="444" y="180" class="r" text-anchor="start">controlador de GE-01</text>
+<rect x="426" y="196" width="8" height="8" class="pin"/><text x="440" y="204" class="p" text-anchor="start">V GEN L1 L2 L3 N</text>
+<rect x="426" y="236" width="8" height="8" class="pin"/><text x="440" y="244" class="p" text-anchor="start">I  L1 L2 L3 COM</text>
+<rect x="426" y="271" width="8" height="8" class="pin"/><text x="440" y="279" class="p" text-anchor="start">ENTRADA 52G CERRADO</text>
+<rect x="426" y="306" width="8" height="8" class="pin"/><text x="440" y="314" class="p" text-anchor="start">SALIDA CERRAR 52G</text>
+<rect x="426" y="341" width="8" height="8" class="pin"/><text x="440" y="349" class="p" text-anchor="start">SALIDA ABRIR 52G</text>
+<rect x="426" y="406" width="8" height="8" class="pin"/><text x="440" y="414" class="p" text-anchor="start">V BARRA L1 L2 L3 N</text>
+<rect x="726" y="163" width="8" height="8" class="pin"/><text x="720" y="171" class="p" text-anchor="end">+ / − ALIMENTACION</text>
+<rect x="726" y="226" width="8" height="8" class="pin"/><text x="720" y="234" class="p" text-anchor="end">PARO DE EMERGENCIA</text>
+<rect x="726" y="271" width="8" height="8" class="pin"/><text x="720" y="279" class="p" text-anchor="end">CAN ECU (J1939)</text>
+<rect x="726" y="331" width="8" height="8" class="pin"/><text x="720" y="339" class="p" text-anchor="end">MSC</text>
+<rect x="726" y="391" width="8" height="8" class="pin"/><text x="720" y="399" class="p" text-anchor="end">SALIDA ANALOG. AVR</text>
+<text x="580.0" y="432" class="r" text-anchor="middle">bornes: ver DSE 057-254</text>
+<g class="capa" data-capa="pot"><circle cx="150" cy="90" r="34" class="gen"/>
+<text x="150" y="96" class="big" text-anchor="middle">G</text>
+<text x="106" y="76" class="t" text-anchor="end">GE-01</text>
+<text x="106" y="92" class="r" text-anchor="end">CAT C15</text>
+<text x="106" y="106" class="r" text-anchor="end">380 V 60 Hz 3F+N</text>
+<path d="M150,124 L150,290" class="l-pot" />
+<path d="M150,290 L150,302 M150,302 L164,322 M150,322 L150,334" class="l-pot"/><circle cx="150" cy="302" r="3" class="punto"/><circle cx="150" cy="322" r="3" class="punto"/><text x="136" y="317" class="t" text-anchor="end">52G</text>
+<path d="M150,334 L150,500" class="l-pot" />
+<path d="M60,500 L960,500" class="l-pot" stroke-width="6"/>
+<text x="64" y="492" class="t" text-anchor="start">BARRA COMUN 380 V</text>
+<text x="956" y="492" class="r" text-anchor="end">→ GE-02, GE-03 y carga</text></g>
+<g class="capa" data-capa="med"><circle cx="143" cy="200" r="7" class="anillo"/><circle cx="157" cy="200" r="7" class="anillo"/>
+<text x="128" y="204" class="t" text-anchor="end">TC</text>
+<path d="M150,150 L250,150 L250,175" class="l-med" />
+<rect x="238" y="181" width="24" height="10" rx="2" class="fus"/><text x="250" y="177" class="r" text-anchor="middle">F1-F3</text>
+<path d="M250,197 L250,200 L430,200" class="l-med" />
+<text x="260" y="146" class="r" text-anchor="start">V gen: ANTES del 52G</text>
+<path d="M164,200 L180,200 L180,240 L300,240" class="l-med" />
+<rect x="300" y="228" width="54" height="24" rx="3" class="bornera"/>
+<text x="327" y="244" class="r" text-anchor="middle">X-TC</text>
+<text x="327" y="222" class="r" text-anchor="middle">bornera seccionable</text>
+<path d="M354,240 L430,240" class="l-med" />
+<path d="M400,500 L400,410 L430,410" class="l-med" />
+<rect x="388" y="465" width="24" height="10" rx="2" class="fus"/><text x="400" y="461" class="r" text-anchor="middle">F4-F6</text>
+<text x="410" y="492" class="r" text-anchor="start">V barra: DESPUES del 52G</text></g>
+<g class="capa" data-capa="man"><rect x="298" y="263" width="44" height="24" rx="4" class="bob"/><text x="320" y="279" class="p" text-anchor="middle">52a</text>
+<path d="M160,312 L190,312 L190,275 L298,275" class="l-man" stroke-dasharray="2 3"/>
+<text x="196" y="268" class="r" text-anchor="start">aux. del 52G</text>
+<path d="M342,275 L430,275" class="l-man" />
+<rect x="338" y="298" width="44" height="24" rx="4" class="bob"/><text x="360" y="314" class="p" text-anchor="middle">K1</text>
+<path d="M382,310 L430,310" class="l-man" />
+<rect x="338" y="333" width="44" height="24" rx="4" class="bob"/><text x="360" y="349" class="p" text-anchor="middle">K2</text>
+<path d="M382,345 L430,345" class="l-man" />
+<circle cx="270" cy="310" r="11" class="bob"/><text x="270" y="314" class="r" text-anchor="middle">YC</text>
+<path d="M281,310 L338,310" class="l-man" />
+<circle cx="270" cy="345" r="11" class="bob"/><text x="270" y="349" class="r" text-anchor="middle">YO</text>
+<path d="M281,345 L338,345" class="l-man" />
+<path d="M259,310 L172,318" class="l-man" stroke-dasharray="2 3"/>
+<path d="M259,345 L172,322" class="l-man" stroke-dasharray="2 3"/>
+<text x="250" y="378" class="r" text-anchor="middle">YC cierra · YO dispara</text>
+<text x="375" y="378" class="r" text-anchor="middle">reles interpuestos</text>
+<rect x="800" y="150" width="120" height="34" rx="6" class="caja"/>
+<text x="860" y="166" class="r" text-anchor="middle">Bateria 24 Vdc</text>
+<text x="860" y="178" class="r" text-anchor="middle">+ fusible</text>
+<path d="M800,167 L730,167" class="l-man" />
+<path d="M770,196 L770,204 M762,204 L776,216 M770,216 L770,224 M762,204 L762,209" class="l-man"/><text x="780" y="214" class="r" text-anchor="start">PARO EMERG.</text>
+<path d="M770,196 L770,184 L800,184" class="l-man" />
+<path d="M770,224 L770,230 L730,230" class="l-man" /></g>
+<g class="capa" data-capa="com"><rect x="800" y="255" width="150" height="40" rx="6" class="ecm"/>
+<text x="875" y="272" class="t" text-anchor="middle">ECM CAT</text>
+<text x="875" y="287" class="r" text-anchor="middle">control de velocidad</text>
+<path d="M730,275 L800,275" class="l-com" />
+<text x="765" y="268" class="r" text-anchor="middle">J1939</text>
+<rect x="800" y="315" width="150" height="40" rx="6" class="ecm"/>
+<text x="875" y="332" class="t" text-anchor="middle">DSE de GE-02</text>
+<text x="875" y="347" class="r" text-anchor="middle">enlace MSC en cadena</text>
+<path d="M730,335 L800,335" class="l-com" />
+<rect x="800" y="375" width="150" height="40" rx="6" class="ecm"/>
+<text x="875" y="392" class="t" text-anchor="middle">AVR</text>
+<text x="875" y="407" class="r" text-anchor="middle">entrada de ajuste remoto</text>
+<path d="M730,395 L800,395" class="l-com" />
+<text x="765" y="388" class="r" text-anchor="middle">bias V</text>
+<text x="875" y="432" class="r" text-anchor="middle">120 Ω en cada extremo del CAN</text></g></svg></div>
+<h2>Las cuatro capas</h2>
+<div class="tarjetas"><article class="tarjeta" data-capa="pot" style="--c:#1f2937"><h3>Potencia</h3><p>El generador entrega a la barra comun a traves de su interruptor 52G. Todas las unidades cuelgan de la misma barra: por eso, antes de cerrar, tension, frecuencia y angulo tienen que coincidir.</p><b>Como se verifica</b><p>Con todo desenergizado y bloqueado: continuidad y secuencia de fases L1-L2-L3 igual en el generador y en la barra (secuencimetro a los dos lados del 52G).</p><b>Error tipico en campo</b><p>Una fase cruzada entre el generador y la barra. Ningun ajuste del modulo lo corrige; el primer cierre lo descubre de la peor manera.</p></article><article class="tarjeta" data-capa="med" style="--c:#b45309"><h3>Medicion</h3><p>Tres señales llegan al modulo: tension del generador (tomada ANTES del 52G), tension de barra (DESPUES del 52G) y corriente por el TC. Con las dos tensiones el modulo calcula ΔV, Δf y angulo; con la corriente, kW y kVAr para repartir.</p><b>Como se verifica</b><p>Con el grupo en vacio y el 52G abierto: en los bornes del modulo, tension entre fases y fase-neutro igual a la nominal en V GEN; con la barra energizada por otra unidad, lo mismo en V BARRA. Con carga: kW positivos y parecidos a los de una pinza de potencia.</p><b>Error tipico en campo</b><p>TP de barra conectado del lado del generador: el modulo ve siempre las dos tensiones iguales y da permiso de cierre en cualquier angulo. Y abrir el secundario del TC con carga: se induce alta tension. Para eso esta la bornera seccionable, que primero cortocircuita.</p></article><article class="tarjeta" data-capa="man" style="--c:#2563eb"><h3>Mando</h3><p>El modulo no mueve el interruptor directo: cierra y abre a traves de reles interpuestos K1/K2 que energizan la bobina de cierre YC o la de disparo YO. El contacto auxiliar 52a le confirma al modulo que el interruptor realmente cerro. La parada de emergencia corta la alimentacion en serie.</p><b>Como se verifica</b><p>Con el interruptor en prueba (sin potencia): ordenar cerrar y abrir desde el modulo, medir tension en YC/YO en el instante de la orden y comprobar que la entrada «52G cerrado» cambia de estado.</p><b>Error tipico en campo</b><p>Falta el 52a o esta invertido: el modulo ordena cerrar, no recibe confirmacion y da alarma de falla de interruptor, o cree que cerro cuando no.</p></article><article class="tarjeta" data-capa="com" style="--c:#059669"><h3>Comunicacion</h3><p>Por J1939 el modulo le pide velocidad al ECM del motor (asi ajusta la frecuencia para sincronizar y reparte kW). Por el enlace MSC los modulos se dicen cuanto carga lleva cada uno. La salida analogica polariza al AVR para igualar tension y repartir kVAr.</p><b>Como se verifica</b><p>Con todo apagado, medir resistencia entre CAN H y CAN L: unos 60 Ω significa las dos terminaciones de 120 Ω en su lugar; 120 Ω, falta una; muy bajo, sobra alguna. Lo mismo en el enlace MSC.</p><b>Error tipico en campo</b><p>Malla del cable aterrada en los dos extremos o terminacion faltante: errores intermitentes de comunicacion y reparto de carga que oscila.</p></article></div>
+<h2>Secuencia de operacion</h2>
+<ol class="pasos"><li data-capa="com">Arranque: el modulo arranca el motor por el ECM y espera tension y frecuencia estables.<span class="etq" style="--c:#059669">Comunicacion</span></li><li data-capa="man">Barra muerta: si nadie la alimenta, la primera unidad cierra sin sincronizar; la logica impide que dos cierren a la vez.<span class="etq" style="--c:#2563eb">Mando</span></li><li data-capa="med">Barra viva: el modulo compara V GEN con V BARRA (ΔV, Δf, angulo).<span class="etq" style="--c:#b45309">Medicion</span></li><li data-capa="com">Ajuste: pide al ECM mas o menos velocidad y al AVR mas o menos tension hasta entrar en ventana.<span class="etq" style="--c:#059669">Comunicacion</span></li><li data-capa="man">Cierre: con el angulo en ventana —compensando el tiempo del interruptor— activa K1, la bobina YC cierra el 52G y el 52a lo confirma.<span class="etq" style="--c:#2563eb">Mando</span></li><li data-capa="com">Toma de carga: rampa de kW hasta su parte; el reparto se coordina por el enlace MSC.<span class="etq" style="--c:#059669">Comunicacion</span></li><li data-capa="man">Descarga y apertura: rampa hacia abajo y K2/YO abre el 52G antes de cruzar a potencia inversa.<span class="etq" style="--c:#2563eb">Mando</span></li></ol>
+<p class="nota">Generado por <code>nefer sincronismo lamina</code>. Designaciones IEC/ANSI y
+terminacion CAN de 120 Ω segun ISO 11898 / SAE J1939. Los numeros de borne del modulo,
+tiempos y umbrales dependen del modelo y del ajuste de cada tablero: se toman del manual
+del fabricante (DSE8610 DSE 057-254, DSE7320 DSE 057-253) y del plano
+del tablero antes de cablear.</p>
+</main><script>
+const lienzo=document.querySelector('.lienzo');
+const botones=[...document.querySelectorAll('.botones button')];
+function ver(capa){lienzo.dataset.ver=capa;
+botones.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.capa===capa)));}
+botones.forEach(b=>b.addEventListener('click',()=>ver(b.dataset.capa)));
+document.querySelectorAll('.tarjeta').forEach(t=>t.addEventListener('click',()=>{
+ver(t.dataset.capa);lienzo.scrollIntoView({behavior:'smooth',block:'center'});}));
+const pasos=[...document.querySelectorAll('ol.pasos li')];
+pasos.forEach(p=>p.addEventListener('click',()=>{pasos.forEach(q=>q.removeAttribute('aria-current'));
+p.setAttribute('aria-current','true');ver(p.dataset.capa);}));
+ver('todo');
+</script>
+<script type="application/json" id="planta">{"planta": "Ejemplo 3 x CAT C15 con DSE 8610 MKII (ficticio)"}</script>
+</body></html>

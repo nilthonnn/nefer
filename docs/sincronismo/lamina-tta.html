@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Transferencia automatica (TTA)</title><style>
+:root{--fondo:#f4f6f8;--panel:#ffffff;--tinta:#111827;--suave:#4b5563;--borde:#d1d5db;
+--acento:#2563eb}
+@media (prefers-color-scheme:dark){:root{--fondo:#0f172a;--panel:#1e293b;--tinta:#e5e7eb;
+--suave:#9ca3af;--borde:#334155;--acento:#60a5fa}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--tinta);
+font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+main{max-width:1060px;margin:0 auto;padding:16px}
+h1{font-size:1.45rem;margin:.2rem 0}
+h2{font-size:1.15rem;margin:1.6rem 0 .6rem}
+.sub{color:var(--suave);margin:0 0 1rem}
+.botones{display:flex;flex-wrap:wrap;gap:8px;margin:.6rem 0}
+.botones button{border:2px solid var(--borde);background:var(--panel);color:var(--tinta);
+border-radius:999px;padding:6px 14px;font:inherit;cursor:pointer}
+.botones button[aria-pressed=true]{border-color:var(--c,var(--acento));
+box-shadow:inset 0 0 0 1px var(--c,var(--acento));font-weight:600}
+.lienzo{background:#fff;border:1px solid var(--borde);border-radius:10px;overflow-x:auto}
+.esquema{display:block;width:100%;min-width:760px;height:auto}
+.esquema text{font-family:Arial,Helvetica,sans-serif;fill:#111827}
+.esquema .t{font-size:13px;font-weight:700}.esquema .big{font-size:20px;font-weight:700}
+.esquema .r{font-size:10.5px;fill:#374151}.esquema .p{font-size:10px;font-weight:700;fill:#1e3a8a}
+.esquema .s{font-size:11px}
+.l-pot{stroke:#1f2937;stroke-width:3.2;fill:none}
+.l-med{stroke:#b45309;stroke-width:1.8;fill:none}
+.l-man{stroke:#2563eb;stroke-width:1.8;fill:none}
+.l-com{stroke:#059669;stroke-width:2.2;fill:none;stroke-dasharray:7 4}
+.caja{fill:#f8fafc;stroke:#475569;stroke-width:1.4}
+.mod{fill:#eff6ff;stroke:#2563eb;stroke-width:2}
+.gen{fill:#fef9c3;stroke:#854d0e;stroke-width:2.2}
+.red{fill:#dcfce7;stroke:#166534;stroke-width:2}
+.ecm{fill:#ecfdf5;stroke:#059669;stroke-width:1.6}
+.fus{fill:#fff7ed;stroke:#b45309;stroke-width:1.4}
+.bornera{fill:#fff7ed;stroke:#b45309;stroke-width:1.4}
+.bob{fill:#fff;stroke:#2563eb;stroke-width:1.8}
+.anillo{fill:none;stroke:#b45309;stroke-width:2}
+.punto{fill:#1f2937}.pin{fill:#1e3a8a}
+.capa{transition:opacity .2s}
+.lienzo[data-ver]:not([data-ver=todo]) .capa{opacity:.1}
+.lienzo[data-ver=pot] .capa[data-capa=pot],.lienzo[data-ver=med] .capa[data-capa=med],
+.lienzo[data-ver=man] .capa[data-capa=man],.lienzo[data-ver=com] .capa[data-capa=com]{opacity:1}
+.tarjetas{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.tarjeta{background:var(--panel);border:1px solid var(--borde);border-left:5px solid var(--c);
+border-radius:10px;padding:12px 14px;cursor:pointer}
+.tarjeta h3{margin:0 0 .4rem;font-size:1rem;color:var(--c)}
+.tarjeta p{margin:.3rem 0;font-size:.92rem}
+.tarjeta b{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;
+color:var(--suave);margin-top:.5rem}
+ol.pasos{padding-left:1.4rem}
+ol.pasos li{background:var(--panel);border:1px solid var(--borde);border-radius:8px;
+padding:8px 12px;margin:6px 0;cursor:pointer}
+ol.pasos li[aria-current=true]{border-color:var(--acento);box-shadow:0 0 0 2px var(--acento)}
+.etq{display:inline-block;font-size:.75rem;border-radius:999px;padding:1px 8px;
+margin-left:6px;color:#fff;background:var(--c)}
+.nota{color:var(--suave);font-size:.85rem;margin-top:1.5rem}
+</style></head>
+<body><main>
+<h1>Transferencia automatica (TTA)</h1>
+<p class="sub">Ejemplo 3 x CAT C15 con DSE 8610 MKII (ficticio) · Toque una capa para estudiarla sola, o un paso de la secuencia para ver que actua.</p>
+<div class="botones" role="group" aria-label="Capas"><button data-capa="todo" style="--c:#6b7280">Todo</button><button data-capa="pot" style="--c:#1f2937">Potencia</button><button data-capa="med" style="--c:#b45309">Medicion</button><button data-capa="man" style="--c:#2563eb">Mando</button><button data-capa="com" style="--c:#059669">Comunicacion</button></div>
+<div class="lienzo" data-ver="todo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 630" role="img" class="esquema"><rect x="640" y="120" width="300" height="260" rx="8" class="mod"/>
+<text x="790.0" y="144" class="t" text-anchor="middle">DSE7320 MKII</text>
+<text x="790.0" y="160" class="r" text-anchor="middle">AMF: arranque por falla de red + TTA</text>
+<rect x="636" y="171" width="8" height="8" class="pin"/><text x="650" y="179" class="p" text-anchor="start">V RED L1 L2 L3 N</text>
+<rect x="636" y="206" width="8" height="8" class="pin"/><text x="650" y="214" class="p" text-anchor="start">V GRUPO L1 L2 L3 N</text>
+<rect x="636" y="241" width="8" height="8" class="pin"/><text x="650" y="249" class="p" text-anchor="start">I CARGA L1 L2 L3 COM</text>
+<rect x="636" y="296" width="8" height="8" class="pin"/><text x="650" y="304" class="p" text-anchor="start">SALIDA CERRAR RED</text>
+<rect x="636" y="336" width="8" height="8" class="pin"/><text x="650" y="344" class="p" text-anchor="start">SALIDA CERRAR GRUPO</text>
+<text x="790.0" y="368" class="r" text-anchor="middle">bornes: ver DSE 057-253</text>
+<g class="capa" data-capa="pot"><rect x="95" y="40" width="110" height="46" rx="6" class="red"/>
+<text x="150" y="60" class="t" text-anchor="middle">RED</text>
+<text x="150" y="76" class="r" text-anchor="middle">380 V 60 Hz</text>
+<path d="M150,86 L150,120" class="l-pot" />
+<path d="M150,120 L150,132 M150,132 L164,152 M150,152 L150,164" class="l-pot"/><circle cx="150" cy="132" r="3" class="punto"/><circle cx="150" cy="152" r="3" class="punto"/><text x="136" y="147" class="t" text-anchor="end">Q1</text>
+<text x="168" y="150" class="r" text-anchor="start">int. general</text>
+<path d="M150,164 L150,200" class="l-pot" />
+<path d="M150,200 L150,212 M150,212 L164,232 M150,232 L150,244" class="l-pot"/><circle cx="150" cy="212" r="3" class="punto"/><circle cx="150" cy="232" r="3" class="punto"/><text x="136" y="227" class="t" text-anchor="end">KM1</text>
+<circle cx="520" cy="72" r="32" class="gen"/>
+<text x="520" y="78" class="big" text-anchor="middle">G</text>
+<text x="560" y="66" class="t" text-anchor="start">GE-01</text>
+<text x="560" y="82" class="r" text-anchor="start">CAT</text>
+<path d="M520,104 L520,120" class="l-pot" />
+<path d="M520,120 L520,132 M520,132 L534,152 M520,152 L520,164" class="l-pot"/><circle cx="520" cy="132" r="3" class="punto"/><circle cx="520" cy="152" r="3" class="punto"/><text x="506" y="147" class="t" text-anchor="end">Q2</text>
+<path d="M520,164 L520,200" class="l-pot" />
+<path d="M520,200 L520,212 M520,212 L534,232 M520,232 L520,244" class="l-pot"/><circle cx="520" cy="212" r="3" class="punto"/><circle cx="520" cy="232" r="3" class="punto"/><text x="506" y="227" class="t" text-anchor="end">KM2</text>
+<path d="M150,244 L150,290 L520,290 L520,244" class="l-pot" />
+<path d="M335,290 L335,360" class="l-pot" />
+<rect x="275" y="360" width="120" height="36" rx="6" class="caja"/>
+<text x="335" y="383" class="t" text-anchor="middle">CARGA</text>
+<text x="158" y="282" class="r" text-anchor="start">4 polos: L1 L2 L3 N</text>
+<path d="M180,228 L490,228" class="l-man" stroke-dasharray="3 3"/>
+<text x="335" y="222" class="r" text-anchor="middle">enclavamiento mecanico</text></g>
+<g class="capa" data-capa="med"><path d="M150,100 L245,100 L245,130" class="l-med" />
+<rect x="233" y="135" width="24" height="10" rx="2" class="fus"/><text x="245" y="131" class="r" text-anchor="middle">F1-F3</text>
+<path d="M245,150 L245,175 L640,175" class="l-med" />
+<text x="255" y="96" class="r" text-anchor="start">V red</text>
+<path d="M520,110 L590,110 L590,210 L640,210" class="l-med" />
+<rect x="578" y="135" width="24" height="10" rx="2" class="fus"/><text x="590" y="131" class="r" text-anchor="middle">F4-F6</text>
+<text x="600" y="106" class="r" text-anchor="start">V grupo</text>
+<circle cx="328" cy="335" r="7" class="anillo"/><circle cx="342" cy="335" r="7" class="anillo"/>
+<text x="317" y="339" class="r" text-anchor="end">TC carga</text>
+<path d="M349,335 L430,335 L430,245 L640,245" class="l-med" /></g>
+<g class="capa" data-capa="man"><text x="40" y="428" class="t" text-anchor="start">Circuito de mando (tension de mando segun tablero)</text>
+<path d="M60,440 L60,590" class="l-man" />
+<path d="M560,440 L560,590" class="l-man" />
+<text x="60" y="606" class="r" text-anchor="middle">L / +</text>
+<text x="560" y="606" class="r" text-anchor="middle">N / −</text>
+<path d="M60,480 L108,480" class="l-man" />
+<path d="M108,480 L118,480 M118,480 L130,471 M130,480 L140,480" class="l-man"/><path d="M118,475 L118,485 M130,475 L130,485" class="l-man"/><text x="124" y="498" class="r" text-anchor="middle">salida «cerrar red»</text>
+<path d="M140,480 L198,480" class="l-man" />
+<path d="M198,480 L208,480 M208,480 L220,471 M220,480 L230,480" class="l-man"/><path d="M208,475 L208,485 M220,475 L220,485" class="l-man"/><path d="M205,486 L223,472" class="l-man"/><text x="214" y="498" class="r" text-anchor="middle">KM2 aux. NC</text>
+<path d="M230,480 L444,480" class="l-man" />
+<circle cx="455" cy="480" r="11" class="bob"/><text x="455" y="484" class="r" text-anchor="middle">KM1</text>
+<path d="M466,480 L560,480" class="l-man" />
+<path d="M60,550 L108,550" class="l-man" />
+<path d="M108,550 L118,550 M118,550 L130,541 M130,550 L140,550" class="l-man"/><path d="M118,545 L118,555 M130,545 L130,555" class="l-man"/><text x="124" y="568" class="r" text-anchor="middle">salida «cerrar grupo»</text>
+<path d="M140,550 L198,550" class="l-man" />
+<path d="M198,550 L208,550 M208,550 L220,541 M220,550 L230,550" class="l-man"/><path d="M208,545 L208,555 M220,545 L220,555" class="l-man"/><path d="M205,556 L223,542" class="l-man"/><text x="214" y="568" class="r" text-anchor="middle">KM1 aux. NC</text>
+<path d="M230,550 L444,550" class="l-man" />
+<circle cx="455" cy="550" r="11" class="bob"/><text x="455" y="554" class="r" text-anchor="middle">KM2</text>
+<path d="M466,550 L560,550" class="l-man" />
+<path d="M640,300 L600,300 L600,448 L124,448 L124,470" class="l-man" stroke-dasharray="2 3"/>
+<path d="M640,340 L615,340 L615,518 L124,518 L124,540" class="l-man" stroke-dasharray="2 3"/>
+<text x="630" y="480" class="r" text-anchor="start">Contacto de salida del modulo</text>
+<text x="630" y="494" class="r" text-anchor="start">(o rele interpuesto K1 si la bobina</text>
+<text x="630" y="508" class="r" text-anchor="start">consume mas que la salida)</text>
+<text x="630" y="554" class="r" text-anchor="start">El NC de la otra bobina es el</text>
+<text x="630" y="568" class="r" text-anchor="start">enclavamiento electrico</text></g>
+<g class="capa" data-capa="com"><path d="M790.0,120 L790.0,40 L552,40 L552,58" class="l-com" />
+<text x="675.0" y="32" class="r" text-anchor="middle">arranque, combustible y J1939 al ECM CAT</text></g></svg></div>
+<h2>Las cuatro capas</h2>
+<div class="tarjetas"><article class="tarjeta" data-capa="pot" style="--c:#1f2937"><h3>Potencia</h3><p>La carga se alimenta de la red por KM1 o del grupo por KM2, nunca de los dos a la vez. Q1 y Q2 protegen y aislan cada lado para mantenimiento.</p><b>Como se verifica</b><p>Con todo desenergizado: secuencia de fases de la red y del grupo IGUAL en los bornes de entrada de KM1 y KM2. Si no, los motores de la carga giran al reves al pasar al grupo.</p><b>Error tipico en campo</b><p>Secuencia distinta entre red y grupo, o neutro sin conmutar cuando el esquema de tierra lo exige.</p></article><article class="tarjeta" data-capa="med" style="--c:#b45309"><h3>Medicion</h3><p>El modulo vigila la tension de la red (para detectar la falla y el retorno) y la del grupo (para saber cuando puede tomar carga). El TC de carga le da la corriente y la potencia.</p><b>Como se verifica</b><p>En los bornes del modulo: tension de red y de grupo entre fases y fase-neutro igual a la nominal; fusibles F1-F6 sanos.</p><b>Error tipico en campo</b><p>Un fusible de medicion de red abierto: el modulo «ve» falla de red y arranca el grupo con la red buena.</p></article><article class="tarjeta" data-capa="man" style="--c:#2563eb"><h3>Mando</h3><p>Las salidas del modulo energizan K1 («cerrar red») y K2 («cerrar grupo»). Cada bobina pasa por el contacto NC de la otra: enclavamiento electrico. Ademas, enclavamiento mecanico entre KM1 y KM2, porque un contacto soldado salta al electrico.</p><b>Como se verifica</b><p>Con la potencia aislada: forzar KM1 cerrado a mano y ordenar cerrar grupo; KM2 no debe cerrar. Y al reves.</p><b>Error tipico en campo</b><p>Enclavamiento solo electrico, o puenteado «para probar» y olvidado: red y grupo en paralelo sin sincronizar.</p></article><article class="tarjeta" data-capa="com" style="--c:#059669"><h3>Comunicacion</h3><p>El modulo arranca y para el motor (salidas de arranque y combustible) y lee sus parametros por J1939 del ECM.</p><b>Como se verifica</b><p>Resistencia entre CAN H y CAN L con todo apagado: unos 60 Ω.</p><b>Error tipico en campo</b><p>Terminacion de 120 Ω faltante: el modulo pierde al ECM a ratos y para el grupo por falla de comunicacion.</p></article></div>
+<h2>Secuencia de operacion</h2>
+<ol class="pasos"><li data-capa="med">Falla de red: la tension sale de los limites; el modulo espera el tiempo de confirmacion (configurable) para no arrancar por un parpadeo.<span class="etq" style="--c:#b45309">Medicion</span></li><li data-capa="com">Arranque: ordena arranque y combustible al motor y espera tension y frecuencia del grupo estables.<span class="etq" style="--c:#059669">Comunicacion</span></li><li data-capa="man">Transferencia: abre KM1 (suelta K1), espera el tiempo muerto configurado y cierra KM2 (activa K2).<span class="etq" style="--c:#2563eb">Mando</span></li><li data-capa="pot">La carga queda en el grupo, con KM1 enclavado abierto.<span class="etq" style="--c:#1f2937">Potencia</span></li><li data-capa="med">Retorno de red: espera el tiempo de retorno (configurable) para confirmar que la red es estable.<span class="etq" style="--c:#b45309">Medicion</span></li><li data-capa="man">Retransferencia: abre KM2, tiempo muerto, cierra KM1.<span class="etq" style="--c:#2563eb">Mando</span></li><li data-capa="com">Enfriamiento: el motor sigue en vacio el tiempo configurado y para.<span class="etq" style="--c:#059669">Comunicacion</span></li></ol>
+<p class="nota">Generado por <code>nefer sincronismo lamina</code>. Designaciones IEC/ANSI y
+terminacion CAN de 120 Ω segun ISO 11898 / SAE J1939. Los numeros de borne del modulo,
+tiempos y umbrales dependen del modelo y del ajuste de cada tablero: se toman del manual
+del fabricante (DSE8610 DSE 057-254, DSE7320 DSE 057-253) y del plano
+del tablero antes de cablear.</p>
+</main><script>
+const lienzo=document.querySelector('.lienzo');
+const botones=[...document.querySelectorAll('.botones button')];
+function ver(capa){lienzo.dataset.ver=capa;
+botones.forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.capa===capa)));}
+botones.forEach(b=>b.addEventListener('click',()=>ver(b.dataset.capa)));
+document.querySelectorAll('.tarjeta').forEach(t=>t.addEventListener('click',()=>{
+ver(t.dataset.capa);lienzo.scrollIntoView({behavior:'smooth',block:'center'});}));
+const pasos=[...document.querySelectorAll('ol.pasos li')];
+pasos.forEach(p=>p.addEventListener('click',()=>{pasos.forEach(q=>q.removeAttribute('aria-current'));
+p.setAttribute('aria-current','true');ver(p.dataset.capa);}));
+ver('todo');
+</script>
+<script type="application/json" id="planta">{"planta": "Ejemplo 3 x CAT C15 con DSE 8610 MKII (ficticio)"}</script>
+</body></html>

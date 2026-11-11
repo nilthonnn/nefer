@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from . import (auditoria, codigos, diagramas, flota, diagnostico, informe, laminas, menu_fallas,
-               parametros, plan_accion, protecciones, reparto, tendencias, verificacion)
+               parametros, plan_accion, protecciones, tablero, reparto, tendencias, verificacion)
 
 
 def _salida(texto: str, ruta: str | None) -> None:
@@ -296,6 +296,16 @@ def cmd_flota(a) -> int:
     return 1 if any(o["severidad"] == "detiene" for d in res for o in d["observaciones"]) else 0
 
 
+def cmd_publicar(a) -> int:
+    try:
+        escritos = tablero.publicar(a.ejemplos, a.destino)
+    except (OSError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    print(f"{len(escritos)} archivos en {a.destino}; abra {Path(a.destino) / 'index.html'}")
+    return 0
+
+
 def agregar_subcomando(sub) -> None:
     s = sub.add_parser("sincronismo",
                        help="grupos electrogenos en paralelo: cierre, reparto, "
@@ -438,6 +448,12 @@ def agregar_subcomando(sub) -> None:
     fl.add_argument("--html", action="store_true")
     fl.add_argument("-o", "--salida")
     fl.set_defaults(func=cmd_flota)
+
+    pu = o.add_parser("publicar", help="regenerar todo y el tablero de inicio (index.html)")
+    pu.add_argument("--ejemplos", default="ejemplos/sincronismo",
+                    help="carpeta con los datos (planta, flota, analisis, registro)")
+    pu.add_argument("-o", "--destino", default="docs/sincronismo")
+    pu.set_defaults(func=cmd_publicar)
 
     pr = o.add_parser("protocolo", help="protocolo de puesta en marcha del paralelo")
     pr.add_argument("planta", nargs="?")

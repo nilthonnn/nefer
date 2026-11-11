@@ -326,6 +326,22 @@ TTA. Por cada despliegue sale:
 
 El menú de fallas filtra también por modo de operación.
 
+## Tablero de inicio: todo en una carpeta
+
+```bash
+python -m nefer sincronismo publicar          # regenera docs/sincronismo/
+```
+
+Regenera, con los datos de `ejemplos/sincronismo/` (o los de la planta,
+con `--ejemplos`), cada página y archivo —menú de fallas, flota, láminas,
+diagramas, parámetros, auditoría, AMEF y plan en CSV— y un `index.html` que
+pone arriba lo que hay que mirar hoy: indicadores de riesgo, alertas que
+detienen, derivas que cruzan su límite y en qué fecha, y las acciones del
+plan que vencen en los próximos 30 días. La carpeta abre sin conexión; como
+vive en `docs/`, cuando la rama llegue a `main` queda servida por GitHub Pages
+en `/sincronismo/`. La fecha de corte es la del análisis, no la del reloj, y
+`tests/test_sincronismo.py` falla si lo publicado se queda atrás.
+
 ## Lo que falta (siguiente etapa)
 
 1. **Lectura directa del controlador.** Hoy los datos entran por JSON/CSV.
