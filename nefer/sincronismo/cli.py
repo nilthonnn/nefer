@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import (auditoria, diagramas, diagnostico, informe, laminas, menu_fallas,
+from . import (auditoria, codigos, diagramas, diagnostico, informe, laminas, menu_fallas,
                parametros, plan_accion, protecciones, reparto, tendencias, verificacion)
 
 
@@ -255,6 +255,36 @@ def cmd_auditoria(a) -> int:
                     for r in res["requisitos"]) else 0
 
 
+def cmd_codigo(a) -> int:
+    try:
+        lect = codigos.decodificar(a.spn, a.fmi)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    if a.json:
+        print(json.dumps(lect.a_dict(), ensure_ascii=False, indent=2))
+        return 0
+    print(f"SPN {lect.spn} · FMI {lect.fmi} — {lect.accion_tablero}")
+    print(f"  Parametro: {lect.parametro}")
+    print(f"  Que paso:  {lect.fmi_texto}")
+    print(f"  Primero:   {lect.comprobar}")
+    if lect.codigos_planta:
+        modos = {}
+        if a.analisis and Path(a.analisis).exists():
+            datos = json.loads(Path(a.analisis).read_text(encoding="utf-8"))
+            for fd in datos["funciones"]:
+                for ffd in fd["fallas"]:
+                    for md in ffd["modos"]:
+                        c = md.get("codigo_catalogo") or md.get("codigo_planta")
+                        if c in lect.codigos_planta:
+                            modos[c] = md["descripcion"]
+        print("  Modos de falla del analisis que lo producen:")
+        for c in lect.codigos_planta:
+            print(f"    - {c}: {modos.get(c, '(no esta en el analisis cargado)')}")
+    print(f"  Fuente: {lect.fuente}")
+    return 0 if lect.conocido else 1
+
+
 def agregar_subcomando(sub) -> None:
     s = sub.add_parser("sincronismo",
                        help="grupos electrogenos en paralelo: cierre, reparto, "
@@ -332,7 +362,7 @@ def agregar_subcomando(sub) -> None:
     pl.add_argument("--motor", default="CAT")
     pl.add_argument("--modelo-motor")
     pl.add_argument("--modo", default="isocrono_compartido",
-                    choices=["isocrono_compartido", "droop", "isocrono"])
+                    choices=["isocrono_compartido", "droop", "isocrono", "solo"])
     pl.add_argument("-o", "--salida")
     pl.set_defaults(func=cmd_plantilla)
 
@@ -381,6 +411,14 @@ def agregar_subcomando(sub) -> None:
     au.add_argument("--html", action="store_true")
     au.add_argument("-o", "--salida")
     au.set_defaults(func=cmd_auditoria)
+
+    cd = o.add_parser("codigo", help="decodificar un evento SPN/FMI (PowerWizard, ECM J1939)")
+    cd.add_argument("spn", type=int)
+    cd.add_argument("fmi", type=int)
+    cd.add_argument("--analisis", default="ejemplos/sincronismo/rcm-paralelo-tta.json",
+                    help="analisis RCM con los modos de falla a enlazar")
+    cd.add_argument("--json", action="store_true")
+    cd.set_defaults(func=cmd_codigo)
 
     pr = o.add_parser("protocolo", help="protocolo de puesta en marcha del paralelo")
     pr.add_argument("planta", nargs="?")

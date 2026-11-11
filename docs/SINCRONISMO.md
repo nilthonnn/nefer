@@ -279,6 +279,28 @@ referencia. El resultado vigente está en
 [AUDITORIA-SINCRONISMO.md](AUDITORIA-SINCRONISMO.md). Es una autoevaluación
 reproducible, no una certificación.
 
+## Códigos de evento SPN/FMI y controladores (PowerWizard y otros)
+
+```bash
+python -m nefer sincronismo codigo 168 17      # SPN 168 (bateria), FMI 17 (alarma por bajo)
+python -m nefer sincronismo plantilla -n 2 --controlador "FG Wilson" \
+    --modelo-controlador "PowerWizard 1.1" --modo solo -o planta.json
+```
+
+El PowerWizard de FG Wilson (1.0, 1.1, 1.1+, 2.0, 2.1) informa sus eventos como
+SPN/FMI de SAE J1939, igual que los ECM de CAT y Cummins. `codigo` traduce el
+FMI con la tabla completa de J1939-73, el SPN con los de motor más comunes de
+J1939-71, dice si el tablero lo trata como parada o alarma, da la primera
+comprobación y enlaza con los modos de falla del análisis RCM que lo producen
+(y por ahí con su plan de acción). Un SPN que no está en la tabla no se
+adivina: remite al Apéndice A del manual técnico del PowerWizard.
+
+Según los catálogos públicos, el PowerWizard es de **un solo grupo**: el
+informe marca «detiene» si la planta lo declara en paralelo, y la unidad que
+trabaja sola se declara con `"modo": "solo"` (no entra al reparto ni a la
+predicción por estatismo). Perfiles conocidos: PowerWizard, DSE8610 MKII,
+DSE7320 MKII, EMCP 4.4, PowerCommand 3.3 y easYgen.
+
 ## Lo que falta (siguiente etapa)
 
 1. **Lectura directa del controlador.** Hoy los datos entran por JSON/CSV.

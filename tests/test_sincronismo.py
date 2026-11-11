@@ -618,3 +618,58 @@ def test_fallas_de_nivel_experto():
     from nefer.fixmate import catalogo
     cat = catalogo.cargar(EJ / "catalogo-sincronismo.json")
     assert all(m["codigo"] in cat for m in dat["modos"])
+
+
+# --- codigos SPN/FMI y perfiles de controlador ------------------------------
+
+from nefer.sincronismo import codigos
+
+
+def test_fmi_completo_j1939():
+    assert set(range(0, 20)) | {31} <= set(codigos.FMI)
+    assert "reservado" in codigos.decodificar(100, 25).fmi_texto.lower()
+    with pytest.raises(ValueError):
+        codigos.decodificar(100, 32)
+
+
+def test_decodificar_powerwizard():
+    l = codigos.decodificar(110, 0)
+    assert l.parametro == "Temperatura del refrigerante" and l.accion_tablero == "parada (alto)"
+    assert "TER.FUGA.REFRIGERANTE" in l.codigos_planta
+    assert codigos.decodificar(705, 31).conocido          # entrada configurable
+    desconocido = codigos.decodificar(4321, 3)
+    assert not desconocido.conocido and "Apendice A" in desconocido.parametro
+
+
+def test_spn_enlazan_con_el_analisis():
+    import json
+    datos = json.loads(RCM_EJ.read_text(encoding="utf-8"))
+    del_analisis = {md.get("codigo_catalogo") or md.get("codigo_planta")
+                    for fd in datos["funciones"] for ffd in fd["fallas"] for md in ffd["modos"]}
+    for _, (_, cods) in codigos.SPN.items():
+        assert set(cods) <= del_analisis, cods
+
+
+def test_powerwizard_en_paralelo_se_detiene():
+    p = informe.plantilla(2, kw=400, controlador="FG Wilson", modelo_controlador="PowerWizard 1.1")
+    obs = codigos.revisar_controladores(p)
+    assert len(obs) == 2 and all(o["severidad"] == "detiene" for o in obs)
+    for u in p["unidades"]:
+        u["modo"] = "solo"
+    assert codigos.revisar_controladores(p) == []
+    p8610 = informe.plantilla(2, kw=400, modelo_controlador="8610 MKII")
+    assert codigos.revisar_controladores(p8610) == []
+
+
+def test_unidades_solas_no_entran_al_reparto():
+    p = informe.plantilla(2, kw=400, controlador="FG Wilson",
+                          modelo_controlador="PowerWizard 1.1", modo="solo")
+    res = informe.analizar(p)
+    assert "estatismo" not in res["secciones"] and "reparto" not in res["secciones"]
+
+
+def test_cli_codigo(capsys):
+    assert main(["sincronismo", "codigo", "168", "17", "--analisis", str(RCM_EJ)]) == 0
+    out = capsys.readouterr().out
+    assert "Bateria de arranque" in out
+    assert main(["sincronismo", "codigo", "4321", "3"]) == 1

@@ -2,11 +2,11 @@
 
 Autoevaluacion reproducible (`nefer sincronismo auditoria`), no certificacion. Las normas se verifican por su contenido publico general.
 
-**Conformidad: 54/58 requisitos cumplen (93.1 %).**
+**Conformidad: 55/59 requisitos cumplen (93.2 %).**
 
 | Norma | Cumple | Parcial | No cumple |
 |---|---:|---:|---:|
-| ISO/IEC 25010 | 27 | 0 | 0 |
+| ISO/IEC 25010 | 28 | 0 | 0 |
 | SAE JA1011 | 9 | 0 | 0 |
 | IEC 60812:2018 | 12 | 1 | 0 |
 | AIAG-VDA 2019 | 2 | 0 | 0 |
@@ -36,6 +36,7 @@ Autoevaluacion reproducible (`nefer sincronismo auditoria`), no certificacion. L
 | Adecuacion funcional · completitud | La funcion «Hoja de parametros» se ejecuta con los datos de ejemplo | **cumple** | nefer sincronismo parametros → codigo 0 |  |
 | Adecuacion funcional · completitud | La funcion «Revision de parametros» se ejecuta con los datos de ejemplo | **cumple** | nefer sincronismo parametros → codigo 0 |  |
 | Adecuacion funcional · completitud | La funcion «Menu de fallas RCM/AMEF» se ejecuta con los datos de ejemplo | **cumple** | nefer sincronismo fallas → codigo 0 |  |
+| Adecuacion funcional · completitud | La funcion «Decodificador SPN/FMI» se ejecuta con los datos de ejemplo | **cumple** | nefer sincronismo codigo → codigo 0 |  |
 | Adecuacion funcional · completitud | La funcion «AMEF completa y plan de accion» se ejecuta con los datos de ejemplo | **cumple** | nefer sincronismo amef → codigo 0 |  |
 | Adecuacion funcional · correccion | Angulo de adelanto = 360 · 0.1 Hz · 0.1 s = 3.6° | **cumple** | esperado 3.6, obtenido 3.6 |  |
 | Adecuacion funcional · correccion | Ventana IEEE 1547 para 625 kVA = 0.2 Hz / 5 % / 15° | **cumple** | esperado (0.2, 5.0, 15.0), obtenido (0.2, 5.0, 15.0) |  |
@@ -43,7 +44,7 @@ Autoevaluacion reproducible (`nefer sincronismo auditoria`), no certificacion. L
 | Adecuacion funcional · correccion | Tendencia +0.2/dia desde 10 cruza 30 al dia 100 | **cumple** | esperado 2026-04-11, obtenido 2026-04-11 |  |
 | Adecuacion funcional · correccion | Prioridad AIAG-VDA: S5 O1 D1 → baja | **cumple** | esperado baja, obtenido baja |  |
 | Adecuacion funcional · correccion | Prioridad AIAG-VDA: S5 O1 D2 → alta (severidad manda) | **cumple** | esperado alta, obtenido alta |  |
-| Adecuacion funcional · pertinencia | El objetivo «Eficaz (decidir bien en sitio)» esta cubierto | **cumple** | Funciones: Permisivo de cierre ANSI 25, Guia de sintomas, Lamina didactica sincronismo |  |
+| Adecuacion funcional · pertinencia | El objetivo «Eficaz (decidir bien en sitio)» esta cubierto | **cumple** | Funciones: Permisivo de cierre ANSI 25, Guia de sintomas, Lamina didactica sincronismo, Decodificador SPN/FMI |  |
 | Adecuacion funcional · pertinencia | El objetivo «Proactivo (anticipar sin que pregunten)» esta cubierto | **cumple** | Funciones: Informe priorizado, Revision de protecciones, Revision de parametros |  |
 | Adecuacion funcional · pertinencia | El objetivo «Predictivo (fecha de cruce)» esta cubierto | **cumple** | Funciones: Tendencias y reincidencias |  |
 | Adecuacion funcional · pertinencia | El objetivo «Confiabilidad (RCM/AMEF)» esta cubierto | **cumple** | Funciones: Menu de fallas RCM/AMEF, AMEF completa y plan de accion |  |

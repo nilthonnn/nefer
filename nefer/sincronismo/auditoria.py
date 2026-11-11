@@ -97,6 +97,7 @@ def funcionalidad(ejemplos: Path) -> list[Requisito]:
             ("Hoja de parametros", ["parametros", "sincronismo", dse, "--html", "-o", str(t / "c.html")], {0}),
             ("Revision de parametros", ["parametros", "tta", dse, "--revisar"], {0, 1}),
             ("Menu de fallas RCM/AMEF", ["fallas", analisis, "-o", str(t / "m.html")], {0}),
+            ("Decodificador SPN/FMI", ["codigo", "168", "17", "--analisis", analisis], {0}),
             ("AMEF completa y plan de accion", ["amef", analisis, "-o", str(t / "amef.csv"),
                                                "--plan", str(t / "plan.csv")], {0}),
         ]
@@ -146,7 +147,7 @@ def funcionalidad(ejemplos: Path) -> list[Requisito]:
     # Pertinencia: cada objetivo del puesto tiene funciones que lo cubren.
     objetivos = {
         "Eficaz (decidir bien en sitio)": ("Permisivo de cierre ANSI 25", "Guia de sintomas",
-                                          "Lamina didactica sincronismo"),
+                                          "Lamina didactica sincronismo", "Decodificador SPN/FMI"),
         "Proactivo (anticipar sin que pregunten)": ("Informe priorizado", "Revision de protecciones",
                                                     "Revision de parametros"),
         "Predictivo (fecha de cruce)": ("Tendencias y reincidencias",),

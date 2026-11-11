@@ -18,6 +18,7 @@ import json
 from pathlib import Path
 
 from . import protecciones as _prot
+from . import codigos as _codigos
 from . import reparto as _rep
 from . import tendencias as _tend
 
@@ -86,7 +87,10 @@ def analizar(planta: dict, registros: list | None = None,
              hoy: _dt.date | None = None) -> dict:
     """Devuelve las secciones del informe y la lista de hallazgos priorizada."""
     hoy = hoy or _dt.date.today()
-    unidades = [_rep.Unidad.desde_dict(u) for u in planta["unidades"]]
+    # Las unidades que trabajan solas («modo»: «solo») no reparten ni se
+    # sincronizan: no entran al reparto ni a la prediccion por estatismo.
+    unidades = [_rep.Unidad.desde_dict(u) for u in planta["unidades"]
+                if u.get("modo") != "solo"]
     f_nom = float(planta.get("f_nominal", 60.0))
     hallazgos: list[dict] = []
     secciones: dict = {}
@@ -102,7 +106,7 @@ def analizar(planta: dict, registros: list | None = None,
         agregar("reparto actual", rep.hallazgos)
 
     # 2. Reparto previsto por estatismo a cada escalon.
-    if all(u.modo.startswith("isocrono") or (u.f_vacio and u.estatismo_pct)
+    if len(unidades) >= 2 and all(u.modo.startswith("isocrono") or (u.f_vacio and u.estatismo_pct)
            for u in unidades):
         total = sum(u.kw_nominal for u in unidades)
         previstos = []
@@ -122,6 +126,12 @@ def analizar(planta: dict, registros: list | None = None,
             agregar(f"reparto previsto ({escalones} %)",
                     [{**h, "texto": f"Al {pcts[-1]:g} %: {h['texto']}"}])
         secciones["estatismo"] = previstos
+
+    # 2b. Que cada controlador pueda hacer lo que se le pide.
+    ctl = _codigos.revisar_controladores(planta)
+    if ctl:
+        secciones["controladores"] = ctl
+        agregar("controlador", ctl)
 
     # 3. Protecciones.
     prot = []
