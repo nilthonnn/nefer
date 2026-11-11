@@ -534,7 +534,7 @@ from nefer.sincronismo import auditoria, plan_accion
 
 def test_amef_completa_y_plan_sin_observaciones():
     filas = plan_accion.amef(RCM_EJ)
-    assert len(filas) == 19
+    assert len(filas) >= 34
     assert all(f.npr == f.severidad * f.ocurrencia * f.deteccion for f in filas)
     assert all(f.npr_r is not None and f.npr_r <= f.npr for f in filas)
     assert not [o for f in filas for o in f.observaciones]
@@ -580,7 +580,7 @@ def test_csv_amef_y_plan():
     filas = plan_accion.amef(RCM_EJ)
     csv_amef = plan_accion.a_csv_amef(filas)
     assert csv_amef.splitlines()[0].startswith("Sistema;Componente;Funcion")
-    assert len(csv_amef.splitlines()) == 20
+    assert len(csv_amef.splitlines()) == len(filas) + 1
     acciones = plan_accion.plan(filas, "2026-11-11")
     orden = [plan_accion.ORDEN_AP[a["prioridad"]] for a in acciones]
     assert orden == sorted(orden)
@@ -603,3 +603,18 @@ def test_auditoria_publicada_esta_al_dia():
     publicada = (RAIZ / "docs" / "AUDITORIA-SINCRONISMO.md").read_text(encoding="utf-8")
     assert publicada == auditoria.a_markdown(auditoria.auditar(EJ)), \
         "docs/AUDITORIA-SINCRONISMO.md no esta al dia: python -m nefer sincronismo auditoria -o ..."
+
+
+def test_fallas_de_nivel_experto():
+    dat = menu_fallas.datos(RCM_EJ)
+    expertos = [m for m in dat["modos"] if m["experto"]]
+    assert len(expertos) >= 15
+    sistemas = {m["sistema"] for m in expertos}
+    assert {"Motor", "Alternador", "Sincronismo", "Reparto", "TTA"} <= sistemas
+    for m in expertos:
+        assert m["fuentes"] and m["acciones"] and m["residual"] and m["causa"]
+        assert not m["observaciones"], (m["id"], m["observaciones"])
+    # Cada codigo de planta esta en el catalogo de la planta.
+    from nefer.fixmate import catalogo
+    cat = catalogo.cargar(EJ / "catalogo-sincronismo.json")
+    assert all(m["codigo"] in cat for m in dat["modos"])

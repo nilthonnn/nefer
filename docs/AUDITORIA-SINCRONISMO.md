@@ -59,14 +59,14 @@ Autoevaluacion reproducible (`nefer sincronismo auditoria`), no certificacion. L
 | Pregunta 5 | ¿En que forma importa cada falla? | **cumple** | evidente u oculta, y al menos una consecuencia clasificada: contestada |  |
 | Pregunta 6 | ¿Que debe hacerse para predecir o prevenir cada falla? | **cumple** | una decision de estrategia registrada por modo de falla: contestada |  |
 | Pregunta 7 | ¿Que debe hacerse si no se encuentra una tarea proactiva adecuada? | **cumple** | la accion por defecto registrada donde no hubo tarea proactiva: contestada |  |
-| 5.7 | Las fallas ocultas tienen busqueda de fallas o una tarea que reduzca la falla multiple | **cumple** | 8 ocultas; sin tarea adecuada: ninguna |  |
-| 5.7 | Con consecuencia de seguridad no se elige operar hasta la falla | **cumple** | Modos de seguridad: 4; con operar hasta la falla: ninguno |  |
+| 5.7 | Las fallas ocultas tienen busqueda de fallas o una tarea que reduzca la falla multiple | **cumple** | 13 ocultas; sin tarea adecuada: ninguna |  |
+| 5.7 | Con consecuencia de seguridad no se elige operar hasta la falla | **cumple** | Modos de seguridad: 7; con operar hasta la falla: ninguno |  |
 
 ## IEC 60812:2018
 
 | Clausula | Requisito | Resultado | Evidencia | Accion |
 |---|---|---|---|---|
-| Planificacion | Alcance, contexto, equipo, fecha y revision documentados | **cumple** | activo PLANTA-GE-TTA, fecha 2026-11-11, revision 0, 2 participantes |  |
+| Planificacion | Alcance, contexto, equipo, fecha y revision documentados | **cumple** | activo PLANTA-GE-TTA, fecha 2026-11-11, revision 1, 2 participantes |  |
 | Estructura | Cada modo de falla esta ubicado en sistema y componente | **cumple** | sin ubicacion: ninguno |  |
 | Funciones | Cada funcion declara su estandar de desempeño | **cumple** | sin estandar: ninguna |  |
 | Analisis de fallas | Cadena efecto – modo – causa completa | **cumple** | incompletos: ninguno |  |
@@ -91,9 +91,9 @@ Autoevaluacion reproducible (`nefer sincronismo auditoria`), no certificacion. L
 
 | Clausula | Requisito | Resultado | Evidencia | Accion |
 |---|---|---|---|---|
-| Taxonomia | Cada modo de falla codificado en la taxonomia | **parcial** | 4/19 con codigo del catalogo de fabrica; 19/19 con codigo de la planta (catalogo-sincronismo.json) | El cargador RCM de FixMate solo valida contra el catalogo de fabrica: los codigos de sincronismo y TTA viajan como «codigo_planta». Integrar catalogos de planta al cargador. |
+| Taxonomia | Cada modo de falla codificado en la taxonomia | **parcial** | 4/34 con codigo del catalogo de fabrica; 34/34 con codigo de la planta (catalogo-sincronismo.json) | El cargador RCM de FixMate solo valida contra el catalogo de fabrica: los codigos de sincronismo y TTA viajan como «codigo_planta». Integrar catalogos de planta al cargador. |
 | Codigos de la norma | Los codigos propios mapean a los de ISO 14224 | **no cumple** | 0 entradas con codigo ISO mapeado | Los codigos de la norma son material con licencia: la planta los mapea en «codigo_iso» si tiene la norma. |
-| Calidad de datos | La ocurrencia sale del historial de la propia instalacion | **parcial** | 19/19 modos con ocurrencia propuesta desde fuentes publicas | Reemplazar la ocurrencia con el historial de OT (nefer fixmate rcm contrastar). |
+| Calidad de datos | La ocurrencia sale del historial de la propia instalacion | **parcial** | 33/34 modos con ocurrencia propuesta desde fuentes publicas | Reemplazar la ocurrencia con el historial de OT (nefer fixmate rcm contrastar). |
 
 ## IEEE 1547-2018
 

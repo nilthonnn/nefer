@@ -174,5 +174,187 @@
       "termografia",
       "caliente"
     ]
+  },
+  {
+    "codigo": "COM.AIRE.INYECTOR",
+    "sistema": "motor",
+    "modo": "Arranque largo o fallido",
+    "mecanismo": "Ingreso de aire",
+    "causa": "Cambio de filtros sin purgar, tanque vacio o fuga en la succion",
+    "pistas": [
+      "aire en el combustible",
+      "purga",
+      "solenoide del inyector"
+    ]
+  },
+  {
+    "codigo": "MOT.PRESION_CARTER.RESPIRADERO",
+    "sistema": "motor",
+    "modo": "Aceite en el exterior del motor",
+    "mecanismo": "Obstruccion",
+    "causa": "Respiradero o filtro de ventilacion de carter colmatado",
+    "pistas": [
+      "presion de carter",
+      "respiradero",
+      "blow-by"
+    ]
+  },
+  {
+    "codigo": "ALT.SOBRETENSION.SENSADO_AVR",
+    "sistema": "alternador",
+    "modo": "Luces intensas",
+    "mecanismo": "Aflojamiento",
+    "causa": "Vibracion que afloja los bornes de sensado o fusible de sensado abierto",
+    "pistas": [
+      "sobretension",
+      "sensado del avr",
+      "mx321",
+      "mx341"
+    ]
+  },
+  {
+    "codigo": "ALT.NO_LEVANTA.REMANENTE",
+    "sistema": "alternador",
+    "modo": "Motor en marcha y 0 V",
+    "mecanismo": "Desmagnetizacion",
+    "causa": "Humedad, largos periodos parados o desconexion del campo",
+    "pistas": [
+      "no levanta tension",
+      "magnetismo remanente",
+      "flasheo"
+    ]
+  },
+  {
+    "codigo": "ALT.FALLA_AISLAMIENTO.HUMEDAD",
+    "sistema": "alternador",
+    "modo": "Disparo por falla a tierra",
+    "mecanismo": "Degradacion del aislamiento",
+    "causa": "Humedad, polvo conductor, sobretemperatura",
+    "pistas": [
+      "aislamiento",
+      "megado",
+      "indice de polarizacion",
+      "humedad"
+    ]
+  },
+  {
+    "codigo": "ALT.CIRCULANTE.TERCER_ARMONICO",
+    "sistema": "alternador",
+    "modo": "Disparo de falla a tierra sin falla visible",
+    "mecanismo": "Armonicos",
+    "causa": "Alternadores de distinto paso de bobinado con neutros unidos",
+    "pistas": [
+      "tercer armonico",
+      "corriente de neutro",
+      "paso de bobinado"
+    ]
+  },
+  {
+    "codigo": "SIN.DESLIZAMIENTO_POLOS.PROTECCION",
+    "sistema": "sincronismo",
+    "modo": "Oscilacion violenta de corriente y potencia",
+    "mecanismo": "Inestabilidad transitoria",
+    "causa": "Perdida de excitacion o falla grande cerca de la unidad",
+    "pistas": [
+      "deslizamiento de polos",
+      "pole slip",
+      "perdida de sincronismo"
+    ]
+  },
+  {
+    "codigo": "SIN.BARRA_MUERTA.ARBITRAJE",
+    "sistema": "sincronismo",
+    "modo": "Golpe fuerte y disparo",
+    "mecanismo": "Falla de logica",
+    "causa": "Enlace de comunicacion caido, configuracion de primera unidad incoherente",
+    "pistas": [
+      "barra muerta",
+      "cierre simultaneo",
+      "primera unidad"
+    ]
+  },
+  {
+    "codigo": "SIN.FAILSAFE.ENLACE",
+    "sistema": "reparto",
+    "modo": "Frecuencia que cae con la carga",
+    "mecanismo": "Falla de comunicacion",
+    "causa": "Cable, conector o terminacion del enlace",
+    "pistas": [
+      "failsafe",
+      "enlace de reparto",
+      "mgdl"
+    ]
+  },
+  {
+    "codigo": "SIN.MODO_GOBERNADOR.ISOCRONO",
+    "sistema": "reparto",
+    "modo": "Reparto que se va a un extremo",
+    "mecanismo": "Error de ajuste",
+    "causa": "Selector o parametro de modo cambiado en mantenimiento",
+    "pistas": [
+      "isocrono",
+      "modo del gobernador",
+      "barra viva"
+    ]
+  },
+  {
+    "codigo": "MOT.DERRATEO.ALTURA",
+    "sistema": "reparto",
+    "modo": "Humo",
+    "mecanismo": "Error de configuracion",
+    "causa": "Potencia de placa al nivel del mar cargada en el controlador",
+    "pistas": [
+      "derrateo",
+      "altura",
+      "no toma carga"
+    ]
+  },
+  {
+    "codigo": "TTA.TIERRA.DOBLE_NEUTRO",
+    "sistema": "tta",
+    "modo": "Disparo de falla a tierra sin falla",
+    "mecanismo": "Error de diseño o instalacion",
+    "causa": "Puente neutro-tierra en el grupo con neutro continuo por TTA de 3 polos",
+    "pistas": [
+      "doble puesta a tierra",
+      "3 polos",
+      "puente neutro tierra"
+    ]
+  },
+  {
+    "codigo": "TTA.TRANSFERENCIA.FUERA_FASE_MOTORES",
+    "sistema": "tta",
+    "modo": "Golpe en motores",
+    "mecanismo": "Transitorio electromecanico",
+    "causa": "Transferencia abierta rapida con motores grandes",
+    "pistas": [
+      "monitor en fase",
+      "tension residual",
+      "motores"
+    ]
+  },
+  {
+    "codigo": "TTA.MONITOR_FASE.CABLEADO",
+    "sistema": "tta",
+    "modo": "Disparo de la red en cada transferencia",
+    "mecanismo": "Error de conexion",
+    "causa": "Reconexion incorrecta en mantenimiento",
+    "pistas": [
+      "monitor en fase mal cableado",
+      "transfiere fuera de fase",
+      "dispara la red"
+    ]
+  },
+  {
+    "codigo": "TTA.TRANSICION_CERRADA.PARALELO_EXTENDIDO",
+    "sistema": "tta",
+    "modo": "Disparo de protecciones de red",
+    "mecanismo": "Falla mecanica o de mando",
+    "causa": "Mecanismo lento o falla de la orden de apertura",
+    "pistas": [
+      "transicion cerrada",
+      "paralelo extendido",
+      "no abre a tiempo"
+    ]
   }
 ]

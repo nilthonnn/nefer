@@ -225,8 +225,16 @@ python -m nefer fixmate rcm matriz ejemplos/sincronismo/rcm-paralelo-tta.json -o
 ```
 
 `rcm-paralelo-tta.json` es un análisis RCM de la planta (3 grupos en paralelo
-+ TTA) en el formato de FixMate: 6 funciones, 12 fallas funcionales y 19 modos
-de falla tomados de fuentes públicas (batería y cargador, módulo fuera de
++ TTA) en el formato de FixMate: 6 funciones, 18 fallas funcionales y 34 modos
+de falla tomados de fuentes públicas. 15 son de **nivel experto** (motor CAT y
+Cummins, alternador Stamford, paralelo y TTA): aire en el solenoide del
+inyector, respiradero de cárter, sensado del AVR MX321/MX341, magnetismo
+remanente, aislamiento por humedad, tercer armónico por el neutro entre
+alternadores de paso distinto, deslizamiento de polos, arbitraje de barra
+muerta, modo de emergencia del enlace EMCP 4, gobernador en isócrono sobre
+barra viva, derrateo por altura, doble puesta a tierra con TTA de 3 polos,
+retransferencia de motores fuera de fase, monitor en fase mal cableado y
+paralelo prolongado en transición cerrada. Las 19 de nivel básico son (batería y cargador, módulo fuera de
 AUTO, combustible, refrigerante, wet stacking, diodos rotativos, polaridad
 del TC de compensación, gobernador inestable, 52G que no cierra, cierre
 fuera de fase, potencia inversa al cerrar, reparto inestable, 32/40

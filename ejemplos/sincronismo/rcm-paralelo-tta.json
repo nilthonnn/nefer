@@ -9,14 +9,14 @@
     "instalacion": "(planta)",
     "contexto": "380 V 60 Hz, respaldo y paralelo de tres grupos; datos de EJEMPLO"
   },
-  "contexto": "Analisis de EJEMPLO armado con fuentes publicas. La frecuencia de cada modo es una propuesta: reemplazarla con el historial propio.",
+  "contexto": "Analisis de EJEMPLO armado con fuentes publicas, ampliado con fallas de nivel experto (motor CAT/Cummins, alternador Stamford, paralelo y TTA). La frecuencia de cada modo es una propuesta: reemplazarla con el historial propio.",
   "facilitador": "(facilitador)",
   "participantes": [
     "(tecnico de sincronismo)",
     "(operador)"
   ],
   "fecha": "2026-11-11",
-  "revision": "0",
+  "revision": "1",
   "aprobado_por": "(jefe de mantenimiento)",
   "proxima_revision": "2027-11-11",
   "metodo_criticidad": "RPN clasico (EJEMPLO)",
@@ -304,6 +304,74 @@
                 "deteccion": 2
               },
               "codigo_catalogo": "COM.CONTAMINACION.AGUA"
+            },
+            {
+              "descripcion": "Aire en el circuito de combustible o en el solenoide del inyector tras un periodo parado",
+              "ubicacion": {
+                "sistema": "Motor",
+                "subsistema": "combustible",
+                "componente": "inyectores / bomba de cebado"
+              },
+              "causa": "Cambio de filtros sin purgar, tanque vacio o fuga en la succion",
+              "mecanismo": "Ingreso de aire",
+              "evidente": false,
+              "efecto": {
+                "local": "Un inyector no dispara y el motor no arranca o arranca falseando",
+                "observa_operador": "Arranque largo o fallido",
+                "parametro": "Tiempo de arranque",
+                "alarma": "Falla de arranque"
+              },
+              "consecuencias": [
+                {
+                  "clase": "produccion",
+                  "descripcion": "El grupo no arranca en la demanda"
+                }
+              ],
+              "criticidad": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 4
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.fmlink.com/?p=41170",
+                  "nota": "Fuentes publicas: una burbuja de aire en el solenoide de un inyector impide que dispare."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "probable": true
+              },
+              "tarea_propuesta": "Prueba de arranque semanal; cebado y purga despues de cambiar filtros o de quedarse sin combustible.",
+              "controles_actuales": {
+                "prevencion": "Bomba de cebado",
+                "deteccion": "Ninguna hasta la demanda"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Prueba de arranque con registro del tiempo de arranque",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de grupos",
+                  "plazo_dias": 7,
+                  "verificacion": "Tiempo de arranque dentro de lo normal en 4 pruebas",
+                  "intervalo": "semanal"
+                },
+                {
+                  "accion": "Procedimiento de purga despues de cada cambio de filtros o intervencion en el circuito",
+                  "tipo": "prevencion",
+                  "responsable": "Supervisor de mantenimiento",
+                  "plazo_dias": 15,
+                  "verificacion": "Paso firmado en la OT"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 1,
+                "deteccion": 2
+              },
+              "codigo_planta": "COM.AIRE.INYECTOR",
+              "nivel": "experto"
             }
           ]
         },
@@ -438,6 +506,68 @@
                 "deteccion": 2
               },
               "codigo_planta": "ESC.CARBONIZACION.BAJA_CARGA"
+            },
+            {
+              "descripcion": "Respiradero del carter obstruido: presion de carter alta",
+              "ubicacion": {
+                "sistema": "Motor",
+                "subsistema": "carter",
+                "componente": "respiradero / filtro CCV"
+              },
+              "causa": "Respiradero o filtro de ventilacion de carter colmatado",
+              "mecanismo": "Obstruccion",
+              "evidente": true,
+              "efecto": {
+                "local": "Sube la presion de carter",
+                "observa_operador": "Aceite en el exterior del motor, humo por el respiradero",
+                "parametro": "Presion de carter",
+                "alarma": "Alta presion de carter (si el ECM la mide)"
+              },
+              "consecuencias": [
+                {
+                  "clase": "economica",
+                  "descripcion": "Fugas por sellos y reten, consumo de aceite"
+                }
+              ],
+              "criticidad": {
+                "severidad": 3,
+                "frecuencia": 2,
+                "deteccion": 3
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.transcentral.carrier.com/CPGTechPubs/ops_service/t360_genset_ug15/t360_genset_ug_t4/Troubleshooting/Troubleshooting.htm",
+                  "nota": "Manual de grupo: la causa habitual de presion de carter excesiva es el respiradero tapado."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "detectable": true,
+                "viable": true
+              },
+              "tarea_propuesta": "Inspeccion del respiradero y medicion de presion de carter en el servicio.",
+              "controles_actuales": {
+                "prevencion": "Cambio de filtro CCV por horas",
+                "deteccion": "Inspeccion visual"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Medir presion de carter y revisar respiradero en cada servicio",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de grupos",
+                  "plazo_dias": 30,
+                  "verificacion": "Registro de presion de carter",
+                  "intervalo": "en cada servicio"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 3,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_planta": "MOT.PRESION_CARTER.RESPIRADERO",
+              "nivel": "experto"
             }
           ]
         }
@@ -585,6 +715,297 @@
                 "deteccion": 2
               },
               "codigo_planta": "ALT.REACTIVA_CIRCULANTE.TC"
+            }
+          ]
+        },
+        {
+          "descripcion": "No levanta tension o la pierde de control",
+          "modos": [
+            {
+              "descripcion": "Sensado del AVR (MX321/MX341) abierto o con conexiones flojas: sobretension",
+              "ubicacion": {
+                "sistema": "Alternador",
+                "subsistema": "AVR",
+                "componente": "AVR y bornes de sensado"
+              },
+              "causa": "Vibracion que afloja los bornes de sensado o fusible de sensado abierto",
+              "mecanismo": "Aflojamiento",
+              "evidente": true,
+              "efecto": {
+                "local": "El AVR pierde la referencia y sube la excitacion",
+                "observa_operador": "Luces intensas, disparo por sobretension",
+                "parametro": "Tension de salida",
+                "alarma": "Sobretension (59)"
+              },
+              "consecuencias": [
+                {
+                  "clase": "operacional",
+                  "descripcion": "La tension sube muy por encima de la nominal y daña cargas"
+                }
+              ],
+              "criticidad": {
+                "severidad": 4,
+                "frecuencia": 3,
+                "deteccion": 3
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://cr4.globalspec.com/thread/44630/Problem-with-Stamford-generator-too-high-voltage",
+                  "nota": "Caso publicado de MX321 con salto de 440 a ~620 V; guias de excitacion: la mayoria de fallas de AVR son conexiones flojas."
+                },
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://generatorsource.com/generator-service/the-technicians-guide-to-excitation-troubleshooting/",
+                  "nota": "Caso publicado de MX321 con salto de 440 a ~620 V; guias de excitacion: la mayoria de fallas de AVR son conexiones flojas."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "detectable": true,
+                "viable": true
+              },
+              "tarea_propuesta": "Reapriete y revision de conexiones del AVR y del sensado; prueba de la proteccion 59.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Proteccion 59 del modulo"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Reapriete de bornes del AVR y del sensado; revisar fusibles de sensado",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 30,
+                  "verificacion": "OT con par aplicado y foto",
+                  "intervalo": "semestral"
+                },
+                {
+                  "accion": "Probar que la 59 del modulo dispara por inyeccion",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de protecciones",
+                  "plazo_dias": 60,
+                  "verificacion": "Protocolo de inyeccion",
+                  "intervalo": "anual"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_planta": "ALT.SOBRETENSION.SENSADO_AVR",
+              "nivel": "experto"
+            },
+            {
+              "descripcion": "Perdida del magnetismo remanente: el alternador no levanta tension",
+              "ubicacion": {
+                "sistema": "Alternador",
+                "subsistema": "excitacion",
+                "componente": "excitatriz (AVR autoexcitado)"
+              },
+              "causa": "Humedad, largos periodos parados o desconexion del campo",
+              "mecanismo": "Desmagnetizacion",
+              "evidente": true,
+              "efecto": {
+                "local": "Tension residual muy baja, el AVR no arranca a excitar",
+                "observa_operador": "Motor en marcha y 0 V",
+                "parametro": "Tension residual",
+                "alarma": "Subtension / falla de excitacion"
+              },
+              "consecuencias": [
+                {
+                  "clase": "produccion",
+                  "descripcion": "El grupo arranca pero no da tension"
+                }
+              ],
+              "criticidad": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://generatorsource.com/generator-service/the-technicians-guide-to-excitation-troubleshooting/",
+                  "nota": "Guia de excitacion: la humedad acelera la perdida de magnetismo remanente. Las versiones con PMG no dependen de el."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "detectable": true,
+                "viable": true
+              },
+              "tarea_propuesta": "Calentador anticondensacion; procedimiento de excitacion inicial (flasheo) con bateria; evaluar PMG.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Alarma de subtension"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Medir tension residual en las pruebas de arranque (sin excitacion)",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de grupos",
+                  "plazo_dias": 30,
+                  "verificacion": "Registro de tension residual",
+                  "intervalo": "mensual"
+                },
+                {
+                  "accion": "Verificar que el calentador anticondensacion funcione con el grupo parado",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 30,
+                  "verificacion": "Corriente del calentador registrada",
+                  "intervalo": "mensual"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 1,
+                "deteccion": 2
+              },
+              "codigo_planta": "ALT.NO_LEVANTA.REMANENTE",
+              "nivel": "experto"
+            },
+            {
+              "descripcion": "Aislamiento del devanado degradado por humedad o contaminacion",
+              "ubicacion": {
+                "sistema": "Alternador",
+                "subsistema": "devanados",
+                "componente": "estator / rotor"
+              },
+              "causa": "Humedad, polvo conductor, sobretemperatura",
+              "mecanismo": "Degradacion del aislamiento",
+              "evidente": true,
+              "efecto": {
+                "local": "Baja la resistencia de aislamiento hasta la falla a tierra",
+                "observa_operador": "Disparo por falla a tierra",
+                "parametro": "Resistencia de aislamiento",
+                "alarma": "Falla a tierra"
+              },
+              "consecuencias": [
+                {
+                  "clase": "produccion",
+                  "descripcion": "Falla a tierra del estator y salida de la unidad"
+                }
+              ],
+              "criticidad": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 3
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.wincogen.com/wp-content/uploads/PD/Manuals/PSS/stamford_uc_opm_2006.pdf",
+                  "nota": "Manual Stamford: medir aislamiento y secar el alternador antes de ponerlo en servicio si estuvo expuesto a humedad."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "detectable": true,
+                "viable": true
+              },
+              "tarea_propuesta": "Prueba de resistencia de aislamiento e indice de polarizacion; secado si no cumple el criterio del fabricante.",
+              "controles_actuales": {
+                "prevencion": "Calentador anticondensacion",
+                "deteccion": "Ninguna hasta la falla"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Prueba de resistencia de aislamiento e indice de polarizacion",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 60,
+                  "verificacion": "Valores contra el criterio del manual del alternador",
+                  "intervalo": "anual y tras periodos parados"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "codigo_planta": "ALT.FALLA_AISLAMIENTO.HUMEDAD",
+              "nivel": "experto"
+            }
+          ]
+        },
+        {
+          "descripcion": "Hace circular corriente por el neutro entre unidades",
+          "modos": [
+            {
+              "descripcion": "Corriente circulante de tercer armonico por el neutro entre alternadores de paso distinto",
+              "ubicacion": {
+                "sistema": "Alternador",
+                "subsistema": "devanados",
+                "componente": "neutro comun"
+              },
+              "causa": "Alternadores de distinto paso de bobinado con neutros unidos",
+              "mecanismo": "Armonicos",
+              "evidente": true,
+              "efecto": {
+                "local": "Circula corriente de 3er armonico por los neutros unidos",
+                "observa_operador": "Disparo de falla a tierra sin falla visible",
+                "parametro": "Corriente de neutro (3er armonico)",
+                "alarma": "Falla a tierra"
+              },
+              "consecuencias": [
+                {
+                  "clase": "operacional",
+                  "descripcion": "Calentamiento del neutro y disparos falsos de la proteccion de tierra"
+                }
+              ],
+              "criticidad": {
+                "severidad": 3,
+                "frecuencia": 2,
+                "deteccion": 4
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://r5.ieee.org/houston/wp-content/uploads/sites/32/2018/04/Advanced-Synchronous-Generator-Topics-IEEE-Houston-CED-9-10January2018.pdf",
+                  "nota": "IEEE Houston: con paso distinto de 2/3, la diferencia de tercer armonico entre maquinas hace circular corriente por el neutro y puede disparar protecciones."
+                },
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.eng-tips.com/threads/paralleling-generator-troubleshooting.511969/",
+                  "nota": "IEEE Houston: con paso distinto de 2/3, la diferencia de tercer armonico entre maquinas hace circular corriente por el neutro y puede disparar protecciones."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "detectable": true,
+                "viable": true
+              },
+              "tarea_propuesta": "Medir corriente de neutro y su tercer armonico con analizador al poner en paralelo unidades de distinto paso.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Proteccion de tierra (si dispara)"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Medir corriente de neutro y 3er armonico con analizador en cada configuracion de unidades",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 30,
+                  "verificacion": "Informe del analizador",
+                  "intervalo": "al cambiar unidades y anual"
+                },
+                {
+                  "accion": "Si la corriente es significativa: un solo punto de puesta a tierra del neutro, reactor de neutro o unidades del mismo paso",
+                  "tipo": "rediseno",
+                  "responsable": "Ingenieria de mantenimiento",
+                  "plazo_dias": 120,
+                  "verificacion": "Nueva medicion dentro del criterio"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 3,
+                "frecuencia": 1,
+                "deteccion": 2
+              },
+              "codigo_planta": "ALT.CIRCULANTE.TERCER_ARMONICO",
+              "nivel": "experto"
             }
           ]
         }
@@ -880,6 +1301,162 @@
               "codigo_planta": "SIN.POTENCIA_INVERSA.AJUSTE"
             }
           ]
+        },
+        {
+          "descripcion": "Pierde el sincronismo con la barra en marcha",
+          "modos": [
+            {
+              "descripcion": "Perdida de sincronismo en marcha (deslizamiento de polos) sin proteccion que la corte",
+              "ubicacion": {
+                "sistema": "Sincronismo",
+                "subsistema": "protecciones",
+                "componente": "40 / 78"
+              },
+              "causa": "Perdida de excitacion o falla grande cerca de la unidad",
+              "mecanismo": "Inestabilidad transitoria",
+              "evidente": false,
+              "efecto": {
+                "local": "La unidad pierde el paso con la barra",
+                "observa_operador": "Oscilacion violenta de corriente y potencia",
+                "parametro": "",
+                "alarma": ""
+              },
+              "consecuencias": [
+                {
+                  "clase": "seguridad",
+                  "descripcion": "Pares pulsantes que dañan el eje y el acoplamiento"
+                }
+              ],
+              "criticidad": {
+                "severidad": 5,
+                "frecuencia": 1,
+                "deteccion": 5
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.pes-psrc.org/kb/report/024.pdf",
+                  "nota": "IEEE PES PSRC y patentes de proteccion: sin corriente de campo el generador se vuelve inestable y desliza polos."
+                },
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://patents.google.com/patent/US4953052",
+                  "nota": "IEEE PES PSRC y patentes de proteccion: sin corriente de campo el generador se vuelve inestable y desliza polos."
+                },
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://r5.ieee.org/houston/wp-content/uploads/sites/32/2018/04/Advanced-Synchronous-Generator-Topics-IEEE-Houston-CED-9-10January2018.pdf",
+                  "nota": "IEEE PES PSRC y patentes de proteccion: sin corriente de campo el generador se vuelve inestable y desliza polos."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "probable": true
+              },
+              "tarea_propuesta": "Verificar la proteccion de perdida de excitacion (40) por inyeccion; evaluar la funcion de deslizamiento de polos (78) en unidades grandes.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Ninguna especifica"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Prueba por inyeccion de la 40 y revision de su curva",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de protecciones",
+                  "plazo_dias": 60,
+                  "verificacion": "Protocolo de inyeccion",
+                  "intervalo": "anual"
+                },
+                {
+                  "accion": "Agregar proteccion de deslizamiento de polos (78) en las unidades donde el estudio lo justifique",
+                  "tipo": "rediseno",
+                  "responsable": "Ingenieria de mantenimiento",
+                  "plazo_dias": 180,
+                  "verificacion": "Estudio de proteccion y prueba de la funcion"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 5,
+                "frecuencia": 1,
+                "deteccion": 1
+              },
+              "codigo_planta": "SIN.DESLIZAMIENTO_POLOS.PROTECCION",
+              "nivel": "experto"
+            }
+          ]
+        },
+        {
+          "descripcion": "Dos unidades cierran a la vez sobre la barra muerta",
+          "modos": [
+            {
+              "descripcion": "Falla del arbitraje de barra muerta: dos unidades cierran a la vez sin sincronizar",
+              "ubicacion": {
+                "sistema": "Sincronismo",
+                "subsistema": "control",
+                "componente": "logica de barra muerta / enlace"
+              },
+              "causa": "Enlace de comunicacion caido, configuracion de primera unidad incoherente",
+              "mecanismo": "Falla de logica",
+              "evidente": false,
+              "efecto": {
+                "local": "Dos interruptores cierran sobre la barra sin tension en el mismo instante",
+                "observa_operador": "Golpe fuerte y disparo",
+                "parametro": "",
+                "alarma": ""
+              },
+              "consecuencias": [
+                {
+                  "clase": "seguridad",
+                  "descripcion": "Cierre fuera de fase entre dos unidades, daño mecanico y arco"
+                }
+              ],
+              "criticidad": {
+                "severidad": 5,
+                "frecuencia": 1,
+                "deteccion": 5
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://mart.cummins.com/imagelibrary/data/assetfiles/0056622.pdf",
+                  "nota": "Documentacion de sincronizacion de Cummins PowerCommand: el cierre en barra muerta requiere arbitraje entre unidades; sin el, el primer cierre no esta coordinado."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "probable": true
+              },
+              "tarea_propuesta": "Prueba de arranque simultaneo de todas las unidades: debe cerrar una sola en barra muerta.",
+              "controles_actuales": {
+                "prevencion": "Logica de barra muerta del controlador",
+                "deteccion": "Ninguna hasta el evento"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Prueba de arranque simultaneo con barra muerta",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 30,
+                  "verificacion": "Video o registro: cierra una sola unidad",
+                  "intervalo": "anual y tras cambios de configuracion"
+                },
+                {
+                  "accion": "Enclavamiento cableado independiente del enlace (relé de barra muerta con permiso unico)",
+                  "tipo": "rediseno",
+                  "responsable": "Ingenieria de mantenimiento",
+                  "plazo_dias": 150,
+                  "verificacion": "Prueba con el enlace desconectado"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 5,
+                "frecuencia": 1,
+                "deteccion": 1
+              },
+              "codigo_planta": "SIN.BARRA_MUERTA.ARBITRAJE",
+              "nivel": "experto"
+            }
+          ]
         }
       ]
     },
@@ -959,6 +1536,207 @@
                 "deteccion": 2
               },
               "codigo_planta": "SIN.REPARTO_INESTABLE.ESTATISMO"
+            },
+            {
+              "descripcion": "Perdida del enlace de reparto: las unidades pasan a modo de emergencia en estatismo (EMCP 4 failsafe)",
+              "ubicacion": {
+                "sistema": "Reparto",
+                "subsistema": "comunicaciones",
+                "componente": "enlace MGDL / MSC"
+              },
+              "causa": "Cable, conector o terminacion del enlace",
+              "mecanismo": "Falla de comunicacion",
+              "evidente": true,
+              "efecto": {
+                "local": "Las unidades reparten por estatismo en vez de por enlace",
+                "observa_operador": "Frecuencia que cae con la carga, alarma de enlace",
+                "parametro": "Modo de reparto",
+                "alarma": "Falla de enlace"
+              },
+              "consecuencias": [
+                {
+                  "clase": "operacional",
+                  "descripcion": "Reparto menos preciso y frecuencia variable con la carga"
+                }
+              ],
+              "criticidad": {
+                "severidad": 3,
+                "frecuencia": 2,
+                "deteccion": 2
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.cat.com/en_US/by-industry/electric-power/Articles/White-papers/failsafe-operation-for-paralleled-generator-sets.html",
+                  "nota": "Caterpillar: ante la perdida del enlace, EMCP 4.4 pasa a un esquema de estatismo de emergencia; el reparto por enlace es el modo estable."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "detectable": true,
+                "viable": true
+              },
+              "tarea_propuesta": "Revisar alarmas del enlace y el modo de reparto activo en cada ronda; revisar terminacion y malla.",
+              "controles_actuales": {
+                "prevencion": "Modo de emergencia en estatismo",
+                "deteccion": "Alarma del controlador"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Revisar alarmas del enlace y el modo de reparto activo",
+                  "tipo": "deteccion",
+                  "responsable": "Operador",
+                  "plazo_dias": 7,
+                  "verificacion": "Registro en la ronda",
+                  "intervalo": "semanal"
+                },
+                {
+                  "accion": "Medir terminacion (aprox. 60 ohm) y revisar malla del enlace",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 30,
+                  "verificacion": "Medicion registrada",
+                  "intervalo": "anual"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 3,
+                "frecuencia": 1,
+                "deteccion": 2
+              },
+              "codigo_planta": "SIN.FAILSAFE.ENLACE",
+              "nivel": "experto"
+            },
+            {
+              "descripcion": "Gobernador en isocrono conectado a una barra viva sin enlace de reparto",
+              "ubicacion": {
+                "sistema": "Reparto",
+                "subsistema": "gobernador",
+                "componente": "selector isocrono/estatismo"
+              },
+              "causa": "Selector o parametro de modo cambiado en mantenimiento",
+              "mecanismo": "Error de ajuste",
+              "evidente": true,
+              "efecto": {
+                "local": "Las unidades se disputan la frecuencia",
+                "observa_operador": "Reparto que se va a un extremo",
+                "parametro": "kW por unidad",
+                "alarma": "Sobrecarga / potencia inversa"
+              },
+              "consecuencias": [
+                {
+                  "clase": "operacional",
+                  "descripcion": "Una unidad toma toda la variacion de carga y se sobrecarga o se motoriza"
+                }
+              ],
+              "criticidad": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 3
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.eng-tips.com/threads/paralleling-generator-troubleshooting.511969/",
+                  "nota": "Foros de ingenieria: al poner en paralelo con una barra viva sin reparto isocrono, el gobernador debe estar en estatismo."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "detectable": true,
+                "viable": true
+              },
+              "tarea_propuesta": "Verificar el modo del gobernador de cada unidad contra la arquitectura (isocrono compartido o estatismo).",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Lectura de kW"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Revisar el modo de gobernador en cada cambio de configuracion (nefer sincronismo estatismo)",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 15,
+                  "verificacion": "Prediccion de reparto sin hallazgos «detiene»",
+                  "intervalo": "tras cada cambio"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 1,
+                "deteccion": 2
+              },
+              "codigo_planta": "SIN.MODO_GOBERNADOR.ISOCRONO",
+              "nivel": "experto"
+            },
+            {
+              "descripcion": "Derrateo por altura o temperatura no declarado en el controlador",
+              "ubicacion": {
+                "sistema": "Reparto",
+                "subsistema": "configuracion",
+                "componente": "kW nominal del modulo"
+              },
+              "causa": "Potencia de placa al nivel del mar cargada en el controlador",
+              "mecanismo": "Error de configuracion",
+              "evidente": true,
+              "efecto": {
+                "local": "El reparto asigna a la unidad mas carga de la que el motor puede dar en sitio",
+                "observa_operador": "Humo, caida de frecuencia al tomar carga",
+                "parametro": "kW maximo sostenido",
+                "alarma": "Subfrecuencia"
+              },
+              "consecuencias": [
+                {
+                  "clase": "produccion",
+                  "descripcion": "La unidad no sostiene su parte y cae la frecuencia o se sobrecarga"
+                }
+              ],
+              "criticidad": {
+                "severidad": 3,
+                "frecuencia": 3,
+                "deteccion": 3
+              },
+              "evidencia": [
+                {
+                  "fuente": "manual",
+                  "referencia": "Ficha tecnica del grupo: curva de derrateo por altura y temperatura",
+                  "nota": "Dato del fabricante del motor; se toma de la ficha tecnica de cada modelo."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "detectable": true,
+                "viable": true
+              },
+              "tarea_propuesta": "Declarar en el controlador la potencia disponible segun la curva de derrateo del fabricante para la altura y temperatura del sitio.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Ninguna"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Calcular la potencia disponible en sitio con la curva del fabricante y cargarla en el controlador",
+                  "tipo": "prevencion",
+                  "responsable": "Ingenieria de mantenimiento",
+                  "plazo_dias": 30,
+                  "verificacion": "Hoja de calculo archivada y parametro cargado"
+                },
+                {
+                  "accion": "Prueba con banco de carga a la potencia derrateada",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de grupos",
+                  "plazo_dias": 60,
+                  "verificacion": "Frecuencia y temperatura estables a plena carga en sitio",
+                  "intervalo": "anual"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 3,
+                "frecuencia": 1,
+                "deteccion": 2
+              },
+              "codigo_planta": "MOT.DERRATEO.ALTURA",
+              "nivel": "experto"
             }
           ]
         }
@@ -1342,6 +2120,79 @@
                 "deteccion": 1
               },
               "codigo_planta": "TTA.PARALELO_FUENTES.ENCLAVAMIENTO"
+            },
+            {
+              "descripcion": "Transicion cerrada: la fuente que sale no abre a tiempo (paralelo prolongado con la red)",
+              "ubicacion": {
+                "sistema": "TTA",
+                "subsistema": "control",
+                "componente": "TTA de transicion cerrada"
+              },
+              "causa": "Mecanismo lento o falla de la orden de apertura",
+              "mecanismo": "Falla mecanica o de mando",
+              "evidente": false,
+              "efecto": {
+                "local": "Red y grupo quedan en paralelo mas alla del tiempo de transicion",
+                "observa_operador": "Disparo de protecciones de red",
+                "parametro": "",
+                "alarma": "Falla de transicion"
+              },
+              "consecuencias": [
+                {
+                  "clase": "seguridad",
+                  "descripcion": "Paralelo no autorizado con la red y riesgo para el personal de la red"
+                }
+              ],
+              "criticidad": {
+                "severidad": 5,
+                "frecuencia": 1,
+                "deteccion": 5
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://manualshive.com/en/manual/eaton/atc-800/3762048?page=19",
+                  "nota": "Manual Eaton ATC-800: en transicion cerrada, si la fuente normal no abre dentro del limite, se abre la otra y se alarma."
+                },
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.se.com/us/en/faqs/FAQ000196074/",
+                  "nota": "Manual Eaton ATC-800: en transicion cerrada, si la fuente normal no abre dentro del limite, se abre la otra y se alarma."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "probable": true
+              },
+              "tarea_propuesta": "Solo si la TTA es de transicion cerrada: probar la proteccion de paralelo extendido que abre una fuente si la otra no abrio en el tiempo limite.",
+              "controles_actuales": {
+                "prevencion": "Temporizador de paralelo extendido del controlador",
+                "deteccion": "Ninguna hasta la transferencia"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Prueba de la proteccion de paralelo extendido (simular que la fuente no abre)",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico de protecciones",
+                  "plazo_dias": 60,
+                  "verificacion": "Protocolo con tiempo medido",
+                  "intervalo": "anual"
+                },
+                {
+                  "accion": "Rele de proteccion de paralelo extendido independiente del controlador de la TTA",
+                  "tipo": "rediseno",
+                  "responsable": "Ingenieria de mantenimiento",
+                  "plazo_dias": 150,
+                  "verificacion": "Prueba de disparo independiente"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 5,
+                "frecuencia": 1,
+                "deteccion": 1
+              },
+              "codigo_planta": "TTA.TRANSICION_CERRADA.PARALELO_EXTENDIDO",
+              "nivel": "experto"
             }
           ]
         },
@@ -1422,6 +2273,225 @@
                 "deteccion": 1
               },
               "codigo_planta": "TTA.PUNTO_CALIENTE.BORNES"
+            }
+          ]
+        },
+        {
+          "descripcion": "Dispara la proteccion de tierra o circula corriente por la tierra",
+          "modos": [
+            {
+              "descripcion": "TTA de 3 polos con el neutro del grupo aterrado: doble puesta a tierra",
+              "ubicacion": {
+                "sistema": "TTA",
+                "subsistema": "puesta a tierra",
+                "componente": "neutro / puente neutro-tierra"
+              },
+              "causa": "Puente neutro-tierra en el grupo con neutro continuo por TTA de 3 polos",
+              "mecanismo": "Error de diseño o instalacion",
+              "evidente": true,
+              "efecto": {
+                "local": "La corriente de neutro vuelve por la tierra",
+                "observa_operador": "Disparo de falla a tierra sin falla",
+                "parametro": "Corriente en el conductor de tierra",
+                "alarma": "Falla a tierra"
+              },
+              "consecuencias": [
+                {
+                  "clase": "operacional",
+                  "descripcion": "Disparos intempestivos de la proteccion de falla a tierra y corriente por la tierra"
+                }
+              ],
+              "criticidad": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 4
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.csemag.com/choosing-between-3-pole-and-4-pole-transfer-switches/",
+                  "nota": "CSE y Kohler: un TTA de 3 polos con el neutro aterrado tambien en el grupo crea multiples uniones neutro-tierra y disparos intempestivos."
+                },
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://resources.kohler.com/power/kohler/industrial/pdf/3_Pole_ATS_White_Paper.pdf",
+                  "nota": "CSE y Kohler: un TTA de 3 polos con el neutro aterrado tambien en el grupo crea multiples uniones neutro-tierra y disparos intempestivos."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "detectable": true,
+                "viable": true
+              },
+              "tarea_propuesta": "Revisar el esquema de tierra: con TTA de 3 polos, un solo puente neutro-tierra (en la red); con neutro aterrado en el grupo, TTA de 4 polos.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Proteccion de falla a tierra (si existe)"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Medir corriente en el conductor de tierra con carga normal",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 30,
+                  "verificacion": "Corriente de tierra cercana a cero",
+                  "intervalo": "anual"
+                },
+                {
+                  "accion": "Corregir el esquema: retirar el puente del grupo o cambiar a TTA de 4 polos segun el estudio",
+                  "tipo": "rediseno",
+                  "responsable": "Ingenieria de mantenimiento",
+                  "plazo_dias": 120,
+                  "verificacion": "Plano de tierra actualizado y nueva medicion"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 1,
+                "deteccion": 2
+              },
+              "codigo_planta": "TTA.TIERRA.DOBLE_NEUTRO",
+              "nivel": "experto"
+            }
+          ]
+        },
+        {
+          "descripcion": "Transfiere con golpe a las cargas de motores",
+          "modos": [
+            {
+              "descripcion": "Retransferencia de cargas de motores fuera de fase (sin monitor en fase o tiempo muerto corto)",
+              "ubicacion": {
+                "sistema": "TTA",
+                "subsistema": "control",
+                "componente": "monitor en fase / temporizador"
+              },
+              "causa": "Transferencia abierta rapida con motores grandes",
+              "mecanismo": "Transitorio electromecanico",
+              "evidente": true,
+              "efecto": {
+                "local": "La tension residual del motor y la de la nueva fuente se suman fuera de fase",
+                "observa_operador": "Golpe en motores, disparo al transferir",
+                "parametro": "",
+                "alarma": "Disparo por sobrecorriente"
+              },
+              "consecuencias": [
+                {
+                  "clase": "operacional",
+                  "descripcion": "Pares transitorios en motores y acoplamientos, disparos de protecciones"
+                }
+              ],
+              "criticidad": {
+                "severidad": 4,
+                "frecuencia": 2,
+                "deteccion": 3
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.manufacturing.net/operations/news/13250495/how-to-safely-switch-power-loads-during-outages-or-testing",
+                  "nota": "Fuentes de fabricantes: un motor cargado puede salir de fase durante la transferencia; para eso existe el monitor en fase."
+                },
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.se.com/us/en/faqs/FAQ000196074/",
+                  "nota": "Fuentes de fabricantes: un motor cargado puede salir de fase durante la transferencia; para eso existe el monitor en fase."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "detectable": true,
+                "viable": true
+              },
+              "tarea_propuesta": "Usar monitor en fase o transicion retardada con tiempo muerto mayor que el decaimiento de la tension residual de los motores.",
+              "controles_actuales": {
+                "prevencion": "Tiempo muerto configurado",
+                "deteccion": "Ninguna"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Registrar corriente de motores durante la transferencia en el ejercicio",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 30,
+                  "verificacion": "Registro sin picos fuera de criterio",
+                  "intervalo": "semestral"
+                },
+                {
+                  "accion": "Habilitar monitor en fase o ajustar transicion retardada segun la carga de motores",
+                  "tipo": "prevencion",
+                  "responsable": "Tecnico de sincronismo",
+                  "plazo_dias": 60,
+                  "verificacion": "Parametro cargado y prueba con carga"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 1,
+                "deteccion": 2
+              },
+              "codigo_planta": "TTA.TRANSFERENCIA.FUERA_FASE_MOTORES",
+              "nivel": "experto"
+            },
+            {
+              "descripcion": "Monitor en fase cableado mal despues de un mantenimiento",
+              "ubicacion": {
+                "sistema": "TTA",
+                "subsistema": "medicion",
+                "componente": "conexiones del monitor en fase"
+              },
+              "causa": "Reconexion incorrecta en mantenimiento",
+              "mecanismo": "Error de conexion",
+              "evidente": false,
+              "efecto": {
+                "local": "El monitor autoriza a un angulo real grande",
+                "observa_operador": "Disparo de la red en cada transferencia",
+                "parametro": "",
+                "alarma": ""
+              },
+              "consecuencias": [
+                {
+                  "clase": "operacional",
+                  "descripcion": "Transfiere fuera de fase y dispara el interruptor de la red"
+                }
+              ],
+              "criticidad": {
+                "severidad": 4,
+                "frecuencia": 1,
+                "deteccion": 5
+              },
+              "evidencia": [
+                {
+                  "fuente": "inferencia",
+                  "referencia": "https://www.eng-tips.com/threads/transfer-switch-in-phase-monitor.163006",
+                  "nota": "Caso publicado: monitor en fase reconectado mal que transferia a unos 120° y disparaba la red."
+                }
+              ],
+              "estado": "propuesto",
+              "decision": {
+                "probable": true
+              },
+              "tarea_propuesta": "Despues de toda intervencion en la TTA: verificar fases del monitor con secuencimetro y prueba de transferencia.",
+              "controles_actuales": {
+                "prevencion": "—",
+                "deteccion": "Ninguna hasta la transferencia"
+              },
+              "plan_accion": [
+                {
+                  "accion": "Verificacion de fases del monitor y prueba de transferencia despues de cada intervencion",
+                  "tipo": "deteccion",
+                  "responsable": "Tecnico electricista",
+                  "plazo_dias": 15,
+                  "verificacion": "Protocolo firmado",
+                  "intervalo": "tras cada intervencion"
+                }
+              ],
+              "criticidad_objetivo": {
+                "severidad": 4,
+                "frecuencia": 1,
+                "deteccion": 2
+              },
+              "codigo_planta": "TTA.MONITOR_FASE.CABLEADO",
+              "nivel": "experto"
             }
           ]
         }

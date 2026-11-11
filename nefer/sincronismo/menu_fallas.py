@@ -95,6 +95,7 @@ def datos(ruta: str | Path) -> dict:
                          if af and af.npr_r is not None else None),
             "observaciones": [o.__dict__ for o in af.observaciones] if af else [],
             "codigo": (af.codigo_catalogo if af else ""),
+            "experto": extra.get("nivel") == "experto",
         })
 
     return {
@@ -189,8 +190,9 @@ let actual = null;
 function menu() {
   const q = $('#buscar').value.toLowerCase();
   const orden = $('#orden').value;
+  const nivel = $('#nivel').value;
   let ms = D.modos.filter(m => (m.modo + ' ' + m.sistema + ' ' + m.falla + ' ' + m.componente)
-      .toLowerCase().includes(q));
+      .toLowerCase().includes(q) && (nivel === 'todas' || (nivel === 'experto') === m.experto));
   if (orden === 'npr') ms.sort((a, b) => (b.npr ?? -1) - (a.npr ?? -1));
   const grupos = {};
   ms.forEach(m => { const g = orden === 'npr' ? 'Por NPR, de mayor a menor' : m.sistema;
@@ -199,7 +201,7 @@ function menu() {
     `<h3>${esc(g)}</h3>` + xs.map(m =>
       `<button data-id="${m.id}" aria-current="${m.id === actual}">
         <span class="chip ${m.npr_etiqueta}">${m.npr ?? '—'}</span>
-        <span>${esc(m.modo)}<br><small style="color:var(--suave)">${esc(m.sistema)} · ${m.evidente ? 'evidente' : 'OCULTA'}${m.grave ? ' · seguridad' : ''}</small></span>
+        <span>${esc(m.modo)}<br><small style="color:var(--suave)">${esc(m.sistema)} · ${m.evidente ? 'evidente' : 'OCULTA'}${m.grave ? ' · seguridad' : ''}${m.experto ? ' · <b>experto</b>' : ''}</small></span>
       </button>`).join('')).join('') || '<p>Ninguna falla coincide.</p>';
   document.querySelectorAll('#lista button').forEach(b =>
     b.addEventListener('click', () => mostrar(b.dataset.id, true)));
@@ -225,7 +227,7 @@ function mostrar(id, desplazar) {
       <ol>${m.guia.causas.map(c => `<li>${esc(c)}</li>`).join('')}</ol></div>` : '';
   const fuentes = m.fuentes.map(f => `<li><a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.url.replace(/^https?:\/\//,'').slice(0,60))}</a>${f.nota ? ' — ' + esc(f.nota) : ''}</li>`).join('');
   $('#detalle').innerHTML = `
-    <div class="migas">${esc(m.sistema)} › ${esc(m.componente)} · ${esc(m.id)} · estado: ${esc(m.estado)}</div>
+    <div class="migas">${esc(m.sistema)} › ${esc(m.componente)} · ${esc(m.id)} · ${esc(m.codigo)} · estado: ${esc(m.estado)}${m.experto ? ' · nivel experto' : ''}</div>
     <h2>${esc(m.modo)}</h2>
     <div class="rejilla">
       <div class="caja"><b>1 · Funcion</b>${esc(m.funcion)}<br><small>Estandar: ${esc(m.estandar)}</small></div>
@@ -295,6 +297,7 @@ function pareto() {
 
 $('#buscar').addEventListener('input', menu);
 $('#orden').addEventListener('change', menu);
+$('#nivel').addEventListener('change', menu);
 pareto();
 tablas();
 const primero = [...D.modos].sort((a, b) => (b.npr ?? 0) - (a.npr ?? 0))[0];
@@ -311,7 +314,8 @@ def pagina(ruta: str | Path) -> str:
     reparto: dict[str, int] = {}
     for m in ms:
         reparto[m["estrategia_rotulo"]] = reparto.get(m["estrategia_rotulo"], 0) + 1
-    kpis = [("Modos de falla", len(ms)), ("Ocultos", n_ocultos),
+    kpis = [("Modos de falla", len(ms)), ("Nivel experto", sum(1 for m in ms if m["experto"])),
+            ("Ocultos", n_ocultos),
             ("Con consecuencia de seguridad", n_graves), ("Prioridad alta", n_alta)]
     kpis += sorted(reparto.items(), key=lambda x: -x[1])
     rp = d["resumen_plan"]
@@ -334,6 +338,8 @@ def pagina(ruta: str | Path) -> str:
 <input id="buscar" type="search" placeholder="Buscar falla, sistema o componente">
 <select id="orden" aria-label="Ordenar"><option value="sistema">Agrupar por sistema</option>
 <option value="npr">Ordenar por NPR</option></select>
+<select id="nivel" aria-label="Nivel"><option value="todas">Todas las fallas</option>
+<option value="experto">Solo nivel experto</option><option value="basico">Solo nivel basico</option></select>
 <div id="lista"></div>
 </nav>
 <main class="det" id="detalle"></main>
