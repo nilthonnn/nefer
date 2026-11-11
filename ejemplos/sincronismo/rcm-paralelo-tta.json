@@ -100,7 +100,11 @@
                 "frecuencia": 2,
                 "deteccion": 2
               },
-              "codigo_catalogo": "ELE.NO_ARRANCA.BATERIA"
+              "codigo_catalogo": "ELE.NO_ARRANCA.BATERIA",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Cargador de baterias fallado",
@@ -167,7 +171,11 @@
                 "frecuencia": 3,
                 "deteccion": 2
               },
-              "codigo_planta": "ELE.NO_ARRANCA.CARGADOR"
+              "codigo_planta": "ELE.NO_ARRANCA.CARGADOR",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Modulo dejado en MANUAL o STOP despues de un mantenimiento",
@@ -234,7 +242,11 @@
                 "frecuencia": 2,
                 "deteccion": 2
               },
-              "codigo_planta": "CTL.NO_DISPONIBLE.MODO"
+              "codigo_planta": "CTL.NO_DISPONIBLE.MODO",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Combustible contaminado con agua o aire en el circuito",
@@ -303,7 +315,11 @@
                 "frecuencia": 2,
                 "deteccion": 2
               },
-              "codigo_catalogo": "COM.CONTAMINACION.AGUA"
+              "codigo_catalogo": "COM.CONTAMINACION.AGUA",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Aire en el circuito de combustible o en el solenoide del inyector tras un periodo parado",
@@ -371,7 +387,11 @@
                 "deteccion": 2
               },
               "codigo_planta": "COM.AIRE.INYECTOR",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             }
           ]
         },
@@ -444,7 +464,11 @@
                 "frecuencia": 2,
                 "deteccion": 2
               },
-              "codigo_catalogo": "TER.FUGA.REFRIGERANTE"
+              "codigo_catalogo": "TER.FUGA.REFRIGERANTE",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Wet stacking por operacion prolongada en baja carga",
@@ -505,7 +529,11 @@
                 "frecuencia": 2,
                 "deteccion": 2
               },
-              "codigo_planta": "ESC.CARBONIZACION.BAJA_CARGA"
+              "codigo_planta": "ESC.CARBONIZACION.BAJA_CARGA",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Respiradero del carter obstruido: presion de carter alta",
@@ -567,7 +595,11 @@
                 "deteccion": 2
               },
               "codigo_planta": "MOT.PRESION_CARTER.RESPIRADERO",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             }
           ]
         }
@@ -640,7 +672,11 @@
                 "frecuencia": 2,
                 "deteccion": 4
               },
-              "codigo_planta": "ALT.PERDIDA_EXCITACION.DIODOS"
+              "codigo_planta": "ALT.PERDIDA_EXCITACION.DIODOS",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             }
           ]
         },
@@ -714,7 +750,10 @@
                 "frecuencia": 2,
                 "deteccion": 2
               },
-              "codigo_planta": "ALT.REACTIVA_CIRCULANTE.TC"
+              "codigo_planta": "ALT.REACTIVA_CIRCULANTE.TC",
+              "aplica": [
+                "paralelo"
+              ]
             }
           ]
         },
@@ -794,7 +833,11 @@
                 "deteccion": 2
               },
               "codigo_planta": "ALT.SOBRETENSION.SENSADO_AVR",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Perdida del magnetismo remanente: el alternador no levanta tension",
@@ -864,7 +907,11 @@
                 "deteccion": 2
               },
               "codigo_planta": "ALT.NO_LEVANTA.REMANENTE",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Aislamiento del devanado degradado por humedad o contaminacion",
@@ -926,7 +973,11 @@
                 "deteccion": 2
               },
               "codigo_planta": "ALT.FALLA_AISLAMIENTO.HUMEDAD",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             }
           ]
         },
@@ -1005,7 +1056,10 @@
                 "deteccion": 2
               },
               "codigo_planta": "ALT.CIRCULANTE.TERCER_ARMONICO",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "paralelo"
+              ]
             }
           ]
         }
@@ -1079,7 +1133,10 @@
                 "frecuencia": 2,
                 "deteccion": 1
               },
-              "codigo_planta": "SIN.NO_SINCRONIZA.GOBERNADOR"
+              "codigo_planta": "SIN.NO_SINCRONIZA.GOBERNADOR",
+              "aplica": [
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Interruptor 52G no cierra: resorte sin cargar, bobina YC o tension de mando",
@@ -1143,7 +1200,10 @@
                 "frecuencia": 1,
                 "deteccion": 3
               },
-              "codigo_planta": "SIN.NO_CIERRA.INTERRUPTOR"
+              "codigo_planta": "SIN.NO_CIERRA.INTERRUPTOR",
+              "aplica": [
+                "paralelo"
+              ]
             }
           ]
         },
@@ -1224,7 +1284,10 @@
                 "frecuencia": 1,
                 "deteccion": 1
               },
-              "codigo_planta": "SIN.FUERA_DE_FASE.MEDICION"
+              "codigo_planta": "SIN.FUERA_DE_FASE.MEDICION",
+              "aplica": [
+                "paralelo"
+              ]
             }
           ]
         },
@@ -1298,7 +1361,10 @@
                 "frecuencia": 1,
                 "deteccion": 2
               },
-              "codigo_planta": "SIN.POTENCIA_INVERSA.AJUSTE"
+              "codigo_planta": "SIN.POTENCIA_INVERSA.AJUSTE",
+              "aplica": [
+                "paralelo"
+              ]
             }
           ]
         },
@@ -1381,7 +1447,10 @@
                 "deteccion": 1
               },
               "codigo_planta": "SIN.DESLIZAMIENTO_POLOS.PROTECCION",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "paralelo"
+              ]
             }
           ]
         },
@@ -1454,7 +1523,10 @@
                 "deteccion": 1
               },
               "codigo_planta": "SIN.BARRA_MUERTA.ARBITRAJE",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "paralelo"
+              ]
             }
           ]
         }
@@ -1535,7 +1607,10 @@
                 "frecuencia": 2,
                 "deteccion": 2
               },
-              "codigo_planta": "SIN.REPARTO_INESTABLE.ESTATISMO"
+              "codigo_planta": "SIN.REPARTO_INESTABLE.ESTATISMO",
+              "aplica": [
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Perdida del enlace de reparto: las unidades pasan a modo de emergencia en estatismo (EMCP 4 failsafe)",
@@ -1605,7 +1680,10 @@
                 "deteccion": 2
               },
               "codigo_planta": "SIN.FAILSAFE.ENLACE",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Gobernador en isocrono conectado a una barra viva sin enlace de reparto",
@@ -1667,7 +1745,10 @@
                 "deteccion": 2
               },
               "codigo_planta": "SIN.MODO_GOBERNADOR.ISOCRONO",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "paralelo"
+              ]
             },
             {
               "descripcion": "Derrateo por altura o temperatura no declarado en el controlador",
@@ -1736,7 +1817,11 @@
                 "deteccion": 2
               },
               "codigo_planta": "MOT.DERRATEO.ALTURA",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "solo",
+                "paralelo"
+              ]
             }
           ]
         }
@@ -1816,7 +1901,10 @@
                 "frecuencia": 2,
                 "deteccion": 2
               },
-              "codigo_planta": "SIN.PROTECCION_INACTIVA.AJUSTE"
+              "codigo_planta": "SIN.PROTECCION_INACTIVA.AJUSTE",
+              "aplica": [
+                "paralelo"
+              ]
             }
           ]
         }
@@ -1908,7 +1996,10 @@
                 "frecuencia": 1,
                 "deteccion": 1
               },
-              "codigo_planta": "TTA.NO_TRANSFIERE.CONTACTOS"
+              "codigo_planta": "TTA.NO_TRANSFIERE.CONTACTOS",
+              "aplica": [
+                "tta"
+              ]
             },
             {
               "descripcion": "Falla del circuito de mando: fusible, bobina o borne flojo",
@@ -1981,7 +2072,10 @@
                 "frecuencia": 2,
                 "deteccion": 2
               },
-              "codigo_catalogo": "ELE.FALSO_CONTACTO.ARNES"
+              "codigo_catalogo": "ELE.FALSO_CONTACTO.ARNES",
+              "aplica": [
+                "tta"
+              ]
             },
             {
               "descripcion": "Fusible de medicion de red abierto: el modulo ve falla con la red buena",
@@ -2042,7 +2136,10 @@
                 "frecuencia": 2,
                 "deteccion": 1
               },
-              "codigo_planta": "TTA.FALSA_FALLA.SENSADO"
+              "codigo_planta": "TTA.FALSA_FALLA.SENSADO",
+              "aplica": [
+                "tta"
+              ]
             }
           ]
         },
@@ -2119,7 +2216,10 @@
                 "frecuencia": 1,
                 "deteccion": 1
               },
-              "codigo_planta": "TTA.PARALELO_FUENTES.ENCLAVAMIENTO"
+              "codigo_planta": "TTA.PARALELO_FUENTES.ENCLAVAMIENTO",
+              "aplica": [
+                "tta"
+              ]
             },
             {
               "descripcion": "Transicion cerrada: la fuente que sale no abre a tiempo (paralelo prolongado con la red)",
@@ -2192,7 +2292,10 @@
                 "deteccion": 1
               },
               "codigo_planta": "TTA.TRANSICION_CERRADA.PARALELO_EXTENDIDO",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "tta"
+              ]
             }
           ]
         },
@@ -2272,7 +2375,10 @@
                 "frecuencia": 1,
                 "deteccion": 1
               },
-              "codigo_planta": "TTA.PUNTO_CALIENTE.BORNES"
+              "codigo_planta": "TTA.PUNTO_CALIENTE.BORNES",
+              "aplica": [
+                "tta"
+              ]
             }
           ]
         },
@@ -2351,7 +2457,10 @@
                 "deteccion": 2
               },
               "codigo_planta": "TTA.TIERRA.DOBLE_NEUTRO",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "tta"
+              ]
             }
           ]
         },
@@ -2430,7 +2539,10 @@
                 "deteccion": 2
               },
               "codigo_planta": "TTA.TRANSFERENCIA.FUERA_FASE_MOTORES",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "tta"
+              ]
             },
             {
               "descripcion": "Monitor en fase cableado mal despues de un mantenimiento",
@@ -2491,7 +2603,10 @@
                 "deteccion": 2
               },
               "codigo_planta": "TTA.MONITOR_FASE.CABLEADO",
-              "nivel": "experto"
+              "nivel": "experto",
+              "aplica": [
+                "tta"
+              ]
             }
           ]
         }

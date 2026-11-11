@@ -673,3 +673,56 @@ def test_cli_codigo(capsys):
     out = capsys.readouterr().out
     assert "Bateria de arranque" in out
     assert main(["sincronismo", "codigo", "4321", "3"]) == 1
+
+
+# --- flota mixta: solo / paralelo / TTA -------------------------------------
+
+from nefer.sincronismo import flota as _flota
+
+
+def test_cada_modo_de_falla_declara_a_que_operacion_aplica():
+    import json
+    datos = json.loads(RCM_EJ.read_text(encoding="utf-8"))
+    for fd in datos["funciones"]:
+        for ffd in fd["fallas"]:
+            for md in ffd["modos"]:
+                assert set(md["aplica"]) <= {"solo", "paralelo", "tta"}, md["descripcion"]
+                if md["ubicacion"]["sistema"] in ("Sincronismo",):
+                    assert md["aplica"] == ["paralelo"]
+
+
+def test_flota_despliegues():
+    f = _flota.cargar(EJ / "flota.json")
+    res = {d["nombre"]: d for d in _flota.analizar(f, RCM_EJ)}
+    par, solo = res["Planta principal"], res["Frente de obra"]
+    # Un grupo solo no tiene fallas de sincronismo ni de reparto.
+    assert not any(x["sistema"] == "Sincronismo" for x in solo["fallas"])
+    # De reparto, solo el derrateo por altura: tambien limita a un grupo solo.
+    assert [x["modo"] for x in solo["fallas"] if x["sistema"] == "Reparto"] == \
+        [x["modo"] for x in solo["fallas"] if "Derrateo" in x["modo"]]
+    assert any(x["sistema"] == "Sincronismo" for x in par["fallas"])
+    assert len(solo["fallas"]) < len(par["fallas"])
+    # GE-03 pasa de paralelo a solo: lista de verificacion.
+    assert solo["cambios"] and solo["cambios"][0]["unidad"] == "GE-03"
+    assert any("380 V" in v for v in solo["cambios"][0]["verificar"])
+    # El PowerWizard en paralelo se detiene.
+    err = res["Ampliacion de planta (error a proposito)"]
+    assert any(o["severidad"] == "detiene" and o["unidad"] == "GE-11" for o in err["observaciones"])
+    # Sin TTA, las fallas de TTA no aplican.
+    assert not any(x["sistema"] == "TTA" for x in solo["fallas"])
+
+
+def test_flota_rechaza_despliegues_invalidos(tmp_path):
+    import json
+    base = json.loads((EJ / "flota.json").read_text(encoding="utf-8"))
+    base["despliegues"] = [{"nombre": "x", "modo": "paralelo", "unidades": ["GE-01"]}]
+    p = tmp_path / "f.json"
+    p.write_text(json.dumps(base), encoding="utf-8")
+    with pytest.raises(ValueError, match="dos unidades"):
+        _flota.cargar(p)
+
+
+def test_flota_publicada_esta_al_dia():
+    f = _flota.cargar(EJ / "flota.json")
+    assert (EJ / "flota.html").read_text(encoding="utf-8") == \
+        _flota.a_html(f, _flota.analizar(f, RCM_EJ))

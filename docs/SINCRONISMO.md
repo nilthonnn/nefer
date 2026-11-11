@@ -301,6 +301,31 @@ trabaja sola se declara con `"modo": "solo"` (no entra al reparto ni a la
 predicción por estatismo). Perfiles conocidos: PowerWizard, DSE8610 MKII,
 DSE7320 MKII, EMCP 4.4, PowerCommand 3.3 y easYgen.
 
+## Flota mixta: grupos solos, en sincronismo, o los dos
+
+```bash
+python -m nefer sincronismo flota ejemplos/sincronismo/flota.json --html -o flota.html
+```
+
+`flota.json` declara las unidades con su controlador (por ejemplo, DSE 8610
+MKII que va en paralelo o solo; PowerWizard que va siempre solo) y los
+despliegues: qué unidades, en qué modo (`solo` o `paralelo`) y con o sin
+TTA. Por cada despliegue sale:
+
+- si cada controlador sirve para ese modo (un PowerWizard en paralelo se
+  marca «detiene»);
+- las fallas que aplican y su prioridad: cada modo de falla del análisis
+  declara `aplica` (`solo`, `paralelo`, `tta`), así un grupo solo no carga
+  con las fallas de sincronismo y reparto, y sin TTA no aparecen las de TTA;
+- la **lista de verificación** de cada unidad que cambia de modo respecto
+  del despliegue anterior (de paralelo a solo: enlace, modo de velocidad,
+  consignas, cierre en barra muerta, demanda, protecciones, prueba con carga;
+  de solo a paralelo: enlace y terminación, identificador, modo de reparto,
+  sensado de barra, secuencia, 25/32/40, arbitraje de barra muerta, primer
+  cierre en prueba y reparto por escalones).
+
+El menú de fallas filtra también por modo de operación.
+
 ## Lo que falta (siguiente etapa)
 
 1. **Lectura directa del controlador.** Hoy los datos entran por JSON/CSV.

@@ -98,6 +98,8 @@ def funcionalidad(ejemplos: Path) -> list[Requisito]:
             ("Revision de parametros", ["parametros", "tta", dse, "--revisar"], {0, 1}),
             ("Menu de fallas RCM/AMEF", ["fallas", analisis, "-o", str(t / "m.html")], {0}),
             ("Decodificador SPN/FMI", ["codigo", "168", "17", "--analisis", analisis], {0}),
+            ("Flota mixta solo / paralelo", ["flota", str(ejemplos / "flota.json"),
+                                             "--analisis", analisis, "-o", str(t / "f.md")], {0, 1}),
             ("AMEF completa y plan de accion", ["amef", analisis, "-o", str(t / "amef.csv"),
                                                "--plan", str(t / "plan.csv")], {0}),
         ]
@@ -149,7 +151,8 @@ def funcionalidad(ejemplos: Path) -> list[Requisito]:
         "Eficaz (decidir bien en sitio)": ("Permisivo de cierre ANSI 25", "Guia de sintomas",
                                           "Lamina didactica sincronismo", "Decodificador SPN/FMI"),
         "Proactivo (anticipar sin que pregunten)": ("Informe priorizado", "Revision de protecciones",
-                                                    "Revision de parametros"),
+                                                    "Revision de parametros",
+                                                    "Flota mixta solo / paralelo"),
         "Predictivo (fecha de cruce)": ("Tendencias y reincidencias",),
         "Confiabilidad (RCM/AMEF)": ("Menu de fallas RCM/AMEF", "AMEF completa y plan de accion"),
     }

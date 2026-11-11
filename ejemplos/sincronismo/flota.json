@@ -1,0 +1,116 @@
+{
+  "nombre": "Flota de EJEMPLO (datos ficticios)",
+  "v_nominal": 380,
+  "f_nominal": 60,
+  "unidades": [
+    {
+      "id": "GE-01",
+      "kw_nominal": 400,
+      "kva_nominal": 500,
+      "controlador": {
+        "marca": "DSE",
+        "modelo": "8610 MKII"
+      },
+      "motor": {
+        "marca": "CAT",
+        "modelo": null
+      },
+      "modo_paralelo": "isocrono_compartido"
+    },
+    {
+      "id": "GE-02",
+      "kw_nominal": 400,
+      "kva_nominal": 500,
+      "controlador": {
+        "marca": "DSE",
+        "modelo": "8610 MKII"
+      },
+      "motor": {
+        "marca": "CAT",
+        "modelo": null
+      },
+      "modo_paralelo": "isocrono_compartido"
+    },
+    {
+      "id": "GE-03",
+      "kw_nominal": 400,
+      "kva_nominal": 500,
+      "controlador": {
+        "marca": "DSE",
+        "modelo": "8610 MKII"
+      },
+      "motor": {
+        "marca": "Cummins",
+        "modelo": null
+      },
+      "modo_paralelo": "isocrono_compartido"
+    },
+    {
+      "id": "GE-10",
+      "kw_nominal": 200,
+      "kva_nominal": 250,
+      "controlador": {
+        "marca": "FG Wilson",
+        "modelo": "PowerWizard 1.1"
+      },
+      "motor": {
+        "marca": "Perkins",
+        "modelo": null
+      }
+    },
+    {
+      "id": "GE-11",
+      "kw_nominal": 100,
+      "kva_nominal": 125,
+      "controlador": {
+        "marca": "FG Wilson",
+        "modelo": "PowerWizard 1.0"
+      },
+      "motor": {
+        "marca": "Perkins",
+        "modelo": null
+      }
+    }
+  ],
+  "despliegues": [
+    {
+      "nombre": "Planta principal",
+      "sitio": "(sitio A)",
+      "modo": "paralelo",
+      "tta": true,
+      "unidades": [
+        "GE-01",
+        "GE-02",
+        "GE-03"
+      ]
+    },
+    {
+      "nombre": "Campamento",
+      "sitio": "(sitio B)",
+      "modo": "solo",
+      "tta": true,
+      "unidades": [
+        "GE-10"
+      ]
+    },
+    {
+      "nombre": "Frente de obra",
+      "sitio": "(sitio C)",
+      "modo": "solo",
+      "tta": false,
+      "unidades": [
+        "GE-03"
+      ]
+    },
+    {
+      "nombre": "Ampliacion de planta (error a proposito)",
+      "sitio": "(sitio A)",
+      "modo": "paralelo",
+      "tta": false,
+      "unidades": [
+        "GE-01",
+        "GE-11"
+      ]
+    }
+  ]
+}

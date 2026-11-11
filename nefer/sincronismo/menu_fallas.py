@@ -96,6 +96,7 @@ def datos(ruta: str | Path) -> dict:
             "observaciones": [o.__dict__ for o in af.observaciones] if af else [],
             "codigo": (af.codigo_catalogo if af else ""),
             "experto": extra.get("nivel") == "experto",
+            "aplica": list(extra.get("aplica") or ["solo", "paralelo"]),
         })
 
     return {
@@ -191,8 +192,10 @@ function menu() {
   const q = $('#buscar').value.toLowerCase();
   const orden = $('#orden').value;
   const nivel = $('#nivel').value;
+  const op = $('#operacion').value;
   let ms = D.modos.filter(m => (m.modo + ' ' + m.sistema + ' ' + m.falla + ' ' + m.componente)
-      .toLowerCase().includes(q) && (nivel === 'todas' || (nivel === 'experto') === m.experto));
+      .toLowerCase().includes(q) && (nivel === 'todas' || (nivel === 'experto') === m.experto)
+      && (op === 'todas' || m.aplica.includes(op)));
   if (orden === 'npr') ms.sort((a, b) => (b.npr ?? -1) - (a.npr ?? -1));
   const grupos = {};
   ms.forEach(m => { const g = orden === 'npr' ? 'Por NPR, de mayor a menor' : m.sistema;
@@ -201,7 +204,7 @@ function menu() {
     `<h3>${esc(g)}</h3>` + xs.map(m =>
       `<button data-id="${m.id}" aria-current="${m.id === actual}">
         <span class="chip ${m.npr_etiqueta}">${m.npr ?? '—'}</span>
-        <span>${esc(m.modo)}<br><small style="color:var(--suave)">${esc(m.sistema)} · ${m.evidente ? 'evidente' : 'OCULTA'}${m.grave ? ' · seguridad' : ''}${m.experto ? ' · <b>experto</b>' : ''}</small></span>
+        <span>${esc(m.modo)}<br><small style="color:var(--suave)">${esc(m.sistema)} · ${m.evidente ? 'evidente' : 'OCULTA'}${m.grave ? ' · seguridad' : ''}${m.experto ? ' · <b>experto</b>' : ''} · ${m.aplica.join('/')}</small></span>
       </button>`).join('')).join('') || '<p>Ninguna falla coincide.</p>';
   document.querySelectorAll('#lista button').forEach(b =>
     b.addEventListener('click', () => mostrar(b.dataset.id, true)));
@@ -298,6 +301,7 @@ function pareto() {
 $('#buscar').addEventListener('input', menu);
 $('#orden').addEventListener('change', menu);
 $('#nivel').addEventListener('change', menu);
+$('#operacion').addEventListener('change', menu);
 pareto();
 tablas();
 const primero = [...D.modos].sort((a, b) => (b.npr ?? 0) - (a.npr ?? 0))[0];
@@ -340,6 +344,9 @@ def pagina(ruta: str | Path) -> str:
 <option value="npr">Ordenar por NPR</option></select>
 <select id="nivel" aria-label="Nivel"><option value="todas">Todas las fallas</option>
 <option value="experto">Solo nivel experto</option><option value="basico">Solo nivel basico</option></select>
+<select id="operacion" aria-label="Modo de operacion"><option value="todas">Cualquier modo de operacion</option>
+<option value="solo">Grupo trabajando solo</option><option value="paralelo">Grupos en sincronismo</option>
+<option value="tta">Con transferencia (TTA)</option></select>
 <div id="lista"></div>
 </nav>
 <main class="det" id="detalle"></main>

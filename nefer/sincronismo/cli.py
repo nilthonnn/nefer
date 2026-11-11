@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import (auditoria, codigos, diagramas, diagnostico, informe, laminas, menu_fallas,
+from . import (auditoria, codigos, diagramas, flota, diagnostico, informe, laminas, menu_fallas,
                parametros, plan_accion, protecciones, reparto, tendencias, verificacion)
 
 
@@ -285,6 +285,17 @@ def cmd_codigo(a) -> int:
     return 0 if lect.conocido else 1
 
 
+def cmd_flota(a) -> int:
+    try:
+        f = flota.cargar(a.flota)
+        res = flota.analizar(f, a.analisis)
+    except (OSError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    _salida(flota.a_html(f, res) if a.html else flota.a_markdown(f, res), a.salida)
+    return 1 if any(o["severidad"] == "detiene" for d in res for o in d["observaciones"]) else 0
+
+
 def agregar_subcomando(sub) -> None:
     s = sub.add_parser("sincronismo",
                        help="grupos electrogenos en paralelo: cierre, reparto, "
@@ -419,6 +430,14 @@ def agregar_subcomando(sub) -> None:
                     help="analisis RCM con los modos de falla a enlazar")
     cd.add_argument("--json", action="store_true")
     cd.set_defaults(func=cmd_codigo)
+
+    fl = o.add_parser("flota", help="flota mixta: despliegues solo / en paralelo, fallas que "
+                                    "aplican y verificacion al cambiar de modo")
+    fl.add_argument("flota", nargs="?", default="ejemplos/sincronismo/flota.json")
+    fl.add_argument("--analisis", default="ejemplos/sincronismo/rcm-paralelo-tta.json")
+    fl.add_argument("--html", action="store_true")
+    fl.add_argument("-o", "--salida")
+    fl.set_defaults(func=cmd_flota)
 
     pr = o.add_parser("protocolo", help="protocolo de puesta en marcha del paralelo")
     pr.add_argument("planta", nargs="?")
