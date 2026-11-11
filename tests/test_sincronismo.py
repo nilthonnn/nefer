@@ -310,3 +310,58 @@ def test_plantilla_380v_dse_cat(tmp_path):
     f.write_text(json.dumps(p), encoding="utf-8")
     obs = protecciones.revisar("GE-01", p["unidades"][0]["protecciones"])
     assert obs and all(o.severidad == "oportunidad" for o in obs)  # «falta anotar»
+
+
+# --- diagramas --------------------------------------------------------------
+
+import xml.etree.ElementTree as ET
+
+from nefer.sincronismo import diagramas
+
+
+def _planta_dse():
+    p = informe.plantilla(3, kw=400, kva=500, modelo_controlador="8610 MKII",
+                          modelo_motor="C15")
+    p["planta"] = "Prueba"
+    return p
+
+
+def test_diagrama_sincronismo_una_columna_por_unidad():
+    svg = diagramas.diagrama_sincronismo(_planta_dse())
+    ET.fromstring(svg)                      # XML valido
+    for n in (1, 2, 3):
+        assert f"GE-0{n}" in svg and f"52G-{n}" in svg
+    assert "V barra" in svg and "V gen" in svg and "Enlace MSC" in svg
+    assert "380 V 60 Hz" in svg
+
+
+def test_diagrama_no_inventa_bornes():
+    p = _planta_dse()
+    svg = diagramas.diagrama_sincronismo(p)
+    assert "borne: 057-254" in svg          # remite al manual DSE 8610 MKII
+    p["unidades"][0]["bornes"] = {"sensado_gen": "X1-X4"}
+    assert "borne X1-X4" in diagramas.diagrama_sincronismo(p)
+
+
+def test_diagrama_tta():
+    p = _planta_dse()
+    p["tta"] = {"modulo": "DSE7320 MKII", "polos": 4}
+    svg = diagramas.diagrama_tta(p)
+    ET.fromstring(svg)
+    assert "KM1" in svg and "KM2" in svg and "enclavamiento" in svg
+    assert "057-253" in svg
+
+
+def test_diagramas_publicados_salen_del_generador():
+    p = informe.cargar_planta(EJ / "planta-dse-cat.json")
+    for nombre, svg in (("diagrama-tta.svg", diagramas.diagrama_tta(p)),
+                        ("diagrama-sincronismo.svg", diagramas.diagrama_sincronismo(p))):
+        assert (EJ / nombre).read_text(encoding="utf-8") == svg, (
+            f"{nombre} no esta al dia: python -m nefer sincronismo diagrama ...")
+
+
+def test_cli_diagrama(tmp_path):
+    destino = tmp_path / "d.svg"
+    assert main(["sincronismo", "diagrama", "tta", "-o", str(destino)]) == 0
+    assert destino.read_text(encoding="utf-8").startswith("<svg")
+    assert main(["sincronismo", "diagrama", "sincronismo"]) == 2

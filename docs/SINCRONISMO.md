@@ -142,6 +142,34 @@ exportación cambia según el modelo y la versión de DSE Configuration Suite,
 y aquí no se escribe un lector a ciegas: con una exportación real se hace el
 importador que la convierta en `registro.csv`.
 
+## Diagramas de conexión (TTA y sincronismo)
+
+```bash
+python -m nefer sincronismo diagrama sincronismo planta.json -o sincronismo.svg
+python -m nefer sincronismo diagrama tta planta.json -o tta.svg
+```
+
+Salen en SVG: se abren en el navegador o el teléfono y se imprimen.
+
+- **Sincronismo**: un grupo por columna, cada uno con su TC, su interruptor
+  52G, el sensado de tensión del generador **antes** del interruptor y el
+  de barra **después**, el mando y el auxiliar 52a, el J1939 al ECM CAT, la
+  polarización del AVR y el enlace MSC en cadena entre módulos. Abajo, las
+  cinco verificaciones de cableado antes del primer cierre.
+- **TTA**: red y grupo con KM1/KM2, enclavamiento mecánico y eléctrico,
+  sensado de red y de grupo, TC de carga, módulo AMF (DSE7320 MKII por
+  defecto) y las reglas del circuito de mando.
+
+Los números de borne **no se inventan**: cambian por modelo y versión del
+módulo. Se declaran en la planta (`"bornes": {"sensado_gen": "…",
+"sensado_barra": "…", "interruptor": "…"}` por unidad, y `"tta": {"bornes":
+{"sensado_red": …, "sensado_gen": …, "tc": …, "cerrar_red": …,
+"cerrar_grupo": …}}`), y si no están, el diagrama remite a la publicación
+DSE que los trae: 057-254 (DSE8610 MKII) o 057-253 (DSE7320 MKII).
+
+Ejemplos generados: `ejemplos/sincronismo/diagrama-sincronismo.svg` y
+`ejemplos/sincronismo/diagrama-tta.svg`.
+
 ## Lo que falta (siguiente etapa)
 
 1. **Lectura directa del controlador.** Hoy los datos entran por JSON/CSV.

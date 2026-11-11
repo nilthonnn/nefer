@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import diagnostico, informe, protecciones, reparto, tendencias, verificacion
+from . import diagramas, diagnostico, informe, protecciones, reparto, tendencias, verificacion
 
 
 def _salida(texto: str, ruta: str | None) -> None:
@@ -171,6 +171,19 @@ def cmd_plantilla(a) -> int:
     return 0
 
 
+def cmd_diagrama(a) -> int:
+    planta = informe.cargar_planta(a.planta) if a.planta else None
+    if a.tipo == "sincronismo":
+        if planta is None:
+            print("El diagrama de sincronismo necesita la planta.", file=sys.stderr)
+            return 2
+        svg = diagramas.diagrama_sincronismo(planta)
+    else:
+        svg = diagramas.diagrama_tta(planta)
+    _salida(svg, a.salida or f"diagrama-{a.tipo}.svg")
+    return 0
+
+
 def agregar_subcomando(sub) -> None:
     s = sub.add_parser("sincronismo",
                        help="grupos electrogenos en paralelo: cierre, reparto, "
@@ -251,6 +264,12 @@ def agregar_subcomando(sub) -> None:
                     choices=["isocrono_compartido", "droop", "isocrono"])
     pl.add_argument("-o", "--salida")
     pl.set_defaults(func=cmd_plantilla)
+
+    dg = o.add_parser("diagrama", help="diagrama de conexion en SVG: tta o sincronismo")
+    dg.add_argument("tipo", choices=["tta", "sincronismo"])
+    dg.add_argument("planta", nargs="?")
+    dg.add_argument("-o", "--salida", help="por defecto, diagrama-<tipo>.svg")
+    dg.set_defaults(func=cmd_diagrama)
 
     pr = o.add_parser("protocolo", help="protocolo de puesta en marcha del paralelo")
     pr.add_argument("planta", nargs="?")

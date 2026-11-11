@@ -1,0 +1,143 @@
+{
+  "planta": "Ejemplo 3 x CAT C15 con DSE 8610 MKII (ficticio)",
+  "f_nominal": 60.0,
+  "v_nominal": 380.0,
+  "cargas_a_predecir_pct": [
+    25,
+    50,
+    75,
+    100
+  ],
+  "limites": {
+    "tiempo_sincronizacion_s": 30,
+    "desbalance_kw_pct": 5,
+    "desbalance_kvar_pct": 10
+  },
+  "unidades": [
+    {
+      "id": "GE-01",
+      "kw_nominal": 400,
+      "kva_nominal": 500,
+      "controlador": {
+        "marca": "DSE",
+        "modelo": "8610 MKII"
+      },
+      "motor": {
+        "marca": "CAT",
+        "modelo": "C15"
+      },
+      "kw": null,
+      "kvar": null,
+      "modo": "isocrono_compartido",
+      "t_cierre_s": null,
+      "protecciones": {
+        "25": {},
+        "32": {
+          "pickup_pct": null,
+          "retardo_s": null
+        },
+        "40": {
+          "retardo_s": null
+        },
+        "27": {
+          "pickup_pct": null
+        },
+        "59": {
+          "pickup_pct": null
+        },
+        "81U": {
+          "pickup_pct": null
+        },
+        "81O": {
+          "pickup_pct": null
+        }
+      },
+      "bornes": {}
+    },
+    {
+      "id": "GE-02",
+      "kw_nominal": 400,
+      "kva_nominal": 500,
+      "controlador": {
+        "marca": "DSE",
+        "modelo": "8610 MKII"
+      },
+      "motor": {
+        "marca": "CAT",
+        "modelo": "C15"
+      },
+      "kw": null,
+      "kvar": null,
+      "modo": "isocrono_compartido",
+      "t_cierre_s": null,
+      "protecciones": {
+        "25": {},
+        "32": {
+          "pickup_pct": null,
+          "retardo_s": null
+        },
+        "40": {
+          "retardo_s": null
+        },
+        "27": {
+          "pickup_pct": null
+        },
+        "59": {
+          "pickup_pct": null
+        },
+        "81U": {
+          "pickup_pct": null
+        },
+        "81O": {
+          "pickup_pct": null
+        }
+      },
+      "bornes": {}
+    },
+    {
+      "id": "GE-03",
+      "kw_nominal": 400,
+      "kva_nominal": 500,
+      "controlador": {
+        "marca": "DSE",
+        "modelo": "8610 MKII"
+      },
+      "motor": {
+        "marca": "CAT",
+        "modelo": "C15"
+      },
+      "kw": null,
+      "kvar": null,
+      "modo": "isocrono_compartido",
+      "t_cierre_s": null,
+      "protecciones": {
+        "25": {},
+        "32": {
+          "pickup_pct": null,
+          "retardo_s": null
+        },
+        "40": {
+          "retardo_s": null
+        },
+        "27": {
+          "pickup_pct": null
+        },
+        "59": {
+          "pickup_pct": null
+        },
+        "81U": {
+          "pickup_pct": null
+        },
+        "81O": {
+          "pickup_pct": null
+        }
+      },
+      "bornes": {}
+    }
+  ],
+  "tta": {
+    "modulo": "DSE7320 MKII",
+    "polos": 4,
+    "bornes": {}
+  }
+}
