@@ -38,7 +38,7 @@ navegador = ["pytest>=7.4", "playwright>=1.40"]
 nefer = "nefer.cli:main"
 
 [tool.setuptools]
-packages = ["nefer", "nefer.fixmate"]
+packages = ["nefer", "nefer.fixmate", "nefer.sincronismo"]
 
 
 [tool.pytest.ini_options]

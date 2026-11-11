@@ -145,6 +145,21 @@ Todo el detalle —los formatos que lee, la API HTTP, la consulta dictada,
 PostgreSQL con pgvector y lo que falta— está en
 **[docs/FIXMATE.md](docs/FIXMATE.md)**.
 
+### Sincronismo y grupos en paralelo
+
+```bash
+python -m nefer sincronismo informe planta.json -r registro.csv   # lo urgente primero
+python -m nefer sincronismo verificar --v-barra 480 --f-barra 60 --v-gen 485 \
+    --f-gen 60.15 --angulo -4 --t-cierre 0.12 --kva 625           # ¿se puede cerrar?
+python -m nefer sincronismo estatismo planta.json --pct 75       # reparto previsto
+python -m nefer sincronismo diagnostico "dispara por potencia inversa"
+```
+
+Permisivo de cierre ANSI 25 con el ángulo juzgado en el contacto, reparto de
+kW/kVAr en % de placa, predicción del reparto por estatismo, revisión de
+protecciones del paralelo (25, 32, 40, 27/59, 81) y la deriva del registro
+proyectada a una fecha. Detalle en **[docs/SINCRONISMO.md](docs/SINCRONISMO.md)**.
+
 ### Otros comandos
 
 ```bash
@@ -160,6 +175,7 @@ python -m nefer pdf acta.xlsx                   # convertir un Excel ya generado
 | **[docs/MANUAL-OPERACION.md](docs/MANUAL-OPERACION.md)** | Cómo levantar un acta, de la primera prueba en patio al uso diario |
 | **[docs/MANUAL-APP.md](docs/MANUAL-APP.md)** | La aplicación de campo pantalla por pantalla y botón por botón |
 | **[docs/MANUAL-FIXMATE.md](docs/MANUAL-FIXMATE.md)** | FixMate pantalla por pantalla, para el técnico en el patio: cargar el historial y los manuales, preguntar, y registrar lo que encontró al desarmar |
+| **[docs/SINCRONISMO.md](docs/SINCRONISMO.md)** | Grupos electrógenos en paralelo: permisivo de cierre, reparto, estatismo, protecciones, tendencias e informe priorizado |
 | **[docs/FIXMATE.md](docs/FIXMATE.md)** | FixMate AI por dentro: el asistente de diagnóstico sobre el historial de fallas y los manuales OEM |
 | **[docs/eeff/](docs/eeff/)** | Estados financieros para MYPE del Perú: estado de resultados y estado de situación financiera desde el balance de comprobación del PCGE, con el impuesto a la renta por régimen e indicadores. Proyecto aparte; manual en **[docs/eeff/MANUAL.md](docs/eeff/MANUAL.md)** |
 | **[docs/app/](docs/app/)** | Aplicación de campo: despacho y recepción desde el celular, sin conexión. Cámara, galería, carpeta, arrastre y pegado; genera el PDF y el Excel en el propio teléfono |
@@ -228,6 +244,7 @@ diagnóstico.
 | `nefer/textos.py` | Redacción automática de rótulos, recuperaciones y guías |
 | `nefer/pdf.py` | Excel → PDF vía LibreOffice headless |
 | `nefer/cli.py` | Línea de comandos |
+| `nefer/sincronismo/` | Paralelo de grupos: ANSI 25, reparto y estatismo, protecciones, tendencias e informe |
 | `nefer/fixmate/` | FixMate AI: lectura de documentos, búsqueda híbrida, diagnóstico, predicción y API |
 
 ## Copias por cliente

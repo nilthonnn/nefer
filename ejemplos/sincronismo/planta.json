@@ -1,0 +1,42 @@
+{
+  "planta": "Planta de ejemplo — 3 grupos en paralelo (datos ficticios)",
+  "f_nominal": 60,
+  "v_nominal": 480,
+  "cargas_a_predecir_pct": [25, 50, 75, 100],
+  "limites": {
+    "tiempo_sincronizacion_s": 30,
+    "desbalance_kvar_pct": 10
+  },
+  "unidades": [
+    {
+      "id": "GE-01", "kw_nominal": 500, "kva_nominal": 625,
+      "kw": 300, "kvar": 160,
+      "modo": "droop", "f_vacio": 62.4, "estatismo_pct": 4,
+      "protecciones": {
+        "25": {}, "32": {"pickup_pct": 10, "retardo_s": 3},
+        "40": {"retardo_s": 1}, "27": {"pickup_pct": 90}, "59": {"pickup_pct": 110},
+        "81U": {"pickup_pct": 95}, "81O": {"pickup_pct": 105}
+      }
+    },
+    {
+      "id": "GE-02", "kw_nominal": 500, "kva_nominal": 625,
+      "kw": 255, "kvar": 220,
+      "modo": "droop", "f_vacio": 62.2, "estatismo_pct": 4,
+      "protecciones": {
+        "25": {}, "32": {"pickup_pct": 2, "retardo_s": 0.5},
+        "27": {"pickup_pct": 90}, "59": {"pickup_pct": 110},
+        "81U": {"pickup_pct": 95}, "81O": {"pickup_pct": 105}
+      }
+    },
+    {
+      "id": "GE-03", "kw_nominal": 800, "kva_nominal": 1000,
+      "kw": 495, "kvar": -40,
+      "modo": "droop", "f_vacio": 62.4, "estatismo_pct": 4,
+      "protecciones": {
+        "25": {}, "32": {"pickup_pct": 8, "retardo_s": 5},
+        "40": {"retardo_s": 1}, "27": {"pickup_pct": 90}, "59": {"pickup_pct": 110},
+        "81U": {"pickup_pct": 95}, "81O": {"pickup_pct": 105}
+      }
+    }
+  ]
+}

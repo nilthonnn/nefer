@@ -403,6 +403,9 @@ def construir_parser() -> argparse.ArgumentParser:
     from .fixmate.cli import agregar_subcomando
     agregar_subcomando(sub)
 
+    from .sincronismo.cli import agregar_subcomando as agregar_sincronismo
+    agregar_sincronismo(sub)
+
     t = sub.add_parser("plantilla", help="imprimir un manifiesto JSON en blanco")
     t.add_argument("-o", "--salida")
     t.set_defaults(func=cmd_plantilla)
