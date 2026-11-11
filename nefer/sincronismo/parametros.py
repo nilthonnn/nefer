@@ -53,20 +53,21 @@ SINCRONISMO: tuple[Parametro, ...] = (
       "Synchroniser · Check sync · frequency / slip", "Hz",
       "Diferencia maxima de frecuencia entre generador y barra para permitir el cierre.",
       "IEEE 1547-2018 tabla 5: 0.3 Hz hasta 500 kVA, 0.2 Hz hasta 1500 kVA, 0.1 Hz "
-      "por encima. La guia DSE de paralelo cita 0.1 Hz como tipico.",
+      "por encima. Guia DSE de sincronismo 057-045 parte 1: 0.2 Hz en ediciones "
+      "antiguas y 0.1 Hz en las posteriores, como valor con el que se parlela bien.",
       "Ancha: cierre con golpe y oscilacion de potencia. Estrecha: el gobernador no "
       "la sostiene y el grupo no sincroniza nunca.",
       "nefer sincronismo verificar con las lecturas del cierre; sincronoscopio externo."),
     P("sync_dv", "Sincronizador", "Ventana de tension",
       "Synchroniser · Check sync · voltage", "%",
       "Diferencia maxima de tension entre generador y barra para cerrar.",
-      "IEEE 1547-2018: 10 % / 5 % / 3 % segun kVA. Guia DSE: 5 % tipico.",
+      "IEEE 1547-2018: 10 % / 5 % / 3 % segun kVA. Guia DSE 057-045: 5 %.",
       "Ancha: al cerrar circulan reactivos y salta la 40 o la sobrecorriente.",
       "Medir V gen y V barra en el mismo instrumento antes del cierre."),
     P("sync_angulo", "Sincronizador", "Ventana de angulo de fase",
       "Synchroniser · Check sync · phase angle", "°",
       "Angulo maximo entre fasores al dar la orden de cierre.",
-      "IEEE 1547-2018: 20° / 15° / 10° segun kVA. Guia DSE: 5° tipico. Mas estrecho "
+      "IEEE 1547-2018: 20° / 15° / 10° segun kVA. Guia DSE 057-045: 5°. Mas estrecho "
       "si el interruptor es lento.",
       "Ancha: par de choque en el acoplamiento y el devanado.",
       "Registrar el angulo del cierre en el historial del modulo."),
