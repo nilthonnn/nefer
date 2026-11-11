@@ -170,6 +170,27 @@ DSE que los trae: 057-254 (DSE8610 MKII) o 057-253 (DSE7320 MKII).
 Ejemplos generados: `ejemplos/sincronismo/diagrama-sincronismo.svg` y
 `ejemplos/sincronismo/diagrama-tta.svg`.
 
+## Láminas didácticas por capas
+
+```bash
+python -m nefer sincronismo lamina sincronismo planta.json -o lamina-sincronismo.html
+python -m nefer sincronismo lamina tta planta.json -o lamina-tta.html
+```
+
+Una página HTML de un solo archivo (abre sin red, en el teléfono) con el
+esquema de una unidad cableada de verdad —fusibles de TP, bornera
+seccionable del TC, relés interpuestos K1/K2, bobinas de cierre YC y de
+disparo YO, auxiliar 52a, paro de emergencia, J1939, enlace MSC, bias del
+AVR; en la TTA, Q1/Q2, KM1/KM2 y la escalera con el enclavamiento cruzado—
+y botones para ver **una capa a la vez**: potencia, medición, mando y
+comunicación. Cada capa trae qué hace, cómo se verifica con el multímetro y
+el error típico de campo. La secuencia de operación va paso a paso, y cada
+paso enciende la capa que actúa.
+
+Tiempos y umbrales quedan como «configurable», y los bornes remiten al
+manual del módulo: una cifra típica en una lámina se copia como si fuera
+la norma.
+
 ## Lo que falta (siguiente etapa)
 
 1. **Lectura directa del controlador.** Hoy los datos entran por JSON/CSV.

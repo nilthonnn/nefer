@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import diagramas, diagnostico, informe, protecciones, reparto, tendencias, verificacion
+from . import diagramas, diagnostico, informe, laminas, protecciones, reparto, tendencias, verificacion
 
 
 def _salida(texto: str, ruta: str | None) -> None:
@@ -184,6 +184,12 @@ def cmd_diagrama(a) -> int:
     return 0
 
 
+def cmd_lamina(a) -> int:
+    planta = informe.cargar_planta(a.planta) if a.planta else None
+    _salida(laminas.lamina_html(a.tipo, planta), a.salida or f"lamina-{a.tipo}.html")
+    return 0
+
+
 def agregar_subcomando(sub) -> None:
     s = sub.add_parser("sincronismo",
                        help="grupos electrogenos en paralelo: cierre, reparto, "
@@ -270,6 +276,12 @@ def agregar_subcomando(sub) -> None:
     dg.add_argument("planta", nargs="?")
     dg.add_argument("-o", "--salida", help="por defecto, diagrama-<tipo>.svg")
     dg.set_defaults(func=cmd_diagrama)
+
+    lm = o.add_parser("lamina", help="lamina didactica por capas (HTML): tta o sincronismo")
+    lm.add_argument("tipo", choices=["tta", "sincronismo"])
+    lm.add_argument("planta", nargs="?")
+    lm.add_argument("-o", "--salida", help="por defecto, lamina-<tipo>.html")
+    lm.set_defaults(func=cmd_lamina)
 
     pr = o.add_parser("protocolo", help="protocolo de puesta en marcha del paralelo")
     pr.add_argument("planta", nargs="?")

@@ -365,3 +365,47 @@ def test_cli_diagrama(tmp_path):
     assert main(["sincronismo", "diagrama", "tta", "-o", str(destino)]) == 0
     assert destino.read_text(encoding="utf-8").startswith("<svg")
     assert main(["sincronismo", "diagrama", "sincronismo"]) == 2
+
+
+# --- laminas didacticas -----------------------------------------------------
+
+from nefer.sincronismo import laminas
+
+
+@pytest.mark.parametrize("tipo", ["sincronismo", "tta"])
+def test_lamina_tiene_las_cuatro_capas_y_la_secuencia(tipo):
+    html = laminas.lamina_html(tipo, _planta_dse())
+    assert html.startswith("<!doctype html>")
+    for capa in ("pot", "med", "man", "com"):
+        assert f'data-capa="{capa}"' in html
+    assert html.count("<li data-capa=") == len(laminas.TEXTO[tipo]["secuencia"])
+    assert "Como se verifica" in html and "Error tipico" in html
+    svg = html[html.index("<svg"):html.index("</svg>") + 6]
+    ET.fromstring(svg)
+
+
+def test_lamina_sincronismo_rotula_lo_que_importa():
+    html = laminas.lamina_html("sincronismo", _planta_dse())
+    for clave in ("ANTES del 52G", "DESPUES del 52G", "52a", "YC", "YO",
+                  "bornera seccionable", "120 Ω", "MSC", "J1939"):
+        assert clave in html, clave
+
+
+def test_lamina_tta_enclavamiento_cruzado():
+    html = laminas.lamina_html("tta", _planta_dse())
+    assert "KM2 aux. NC" in html and "KM1 aux. NC" in html
+    assert "enclavamiento mecanico" in html
+
+
+def test_lamina_tipo_desconocido():
+    with pytest.raises(ValueError):
+        laminas.lamina_html("otro")
+
+
+def test_laminas_publicadas_salen_del_generador():
+    p = informe.cargar_planta(EJ / "planta-dse-cat.json")
+    for tipo in ("sincronismo", "tta"):
+        publicada = (EJ / f"lamina-{tipo}.html").read_text(encoding="utf-8")
+        assert publicada == laminas.lamina_html(tipo, p), (
+            f"lamina-{tipo}.html no esta al dia: python -m nefer sincronismo "
+            f"lamina {tipo} ejemplos/sincronismo/planta-dse-cat.json -o ...")
