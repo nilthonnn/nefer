@@ -475,3 +475,53 @@ def test_cli_parametros_revisar():
     assert main(["sincronismo", "parametros", "sincronismo",
                  str(EJ / "planta-dse-cat.json"), "--revisar"]) == 1   # rampa < 32
     assert main(["sincronismo", "parametros", "tta", "--revisar"]) == 2
+
+
+# --- menu de fallas RCM / AMEF ----------------------------------------------
+
+from nefer.fixmate import cargador as _cargador
+from nefer.fixmate import rcm as _rcm
+from nefer.sincronismo import menu_fallas
+
+RCM_EJ = EJ / "rcm-paralelo-tta.json"
+
+
+def test_analisis_rcm_del_paralelo_pasa_ja1011():
+    a, d = _cargador.analisis_y_decisiones(RCM_EJ)
+    comp = _rcm.completitud(a, d.por_modo)
+    assert comp.completo, comp
+    assert len(d) == len(a.modos)            # todos decididos
+
+
+def test_menu_datos_npr_ap_y_arbol():
+    dat = menu_fallas.datos(RCM_EJ)
+    for m in dat["modos"]:
+        s, o, de = (m["sod"][k]["valor"] for k in ("severidad", "frecuencia", "deteccion"))
+        assert m["npr"] == s * o * de
+        assert m["camino"], m["id"]
+        assert m["fuentes"], m["id"]
+        assert m["tarea"], m["id"]
+        if not m["evidente"]:
+            assert m["camino"][0]["respuesta"] == "no"
+        if m["grave"]:
+            assert m["estrategia"] != "operar_hasta_falla"
+
+
+def test_npr_engaña_y_la_prioridad_no():
+    # El cierre fuera de fase: severidad 5 y NPR bajo. La prioridad de accion
+    # no se deja llevar por el producto.
+    m = next(x for x in menu_fallas.datos(RCM_EJ)["modos"] if "fuera" in x["falla"])
+    assert m["npr_etiqueta"] != "alta" and m["ap"] == "alta"
+
+
+def test_menu_publicado_sale_del_generador():
+    assert (EJ / "menu-fallas.html").read_text(encoding="utf-8") == \
+        menu_fallas.pagina(RCM_EJ), \
+        "menu-fallas.html no esta al dia: python -m nefer sincronismo fallas -o ..."
+
+
+def test_cli_fallas(tmp_path):
+    destino = tmp_path / "m.html"
+    assert main(["sincronismo", "fallas", str(RCM_EJ), "-o", str(destino)]) == 0
+    assert "Menu de fallas" in destino.read_text(encoding="utf-8")
+    assert main(["sincronismo", "fallas", str(tmp_path / "no-existe.json")]) == 2

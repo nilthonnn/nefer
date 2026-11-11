@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import diagramas, diagnostico, informe, laminas, parametros, protecciones, reparto, tendencias, verificacion
+from . import diagramas, diagnostico, informe, laminas, menu_fallas, parametros, protecciones, reparto, tendencias, verificacion
 
 
 def _salida(texto: str, ruta: str | None) -> None:
@@ -210,6 +210,17 @@ def cmd_parametros(a) -> int:
     return 0
 
 
+def cmd_fallas(a) -> int:
+    from ..fixmate.cargador import ErrorCargador
+    try:
+        html = menu_fallas.pagina(a.analisis)
+    except (OSError, ErrorCargador, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    _salida(html, a.salida or "menu-fallas.html")
+    return 0
+
+
 def agregar_subcomando(sub) -> None:
     s = sub.add_parser("sincronismo",
                        help="grupos electrogenos en paralelo: cierre, reparto, "
@@ -312,6 +323,14 @@ def agregar_subcomando(sub) -> None:
                     help="revisar la coherencia de los valores declarados en la planta")
     pa.add_argument("-o", "--salida")
     pa.set_defaults(func=cmd_parametros)
+
+    mf = o.add_parser("fallas",
+                      help="menu de fallas (HTML): RCM, arbol de decision y AMEF con NPR")
+    mf.add_argument("analisis", nargs="?",
+                    default="ejemplos/sincronismo/rcm-paralelo-tta.json",
+                    help="analisis RCM en el formato de FixMate")
+    mf.add_argument("-o", "--salida", help="por defecto, menu-fallas.html")
+    mf.set_defaults(func=cmd_fallas)
 
     pr = o.add_parser("protocolo", help="protocolo de puesta en marcha del paralelo")
     pr.add_argument("planta", nargs="?")

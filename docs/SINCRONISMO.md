@@ -216,6 +216,34 @@ la ventana, 81O por debajo de la f en vacío, retorno de red más corto que la
 confirmación de falla, tiempo muerto nulo, umbrales de red que no encierran
 la nominal. Lo no declarado se lista; no se supone.
 
+## Menú de fallas: RCM, árbol de decisión y AMEF
+
+```bash
+python -m nefer sincronismo fallas ejemplos/sincronismo/rcm-paralelo-tta.json -o menu-fallas.html
+python -m nefer fixmate rcm analizar ejemplos/sincronismo/rcm-paralelo-tta.json   # SAE JA1011
+python -m nefer fixmate rcm matriz ejemplos/sincronismo/rcm-paralelo-tta.json -o amef.csv
+```
+
+`rcm-paralelo-tta.json` es un análisis RCM de la planta (3 grupos en paralelo
++ TTA) en el formato de FixMate: 6 funciones, 12 fallas funcionales y 19 modos
+de falla tomados de fuentes públicas (batería y cargador, módulo fuera de
+AUTO, combustible, refrigerante, wet stacking, diodos rotativos, polaridad
+del TC de compensación, gobernador inestable, 52G que no cierra, cierre
+fuera de fase, potencia inversa al cerrar, reparto inestable, 32/40
+deshabilitadas, contactos soldados, mando de la TTA, sensado de red,
+enclavamiento, bornes flojos). Cada modo cita su fuente; la ocurrencia es una
+**propuesta** y se reemplaza con el historial propio.
+
+El menú es una página de un solo archivo: buscar o agrupar por sistema u
+ordenar por NPR, y por cada falla las siete preguntas de RCM, la AMEF
+(S, O, D con el texto de cada nivel), el **NPR** y, al lado, la **prioridad
+de acción** AIAG-VDA —porque el NPR multiplica escalas ordinales y, por
+ejemplo, el cierre fuera de fase (severidad 5) sale con NPR medio—, el árbol
+de decisión recorrido pregunta por pregunta hasta la estrategia, la tarea
+propuesta, las causas a descartar de la guía de síntomas y el Pareto de
+riesgo de toda la planta. Todo sale del motor RCM de FixMate: con
+consecuencia de seguridad, «operar hasta la falla» no es una salida.
+
 ## Lo que falta (siguiente etapa)
 
 1. **Lectura directa del controlador.** Hoy los datos entran por JSON/CSV.
