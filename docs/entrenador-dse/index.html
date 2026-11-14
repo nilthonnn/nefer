@@ -139,8 +139,11 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
     <a href="#tta">TTA</a>
     <a href="#tablero">Tablero</a>
     <a href="#programacion">Programación</a>
+    <a href="#fallas">Fallas</a>
+    <a href="#seguridad">Seguridad</a>
     <a href="#mina">Mina</a>
     <a href="#evaluacion">Evaluación</a>
+    <a href="#validacion">Validación</a>
   </nav>
 </div></header>
 
@@ -157,7 +160,10 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
     <div class="card"><div class="eyebrow">Módulo 3 · práctica</div><h3>Transferencia (TTA)</h3><p>Secuencia AMF completa con temporizadores reales: falla de red, arranque, transferencia, retorno y enfriamiento.</p><a class="btn primary" href="#tta">Practicar</a></div>
     <div class="card"><div class="eyebrow">Módulo 4</div><h3>Tablero y circuito</h3><p>Unifilar interactivo: interruptores, TC, TP, barra, módulos y enlace MSC. Qué señal llega a cada borne del módulo.</p><a class="btn" href="#tablero">Abrir</a></div>
     <div class="card"><div class="eyebrow">Módulo 5 · práctica</div><h3>Programación</h3><p>Editor de configuración al estilo del software de configuración del fabricante, con ejercicios que se verifican.</p><a class="btn" href="#programacion">Abrir</a></div>
-    <div class="card"><div class="eyebrow">Módulo 6 · cierre</div><h3>Mina y evaluación</h3><p>Reducción de potencia por altitud, seguridad en tablero y examen de 15 preguntas con nota.</p><a class="btn" href="#evaluacion">Evaluar</a></div>
+    <div class="card"><div class="eyebrow">Módulo 6 · cierre</div><h3>Mina y evaluación</h3><p>Reducción de potencia por altitud y examen de 20 preguntas con nota.</p><a class="btn" href="#evaluacion">Evaluar</a></div>
+    <div class="card"><div class="eyebrow">Módulo 7</div><h3>Fallas y fallas ocultas</h3><p>Las fallas que más se repiten en campo y en foros técnicos, y las que no se ven hasta que la red cae.</p><a class="btn" href="#fallas">Abrir</a></div>
+    <div class="card"><div class="eyebrow">Módulo 8</div><h3>Seguridad</h3><p>Marco legal peruano, peligros del grupo y del tablero, bloqueo de varias fuentes y lista de verificación.</p><a class="btn primary" href="#seguridad">Abrir</a></div>
+    <div class="card"><div class="eyebrow">Auditoría</div><h3>Validación de datos</h3><p>De dónde sale cada valor del simulador, qué está validado y qué es solo un ejemplo.</p><a class="btn" href="#validacion">Revisar</a></div>
   </div>
   <div class="card flat">
     <h3>Módulos DSE que cubre el entrenamiento</h3>
@@ -183,14 +189,15 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
       <h3>Las cuatro condiciones para cerrar en paralelo</h3>
       <p>Un generador que entra a una barra viva debe igualar a la barra en estas cuatro magnitudes. Si cierra fuera de ellas, la diferencia de tensión entre ambos lados circula como corriente entre las máquinas: golpe mecánico al acople, disparo por sobrecorriente o potencia inversa.</p>
       <div class="scroll"><table>
-        <thead><tr><th>Condición</th><th>Quién la corrige</th><th>Ventana didáctica</th></tr></thead>
+        <thead><tr><th>Condición</th><th>Quién la corrige</th><th>Guía DSE (típico)</th><th>IEEE 1547-2003 · 500–1 500 kVA</th></tr></thead>
         <tbody>
-          <tr><td><b>Secuencia de fases</b> (L1-L2-L3)</td><td>Cableado. Se verifica una vez en la puesta en marcha con secuencímetro.</td><td>Debe coincidir. Sin tolerancia.</td></tr>
-          <tr><td><b>Tensión</b> ΔV</td><td>Regulador de tensión (AVR). El módulo lo ajusta por salida analógica o pulsos.</td><td>≤ 4 % de la nominal</td></tr>
-          <tr><td><b>Frecuencia</b> (deslizamiento)</td><td>Gobernador de velocidad (ECM del motor por CAN J1939 o salida analógica).</td><td>≤ 0,2 Hz, grupo algo más rápido que la barra</td></tr>
-          <tr><td><b>Ángulo de fase</b> Δφ</td><td>Resultado del deslizamiento: el ángulo gira a 360° × Δf por segundo.</td><td>≤ 10°</td></tr>
+          <tr><td><b>Secuencia de fases</b> (L1-L2-L3)</td><td>Cableado. Se verifica una vez en la puesta en marcha con secuencímetro.</td><td colspan="2">Debe coincidir. Sin tolerancia.</td></tr>
+          <tr><td><b>Tensión</b> ΔV</td><td>Regulador de tensión (AVR). El módulo lo ajusta por salida analógica o pulsos.</td><td>5 %</td><td>≤ 5 %</td></tr>
+          <tr><td><b>Frecuencia</b> (deslizamiento)</td><td>Gobernador de velocidad (ECM del motor por CAN J1939 o salida analógica).</td><td>0,1 Hz</td><td>≤ 0,2 Hz</td></tr>
+          <tr><td><b>Ángulo de fase</b> Δφ</td><td>Resultado del deslizamiento: el ángulo gira a 360° × Δf por segundo.</td><td>5°</td><td>≤ 15°</td></tr>
         </tbody>
       </table></div>
+      <p class="note">IEEE 1547-2003 escala la ventana con el tamaño: 0–500 kVA: 0,3 Hz / 10 % / 20°; 1,5–10 MVA: 0,1 Hz / 3 % / 10°. El simulador arranca con 0,2 Hz / 5 % / 10°, dentro de ambas referencias para un grupo de 1 000 kW.</p>
       <p class="note">Por qué el grupo entrante va algo más rápido: al cerrar con deslizamiento positivo el grupo toma carga enseguida. Con deslizamiento negativo, la barra lo arrastra y aparece potencia inversa por un instante.</p>
     </div>
     <div class="card">
@@ -228,7 +235,7 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
       <ul class="tight">
         <li>Conecta DSE8610 y DSE8660 en cadena (daisy chain), sin derivaciones.</li>
         <li>Cable apantallado de par trenzado de 120 Ω (Belden 9841 o equivalente) y resistencia de terminación en los extremos.</li>
-        <li>Longitud total de referencia: hasta 240 m. Para más distancia, extensor de enlace MSC.</li>
+        <li>Longitud total: 240 m según la guía 056-011 y 250 m según el manual de la serie 8600. Usa el menor. Para más distancia, extensor de enlace MSC.</li>
         <li>Hasta 32 DSE8610 y 32 DSE8660 por enlace, con un máximo combinado de 40 módulos de la serie 8600.</li>
         <li>Si un módulo pierde el enlace, salta la alarma <i>MSC Failure</i> y aplica la acción configurada.</li>
       </ul>
@@ -274,7 +281,8 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
         <div><div class="k">Barra · Hz</div><div class="v" id="sy-f1">60.00</div></div>
         <div><div class="k">Grupo 2 · V</div><div class="v" id="sy-v2">0</div></div>
         <div><div class="k">Grupo 2 · Hz</div><div class="v" id="sy-f2">0.00</div></div>
-        <div><div class="k">Grupo 2 · kW</div><div class="v" id="sy-kw2">0</div></div>
+        <div><div class="k">Grupo 2 · kW (módulo)</div><div class="v" id="sy-kw2">0</div></div>
+        <div><div class="k">Grupo 2 · kW real</div><div class="v" id="sy-kw2r">0</div></div>
         <div><div class="k">Grupo 1 · kW</div><div class="v" id="sy-kw1">0</div></div>
         <div><div class="k">Grupo 2 · kVAr</div><div class="v" id="sy-kq2">0</div></div>
         <div><div class="k">Grupo 1 · kVAr</div><div class="v" id="sy-kq1">0</div></div>
@@ -313,9 +321,14 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
       </div>
       <h3>Ventana de check sync</h3>
       <div class="fields">
-        <label class="f">ΔV máx (%)<input type="number" id="sy-dv" value="4" step="0.5" min="0.5"></label>
+        <label class="f">ΔV máx (%)<input type="number" id="sy-dv" value="5" step="0.5" min="0.5"></label>
         <label class="f">Deslizamiento máx (Hz)<input type="number" id="sy-slip" value="0.2" step="0.05" min="0.05"></label>
         <label class="f">Ángulo máx (°)<input type="number" id="sy-ang" value="10" step="1" min="2"></label>
+      </div>
+      <div class="row"><span class="note">Valores de referencia:</span>
+        <button class="btn" data-preset="0.1,5,5">Guía DSE típica</button>
+        <button class="btn" data-preset="0.2,5,15">IEEE 1547 · 500–1500 kVA</button>
+        <button class="btn" data-preset="0.1,3,10">IEEE 1547 · 1,5–10 MVA</button>
       </div>
       <div class="row">
         <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-cs" checked> Check sync activo (bloquea cierres fuera de ventana)</label>
@@ -324,6 +337,7 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
       <div class="row">
         <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-rot"> Secuencia de fases invertida (L2↔L3)</label>
         <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-msc"> Enlace MSC cortado</label>
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-ct"> TC de L1 del grupo 2 invertido (falla oculta)</label>
       </div>
       <div class="row"><button class="btn" id="sy-reset">Reiniciar escenario</button></div>
       <h3>Registro de eventos</h3>
@@ -378,6 +392,8 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
         <div><div class="k">Motor · rpm</div><div class="v" id="tt-rpmv">0</div></div>
         <div><div class="k">Aceite · kPa</div><div class="v" id="tt-oil">0</div></div>
         <div><div class="k">Temporizador</div><div class="v" id="tt-timer">—</div></div>
+        <div><div class="k">Último corte</div><div class="v" id="tt-out">—</div></div>
+        <div><div class="k">Protecciones</div><div class="v" id="tt-arm">—</div></div>
         <div class="full" id="tt-msg">Red sana. Módulo en STOP.</div>
       </div>
       <div class="seq" id="tt-seq"></div>
@@ -421,6 +437,7 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
         <label class="row" style="gap:.35rem"><input type="checkbox" id="tt-f-start"> Motor no arranca</label>
         <label class="row" style="gap:.35rem"><input type="checkbox" id="tt-f-oil"> Baja presión de aceite</label>
         <label class="row" style="gap:.35rem"><input type="checkbox" id="tt-f-aux"> Auxiliar de Q2 no confirma</label>
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="tt-f-bat"> Batería degradada (falla oculta)</label>
       </div>
       <div class="row"><button class="btn" id="tt-reset">Reiniciar · Stop/Reset</button></div>
       <h3>Temporizadores (s)</h3>
@@ -526,6 +543,199 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
   </div>
 </section>
 
+<!-- ============ FALLAS ============ -->
+<section class="view" id="v-fallas" hidden>
+  <div class="eyebrow">Módulo 7</div>
+  <h2>Fallas frecuentes y fallas ocultas</h2>
+  <p class="lead">Una falla evidente se ve en cuanto ocurre: hay alarma o el equipo para. Una falla oculta no da señal mientras el sistema está en reposo y aparece justo cuando hace falta el grupo: al caer la red, al poner en paralelo, al tomar carga. En un sistema de respaldo, las ocultas son las peligrosas.</p>
+  <div class="row">
+    <span class="pill bad">Oculta</span><span class="note">No se ve hasta la demanda: hay que buscarla con una prueba.</span>
+    <span class="pill warn">Evidente</span><span class="note">El módulo la alarma.</span>
+  </div>
+  <div class="card">
+    <div class="scroll"><table>
+      <thead><tr><th>Falla</th><th>Tipo</th><th>Qué ve el operador</th><th>Causas frecuentes</th><th>Cómo encontrarla</th><th>Practicar</th></tr></thead>
+      <tbody>
+        <tr><td><b>Módulo fuera de AUTO</b></td><td><span class="pill bad">Oculta</span></td><td>Cae la red y el grupo no arranca. No hay alarma.</td><td>Quedó en STOP o MANUAL después de un mantenimiento o una prueba.</td><td>Verificar AUTO al cerrar cada orden de trabajo. Salida configurable «no en auto» hacia el SCADA.</td><td>TTA: deja STOP y provoca falla de red</td></tr>
+        <tr><td><b>Batería degradada</b></td><td><span class="pill bad">Oculta</span></td><td>El display se apaga al arrancar y el contador de intentos vuelve a cero.</td><td>Capacidad perdida, bornes sulfatados o flojos, cable de arranque largo o delgado.</td><td>Medir la tensión durante el arranque y hacer prueba de capacidad. En flotación la tensión se ve normal.</td><td>TTA: «Batería degradada»</td></tr>
+        <tr><td><b>Fail to Start</b></td><td><span class="pill warn">Evidente</span></td><td>Alarma después del último intento.</td><td>Batería, solenoide de combustible, aire en el combustible, parada de emergencia activa, sensor magnético de velocidad (MPU).</td><td>Tensión de batería al arrancar, señal del MPU (entrehierro y tensión AC según el fabricante del motor).</td><td>TTA: «Motor no arranca»</td></tr>
+        <tr><td><b>TC invertido en una fase</b></td><td><span class="pill bad">Oculta</span></td><td>kW bajo o raro; el reparto se ve parejo pero no lo es. Con FP distinto de 1 las lecturas empeoran.</td><td>Polaridad P1/S1 cruzada, común mal cableado.</td><td>Prueba con carga resistiva: los tres kW por fase deben ser positivos y parecidos. Comparar con pinza.</td><td>Sincronismo: «TC de L1 invertido»</td></tr>
+        <tr><td><b>Potencia inversa al poner en paralelo</b></td><td><span class="pill warn">Evidente</span></td><td>Un grupo dispara segundos después de cerrar o cuando baja la carga.</td><td>Cierre con deslizamiento negativo; un grupo en droop y otro isócrono; pérdida del reparto (MSC); TC invertido.</td><td>Registro de eventos del módulo; revisar modo de reparto y polaridad.</td><td>Sincronismo: corta el MSC y baja la carga</td></tr>
+        <tr><td><b>Fail to Synchronise</b></td><td><span class="pill warn">Evidente</span></td><td>El grupo no cierra y salta la alarma al vencer el temporizador.</td><td>Salida al gobernador o al AVR con sentido invertido o ganancia baja; sensado en fase equivocada; barra inestable; ventana demasiado estrecha.</td><td>Desde el módulo subir velocidad debe subir los Hz. Verificar fases del sensado.</td><td>Sincronismo: modo MANUAL</td></tr>
+        <tr><td><b>Oscilación de reactivos (hunting)</b></td><td><span class="pill warn">Evidente</span></td><td>kVAr y FP oscilan; un grupo toma los reactivos del otro.</td><td>AVR sin caída reactiva ni reparto de kVAr; ganancias mal ajustadas.</td><td>Revisar el modo de control de kVAr de cada grupo.</td><td>Sincronismo: AVR en paralelo</td></tr>
+        <tr><td><b>Pérdida de excitación</b></td><td><span class="pill warn">Evidente</span></td><td>kVAr negativo y disparo.</td><td>AVR o excitatriz en falla; ajuste manual excesivo hacia abajo en paralelo.</td><td>Revisar AVR, diodos rotativos y ajuste de excitación.</td><td>Sincronismo: baja el AVR en paralelo</td></tr>
+        <tr><td><b>MSC Failure / Too few sets / Data error</b></td><td><span class="pill bad">Oculta</span></td><td>Funciona meses y falla de forma intermitente; se pierde el reparto.</td><td>Cable sin malla, derivaciones, falta de resistencia de terminación, longitud excesiva, firmware distinto entre módulos.</td><td>En la puesta en marcha, soltar un cable a propósito y confirmar la alarma. Revisar versiones de firmware.</td><td>Sincronismo: «Enlace MSC cortado»</td></tr>
+        <tr><td><b>Sin datos del motor (CAN)</b></td><td><span class="pill warn">Evidente</span></td><td>Lecturas del motor en blanco y alarma de datos.</td><td>Terminación faltante, velocidad del bus distinta, ECM sin alimentación, cableado.</td><td>Con todo apagado, unos 60 Ω entre CAN H y CAN L.</td><td>—</td></tr>
+        <tr><td><b>Interruptor no confirma cierre</b></td><td><span class="pill bad">Oculta</span></td><td>«Breaker failed to close» justo en la emergencia.</td><td>Resorte sin cargar, bobina de cierre, contacto auxiliar gastado o desajustado.</td><td>Operar los interruptores en cada prueba mensual con carga.</td><td>TTA: «Auxiliar de Q2 no confirma»</td></tr>
+        <tr><td><b>Falla de red no detectada</b></td><td><span class="pill bad">Oculta</span></td><td>Se pierde una fase de la red y el grupo no arranca.</td><td>Sensado de red configurado monofásico, fusible de sensado abierto.</td><td>Simular pérdida de cada fase por separado en la prueba anual.</td><td>TTA: sub/sobretensión de red</td></tr>
+        <tr><td><b>Check sync puenteado</b></td><td><span class="pill bad">Oculta</span></td><td>Nada, hasta que un cierre fuera de fase daña el acople o el alternador.</td><td>Puente dejado tras una prueba o una falla.</td><td>Inspección del tablero contra planos. Control de puentes temporales con tarjeta.</td><td>Sincronismo: desactiva el check sync</td></tr>
+        <tr><td><b>Conmutador de tensión sin reconfigurar</b></td><td><span class="pill warn">Evidente</span></td><td>El grupo para por sub o sobretensión al terminar el calentamiento.</td><td>Grupo de alquiler cambiado de tensión sin cargar la configuración correspondiente.</td><td>Lista de verificación al recibir el equipo: conmutador, configuración del módulo y relación de TC coinciden.</td><td>TTA: conmutador de tensión</td></tr>
+        <tr><td><b>Wet stacking</b></td><td><span class="pill bad">Oculta</span></td><td>Humo negro, aceite o combustible en el escape, pérdida de potencia.</td><td>Muchas horas con poca carga o sin carga.</td><td>Prueba mensual con carga (NFPA 110: diésel a 30 % o más de la potencia de placa) y banco de carga cuando no alcanza.</td><td>—</td></tr>
+        <tr><td><b>Calentador de camisas fuera de servicio</b></td><td><span class="pill bad">Oculta</span></td><td>Arranque lento y humo blanco con frío, frecuente en altura.</td><td>Resistencia quemada, termostato, interruptor apagado.</td><td>Temperatura del bloque en la ronda diaria.</td><td>—</td></tr>
+        <tr><td><b>Configuración sin respaldo</b></td><td><span class="pill bad">Oculta</span></td><td>Dos grupos iguales responden distinto al mismo evento.</td><td>Cambios hechos en campo sin registro; archivos distintos por grupo.</td><td>Respaldo fechado del archivo de configuración después de cada cambio.</td><td>Programación</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Fuentes: alarmas y causas de los manuales y guías de DSE (057-045, 057-254, 057-259, 8600); hilos técnicos sobre paralelo de grupos en Eng-Tips, Mike Holt Forum y Control.com; guías de terceros para el MPU. El detalle está en Validación.</p>
+  </div>
+</section>
+
+<!-- ============ SEGURIDAD ============ -->
+<section class="view" id="v-seguridad" hidden>
+  <div class="eyebrow">Módulo 8</div>
+  <h2>Seguridad en grupos electrógenos y tableros de sincronismo</h2>
+  <p class="lead">Un tablero de sincronismo tiene varias fuentes de energía y un módulo que puede arrancar el motor sin aviso. Antes de cualquier intervención se aplica el procedimiento de la operación minera. Esta sección resume qué peligros hay y qué controles se aplican; no reemplaza el PETS del sitio.</p>
+  <div class="grid2">
+    <div class="card">
+      <h3>Marco aplicable</h3>
+      <div class="scroll"><table>
+        <thead><tr><th>Norma</th><th>Qué exige en este trabajo</th></tr></thead>
+        <tbody>
+          <tr><td><b>DS 024-2016-EM</b> y modificatorias (Reglamento de Seguridad y Salud Ocupacional en Minería)</td><td>IPERC, PETS escrito para la tarea, ATS antes de empezar, PETAR para trabajos de alto riesgo, señalización y código de colores, capacitación registrada.</td></tr>
+          <tr><td><b>RESESATE-2013</b> (RM 111-2013-MEM/DM, Reglamento de Seguridad y Salud en el Trabajo con Electricidad)</td><td>Trabajos con electricidad: personal calificado y autorizado, bloqueo y señalización, verificación de ausencia de tensión, puesta a tierra temporal, EPP dieléctrico.</td></tr>
+          <tr><td><b>Estándares del titular minero</b></td><td>Son los que se auditan en el sitio: bloqueo con candado personal, tarjeta y permiso, y aislamiento de energías.</td></tr>
+          <tr><td><b>NFPA 70E</b></td><td>Condición de trabajo eléctricamente segura, análisis de riesgo de arco, límites de aproximación y EPP por categoría.</td></tr>
+          <tr><td><b>NFPA 110</b></td><td>Pruebas periódicas del sistema de emergencia: arranque, transferencia y prueba con carga.</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Verifica los artículos vigentes: el DS 024-2016-EM tuvo modificaciones (entre ellas DS 029-2016-EM y DS 034-2023-EM). Los números de artículo no se citan aquí para no quedar desactualizados.</p>
+    </div>
+    <div class="card">
+      <h3>Las cinco reglas de oro</h3>
+      <p class="note">Secuencia general para trabajar sin tensión (origen: EN 50110). Se aplican en el orden indicado.</p>
+      <ol class="tight">
+        <li><b>Corte efectivo y visible</b> de todas las fuentes: red, cada grupo y circuitos auxiliares.</li>
+        <li><b>Bloqueo y señalización</b> de cada punto de corte con candado personal y tarjeta.</li>
+        <li><b>Verificar ausencia de tensión</b> con detector probado antes y después en una fuente conocida.</li>
+        <li><b>Puesta a tierra y en cortocircuito</b> temporal en todos los lados por donde pueda llegar tensión.</li>
+        <li><b>Delimitar y señalizar</b> la zona de trabajo y proteger las partes vivas cercanas.</li>
+      </ol>
+      <div class="callout">STOP en el módulo no es un bloqueo. Es un estado del software: un cambio de modo, una orden remota o una falla de configuración lo pueden sacar de ahí.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Peligros específicos y controles</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Peligro</th><th>Dónde está</th><th>Control</th></tr></thead>
+      <tbody>
+        <tr><td><b>Arranque automático</b></td><td>Módulo en AUTO o arranque remoto; falla de red; señal del DSE8660 por MSC.</td><td>STOP, aislar batería con seccionador bloqueable, retirar arranque remoto y bloquear.</td></tr>
+        <tr><td><b>Varias fuentes de tensión</b></td><td>Red, cada grupo, barra común; retorno a través de TP de sensado.</td><td>Bloquear todas las fuentes. Retirar fusibles de sensado. Rotular el tablero «alimentado por N fuentes».</td></tr>
+        <tr><td><b>Retroalimentación (backfeed)</b></td><td>Grupo que energiza la red o un alimentador aguas arriba.</td><td>Enclavamiento eléctrico y mecánico Q1/Q2; verificar en cada prueba. Nunca puentear un enclavamiento.</td></tr>
+        <tr><td><b>Secundario de TC abierto</b></td><td>Bornes de TC en el módulo y en el tablero.</td><td>Cortocircuitar con bloque o puente de prueba antes de desconectar. Nunca abrir con carga.</td></tr>
+        <tr><td><b>Arco eléctrico</b></td><td>Interruptores, barras, bornes de potencia; maniobras de cierre.</td><td>Estudio de arco; EPP según la etiqueta; maniobra remota o a distancia cuando se pueda; puertas cerradas al operar.</td></tr>
+        <tr><td><b>Cierre fuera de sincronismo</b></td><td>Cierre manual de un interruptor de grupo.</td><td>Nunca cerrar sin check sync. Cierre manual solo con relé de verificación activo y autorización.</td></tr>
+        <tr><td><b>Energía almacenada</b></td><td>Resorte cargado del interruptor; capacitores; sistema de refrigeración caliente y presurizado; combustible a presión.</td><td>Descargar resortes; esperar descarga; enfriar antes de abrir la tapa del radiador; despresurizar el combustible.</td></tr>
+        <tr><td><b>Partes giratorias</b></td><td>Ventilador, correas, acople.</td><td>Guardas en su lugar; bloqueo del arranque antes de retirarlas.</td></tr>
+        <tr><td><b>Baterías</b></td><td>Banco de arranque y cargador.</td><td>Ventilación por hidrógeno, protección facial, herramienta aislada, desconectar primero el negativo.</td></tr>
+        <tr><td><b>Gases de escape y ruido</b></td><td>Sala de grupos, pruebas con carga.</td><td>Ventilación y monitoreo de CO; protección auditiva.</td></tr>
+        <tr><td><b>Circuitos auxiliares</b></td><td>Calentador de camisas, cargador de batería, iluminación y tomas del tablero (otra fuente).</td><td>Incluirlos en el bloqueo: suelen venir de un tablero distinto.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Procedimiento · bloqueo de un grupo en sistema de sincronismo</h3>
+      <ol class="tight">
+        <li>Coordinar con el responsable de energía del área: qué carga queda con los otros grupos o con la red, y si hace falta desconectar cargas.</li>
+        <li>Descargar el grupo en rampa y abrir su interruptor desde el módulo (o pasar la carga al resto del sistema).</li>
+        <li>Poner el módulo en STOP. Dejar enfriar el motor si se va a intervenir.</li>
+        <li>Extraer o abrir el interruptor del grupo y bloquearlo en posición abierta.</li>
+        <li>Aislar la batería con su seccionador y bloquearlo. Desconectar el cargador y el calentador de camisas en su origen.</li>
+        <li>Retirar los fusibles de sensado de barra en el tablero del grupo (evita retorno por los TP).</li>
+        <li>Cada trabajador coloca su candado y su tarjeta.</li>
+        <li>Prueba de bloqueo: intentar arrancar desde el panel. El motor no debe girar. Volver a STOP.</li>
+        <li>Verificar ausencia de tensión en los bornes del generador y del interruptor del lado barra.</li>
+        <li>Instalar puesta a tierra temporal si se interviene el circuito de potencia.</li>
+        <li>Al terminar: retirar tierras, herramientas y candados en orden inverso; reponer fusibles; verificar configuración y dejar el módulo en AUTO.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3>Procedimiento · sincronización y prueba de transferencia</h3>
+      <ol class="tight">
+        <li>Verificar en el display que la secuencia de fases del grupo y de la barra coinciden.</li>
+        <li>Confirmar que el check sync está activo y que la ventana es la del estudio de la instalación.</li>
+        <li>Sincronizar en AUTO. Si es manual, cerrar solo con la aguja subiendo lento hacia las 12 y el grupo algo más rápido.</li>
+        <li>Tras el cierre, verificar kW positivos y reparto proporcional en todos los grupos.</li>
+        <li>Prueba mensual: modo PRUEBA con carga real o banco de carga, registro del tiempo de transferencia y del retorno.</li>
+        <li>Revisar el registro de eventos y anotar alarmas aunque se hayan restablecido solas.</li>
+        <li>Dejar el módulo en AUTO y firmar el registro.</li>
+      </ol>
+      <h3>Trabajo en circuitos de TC y sensado</h3>
+      <ol class="tight">
+        <li>Cortocircuitar los secundarios con el bloque de prueba antes de soltar el conector del módulo.</li>
+        <li>Retirar fusibles de sensado de tensión antes de tocar bornes.</li>
+        <li>Al reconectar: verificar polaridad y secuencia con carga resistiva antes de poner en paralelo.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <h3>Lista de verificación previa a la intervención</h3>
+      <span class="pill idle" id="sg-pill">0 / 0</span>
+    </div>
+    <p class="note">Se guarda solo en este navegador. Úsala como guía de práctica; el registro oficial es el del sistema de permisos de la operación.</p>
+    <div id="sg-list" style="display:flex;flex-direction:column;gap:.3rem"></div>
+    <div class="row"><button class="btn" id="sg-reset">Limpiar lista</button></div>
+  </div>
+</section>
+
+<!-- ============ VALIDACION ============ -->
+<section class="view" id="v-validacion" hidden>
+  <div class="eyebrow">Auditoría funcional y de datos</div>
+  <h2>Validación del simulador</h2>
+  <p class="lead">Cada valor del simulador se comparó con documentación del fabricante, normas y foros técnicos. El estado indica qué se puede tomar como referencia y qué es solo un ejemplo para practicar.</p>
+  <div class="row">
+    <span class="pill ok">Validado</span><span class="pill warn">Ajustado</span><span class="pill idle">Ejemplo</span>
+  </div>
+  <div class="card">
+    <h3>Datos de simulación</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Dato</th><th>En el simulador</th><th>Referencia</th><th>Estado</th></tr></thead>
+      <tbody>
+        <tr><td>Ventana de check sync</td><td>0,2 Hz · 5 % · 10° (antes 4 %); botones de referencia</td><td>Guía DSE 057-045: típico 0,1 Hz · 5 % · 5°. IEEE 1547-2003: 0,3/10/20 (≤ 500 kVA), 0,2/5/15 (500–1 500 kVA), 0,1/3/10 (1,5–10 MVA)</td><td><span class="pill warn">Ajustado</span></td></tr>
+        <tr><td>Deslizamiento y sincronoscopio</td><td>0,2 Hz = una vuelta cada 5 s</td><td>Guía de interconexión con DSE8610 (ejemplo de 0,2 Hz); cálculo 360° × Δf</td><td><span class="pill ok">Validado</span></td></tr>
+        <tr><td>Grupo entrante más rápido</td><td>Deslizamiento objetivo positivo</td><td>Guías DSE y foros de paralelo: evita potencia inversa al cerrar</td><td><span class="pill ok">Validado</span></td></tr>
+        <tr><td>Funciones de los módulos</td><td>7320 AMF; 8610 sincronismo y reparto; 8660 red/ATS</td><td>Páginas de producto y manuales DSE (057-253, 057-254, 057-259)</td><td><span class="pill ok">Validado</span></td></tr>
+        <tr><td>Enlace MSC</td><td>Belden 9841, cadena, terminación; 32 + 32, máx. 40</td><td>Guía DSE 056-011 (240 m) y manual 8600 (250 m)</td><td><span class="pill warn">Ajustado</span></td></tr>
+        <tr><td>Alarmas MSC y sincronismo</td><td>MSC Failure, Too few sets, Fail to synchronise</td><td>Manuales DSE 8600 / 8610 / 8660</td><td><span class="pill ok">Validado</span></td></tr>
+        <tr><td>Definición de temporizadores</td><td>Transitorio, arranque, protecciones, retorno, enfriamiento</td><td>Manual de software DSE 057-243 (definiciones)</td><td><span class="pill ok">Validado</span></td></tr>
+        <tr><td>Valores de temporizadores</td><td>2 · 5 · 10 · 10 · 3 · 10 · 3 · 1 · 30 · 60 s</td><td>No se encontró valor de fábrica publicado; guías de terceros sugieren enfriamiento y retorno de 180 s</td><td><span class="pill idle">Ejemplo</span></td></tr>
+        <tr><td>Retardo de protecciones</td><td>Ahora corre en paralelo con el calentamiento</td><td>Definición DSE: tiempo en que el módulo ignora presión y protecciones del motor al arrancar</td><td><span class="pill warn">Ajustado</span></td></tr>
+        <tr><td>Tiempo de restablecimiento</td><td>Indicador NFPA 110 Nivel 1 (≤ 10 s)</td><td>NFPA 110, fuentes secundarias</td><td><span class="pill ok">Validado</span></td></tr>
+        <tr><td>Prueba mensual con carga</td><td>Diésel ≥ 30 % de placa</td><td>NFPA 110 cap. 8, fuentes secundarias; verificar edición adoptada</td><td><span class="pill ok">Validado</span></td></tr>
+        <tr><td>Terminación CAN J1939</td><td>~60 Ω con todo apagado</td><td>Dos resistencias de 120 Ω en paralelo (SAE J1939)</td><td><span class="pill ok">Validado</span></td></tr>
+        <tr><td>Umbrales de sub/sobretensión</td><td>85 % / 110 %</td><td>Configurables en el módulo; los fija el estudio de la instalación</td><td><span class="pill idle">Ejemplo</span></td></tr>
+        <tr><td>Potencia inversa, pérdida de excitación, sobreexcitación</td><td>8 % · 3 s; −25 %; 75 % de nominal en kVAr</td><td>Ajustes de protección del proyecto</td><td><span class="pill idle">Ejemplo</span></td></tr>
+        <tr><td>Reducción por altitud</td><td>3 % cada 300 m sobre 1 500 m</td><td>Curva del fabricante del motor; condiciones de referencia ISO 3046-1</td><td><span class="pill idle">Ejemplo</span></td></tr>
+        <tr><td>Transferencia cerrada</td><td>Paralelo de &lt; 100 ms</td><td>Valor típico de equipos de transferencia; lo fija la distribuidora</td><td><span class="pill idle">Ejemplo</span></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <h3>Auditoría funcional · errores encontrados y corregidos</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>#</th><th>Hallazgo</th><th>Efecto</th><th>Corrección</th></tr></thead>
+      <tbody>
+        <tr><td>F1</td><td>El contador de intentos de arranque no se reiniciaba tras un arranque exitoso.</td><td>En la segunda falla de red el grupo empezaba en el intento 2 y podía dar Fail to Start antes de tiempo.</td><td>Se reinicia al arrancar y con la red sana.</td></tr>
+        <tr><td>F2</td><td>Con el grupo parado por alarma y la red sana, Q1 no volvía a cerrar.</td><td>La carga quedaba sin energía aunque había red.</td><td>En alarma, si la red está sana, Q1 cierra tras el tiempo de transferencia.</td></tr>
+        <tr><td>F3</td><td>Con el MSC cortado y la carga bajando, el grupo 1 mostraba 0 kW.</td><td>Ocultaba la potencia inversa, que es justo lo que se quería enseñar.</td><td>El grupo 1 puede quedar negativo y dispara por potencia inversa a los 3 s.</td></tr>
+        <tr><td>F4</td><td>En MANUAL no había forma de devolver la carga a la red.</td><td>Solo se salía con STOP, cortando la carga.</td><td>TRANSFERIR alterna entre grupo y red en MANUAL.</td></tr>
+        <tr><td>F5</td><td>El retardo de protecciones bloqueaba la toma de carga.</td><td>Alargaba la transferencia unos 10 s y no reflejaba la lógica del módulo.</td><td>Corre en paralelo con el calentamiento desde el desacople del arranque.</td></tr>
+        <tr><td>F6</td><td>El tiempo sin energía era un acumulado de toda la sesión.</td><td>No servía para evaluar una transferencia.</td><td>Se mide cada corte y se compara con 10 s (NFPA 110 Nivel 1).</td></tr>
+        <tr><td>F7</td><td>El sincronizador automático buscaba 0,1 Hz aunque la ventana fuera menor.</td><td>Con ventana de 0,1 Hz nunca cerraba.</td><td>El objetivo es la mitad de la ventana configurada.</td></tr>
+        <tr><td>F8</td><td>Faltaban fallas ocultas en las prácticas.</td><td>—</td><td>Se agregaron: módulo fuera de AUTO, batería degradada y TC invertido.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <h3>Preguntas del examen</h3>
+    <p>Las 15 preguntas originales se revisaron contra las mismas fuentes y se mantienen. Se agregaron 5 sobre seguridad y fallas ocultas (bloqueo de varias fuentes, TC invertido, módulo fuera de AUTO, NFPA 110 y batería). Aprobación: 80 % (16 de 20).</p>
+    <p class="note">Limitación: los manuales de DSE en PDF no se pudieron abrir completos durante la auditoría; los valores del fabricante se tomaron de extractos publicados. Antes de usar el material en una capacitación formal, contrasta la tabla con la revisión vigente de cada manual.</p>
+  </div>
+</section>
+
 <!-- ============ MINA ============ -->
 <section class="view" id="v-mina" hidden>
   <div class="eyebrow">Contexto de operación</div>
@@ -582,9 +792,9 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
     <div class="card" id="qz-box"></div>
     <div class="card" style="align-self:start;position:sticky;top:5rem">
       <label class="f">Nombre del participante<input type="text" id="qz-name" placeholder="Nombre y apellido" autocomplete="name"></label>
-      <div class="score" id="qz-score">— / 15</div>
+      <div class="score" id="qz-score">— / 20</div>
       <div class="bar"><i id="qz-bar" style="width:0"></i></div>
-      <p class="note" id="qz-res">Responde todas y pulsa Calificar. Aprobación: 12 de 15.</p>
+      <p class="note" id="qz-res">Responde todas y pulsa Calificar. Aprobación: 16 de 20.</p>
       <div class="row"><button class="btn primary" id="qz-grade">Calificar</button><button class="btn" id="qz-reset">Reiniciar</button></div>
       <p class="note" id="qz-best"></p>
     </div>
@@ -604,7 +814,7 @@ function logTo(el,msg,cls,t){const d=document.createElement('div');if(cls)d.clas
 function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
 
 /* ---------- router ---------- */
-const VIEWS=['inicio','fundamentos','sincronismo','tta','tablero','programacion','mina','evaluacion'];
+const VIEWS=['inicio','fundamentos','sincronismo','tta','tablero','programacion','fallas','seguridad','mina','evaluacion','validacion'];
 function route(){const h=(location.hash||'#inicio').slice(1);const v=VIEWS.includes(h)?h:'inicio';
   VIEWS.forEach(x=>{$('#v-'+x).hidden=x!==v});
   $$('nav.tabs a').forEach(a=>a.setAttribute('aria-current',a.getAttribute('href')==='#'+v?'page':'false'));
@@ -615,7 +825,7 @@ addEventListener('hashchange',route);
 const SY={};
 function syInit(){
   Object.assign(SY,{mode:'stop',running:false,closed:false,f1:60,v1:+$('#sy-vn').value,f2:0,v2:0,
-    phi:Math.random()*360-180,kw2:0,qbias:0,inWinT:0,startT:0,tripped:false,lastMsg:''});
+    phi:Math.random()*360-180,kw2:0,qbias:0,g1trip:false,rpT:0,ctWarn:false,inWinT:0,startT:0,tripped:false,lastMsg:''});
   $('#sy-log').textContent='';
   syLog('Escenario listo. Grupo 1 en barra, grupo 2 parado.','e-ok');
 }
@@ -652,7 +862,7 @@ function syClose(by){
   if(e.slip<0)syLog('Cerró con deslizamiento negativo: potencia inversa momentánea en el grupo 2.','e-warn');
   syMsg('En paralelo. El grupo 2 toma carga en rampa.');
 }
-function syOpen(){if(!SY.closed)return;SY.closed=false;SY.qbias=0;SY.unloading=false;SY.kw2=0;syLog('Q3 abierto. El grupo 1 queda con toda la carga.','e-warn');syMsg('Grupo 2 en vacío.')}
+function syOpen(){if(!SY.closed)return;if(SY.g1trip)syLog('Abriste el único grupo en barra: apagón total de la barra.','e-bad');SY.closed=false;SY.qbias=0;SY.unloading=false;SY.kw2=0;syLog('Q3 abierto. El grupo 1 queda con toda la carga.','e-warn');syMsg('Grupo 2 en vacío.')}
 function syMode(m){
   if(m==='stop'){SY.mode='stop';if(SY.closed)syOpen();SY.running=false;SY.tripped=false;SY.f2=0;SY.v2=0;syMsg('Grupo 2 parado.');syLog('STOP/Reset.');}
   else{if(SY.tripped){syLog('Hay una alarma activa. Pulsa STOP para rearmar.','e-warn');return}SY.mode=m;
@@ -676,7 +886,7 @@ function syLoop(now){
   const load=+$('#sy-load').value, rating=+$('#sy-rating').value, ramp=+$('#sy-ramp').value;
   if(SY.running&&!SY.closed){
     if(SY.mode==='auto'){
-      const near=Math.abs(SY.v2-SY.v1)/SY.v1<0.02&&Math.abs(SY.f2-SY.f1-0.1)<0.05;const tf=SY.f1+(near&&Math.abs(SY.phi)>60?0.18:0.1);SY.f2+=clamp(tf-SY.f2,-0.25*dt,0.25*dt);
+      const near=Math.abs(SY.v2-SY.v1)/SY.v1<0.02&&Math.abs(SY.f2-SY.f1-0.1)<0.05;const sl=syLimits().slip,tf=SY.f1+(near&&Math.abs(SY.phi)>60?Math.min(0.18,sl*0.9):Math.min(0.1,sl*0.5));SY.f2+=clamp(tf-SY.f2,-0.25*dt,0.25*dt);
       SY.v2+=clamp(SY.v1-SY.v2,-0.02*SY.v1*dt,0.02*SY.v1*dt);
     }
     SY.phi+=360*(SY.f2-SY.f1)*dt;SY.phi=((SY.phi+180)%360+360)%360-180;
@@ -685,7 +895,9 @@ function syLoop(now){
   }
   if(SY.closed){
     const msc=!$('#sy-msc').checked;
-    const target=msc?Math.min(load*rating/(2*rating),rating):SY.kw2;
+    // con un TC invertido el módulo mide 1/3 de la potencia real y reparte mal: equilibrio kW2_real/3 = kW1
+    const ct=$('#sy-ct').checked;
+    const target=SY.g1trip?load:msc?Math.min(ct?0.75*load:load/2,rating*1.1):SY.kw2;
     if(!msc&&!SY.mscAlarm){SY.mscAlarm=true;syLog('Alarma MSC Failure: se pierde el reparto de carga. El grupo 2 mantiene su potencia; el grupo 1 absorbe todas las variaciones.','e-bad')}
     if(msc&&SY.mscAlarm){SY.mscAlarm=false;syLog('Enlace MSC restablecido. Reparto en % de nominal reanudado.','e-ok')}
     SY.kw2+=clamp(target-SY.kw2,-ramp*dt,ramp*dt);
@@ -697,7 +909,13 @@ function syLoop(now){
     else if(kq2>0.75*rating&&!SY.qWarn){SY.qWarn=true;syLog('Grupo 2 sobreexcitado: corriente reactiva circulando entre grupos. Baja el AVR o pasa a AUTO para que el módulo reparta los kVAr.','e-warn')}
     else if(kq2<=0.6*rating)SY.qWarn=false;
   }
-  const kw1=Math.max(0,load-(SY.closed?SY.kw2:0));
+  if(SY.g1trip&&SY.closed){SY.kw2=load}
+  const kw1=SY.g1trip?0:load-(SY.closed?SY.kw2:0);
+  // potencia inversa del grupo 1 (motoriza): umbral didáctico 8 % durante 3 s
+  if(!SY.g1trip&&kw1<-0.08*rating){SY.rpT=(SY.rpT||0)+dt;if(SY.rpT>=3){SY.g1trip=true;
+    syLog(`Grupo 1 disparó por POTENCIA INVERSA (${fmt(kw1)} kW): la barra lo movía como motor. El grupo 2 queda solo con ${fmt(load)} kW.`,'e-bad');
+    if(load>rating*1.1)syLog('El grupo 2 no puede con toda la carga: sobrecarga. Aquí entra la desconexión de cargas no críticas.','e-bad')}}else SY.rpT=0;
+  if(SY.closed&&$('#sy-ct').checked&&!SY.ctWarn&&SY.kw2>50){SY.ctWarn=true;syLog('El display muestra el reparto "parejo", pero el grupo 2 entrega el triple de lo que indica. Solo una medición con pinza o una prueba con carga resistiva lo revela.','e-warn')}
   if(kw1>rating*1.1&&!SY.ovl){SY.ovl=true;syLog(`Grupo 1 sobrecargado (${fmt(kw1)} kW). Pon en paralelo el grupo 2.`,'e-warn')}
   if(kw1<=rating&&SY.ovl)SY.ovl=false;
   syDraw(kw1);
@@ -707,7 +925,7 @@ function syDraw(kw1){
   const L=syLimits(),e=syEval();
   $('#sy-v1').textContent=fmt(SY.v1);$('#sy-f1').textContent=fmt(SY.f1,2);
   $('#sy-v2').textContent=fmt(SY.closed?SY.v1:SY.v2);$('#sy-f2').textContent=fmt(SY.closed?SY.f1:SY.f2,2);
-  $('#sy-kw2').textContent=fmt(SY.closed?SY.kw2:0);$('#sy-kw1').textContent=fmt(kw1);
+  $('#sy-kw2').textContent=fmt(SY.closed?($('#sy-ct').checked?SY.kw2/3:SY.kw2):0);$('#sy-kw2r').textContent=fmt(SY.closed?SY.kw2:0);$('#sy-kw1').textContent=SY.g1trip?'DISPARO':fmt(kw1);
   {const pf=clamp(+$('#sy-pf').value||0.85,0.5,1),load=+$('#sy-load').value,qL=load*Math.tan(Math.acos(pf));
    const kq2=SY.closed?qL/2+SY.qbias:0,kq1=qL-kq2,kw2=SY.closed?SY.kw2:0;
    const pfOf=(p,q)=>p<=0&&Math.abs(q)<1?'—':fmt(p/Math.hypot(p,q),2)+(q<0?' cap':'');
@@ -752,6 +970,8 @@ function syBind(){
   $('#sy-gov-up').onclick=()=>syAdjF(0.1);$('#sy-gov-dn').onclick=()=>syAdjF(-0.1);$('#sy-gov-fine-up').onclick=()=>syAdjF(0.02);$('#sy-gov-fine-dn').onclick=()=>syAdjF(-0.02);
   $('#sy-avr-up').onclick=()=>syAdjV(4);$('#sy-avr-dn').onclick=()=>syAdjV(-4);
   $('#sy-reset').onclick=syInit;
+  $$('[data-preset]').forEach(b=>b.onclick=()=>{const [sl,dv,an]=b.dataset.preset.split(',');$('#sy-slip').value=sl;$('#sy-dv').value=dv;$('#sy-ang').value=an;syLog(`Ventana de check sync: ${b.textContent} → ${sl} Hz, ${dv} %, ${an}°.`)});
+  $('#sy-ct').onchange=e=>{SY.ctWarn=false;syLog(e.target.checked?'Falla oculta introducida: TC de L1 con polaridad invertida. Pon en paralelo y compara kW del módulo con kW real.':'TC corregido.',e.target.checked?'e-warn':'e-ok')};
   $('#sy-load').oninput=e=>$('#sy-load-v').textContent=fmt(e.target.value)+' kW';
   $('#sy-vn').onchange=()=>{syMode('stop');syInit()};
   $('#sy-vbus').onchange=e=>{const o=+e.target.value;syLog(`Cambio de tensión de barra: ${o>0?'+':''}${o} % (${fmt(syVbus())} V).${SY.closed?' En paralelo el grupo 2 sigue a la barra.':''}`,Math.abs(o)>=8?'e-warn':undefined)};
@@ -768,10 +988,10 @@ const TT_TIMERS=[
   ['seguridad','Retardo de protecciones',10],['calent','Calentamiento',3],['transf','Tiempo de transferencia',1],
   ['retorno','Retardo de retorno a red',30],['enfr','Enfriamiento',60]];
 const TT={};
-const TT_SEQ=[['red','Red en carga'],['transitorio','Transitorio'],['arranque','Retardo arranque'],['precal','Precalent.'],['crank','Arranque'],['seguridad','Protecciones'],['calent','Calentamiento'],['transf','Transferencia'],['gen','Gen en carga'],['retorno','Retorno'],['sync','Sincroniza red'],['retransf','Retransferencia'],['enfr','Enfriamiento']];
+const TT_SEQ=[['red','Red en carga'],['transitorio','Transitorio'],['arranque','Retardo arranque'],['precal','Precalent.'],['crank','Arranque'],['calent','Calentamiento'],['transf','Transferencia'],['gen','Gen en carga'],['retorno','Retorno'],['sync','Sincroniza red'],['retransf','Retransferencia'],['enfr','Enfriamiento']];
 function ttT(k){return +($('#tt-tm-'+k)?.value ?? TT_TIMERS.find(t=>t[0]===k)[2])}
 function ttInit(){
-  Object.assign(TT,{mode:'stop',mpct:100,gvT:0,state:'red',t:0,clock:0,q1:true,q2:false,rpm:0,oil:0,vg:0,fg:0,attempt:0,alarm:null,dark:0,blip:0,speed:TT.speed||1,running:false,manualReq:false});
+  Object.assign(TT,{mode:'stop',mpct:100,gvT:0,runT:0,lastOut:null,outStart:null,resets:0,warnMode:false,armedLog:false,state:'red',t:0,clock:0,q1:true,q2:false,rpm:0,oil:0,vg:0,fg:0,attempt:0,alarm:null,dark:0,blip:0,speed:TT.speed||1,running:false,manualReq:false});
   $('#tt-mpct').value=100;$('#tt-log').textContent='';ttLog('Sistema listo: red sana, Q1 cerrado, módulo en STOP.','e-ok');ttMainsLbl();
 }
 function ttLog(m,c){const s=TT.clock;logTo($('#tt-log'),m,c,`${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`)}
@@ -799,19 +1019,29 @@ function ttStep(dt){
   if(TT.running){TT.rpm+= (1800-TT.rpm)*Math.min(1,dt*3);TT.oil+=(420-TT.oil)*Math.min(1,dt*2)}
   else if(TT.state!=='crank'){TT.rpm=Math.max(0,TT.rpm-600*dt);TT.oil=Math.max(0,TT.oil-300*dt)}
   const vout=ttGenOut();TT.fg=TT.rpm/30;TT.vg=TT.rpm>1700?vout:TT.rpm/1800*vout*0.9;
-  // protección de tensión del generador (habilitada después del retardo de protecciones)
-  if(TT.running&&TT.rpm>1700&&['calent','transf','gen','retorno','sync','retransf','enfr'].includes(TT.state)){
+  // el retardo de protecciones corre en paralelo con el calentamiento desde el desacople del arranque
+  if(TT.running){TT.runT+=dt}else TT.runT=0;
+  const armed=TT.running&&TT.runT>=ttT('seguridad');
+  if(armed&&!TT.armedLog){TT.armedLog=true;if($('#tt-f-oil').checked){TT.oil=40;ttFail('Baja presión de aceite');return}ttLog('Retardo de protecciones cumplido: presión de aceite, temperatura y tensión del generador ya se vigilan.')}
+  if(!TT.running)TT.armedLog=false;
+  // protección de tensión del generador
+  if(armed&&TT.rpm>1700&&['calent','transf','gen','retorno','sync','retransf','enfr'].includes(TT.state)){
     const gp=TT.vg/ttVn()*100;
     if(gp<ttUV()||gp>ttOV()){TT.gvT+=dt;if(TT.gvT>=2){ttFail(`${gp<ttUV()?'Subtensión':'Sobretensión'} de generador: ${fmt(TT.vg)} V = ${fmt(gp,0)} % de ${ttVn()} V nominal. Revisa el conmutador de tensión del grupo, el AVR o la configuración del módulo.`);return}}
     else TT.gvT=0;
   } else TT.gvT=0;
   // si Q1 cerrado y red cae, Q1 abre por subtensión (la carga queda oscura)
   if(TT.q1&&!ok&&TT.state!=='red'&&!['transitorio'].includes(TT.state)){}
-  const loadOn=(TT.q1&&ok)||(TT.q2&&TT.running);
-  if(!loadOn)TT.dark+=dt;
+  const loadOn=(TT.q1&&ttMainsV()>0)||(TT.q2&&TT.running);
+  if(!loadOn){TT.dark+=dt;if(TT.outStart==null)TT.outStart=TT.clock}
+  else if(TT.outStart!=null){const d=TT.clock-TT.outStart;TT.lastOut=d;TT.outStart=null;
+    if(TT.q2)ttLog(`Carga restablecida por el grupo en ${fmt(d,1)} s. NFPA 110 Nivel 1 pide ≤ 10 s: ${d<=10?'CUMPLE':'NO CUMPLE'}.`,d<=10?'e-ok':'e-warn');
+    else ttLog(`Carga restablecida en ${fmt(d,1)} s.`,'e-ok')}
   switch(TT.state){
     case 'red':
       if(ok&&!TT.q1&&!TT.q2){TT.q1=true;ttLog('Red sana: Q1 cierra.','e-ok')}
+      if(ok){TT.attempt=0;TT.warnMode=false}
+      if(!ok&&!auto&&!test&&!TT.warnMode){TT.warnMode=true;ttLog(`Falla de red con el módulo en ${TT.mode==='stop'?'STOP':'MANUAL'}: el grupo NO arranca solo. Falla oculta clásica: el módulo quedó fuera de AUTO después de un mantenimiento.`,'e-bad')}
       if(!ok&&(auto)){ttGo('transitorio',TT.blip>0||TT.mpct===0?'Falla de red detectada: inicia retardo transitorio.':`${TT.mpct<ttUV()?'Subtensión':'Sobretensión'} de red (${fmt(ttMainsV())} V, ${TT.mpct} %): inicia retardo transitorio.`,'e-warn')}
       if(TT.mode==='manual'&&TT.manualReq){TT.manualReq=false;ttGo('arranque','Arranque manual solicitado.')}
       break;
@@ -827,7 +1057,9 @@ function ttStep(dt){
     case 'crank':
       if(TT.t===dt||TT.t<=dt+1e-6){TT.attempt++;ttLog(`Arranque: intento ${TT.attempt} de ${ttT('intentos')}.`)}
       TT.rpm=Math.min(TT.rpm+250*dt,$('#tt-f-start').checked?220:600);
-      if(!$('#tt-f-start').checked&&TT.t>=2.5){TT.running=true;ttLog(`Motor arrancó (desacople de arranque a ${fmt(TT.rpm)} rpm).`,'e-ok');ttGo('seguridad','Retardo de protecciones activo: presión de aceite aún no se evalúa.');break}
+      if($('#tt-f-bat').checked&&TT.t>=1){TT.resets++;TT.attempt=0;TT.rpm=0;
+        ttGo('arranque',`La tensión de batería cayó bajo el mínimo del módulo durante el arranque: el módulo se reinició y el contador de intentos volvió a cero (reinicio ${TT.resets}).${TT.resets>=3?' Sin una prueba de capacidad de batería, esta falla no se ve: en flotación la tensión parecía normal.':''}`,'e-bad');break}
+      if(!$('#tt-f-start').checked&&TT.t>=2.5){TT.running=true;ttLog(`Motor arrancó (desacople de arranque a ${fmt(TT.rpm)} rpm).`,'e-ok');TT.attempt=0;TT.resets=0;ttGo('calent','Retardo de protecciones y calentamiento en marcha: la presión de aceite aún no se evalúa.');break}
       if(TT.t>=ttT('crank')){
         if(TT.attempt>=ttT('intentos')){ttFail('Falla de arranque (Fail to Start)');break}
         ttGo('reposo',`Intento ${TT.attempt} fallido. Reposo del motor de arranque.`,'e-warn');TT.rpm=0;
@@ -854,6 +1086,7 @@ function ttStep(dt){
       break;
     case 'gen':
       if(TT.mode==='manual'&&TT.manualWait&&TT.manualReq){TT.manualReq=false;TT.manualWait=false;if(TT.q1&&ok){TT.q1=false;ttLog('Q1 abre.')}ttGo('transf','Transferencia manual a generador.')}
+      if(TT.mode==='manual'&&!TT.manualWait&&TT.manualReq){TT.manualReq=false;if(!ok){ttLog('No hay red sana para retransferir.','e-warn')}else{TT.q2=false;ttGo('retransf','Retransferencia manual a red: Q2 abre. En MANUAL el motor sigue en marcha hasta STOP.')}}
       if(auto&&ok)ttGo('retorno','Red sana: inicia retardo de retorno a red.','e-ok');
       break;
     case 'retorno':
@@ -875,13 +1108,15 @@ function ttStep(dt){
       if(TT.t>=3){TT.q1=true;ttLog('Red y grupo en sincronismo: Q1 cierra. Ambos en paralelo por un instante.','e-ok');TT.q2=false;ttLog('Q2 abre: retransferencia sin corte.','e-ok');ttGo('enfr','Enfriamiento sin carga.')}
       break;}
     case 'retransf':
-      if(TT.t>=ttT('transf')){TT.q1=true;ttGo('enfr','Q1 cerrado: carga en red. Enfriamiento del motor sin carga.','e-ok')}
+      if(TT.t>=ttT('transf')){TT.q1=true;if(TT.mode==='manual'){ttGo('gen','Q1 cerrado: carga en red. Grupo en vacío (MANUAL).','e-ok');TT.manualWait=true}else ttGo('enfr','Q1 cerrado: carga en red. Enfriamiento del motor sin carga.','e-ok')}
       break;
     case 'enfr':
       if(!ok&&auto){ttGo('transf','Falla de red durante el enfriamiento: retoma la carga.','e-warn');if(TT.q1)TT.q1=false;break}
       if(TT.t>=ttT('enfr')){TT.running=false;ttGo('red','Enfriamiento completo. Motor parado. Sistema en vigilancia.','e-ok')}
       break;
-    case 'alarma': break;
+    case 'alarma':
+      if(ok&&!TT.q1&&TT.t>=ttT('transf')){TT.q1=true;ttLog('Grupo parado por alarma y red sana: Q1 cierra y la carga vuelve a la red.','e-ok')}
+      break;
   }
   if(test&&TT.state==='red'&&!TT.alarm&&!TT.running)ttGo('arranque');
 }
@@ -894,7 +1129,8 @@ function ttDraw(){
   const labels={red:ok?'Red en carga':'Sin energía',transitorio:'Retardo transitorio',arranque:'Retardo de arranque',precal:'Precalentamiento',crank:'Arrancando',reposo:'Reposo arranque',seguridad:'Retardo protecciones',calent:'Calentamiento',transf:'Transfiriendo',gen:TT.manualWait?'Listo en vacío':'Gen en carga',retorno:'Retardo retorno',sync:'Sincronizando con red',retransf:'Retransfiriendo',enfr:'Enfriamiento',alarma:'ALARMA'};
   const p=$('#tt-state');p.textContent=labels[TT.state];p.className='pill '+(TT.state==='alarma'?'bad':(TT.state==='red'&&ok)||TT.state==='gen'?'ok':TT.state==='red'?'bad':'warn');
   const loadOn=(TT.q1&&ttMainsV()>0)||(TT.q2&&TT.running);
-  $('#tt-msg').textContent=TT.alarm?`ALARMA: ${TT.alarm.replace(/\.$/,'')}. Pulsa STOP para rearmar.`:`Carga ${loadOn?'energizada':'SIN ENERGÍA'} · Q1 ${TT.q1?'cerrado':'abierto'} · Q2 ${TT.q2?'cerrado':'abierto'} · tiempo sin energía acumulado ${fmt(TT.dark,1)} s`;
+  $('#tt-msg').textContent=TT.alarm?`ALARMA: ${TT.alarm.replace(/\.$/,'')}. Pulsa STOP para rearmar.`:`Carga ${loadOn?'energizada':'SIN ENERGÍA'} · Q1 ${TT.q1?'cerrado':'abierto'} · Q2 ${TT.q2?'cerrado':'abierto'} `;
+  $('#tt-out').textContent=TT.outStart!=null?fmt(TT.clock-TT.outStart,1)+' s…':TT.lastOut!=null?fmt(TT.lastOut,1)+' s':'—';$('#tt-arm').textContent=!TT.running?'—':TT.runT>=ttT('seguridad')?'ARMADAS':'RETARDO';
   const live=cssVar('--live'),dim=cssVar('--ink3'),okc=cssVar('--ok');
   const mainsLive=ttMainsV()>0,genLive=TT.vg>0.8*ttVn();
   $('#tt-w-m1').setAttribute('stroke',mainsLive?live:dim);$('#tt-src-m').setAttribute('stroke',mainsLive?live:dim);
@@ -917,7 +1153,7 @@ function ttBind(){
   $('#tt-timers').innerHTML=TT_TIMERS.map(([k,l,v])=>`<label class="f">${l}<input type="number" id="tt-tm-${k}" value="${v}" min="0" step="${k==='transf'?0.5:1}"></label>`).join('');
   $('#tt-k-stop').onclick=()=>ttSetMode('stop');$('#tt-k-man').onclick=()=>ttSetMode('manual');$('#tt-k-test').onclick=()=>ttSetMode('test');$('#tt-k-auto').onclick=()=>ttSetMode('auto');
   $('#tt-k-start').onclick=()=>{if(TT.mode!=='manual'){ttLog('ARRANCAR funciona en MANUAL.','e-warn');return}if(TT.state==='red'){TT.manualReq=true}};
-  $('#tt-k-xfer').onclick=()=>{if(TT.mode==='manual'&&TT.state==='gen'&&TT.manualWait){TT.manualReq=true}else ttLog('TRANSFERIR: en MANUAL, con el grupo listo en vacío.','e-warn')};
+  $('#tt-k-xfer').onclick=()=>{if(TT.mode==='manual'&&TT.state==='gen'){TT.manualReq=true}else ttLog('TRANSFERIR: en MANUAL, con el grupo listo en vacío.','e-warn')};
   $('#tt-m-ok').onclick=()=>ttSetMains(100,'Red normal.','e-ok');
   $('#tt-m-fail').onclick=()=>ttSetMains(0,'Falla total de red.','e-bad');
   $('#tt-m-low').onclick=()=>ttSetMains(82,`Red en baja tensión: ${fmt(ttVn()*.82)} V (82 %, umbral ${ttUV()} %).`,'e-warn');
@@ -983,7 +1219,7 @@ const PG_EX=[
   {t:'1 · Placa del grupo',d:'El grupo es de 1 000 kW, 480 V, 60 Hz, con TC de 1 600/5 A. Carga esos datos en «Generador».',chk:c=>[[c.gVn==480,'Tensión 480 V'],[c.gFn==60,'Frecuencia 60 Hz'],[c.gKw==1000,'Potencia 1 000 kW'],[c.gCT==1600,'TC 1 600 A']]},
   {t:'2 · Auxiliares y órdenes de interruptores',d:'Entrada C = auxiliar de interruptor de generador. Entrada D = auxiliar de interruptor de red. Salida E = cerrar generador, F = cerrar red. Sin funciones duplicadas.',chk:c=>{const ins=[c.inA,c.inB,c.inC,c.inD].filter(x=>x!=='Sin uso'),outs=[c.outE,c.outF,c.outG,c.outH].filter(x=>x!=='Sin uso');
     return [[c.inC==='Auxiliar interruptor generador','Entrada C'],[c.inD==='Auxiliar interruptor red','Entrada D'],[c.outE==='Cerrar interruptor generador','Salida E'],[c.outF==='Cerrar interruptor red','Salida F'],[new Set(ins).size===ins.length&&new Set(outs).size===outs.length,'Sin duplicados']]}},
-  {t:'3 · Ventana de check sync',d:'Deslizamiento máx 0,2 Hz o menos, ángulo máx 10° o menos, ΔV máx 4 % o menos. Tiempo de falla de sincronismo entre 30 y 120 s (no 0: si nunca entra en ventana, debe dar alarma).',chk:c=>[[c.sSlip>0&&c.sSlip<=0.2,'Deslizamiento'],[c.sAng>0&&c.sAng<=10,'Ángulo'],[c.sDV>0&&c.sDV<=4,'ΔV'],[c.sFail>=30&&c.sFail<=120,'Falla de sincronismo']]},
+  {t:'3 · Ventana de check sync',d:'Deslizamiento máx 0,2 Hz o menos, ángulo máx 10° o menos, ΔV máx 5 % o menos (guía DSE e IEEE 1547 para 500–1 500 kVA). Tiempo de falla de sincronismo entre 30 y 120 s (no 0: si nunca entra en ventana, debe dar alarma).',chk:c=>[[c.sSlip>0&&c.sSlip<=0.2,'Deslizamiento'],[c.sAng>0&&c.sAng<=10,'Ángulo'],[c.sDV>0&&c.sDV<=5,'ΔV'],[c.sFail>=30&&c.sFail<=120,'Falla de sincronismo']]},
   {t:'4 · Temporizadores de TTA',d:'Retardo transitorio entre 1 y 5 s (filtra microcortes). Retorno a red de al menos 30 s (confirma que la red se estabilizó). Enfriamiento de al menos 60 s. Retardo de protecciones mayor que el tiempo que tarda en subir la presión de aceite (≥ 8 s).',chk:c=>[[c.tTrans>=1&&c.tTrans<=5,'Transitorio'],[c.tRet>=30,'Retorno'],[c.tCool>=60,'Enfriamiento'],[c.tSafe>=8,'Protecciones']]},
   {t:'5 · Reparto de carga y potencia inversa',d:'Reparto isócrono por MSC con acción «Disparo eléctrico» ante falla MSC. Potencia inversa entre 5 y 15 % con retardo de 2 a 10 s. Habilita el cierre con barra muerta.',chk:c=>[[c.lsMode==='Isócrono por MSC','Modo isócrono'],[c.lsMSC==='Disparo eléctrico','Acción MSC'],[c.gRP>=5&&c.gRP<=15,'Potencia inversa %'],[c.gRPd>=2&&c.gRPd<=10,'Retardo'],[c.sDead==='Habilitado','Barra muerta']]},
   {t:'6 · Motor electrónico',d:'El motor tiene ECM con J1939: elige un tipo de motor por CAN y la referencia de velocidad por CAN.',chk:c=>[[c.eType!=='Convencional (sin CAN)','Tipo de motor'],[c.eSpeed==='Por CAN J1939','Referencia de velocidad']]}
@@ -1033,33 +1269,50 @@ const QZ=[
   ['Midiendo con todo apagado entre CAN H y CAN L de un bus J1939 bien terminado, esperas aproximadamente:',['60 Ω','120 Ω','0 Ω','Circuito abierto'],0,'Dos resistencias de 120 Ω en paralelo dan 60 Ω.'],
   ['En una mina a 3 800 m, ¿qué efecto tiene la altitud sobre el grupo?',['Reduce la potencia disponible del motor y la capacidad de enfriamiento','Aumenta la potencia','Solo cambia la frecuencia','No tiene efecto con turbo'],0,'El aire menos denso reduce potencia; se aplica la curva de reducción del fabricante.'],
   ['Antes de intervenir el motor de un grupo con módulo en AUTO, lo primero es:',['Poner el módulo en STOP y bloquear todas las fuentes, incluido el arranque','Abrir Q2 y trabajar','Desconectar el enlace MSC','Bajar el retardo de arranque'],0,'En AUTO el grupo puede arrancar solo ante una falla de red.'],
+  ['Antes de intervenir un tablero de sincronismo con dos grupos y red, ¿qué se bloquea?',['Todas las fuentes: red, cada grupo (interruptor y arranque), baterías, cargadores y circuitos auxiliares','Solo el interruptor del grupo que se va a intervenir','Solo la red, porque es la fuente principal','Nada si el módulo está en STOP'],0,'Un tablero de sincronismo tiene varias fuentes vivas. STOP no es un bloqueo: es un estado del software.'],
+  ['Un TC de un grupo en paralelo está invertido en una fase. ¿Por qué es una falla oculta?',['El display puede mostrar un reparto aparentemente normal mientras el grupo entrega mucho más potencia de la indicada','Porque dispara el interruptor de inmediato','Porque apaga el módulo','Porque solo afecta la frecuencia'],0,'El módulo reparte con lo que mide. Se descubre comparando con una pinza o con una prueba con carga resistiva.'],
+  ['Cae la red y el grupo no arranca. El módulo estaba en MANUAL. ¿Qué tipo de falla es?',['Falla oculta de operación: el módulo quedó fuera de AUTO después de un mantenimiento','Falla de arranque del motor','Falla del enlace MSC','Falla de la red'],0,'Por eso el cierre de cada orden de trabajo incluye verificar que el módulo quede en AUTO.'],
+  ['Para un sistema de emergencia Nivel 1, NFPA 110 exige restablecer la carga en:',['10 s o menos','60 s o menos','5 minutos','No define tiempo'],0,'La suma de retardo transitorio, retardo de arranque, arranque, calentamiento y transferencia debe caber en 10 s.'],
+  ['Una batería marca tensión normal en flotación pero el módulo se reinicia al arrancar. ¿Cómo se detecta antes de la emergencia?',['Prueba de capacidad o medición de tensión durante el arranque','Mirando la tensión en flotación','Revisando el nivel de combustible','No se puede detectar'],0,'La tensión en flotación no muestra la capacidad. La caída al arrancar sí.'],
   ['Al volver la red con transferencia cerrada, ¿qué hace el sistema DSE8660 + DSE8610?',['Sincroniza el grupo con la red, cierra Q1 un instante en paralelo y abre el grupo','Abre Q2 y luego cierra Q1 con corte','Para el motor sin transferir','Cierra Q1 sin sincronizar'],0,'La transferencia cerrada evita el corte a la carga; necesita sincronismo con la red.']
 ];
+const QZ_PASS=Math.ceil(QZ.length*0.8);
 let qzOrder=[];
 function qzShuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function qzRender(){
   qzOrder=QZ.map((q,i)=>({i,opts:qzShuffle(q[1].map((t,k)=>({t,k})))}));
-  $('#qz-box').innerHTML='<h3>Examen · 15 preguntas</h3>'+qzOrder.map((o,n)=>{const q=QZ[o.i];return `<div class="q" id="q${n}"><b>${n+1}. ${q[0]}</b><div class="opts">${o.opts.map(op=>`<label><input type="radio" name="qz${n}" value="${op.k}"> <span>${op.t}</span></label>`).join('')}</div><p class="why" hidden>${q[3]}</p></div>`}).join('');
-  $('#qz-score').textContent='— / 15';$('#qz-bar').style.width='0';$('#qz-res').textContent='Responde todas y pulsa Calificar. Aprobación: 12 de 15.';
+  $('#qz-box').innerHTML=`<h3>Examen · ${QZ.length} preguntas</h3>`+qzOrder.map((o,n)=>{const q=QZ[o.i];return `<div class="q" id="q${n}"><b>${n+1}. ${q[0]}</b><div class="opts">${o.opts.map(op=>`<label><input type="radio" name="qz${n}" value="${op.k}"> <span>${op.t}</span></label>`).join('')}</div><p class="why" hidden>${q[3]}</p></div>`}).join('');
+  $('#qz-score').textContent=`— / ${QZ.length}`;$('#qz-bar').style.width='0';$('#qz-res').textContent=`Responde todas y pulsa Calificar. Aprobación: ${QZ_PASS} de ${QZ.length}.`;
 }
 function qzGrade(){
   let s=0,miss=0;
   qzOrder.forEach((o,n)=>{const q=QZ[o.i],sel=document.querySelector(`input[name=qz${n}]:checked`);
     $$(`#q${n} label`).forEach(l=>{l.classList.remove('right','wrong');const v=+l.querySelector('input').value;if(v===q[2])l.classList.add('right');else if(sel&&+sel.value===v)l.classList.add('wrong')});
     $(`#q${n} .why`).hidden=false;if(!sel)miss++;else if(+sel.value===q[2])s++;});
-  $('#qz-score').textContent=`${s} / 15`;$('#qz-bar').style.width=(s/15*100)+'%';$('#qz-bar').style.background=s>=12?'var(--ok)':'var(--bad)';
+  $('#qz-score').textContent=`${s} / ${QZ.length}`;$('#qz-bar').style.width=(s/QZ.length*100)+'%';$('#qz-bar').style.background=s>=QZ_PASS?'var(--ok)':'var(--bad)';
   const name=$('#qz-name').value.trim()||'Participante';
-  $('#qz-res').textContent=`${name}: ${s>=12?'APROBADO':'NO APROBADO'} · ${new Date().toLocaleDateString('es-PE')}${miss?` · ${miss} sin responder`:''}`;
-  const best=store.get('dse-qz-best',null);if(!best||s>best.s){store.set('dse-qz-best',{s,name,d:new Date().toISOString()})}qzBest();
+  $('#qz-res').textContent=`${name}: ${s>=QZ_PASS?'APROBADO':'NO APROBADO'} · ${new Date().toLocaleDateString('es-PE')}${miss?` · ${miss} sin responder`:''}`;
+  const best=store.get('dse-qz-best',null);if(!best||(best.n||15)!==QZ.length||s>best.s){store.set('dse-qz-best',{s,n:QZ.length,name,d:new Date().toISOString()})}qzBest();
 }
-function qzBest(){const b=store.get('dse-qz-best',null);$('#qz-best').textContent=b?`Mejor nota en este navegador: ${b.s}/15 (${b.name}, ${new Date(b.d).toLocaleDateString('es-PE')}).`:''}
+function qzBest(){const b=store.get('dse-qz-best',null);$('#qz-best').textContent=b?`Mejor nota en este navegador: ${b.s}/${b.n||15} (${b.name}, ${new Date(b.d).toLocaleDateString('es-PE')}).`:''}
 function qzBind(){qzRender();qzBest();$('#qz-grade').onclick=qzGrade;$('#qz-reset').onclick=qzRender;
   $('#qz-name').value=store.get('dse-qz-name','');$('#qz-name').oninput=e=>store.set('dse-qz-name',e.target.value)}
+
+/* ================= SEGURIDAD ================= */
+const SG_ITEMS=['PETS de la tarea revisado y firmado','IPERC continuo / ATS llenado con el equipo','Permiso de trabajo (PETAR si aplica) aprobado','Coordinación con el responsable de energía del área','Grupo descargado y su interruptor abierto','Módulo en STOP y arranque remoto retirado','Interruptor del grupo extraído o bloqueado abierto','Batería aislada con seccionador bloqueado','Cargador y calentador de camisas desconectados en su origen','Fusibles de sensado de barra retirados','Candado y tarjeta personal de cada trabajador','Prueba de bloqueo: intento de arranque sin giro','Ausencia de tensión verificada con detector probado','Puesta a tierra temporal instalada','Zona delimitada y EPP según la etiqueta de arco'];
+function sgBind(){
+  const st=store.get('dse-sg',{});
+  const draw=()=>{const n=SG_ITEMS.filter((_,i)=>st[i]).length;const p=$('#sg-pill');p.textContent=`${n} / ${SG_ITEMS.length}`;p.className='pill '+(n===SG_ITEMS.length?'ok':n?'warn':'idle')};
+  $('#sg-list').innerHTML=SG_ITEMS.map((t,i)=>`<label class="row" style="gap:.5rem;align-items:flex-start"><input type="checkbox" id="sg-${i}" data-i="${i}"${st[i]?' checked':''}> <span>${t}</span></label>`).join('');
+  $$('#sg-list input').forEach(c=>c.onchange=()=>{st[c.dataset.i]=c.checked;store.set('dse-sg',st);draw()});
+  $('#sg-reset').onclick=()=>{SG_ITEMS.forEach((_,i)=>{st[i]=false;$('#sg-'+i).checked=false});store.set('dse-sg',st);draw()};
+  draw();
+}
 
 /* ---------- arranque ---------- */
 syBind();syInit();requestAnimationFrame(syLoop);
 ttBind();ttInit();requestAnimationFrame(ttLoop);
-tbBind();pgBind();mnBind();qzBind();route();
+tbBind();pgBind();mnBind();qzBind();sgBind();route();
 </script>
 </body>
 </html>
