@@ -156,7 +156,7 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
   <p class="lead">Simulador para técnicos que operan y mantienen grupos electrógenos en mina con módulos de control Deep Sea Electronics (DSE). Practica la sincronización de un grupo con la barra, la secuencia de la transferencia automática (TTA / ATS) ante una falla de red, la lectura del unifilar del tablero y la configuración de los parámetros que el módulo usa para decidir.</p>
   <div class="grid3">
     <div class="card"><div class="eyebrow">Módulo 1 · 20 min</div><h3>Base teórica</h3><p>Las cuatro condiciones de sincronismo, qué hace cada módulo DSE y cómo se comunican por el enlace MSC.</p><a class="btn" href="#fundamentos">Abrir</a></div>
-    <div class="card"><div class="eyebrow">Módulo 2 · práctica</div><h3>Sincronismo</h3><p>Sincronoscopio, gobernador y AVR. Cierra el interruptor dentro de la ventana de check sync y reparte carga.</p><a class="btn primary" href="#sincronismo">Practicar</a></div>
+    <div class="card"><div class="eyebrow">Módulo 2 · práctica</div><h3>Sincronismo y planta</h3><p>Modelo dinámico de dos grupos: sincronoscopio, lámparas, isócrono, droop y carga base, escalones, apagón y 5 ejercicios calificados.</p><a class="btn primary" href="#sincronismo">Practicar</a></div>
     <div class="card"><div class="eyebrow">Módulo 3 · práctica</div><h3>Transferencia (TTA)</h3><p>Secuencia AMF completa con temporizadores reales: falla de red, arranque, transferencia, retorno y enfriamiento.</p><a class="btn primary" href="#tta">Practicar</a></div>
     <div class="card"><div class="eyebrow">Módulo 4</div><h3>Tablero y circuito</h3><p>Unifilar interactivo: interruptores, TC, TP, barra, módulos y enlace MSC. Qué señal llega a cada borne del módulo.</p><a class="btn" href="#tablero">Abrir</a></div>
     <div class="card"><div class="eyebrow">Módulo 5 · práctica</div><h3>Programación</h3><p>Editor de configuración al estilo del software de configuración del fabricante, con ejercicios que se verifican.</p><a class="btn" href="#programacion">Abrir</a></div>
@@ -247,8 +247,40 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
 <!-- ============ SINCRONISMO ============ -->
 <section class="view" id="v-sincronismo" hidden>
   <div class="eyebrow">Módulo 2 · práctica</div>
-  <h2>Sincronizar el grupo 2 con la barra</h2>
-  <p class="lead">El grupo 1 ya alimenta la barra. Arranca el grupo 2, lleva su tensión y frecuencia a las de la barra y cierra su interruptor cuando la aguja pase por la ventana verde. En modo automático el módulo lo hace solo: observa qué ajusta y en qué orden.</p>
+  <h2>Planta de dos grupos en paralelo</h2>
+  <p class="lead">Modelo dinámico de dos grupos sobre una barra: la frecuencia responde a la carga, los gobernadores reparten según el modo de control y las protecciones disparan como en una planta real. Practica libre o elige un ejercicio con evaluación.</p>
+
+  <div class="card" id="sc-card">
+    <div class="row" style="justify-content:space-between">
+      <h3>Ejercicios con evaluación</h3>
+      <span class="pill idle" id="sc-pill">Práctica libre</span>
+    </div>
+    <div class="row">
+      <select id="sc-sel" style="max-width:24rem" aria-label="Ejercicio">
+        <option value="s1">1 · Sincronización manual de precisión</option>
+        <option value="s2">2 · Reparto de carga en droop</option>
+        <option value="s3">3 · Arranque de motor de 450 kW</option>
+        <option value="s4">4 · Recuperación de apagón</option>
+        <option value="s5">5 · Diagnóstico de falla oculta</option>
+      </select>
+      <button class="btn primary" id="sc-start">Iniciar ejercicio</button>
+      <button class="btn" id="sc-stop">Terminar</button>
+      <span class="note" id="sc-time"></span>
+    </div>
+    <p id="sc-obj" class="note">Elige un ejercicio. El simulador prepara la planta, te da el objetivo y califica de 0 a 100.</p>
+    <div class="row" id="sc-diag" hidden>
+      <select id="sc-ans" aria-label="Diagnóstico">
+        <option value="rot">Secuencia de fases invertida</option>
+        <option value="msc">Enlace MSC cortado</option>
+        <option value="ct">TC con polaridad invertida</option>
+        <option value="gov">Salida al gobernador invertida</option>
+      </select>
+      <button class="btn" id="sc-answer">Responder diagnóstico</button>
+    </div>
+    <p id="sc-res" aria-live="polite"></p>
+    <p class="note" id="sc-best"></p>
+  </div>
+
   <div class="grid2">
     <div class="card">
       <div class="row" style="justify-content:space-between">
@@ -264,16 +296,24 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
         <button class="key" id="sy-k-open"><span class="led"></span>Abrir G2</button>
       </div>
       <div class="scope-wrap">
-        <svg id="sy-scope" viewBox="0 0 220 220" role="img" aria-label="Sincronoscopio">
-          <circle cx="110" cy="110" r="96" fill="var(--panel2)" stroke="var(--rule)" stroke-width="2"/>
-          <path id="sy-win" fill="var(--ok)" opacity=".25"/>
-          <g id="sy-ticks"></g>
-          <text x="110" y="34" text-anchor="middle" font-size="11" fill="var(--ink2)">0°</text>
-          <text x="110" y="196" text-anchor="middle" font-size="11" fill="var(--ink2)">180°</text>
-          <line id="sy-needle" x1="110" y1="110" x2="110" y2="24" stroke="var(--live)" stroke-width="4" stroke-linecap="round"/>
-          <circle cx="110" cy="110" r="7" fill="var(--ink)"/>
-          <text id="sy-dir" x="110" y="140" text-anchor="middle" font-size="11" fill="var(--ink2)"></text>
-        </svg>
+        <div style="display:flex;flex-direction:column;gap:.5rem;align-items:center">
+          <svg id="sy-scope" viewBox="0 0 220 220" role="img" aria-label="Sincronoscopio">
+            <circle cx="110" cy="110" r="96" fill="var(--panel2)" stroke="var(--rule)" stroke-width="2"/>
+            <path id="sy-win" fill="var(--ok)" opacity=".25"/>
+            <g id="sy-ticks"></g>
+            <text x="110" y="34" text-anchor="middle" font-size="11" fill="var(--ink2)">0°</text>
+            <text x="110" y="196" text-anchor="middle" font-size="11" fill="var(--ink2)">180°</text>
+            <line id="sy-needle" x1="110" y1="110" x2="110" y2="24" stroke="var(--live)" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="110" cy="110" r="7" fill="var(--ink)"/>
+            <text id="sy-dir" x="110" y="140" text-anchor="middle" font-size="11" fill="var(--ink2)"></text>
+          </svg>
+          <svg viewBox="0 0 220 56" role="img" aria-label="Lámparas de sincronización" style="max-width:15rem">
+            <text x="110" y="12" text-anchor="middle" font-size="10" fill="var(--ink2)">LÁMPARAS (método apagadas)</text>
+            <circle id="sy-l0" cx="55" cy="36" r="14" fill="var(--live)" opacity=".1" stroke="var(--ink3)"/>
+            <circle id="sy-l1" cx="110" cy="36" r="14" fill="var(--live)" opacity=".1" stroke="var(--ink3)"/>
+            <circle id="sy-l2" cx="165" cy="36" r="14" fill="var(--live)" opacity=".1" stroke="var(--ink3)"/>
+          </svg>
+        </div>
         <canvas id="sy-wave" width="640" height="300" aria-label="Formas de onda de la barra y del grupo 2"></canvas>
       </div>
       <div class="lcd" aria-live="off">
@@ -281,49 +321,68 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
         <div><div class="k">Barra · Hz</div><div class="v" id="sy-f1">60.00</div></div>
         <div><div class="k">Grupo 2 · V</div><div class="v" id="sy-v2">0</div></div>
         <div><div class="k">Grupo 2 · Hz</div><div class="v" id="sy-f2">0.00</div></div>
+        <div><div class="k">Grupo 1 · kW</div><div class="v" id="sy-kw1">0</div></div>
         <div><div class="k">Grupo 2 · kW (módulo)</div><div class="v" id="sy-kw2">0</div></div>
         <div><div class="k">Grupo 2 · kW real</div><div class="v" id="sy-kw2r">0</div></div>
-        <div><div class="k">Grupo 1 · kW</div><div class="v" id="sy-kw1">0</div></div>
-        <div><div class="k">Grupo 2 · kVAr</div><div class="v" id="sy-kq2">0</div></div>
+        <div><div class="k">Carga · kW</div><div class="v" id="sy-kwl">0</div></div>
         <div><div class="k">Grupo 1 · kVAr</div><div class="v" id="sy-kq1">0</div></div>
-        <div><div class="k">Grupo 2 · FP</div><div class="v" id="sy-pf2">—</div></div>
+        <div><div class="k">Grupo 2 · kVAr</div><div class="v" id="sy-kq2">0</div></div>
         <div><div class="k">Grupo 1 · FP</div><div class="v" id="sy-pf1">—</div></div>
+        <div><div class="k">Grupo 2 · FP</div><div class="v" id="sy-pf2">—</div></div>
         <div class="full" id="sy-msg">Grupo 2 parado. Pulsa MANUAL y luego ARRANCAR.</div>
       </div>
       <div class="checks" id="sy-checks"></div>
       <div class="grid2" style="gap:.8rem">
         <div class="card flat">
-          <b>Gobernador (velocidad)</b>
+          <b>Grupo 2 · gobernador</b>
           <div class="row"><button class="btn" id="sy-gov-dn">− Hz</button><button class="btn" id="sy-gov-up">+ Hz</button><button class="btn" id="sy-gov-fine-dn">−0,02</button><button class="btn" id="sy-gov-fine-up">+0,02</button></div>
+          <b>Grupo 2 · AVR</b>
+          <div class="row"><button class="btn" id="sy-avr-dn">− V</button><button class="btn" id="sy-avr-up">+ V</button></div>
+          <p class="note">En paralelo, el gobernador mueve kW y el AVR mueve kVAr. La barra fija la frecuencia y la tensión.</p>
         </div>
         <div class="card flat">
-          <b>AVR (tensión)</b>
-          <div class="row"><button class="btn" id="sy-avr-dn">− V</button><button class="btn" id="sy-avr-up">+ V</button></div>
-          <p class="note">Antes de cerrar, el AVR cambia la tensión del grupo. En paralelo la tensión la fija la barra: subir el AVR solo aumenta los kVAr que entrega el grupo.</p>
+          <b>Grupo 1 · gobernador</b>
+          <div class="row"><button class="btn" id="sy-g1-dn">− Hz</button><button class="btn" id="sy-g1-up">+ Hz</button></div>
+          <b>Grupo 1 · estado</b>
+          <div class="row"><button class="btn danger" id="sy-g1-trip">Disparar G1</button><button class="btn" id="sy-g1-start">Arrancar G1</button></div>
+          <p class="note">En droop el reparto lo hace el operador con los dos gobernadores.</p>
         </div>
       </div>
+      <h3>Tendencia · últimos 60 s</h3>
+      <canvas id="sy-trend" width="640" height="260" aria-label="Tendencia de frecuencia y carga de cada grupo"></canvas>
     </div>
     <div class="card">
-      <h3>Escenario</h3>
+      <h3>Control de la planta</h3>
       <div class="fields">
+        <label class="f">Modo de control
+          <select id="sy-ctl"><option value="iso">Isócrono con reparto por MSC</option><option value="droop">Droop (reparto manual)</option><option value="base">Carga base en grupo 2</option></select></label>
+        <label class="f">Droop de velocidad (%)<input type="number" id="sy-droop" value="4" min="1" max="10" step="0.5"></label>
+        <label class="f">Carga base G2 (kW)<input type="number" id="sy-base" value="600" min="0" step="50"></label>
         <label class="f">Tensión nominal de barra
           <select id="sy-vn"><option value="480">480 V</option><option value="440">440 V</option><option value="4160">4160 V</option></select></label>
         <label class="f">Cambio de tensión de la barra
           <input type="range" id="sy-vbus" min="-10" max="10" step="1" value="0"><span id="sy-vbus-v" class="note">0 % · 480 V</span></label>
-        <label class="f">Factor de potencia de la carga
-          <input type="number" id="sy-pf" value="0.85" min="0.6" max="1" step="0.01"></label>
-        <label class="f">Carga de la barra (kW)
-          <input type="range" id="sy-load" min="0" max="1600" step="10" value="900"><span id="sy-load-v" class="note">900 kW</span></label>
-        <label class="f">Potencia de cada grupo (kW)
-          <input type="number" id="sy-rating" value="1000" min="100" step="50"></label>
-        <label class="f">Rampa de carga (kW/s)
-          <input type="number" id="sy-ramp" value="100" min="10" step="10"></label>
+        <label class="f">Potencia de cada grupo (kW)<input type="number" id="sy-rating" value="1000" min="100" step="50"></label>
       </div>
-      <h3>Ventana de check sync</h3>
+      <h3>Carga</h3>
+      <div class="fields">
+        <label class="f">Carga base (kW)
+          <input type="range" id="sy-load" min="0" max="1600" step="10" value="900"><span id="sy-load-v" class="note">900 kW</span></label>
+        <label class="f">Factor de potencia<input type="number" id="sy-pf" value="0.85" min="0.6" max="1" step="0.01"></label>
+      </div>
+      <div class="row">
+        <button class="btn" id="sy-step-up">Escalón +100 kW</button>
+        <button class="btn" id="sy-step-dn">Escalón −100 kW</button>
+        <button class="btn" id="sy-motor">Arrancar motor 450 kW</button>
+        <button class="btn" id="sy-restore">Reponer cargas</button>
+      </div>
+      <div class="row"><label class="row" style="gap:.35rem"><input type="checkbox" id="sy-shed"> Deslastre de carga por baja frecuencia (30 % a 58,5 Hz)</label></div>
+      <h3>Sincronismo</h3>
       <div class="fields">
         <label class="f">ΔV máx (%)<input type="number" id="sy-dv" value="5" step="0.5" min="0.5"></label>
         <label class="f">Deslizamiento máx (Hz)<input type="number" id="sy-slip" value="0.2" step="0.05" min="0.05"></label>
         <label class="f">Ángulo máx (°)<input type="number" id="sy-ang" value="10" step="1" min="2"></label>
+        <label class="f">Falla de sincronismo (s)<input type="number" id="sy-fst" value="30" step="5" min="10"></label>
       </div>
       <div class="row"><span class="note">Valores de referencia:</span>
         <button class="btn" data-preset="0.1,5,5">Guía DSE típica</button>
@@ -331,15 +390,17 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
         <button class="btn" data-preset="0.1,3,10">IEEE 1547 · 1,5–10 MVA</button>
       </div>
       <div class="row">
-        <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-cs" checked> Check sync activo (bloquea cierres fuera de ventana)</label>
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-cs" checked> Check sync activo</label>
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-dead"> Cierre en barra muerta habilitado</label>
       </div>
       <h3>Fallas para practicar</h3>
       <div class="row">
         <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-rot"> Secuencia de fases invertida (L2↔L3)</label>
         <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-msc"> Enlace MSC cortado</label>
-        <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-ct"> TC de L1 del grupo 2 invertido (falla oculta)</label>
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-ct"> TC de L1 del grupo 2 invertido</label>
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-gov"> Salida al gobernador invertida</label>
       </div>
-      <div class="row"><button class="btn" id="sy-reset">Reiniciar escenario</button></div>
+      <div class="row"><button class="btn" id="sy-reset">Reiniciar planta</button></div>
       <h3>Registro de eventos</h3>
       <div class="log" id="sy-log" aria-live="polite"></div>
     </div>
@@ -560,8 +621,8 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
         <tr><td><b>Batería degradada</b></td><td><span class="pill bad">Oculta</span></td><td>El display se apaga al arrancar y el contador de intentos vuelve a cero.</td><td>Capacidad perdida, bornes sulfatados o flojos, cable de arranque largo o delgado.</td><td>Medir la tensión durante el arranque y hacer prueba de capacidad. En flotación la tensión se ve normal.</td><td>TTA: «Batería degradada»</td></tr>
         <tr><td><b>Fail to Start</b></td><td><span class="pill warn">Evidente</span></td><td>Alarma después del último intento.</td><td>Batería, solenoide de combustible, aire en el combustible, parada de emergencia activa, sensor magnético de velocidad (MPU).</td><td>Tensión de batería al arrancar, señal del MPU (entrehierro y tensión AC según el fabricante del motor).</td><td>TTA: «Motor no arranca»</td></tr>
         <tr><td><b>TC invertido en una fase</b></td><td><span class="pill bad">Oculta</span></td><td>kW bajo o raro; el reparto se ve parejo pero no lo es. Con FP distinto de 1 las lecturas empeoran.</td><td>Polaridad P1/S1 cruzada, común mal cableado.</td><td>Prueba con carga resistiva: los tres kW por fase deben ser positivos y parecidos. Comparar con pinza.</td><td>Sincronismo: «TC de L1 invertido»</td></tr>
-        <tr><td><b>Potencia inversa al poner en paralelo</b></td><td><span class="pill warn">Evidente</span></td><td>Un grupo dispara segundos después de cerrar o cuando baja la carga.</td><td>Cierre con deslizamiento negativo; un grupo en droop y otro isócrono; pérdida del reparto (MSC); TC invertido.</td><td>Registro de eventos del módulo; revisar modo de reparto y polaridad.</td><td>Sincronismo: corta el MSC y baja la carga</td></tr>
-        <tr><td><b>Fail to Synchronise</b></td><td><span class="pill warn">Evidente</span></td><td>El grupo no cierra y salta la alarma al vencer el temporizador.</td><td>Salida al gobernador o al AVR con sentido invertido o ganancia baja; sensado en fase equivocada; barra inestable; ventana demasiado estrecha.</td><td>Desde el módulo subir velocidad debe subir los Hz. Verificar fases del sensado.</td><td>Sincronismo: modo MANUAL</td></tr>
+        <tr><td><b>Potencia inversa al poner en paralelo</b></td><td><span class="pill warn">Evidente</span></td><td>Un grupo dispara segundos después de cerrar o cuando baja la carga.</td><td>Cierre con deslizamiento negativo; un grupo en droop y otro isócrono; pérdida del reparto (MSC); TC invertido.</td><td>Registro de eventos del módulo; revisar modo de reparto y polaridad.</td><td>Sincronismo: corta el MSC y baja la carga; o droop mal repartido</td></tr>
+        <tr><td><b>Fail to Synchronise</b></td><td><span class="pill warn">Evidente</span></td><td>El grupo no cierra y salta la alarma al vencer el temporizador.</td><td>Salida al gobernador o al AVR con sentido invertido o ganancia baja; sensado en fase equivocada; barra inestable; ventana demasiado estrecha.</td><td>Desde el módulo subir velocidad debe subir los Hz. Verificar fases del sensado.</td><td>Sincronismo: «Salida al gobernador invertida» en AUTO</td></tr>
         <tr><td><b>Oscilación de reactivos (hunting)</b></td><td><span class="pill warn">Evidente</span></td><td>kVAr y FP oscilan; un grupo toma los reactivos del otro.</td><td>AVR sin caída reactiva ni reparto de kVAr; ganancias mal ajustadas.</td><td>Revisar el modo de control de kVAr de cada grupo.</td><td>Sincronismo: AVR en paralelo</td></tr>
         <tr><td><b>Pérdida de excitación</b></td><td><span class="pill warn">Evidente</span></td><td>kVAr negativo y disparo.</td><td>AVR o excitatriz en falla; ajuste manual excesivo hacia abajo en paralelo.</td><td>Revisar AVR, diodos rotativos y ajuste de excitación.</td><td>Sincronismo: baja el AVR en paralelo</td></tr>
         <tr><td><b>MSC Failure / Too few sets / Data error</b></td><td><span class="pill bad">Oculta</span></td><td>Funciona meses y falla de forma intermitente; se pierde el reparto.</td><td>Cable sin malla, derivaciones, falta de resistencia de terminación, longitud excesiva, firmware distinto entre módulos.</td><td>En la puesta en marcha, soltar un cable a propósito y confirmar la alarma. Revisar versiones de firmware.</td><td>Sincronismo: «Enlace MSC cortado»</td></tr>
@@ -730,6 +791,11 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
     </table></div>
   </div>
   <div class="card">
+    <h3>Referencias de diseño del simulador</h3>
+    <p>Las funciones del módulo de sincronismo siguen lo que ofrecen las herramientas profesionales de entrenamiento y emulación: modos de control isócrono, droop y carga base (módulos de aprendizaje de Woodward), plantas emuladas con fallas para entrenar sin equipos reales (emuladores de ComAp, DEIF y Woodward) y simuladores de sala de máquinas con sincronización, reparto y emergencias evaluadas (Wärtsilä TechSim, Kongsberg K-Sim). El código y el diseño son propios; no se copió ninguna interfaz.</p>
+    <p class="note">Modelo: barra con inercia equivalente (H ≈ 2 s), gobernador con droop y retardo de 0,5 s, control secundario isócrono en el módulo. Los parámetros son didácticos: muestran el comportamiento, no reemplazan un estudio de estabilidad.</p>
+  </div>
+  <div class="card">
     <h3>Preguntas del examen</h3>
     <p>Las 15 preguntas originales se revisaron contra las mismas fuentes y se mantienen. Se agregaron 5 sobre seguridad y fallas ocultas (bloqueo de varias fuentes, TC invertido, módulo fuera de AUTO, NFPA 110 y batería). Aprobación: 80 % (16 de 20).</p>
     <p class="note">Limitación: los manuales de DSE en PDF no se pudieron abrir completos durante la auditoría; los valores del fabricante se tomaron de extractos publicados. Antes de usar el material en una capacitación formal, contrasta la tabla con la revisión vigente de cada manual.</p>
@@ -822,164 +888,287 @@ function route(){const h=(location.hash||'#inicio').slice(1);const v=VIEWS.inclu
 addEventListener('hashchange',route);
 
 /* ================= SINCRONISMO ================= */
-const SY={};
-function syInit(){
-  Object.assign(SY,{mode:'stop',running:false,closed:false,f1:60,v1:+$('#sy-vn').value,f2:0,v2:0,
-    phi:Math.random()*360-180,kw2:0,qbias:0,g1trip:false,rpT:0,ctWarn:false,inWinT:0,startT:0,tripped:false,lastMsg:''});
-  $('#sy-log').textContent='';
-  syLog('Escenario listo. Grupo 1 en barra, grupo 2 parado.','e-ok');
-}
+/* Modelo: barra común con inercia; cada gobernador entrega P = R·(consigna − f)/(droop·fn) con retardo;
+   en modo isócrono el módulo mueve las consignas para llevar f a 60 Hz y repartir en % de nominal. */
+const SY={},TREND=[],FN=60;
 const syLimits=()=>({dv:+$('#sy-dv').value,slip:+$('#sy-slip').value,ang:+$('#sy-ang').value});
-function syLog(m,c){logTo($('#sy-log'),m,c,new Date().toLocaleTimeString('es-PE'))}
-function syMsg(m){SY.lastMsg=m;$('#sy-msg').textContent=m}
-function syEval(){
-  const L=syLimits(),V=SY.v1;
-  const dvp=SY.v1?Math.abs(SY.v2-SY.v1)/V*100:100, slip=SY.f2-SY.f1, ang=Math.abs(SY.phi);
-  const rot=!$('#sy-rot').checked;
-  return {dvp,slip,ang,rot,ok:{dv:dvp<=L.dv,slip:Math.abs(slip)<=L.slip,ang:ang<=L.ang,rot},all:SY.running&&dvp<=L.dv&&Math.abs(slip)<=L.slip&&ang<=L.ang&&rot,L};
+const syR=()=>Math.max(50,+$('#sy-rating').value||1000);
+const syD=()=>clamp(+$('#sy-droop').value||4,0.5,10)/100;
+function syVbus(){const vn=+$('#sy-vn').value,o=+$('#sy-vbus').value;return vn*(1+o/100)}
+function syFault(k){return !!($('#sy-'+k)&&$('#sy-'+k).checked)||SY.hidden===k}
+function syLoadKW(){return Math.max(0,(+$('#sy-load').value+SY.extra)*(1-SY.shed))}
+function syInit(){
+  const R=syR(),L=+$('#sy-load').value;
+  Object.assign(SY,{mode:'stop',g2run:false,closed:false,tripped:false,g1on:true,g1start:0,
+    f:FN,v:syVbus(),vdip:0,dead:false,f2:0,v2:0,sp2:FN,phi:Math.random()*360-180,
+    runup:0,v2t:0,sp1:FN+syD()*FN*L/R,Pm1:L,Pm2:0,P1:L,P2:0,qbias:0,extra:0,shed:0,shedT:0,
+    ufT:0,ofT:0,rp1T:0,rp2T:0,inWinT:0,syncT:0,syncFail:false,mscAlarm:false,qWarn:false,ctWarn:false,blackLog:false,hidden:null,avrLogT:0,trendT:0});
+  TREND.length=0;$('#sy-log').textContent='';
+  syLog('Planta lista: grupo 1 en barra, grupo 2 parado.','e-ok');syMsg('Grupo 2 parado. Pulsa MANUAL y luego ARRANCAR.');
 }
+function syLog(m,c){logTo($('#sy-log'),m,c,new Date().toLocaleTimeString('es-PE'))}
+function syMsg(m){$('#sy-msg').textContent=m}
+function syEval(){
+  const L=syLimits(),rot=!syFault('rot');
+  if(SY.dead||!SY.g2run)return {dvp:0,slip:0,ang:0,rot,ok:{dv:false,slip:false,ang:false,rot},all:false,L};
+  const dvp=Math.abs(SY.v2-SY.v)/SY.v*100,slip=SY.f2-SY.f,ang=Math.abs(SY.phi);
+  const ok={dv:dvp<=L.dv,slip:Math.abs(slip)<=L.slip,ang:ang<=L.ang,rot};
+  return {dvp,slip,ang,rot,ok,all:!SY.closed&&ok.dv&&ok.slip&&ok.ang&&ok.rot,L};
+}
+function syTripG2(msg){SY.tripped=true;SY.closed=false;SY.g2run=false;SY.Pm2=0;SY.P2=0;SY.qbias=0;SY.f2=0;SY.v2=0;if(msg){syLog(msg,'e-bad');syMsg('Grupo 2 disparado. Pulsa STOP para rearmar.')}}
+function syTripG1(msg){SY.g1on=false;SY.Pm1=0;SY.P1=0;if(msg)syLog(msg,'e-bad')}
 function syClose(by){
   if(SY.closed)return;
-  if(!SY.running){syLog('Cierre rechazado: el grupo 2 no está generando.','e-warn');return}
+  if(!SY.g2run){syLog('Cierre rechazado: el grupo 2 no está generando.','e-warn');return}
+  if(SY.dead){
+    if(!$('#sy-dead').checked){if(by!=='auto'){syLog('Barra muerta: el cierre en barra muerta está deshabilitado en la configuración.','e-warn');SC.ev('blocked')}return}
+    if(SY.f2<57||SY.v2<0.9*syVbus()){syLog('El grupo 2 aún no está en tensión y frecuencia nominales.','e-warn');return}
+    SY.closed=true;SY.dead=false;SY.f=SY.f2;SY.v=SY.v2;SY.Pm2=0;SY.blackLog=false;
+    syLog(`Q3 cerrado en barra muerta ${by==='auto'?'(automático)':'(manual)'}: el grupo 2 energiza la barra.`,'e-ok');syMsg('Barra energizada por el grupo 2.');SC.ev('close',{dead:true});return;
+  }
   const e=syEval();
-  if($('#sy-cs').checked && !e.all){
+  if($('#sy-cs').checked&&!e.all){
     const why=[];if(!e.ok.rot)why.push('secuencia de fases');if(!e.ok.dv)why.push(`ΔV ${fmt(e.dvp,1)} %`);if(!e.ok.slip)why.push(`deslizamiento ${fmt(e.slip,2)} Hz`);if(!e.ok.ang)why.push(`ángulo ${fmt(e.ang,0)}°`);
-    syLog('Check sync bloqueó el cierre: fuera de ventana en '+why.join(', ')+'.','e-warn');syMsg('Cierre bloqueado por check sync.');return;
+    syLog('Check sync bloqueó el cierre: fuera de ventana en '+why.join(', ')+'.','e-warn');syMsg('Cierre bloqueado por check sync.');SC.ev('blocked');return;
   }
-  // severidad del cierre: |V1 - V2∠φ| / V1
-  const r=SY.v2/SY.v1, ph=SY.phi*Math.PI/180;
-  let pu=Math.hypot(1-r*Math.cos(ph),r*Math.sin(ph));
-  if(!e.ok.rot){pu=Math.max(pu,1.7)}
-  if(pu>0.35){
-    SY.tripped=true;SY.running=false;SY.kw2=0;
-    syLog(`CIERRE FUERA DE SINCRONISMO: diferencia de tensión ${fmt(pu*100,0)} % de la nominal. Golpe en acople, disparo por sobrecorriente. Grupo 2 parado con alarma.`,'e-bad');
-    syMsg('Disparo. Revisar acople, devanados e interruptor antes de volver a arrancar. Pulsa STOP para rearmar.');
-    syTick();return;
-  }
-  SY.closed=true;SY.phi=0;SY.f2=SY.f1;
-  const sev=pu<0.1?'limpio':'con golpe moderado';
-  syLog(`Q3 cerrado ${by==='auto'?'por el sincronizador automático':'en manual'} · cierre ${sev} (ΔE ${fmt(pu*100,1)} %).`,pu<0.1?'e-ok':'e-warn');
+  const r=SY.v2/SY.v,ph=SY.phi*Math.PI/180;
+  let pu=Math.hypot(1-r*Math.cos(ph),r*Math.sin(ph));if(!e.rot)pu=Math.max(pu,1.7);
+  SC.ev('close',{phi:SY.phi,dvp:e.dvp,slip:e.slip,pu});
+  if(pu>0.35){syTripG2(`CIERRE FUERA DE SINCRONISMO: diferencia de tensión ${fmt(pu*100,0)} % de la nominal. Golpe en el acople y disparo por sobrecorriente.`);SC.ev('badclose');return}
+  SY.closed=true;SY.phi=0;SY.Pm2=clamp(syR()*(SY.sp2-SY.f)/(syD()*FN),-0.1*syR(),syR());
+  syLog(`Q3 cerrado ${by==='auto'?'por el sincronizador automático':'en manual'} · cierre ${pu<0.1?'limpio':'con golpe moderado'} (ΔE ${fmt(pu*100,1)} %).`,pu<0.1?'e-ok':'e-warn');
   if(e.slip<0)syLog('Cerró con deslizamiento negativo: potencia inversa momentánea en el grupo 2.','e-warn');
-  syMsg('En paralelo. El grupo 2 toma carga en rampa.');
+  syMsg('En paralelo.');
 }
-function syOpen(){if(!SY.closed)return;if(SY.g1trip)syLog('Abriste el único grupo en barra: apagón total de la barra.','e-bad');SY.closed=false;SY.qbias=0;SY.unloading=false;SY.kw2=0;syLog('Q3 abierto. El grupo 1 queda con toda la carga.','e-warn');syMsg('Grupo 2 en vacío.')}
+function syOpen(){if(!SY.closed)return;SY.closed=false;SY.qbias=0;SY.Pm2=0;SY.P2=0;
+  syLog(SY.g1on?'Q3 abierto. El grupo 1 queda con toda la carga.':'Abriste el único grupo en barra: apagón.',SY.g1on?'e-warn':'e-bad');syMsg('Grupo 2 en vacío.')}
 function syMode(m){
-  if(m==='stop'){SY.mode='stop';if(SY.closed)syOpen();SY.running=false;SY.tripped=false;SY.f2=0;SY.v2=0;syMsg('Grupo 2 parado.');syLog('STOP/Reset.');}
-  else{if(SY.tripped){syLog('Hay una alarma activa. Pulsa STOP para rearmar.','e-warn');return}SY.mode=m;
-    syLog(m==='auto'?'Modo AUTO: el módulo arranca, sincroniza y cierra solo.':'Modo MANUAL.');
-    if(m==='auto'&&!SY.running)syStart();}
+  if(m==='stop'){if(SY.closed)syOpen();SY.mode='stop';SY.g2run=false;SY.tripped=false;SY.syncFail=false;SY.f2=0;SY.v2=0;syMsg('Grupo 2 parado.');syLog('STOP/Reset del grupo 2.');return}
+  if(SY.tripped){syLog('Hay una alarma activa. Pulsa STOP para rearmar.','e-warn');return}
+  SY.mode=m;SY.syncT=0;SY.syncFail=false;
+  syLog(m==='auto'?'Modo AUTO: el módulo arranca, sincroniza, cierra y reparte.':'Modo MANUAL.');
+  if(m==='auto'&&!SY.g2run)syStart();
 }
 function syStart(){if(SY.mode==='stop'){syLog('Pasa a MANUAL o AUTO antes de arrancar.','e-warn');return}
-  if(SY.running||SY.tripped)return;SY.running=true;SY.f2=58.6+Math.random()*2.4;SY.v2=SY.v1*(0.9+Math.random()*0.18);
-  if(SY.v1>1000)SY.v2=Math.round(SY.v2);syLog(`Grupo 2 arrancado: ${fmt(SY.f2,2)} Hz, ${fmt(SY.v2,0)} V.`);syMsg('Iguala tensión y frecuencia con la barra.');}
-function syAdjF(d){if(!SY.running||SY.closed)return;SY.f2=clamp(SY.f2+d,55,65)}
-function syAdjV(d){if(!SY.running)return;const vn=+$('#sy-vn').value;
-  if(SY.closed){const r=+$('#sy-rating').value;SY.qbias+=d/4*0.04*r;const now=Date.now();if(now-(SY.avrLogT||0)<3000)return;SY.avrLogT=now;syLog(`AVR ${d>0?'sube':'baja'} excitación en paralelo: el grupo 2 ${d>0?'entrega más':'entrega menos'} kVAr; la tensión de barra casi no cambia.`);return}
-  SY.v2=clamp(SY.v2+d*vn/480,SY.v1*0.8,SY.v1*1.2)}
-function syVbus(){const vn=+$('#sy-vn').value,o=+$('#sy-vbus').value;return vn*(1+o/100)}
+  if(SY.g2run||SY.tripped)return;SY.g2run=true;SY.sp2=58.6+Math.random()*2.4;SY.v2t=syVbus()*(0.9+Math.random()*0.18);SY.runup=6;SY.f2=0;SY.v2=0;SY.syncT=0;
+  syLog('Grupo 2 arrancando: sube a velocidad nominal en unos 6 s.');syMsg(SY.dead?'Barra muerta: habilita el cierre en barra muerta para energizarla.':'Iguala tensión y frecuencia con la barra.');}
+function syAdjF(d){if(!SY.g2run||SY.runup>0)return;SY.sp2=clamp(SY.sp2+(syFault('gov')?-d:d),55,66)}
+function syAdjG1(d){if(!SY.g1on)return;SY.sp1=clamp(SY.sp1+d,55,66)}
+function syAdjV(d){if(!SY.g2run||SY.runup>0)return;
+  if(SY.closed&&SY.g1on){SY.qbias+=d/4*0.04*syR();const now=Date.now();if(now-SY.avrLogT<3000)return;SY.avrLogT=now;syLog(`AVR ${d>0?'sube':'baja'} excitación en paralelo: el grupo 2 ${d>0?'entrega más':'entrega menos'} kVAr; la tensión de barra casi no cambia.`);return}
+  if(SY.closed)return;SY.v2=clamp(SY.v2+d*(+$('#sy-vn').value)/480,syVbus()*0.8,syVbus()*1.2)}
+function syStep(dt){
+  const R=syR(),d=syD(),mode=$('#sy-ctl').value,L=syLimits(),Pload=syLoadKW();
+  if(SY.g1start>0){SY.g1start-=dt;if(SY.g1start<=0){SY.g1start=0;SY.g1on=true;
+    if(SY.dead){SY.dead=false;SY.blackLog=false;SY.f=FN;SY.v=syVbus();SY.sp1=FN+d*FN*Pload/R;SY.Pm1=Pload;syLog('Grupo 1 arrancó y cerró en barra muerta.','e-ok')}
+    else{SY.sp1=SY.f+0.05;SY.Pm1=0;syLog('Grupo 1 sincronizó y cerró sobre la barra.','e-ok')}
+    SC.ev('g1back')}}
+  let on1=SY.g1on,on2=SY.closed&&SY.g2run;
+  if(!on1&&!on2&&!SY.dead){SY.dead=true;SY.f=0;SY.v=0;SY.vdip=0;if(!SY.blackLog){SY.blackLog=true;syLog('APAGÓN: no hay grupos en barra. Carga sin energía.','e-bad');SC.ev('blackout')}}
+  // grupo 2 en vacío
+  if(SY.g2run&&!SY.closed&&SY.runup>0){SY.runup-=dt;const k=1-Math.max(0,SY.runup)/6;SY.f2=SY.sp2*k;SY.v2=SY.v2t*k;
+    if(SY.runup<=0)syLog(`Grupo 2 en velocidad: ${fmt(SY.f2,2)} Hz, ${fmt(SY.v2,0)} V.`)}
+  else if(SY.g2run&&!SY.closed){
+    if(SY.mode==='auto'&&!SY.syncFail&&!SY.dead){
+      const sign=syFault('gov')?-1:1,near=Math.abs(SY.v2-SY.v)/SY.v<0.02&&Math.abs(SY.f2-SY.f-0.1)<0.05;
+      const tgt=SY.f+(near&&Math.abs(SY.phi)>60?Math.min(0.18,L.slip*0.9):Math.min(0.1,L.slip*0.5));
+      SY.sp2=clamp(SY.sp2+sign*clamp(tgt-SY.f2,-0.3,0.3)*dt,55,66);
+      SY.v2+=clamp(SY.v-SY.v2,-0.02*SY.v*dt,0.02*SY.v*dt);
+      SY.syncT+=dt;
+      if(SY.syncT>=+$('#sy-fst').value){SY.syncFail=true;syLog(`Alarma FAIL TO SYNCHRONISE: no entró en ventana en ${$('#sy-fst').value} s.`,'e-bad');syMsg('Falla de sincronismo. Revisa la salida al gobernador y al AVR.');SC.ev('syncfail')}
+    }
+    SY.f2+=(SY.sp2-SY.f2)*Math.min(1,dt/0.5);
+    if(!SY.dead){SY.phi+=360*(SY.f2-SY.f)*dt;SY.phi=((SY.phi+180)%360+360)%360-180}
+    if(SY.mode==='auto'&&!SY.syncFail){
+      if(SY.dead){if($('#sy-dead').checked&&SY.f2>59&&SY.v2>0.95*syVbus())syClose('auto')}
+      else{const e=syEval();if(e.all){SY.inWinT+=dt;if(SY.inWinT>0.15){SY.inWinT=0;syClose('auto')}}else SY.inWinT=0}
+    }
+  }
+  on2=SY.closed&&SY.g2run;
+  if(SY.dead)return;
+  // control secundario del módulo
+  const msc=!syFault('msc'),ctk=syFault('ct')?1/3:1,sign2=syFault('gov')?-1:1;
+  if(!msc&&on1&&on2&&!SY.mscAlarm){SY.mscAlarm=true;syLog('Alarma MSC Failure: se pierde el reparto. El grupo 2 queda con su consigna fija y el grupo 1 absorbe todas las variaciones.','e-bad')}
+  if(msc&&SY.mscAlarm){SY.mscAlarm=false;syLog('Enlace MSC restablecido. Reparto reanudado.','e-ok')}
+  const Kf=0.8,Ks=1.2,pct1=SY.P1/R,pct2m=SY.P2*ctk/R;
+  if(mode==='iso'){
+    const n=(on1?1:0)+(on2?1:0),avg=((on1?pct1:0)+(on2?pct2m:0))/Math.max(1,n);
+    if(on1)SY.sp1+=dt*(Kf*(FN-SY.f)+(on2&&msc?Ks*(avg-pct1):0));
+    if(on2&&(msc||!on1))SY.sp2+=sign2*dt*(Kf*(FN-SY.f)+(on1?Ks*(avg-pct2m):0));
+  }else if(mode==='base'){
+    if(on1)SY.sp1+=dt*Kf*(FN-SY.f);
+    if(on2)SY.sp2+=sign2*dt*(on1?1.0*((+$('#sy-base').value)-SY.P2*ctk)/R:Kf*(FN-SY.f));
+  }
+  SY.sp1=clamp(SY.sp1,50,70);SY.sp2=clamp(SY.sp2,50,70);
+  // gobernadores y barra
+  const want=sp=>clamp(R*(sp-SY.f)/(d*FN),-0.1*R,1.1*R),k=Math.min(1,dt/0.5);
+  SY.Pm1=on1?SY.Pm1+(want(SY.sp1)-SY.Pm1)*k:0;
+  SY.Pm2=on2?SY.Pm2+(want(SY.sp2)-SY.Pm2)*k:0;
+  const Ron=(on1?R:0)+(on2?R:0),imb=SY.Pm1+SY.Pm2-Pload;
+  SY.f=clamp(SY.f+15*imb/Ron*dt,40,70);
+  SY.P1=on1?SY.Pm1-imb*R/Ron:0;SY.P2=on2?SY.Pm2-imb*R/Ron:0;
+  SY.vdip*=Math.exp(-dt/0.8);SY.v=syVbus()*(1-SY.vdip)*clamp(SY.f/FN,0.7,1.05);
+  if(on2){SY.f2=SY.f;SY.v2=SY.v}
+  // reactivos
+  if(on2&&on1){
+    if(msc&&SY.mode==='auto')SY.qbias+=clamp(-SY.qbias,-0.05*R*dt,0.05*R*dt);
+    const q2=syKvar().q2;
+    if(q2<-0.25*R){syTripG2(`Disparo del grupo 2 por pérdida de excitación (${fmt(q2)} kVAr): absorbe reactivos de la barra.`);SC.ev('trip2')}
+    else if(q2>0.75*R&&!SY.qWarn){SY.qWarn=true;syLog('Grupo 2 sobreexcitado: corriente reactiva circulando entre grupos.','e-warn')}
+    else if(q2<=0.6*R)SY.qWarn=false;
+  }else SY.qbias=0;
+  // protecciones
+  if(SY.f<57){SY.ufT+=dt;if(SY.ufT>=1.5){SY.ufT=0;syLog(`Disparo por BAJA FRECUENCIA (${fmt(SY.f,1)} Hz): la carga superó lo que pueden dar los grupos en línea.`,'e-bad');SC.ev('uf');if(on1)syTripG1();if(on2)syTripG2();return}}else SY.ufT=0;
+  if(SY.f>63){SY.ofT+=dt;if(SY.ofT>=1.5){SY.ofT=0;syLog(`Disparo por ALTA FRECUENCIA (${fmt(SY.f,1)} Hz).`,'e-bad');if(on1)syTripG1();if(on2)syTripG2();return}}else SY.ofT=0;
+  if($('#sy-shed').checked&&SY.shed===0&&SY.f<58.5){SY.shedT+=dt;if(SY.shedT>0.3){SY.shed=0.3;syLog('Deslastre por baja frecuencia: se desconecta el 30 % de la carga no crítica.','e-warn');SC.ev('shed')}}else SY.shedT=0;
+  if(on1&&on2){
+    if(SY.P1<-0.08*R){SY.rp1T+=dt;if(SY.rp1T>=3){SY.rp1T=0;syTripG1(`Grupo 1 disparó por POTENCIA INVERSA (${fmt(SY.P1)} kW): la barra lo movía como motor.`);SC.ev('rp1')}}else SY.rp1T=0;
+    if(SY.P2*ctk<-0.08*R){SY.rp2T+=dt;if(SY.rp2T>=3){SY.rp2T=0;syTripG2(`Grupo 2 disparó por POTENCIA INVERSA (${fmt(SY.P2*ctk)} kW medidos).`);SC.ev('rp2')}}else SY.rp2T=0;
+  }
+  if(on2&&syFault('ct')&&!SY.ctWarn&&SY.P2>100){SY.ctWarn=true;syLog('El display del grupo 2 marca un tercio de lo que entrega: el reparto "parejo" no lo es. Solo una pinza o una prueba con carga resistiva lo revela.','e-warn')}
+}
+function syKvar(){
+  const pf=clamp(+$('#sy-pf').value||0.85,0.5,1),qL=SY.dead?0:syLoadKW()*Math.tan(Math.acos(pf));
+  const on1=SY.g1on&&!SY.dead,on2=SY.closed&&SY.g2run;
+  if(on1&&on2)return {q1:qL/2-SY.qbias,q2:qL/2+SY.qbias};
+  return {q1:on1?qL:0,q2:on2?qL:0};
+}
 let syPrev=performance.now();
 function syLoop(now){
   const dt=Math.min(0.1,(now-syPrev)/1000);syPrev=now;
-  const vOld=SY.v1;SY.v1=syVbus();
-  if(Math.abs(SY.v1-vOld)>0.5&&SY.running&&!SY.closed&&SY.mode!=='auto'&&Math.abs(SY.v2-SY.v1)/SY.v1*100>+$('#sy-dv').value&&!SY.vWarn){SY.vWarn=true;syLog('La tensión de barra cambió: el grupo 2 quedó fuera de la ventana de ΔV. Corrige con el AVR.','e-warn')}
-  if(Math.abs(SY.v2-SY.v1)/SY.v1*100<=+$('#sy-dv').value)SY.vWarn=false;
-  const load=+$('#sy-load').value, rating=+$('#sy-rating').value, ramp=+$('#sy-ramp').value;
-  if(SY.running&&!SY.closed){
-    if(SY.mode==='auto'){
-      const near=Math.abs(SY.v2-SY.v1)/SY.v1<0.02&&Math.abs(SY.f2-SY.f1-0.1)<0.05;const sl=syLimits().slip,tf=SY.f1+(near&&Math.abs(SY.phi)>60?Math.min(0.18,sl*0.9):Math.min(0.1,sl*0.5));SY.f2+=clamp(tf-SY.f2,-0.25*dt,0.25*dt);
-      SY.v2+=clamp(SY.v1-SY.v2,-0.02*SY.v1*dt,0.02*SY.v1*dt);
-    }
-    SY.phi+=360*(SY.f2-SY.f1)*dt;SY.phi=((SY.phi+180)%360+360)%360-180;
-    const e=syEval();
-    if(SY.mode==='auto'&&e.all){SY.inWinT+=dt;if(SY.inWinT>0.15){SY.inWinT=0;syClose('auto')}}else SY.inWinT=0;
-  }
-  if(SY.closed){
-    const msc=!$('#sy-msc').checked;
-    // con un TC invertido el módulo mide 1/3 de la potencia real y reparte mal: equilibrio kW2_real/3 = kW1
-    const ct=$('#sy-ct').checked;
-    const target=SY.g1trip?load:msc?Math.min(ct?0.75*load:load/2,rating*1.1):SY.kw2;
-    if(!msc&&!SY.mscAlarm){SY.mscAlarm=true;syLog('Alarma MSC Failure: se pierde el reparto de carga. El grupo 2 mantiene su potencia; el grupo 1 absorbe todas las variaciones.','e-bad')}
-    if(msc&&SY.mscAlarm){SY.mscAlarm=false;syLog('Enlace MSC restablecido. Reparto en % de nominal reanudado.','e-ok')}
-    SY.kw2+=clamp(target-SY.kw2,-ramp*dt,ramp*dt);
-    // reparto de reactivos: en AUTO con MSC el módulo corrige la excitación hacia el reparto parejo
-    if(msc&&SY.mode==='auto')SY.qbias+=clamp(-SY.qbias,-0.05*rating*dt,0.05*rating*dt);
-    const pf=clamp(+$('#sy-pf').value||0.85,0.5,1),qL=load*Math.tan(Math.acos(pf)),kq2=qL/2+SY.qbias;
-    if(kq2<-0.25*rating){SY.tripped=true;SY.closed=false;SY.running=false;SY.kw2=0;SY.qbias=0;
-      syLog(`Disparo del grupo 2 por pérdida de excitación (kVAr inverso ${fmt(kq2)} kVAr). Bajaste demasiado el AVR en paralelo: el grupo absorbe reactivos de la barra.`,'e-bad');syMsg('Disparo por pérdida de excitación. Pulsa STOP para rearmar.')}
-    else if(kq2>0.75*rating&&!SY.qWarn){SY.qWarn=true;syLog('Grupo 2 sobreexcitado: corriente reactiva circulando entre grupos. Baja el AVR o pasa a AUTO para que el módulo reparta los kVAr.','e-warn')}
-    else if(kq2<=0.6*rating)SY.qWarn=false;
-  }
-  if(SY.g1trip&&SY.closed){SY.kw2=load}
-  const kw1=SY.g1trip?0:load-(SY.closed?SY.kw2:0);
-  // potencia inversa del grupo 1 (motoriza): umbral didáctico 8 % durante 3 s
-  if(!SY.g1trip&&kw1<-0.08*rating){SY.rpT=(SY.rpT||0)+dt;if(SY.rpT>=3){SY.g1trip=true;
-    syLog(`Grupo 1 disparó por POTENCIA INVERSA (${fmt(kw1)} kW): la barra lo movía como motor. El grupo 2 queda solo con ${fmt(load)} kW.`,'e-bad');
-    if(load>rating*1.1)syLog('El grupo 2 no puede con toda la carga: sobrecarga. Aquí entra la desconexión de cargas no críticas.','e-bad')}}else SY.rpT=0;
-  if(SY.closed&&$('#sy-ct').checked&&!SY.ctWarn&&SY.kw2>50){SY.ctWarn=true;syLog('El display muestra el reparto "parejo", pero el grupo 2 entrega el triple de lo que indica. Solo una medición con pinza o una prueba con carga resistiva lo revela.','e-warn')}
-  if(kw1>rating*1.1&&!SY.ovl){SY.ovl=true;syLog(`Grupo 1 sobrecargado (${fmt(kw1)} kW). Pon en paralelo el grupo 2.`,'e-warn')}
-  if(kw1<=rating&&SY.ovl)SY.ovl=false;
-  syDraw(kw1);
-  requestAnimationFrame(syLoop);
+  for(let i=0;i<5;i++)syStep(dt/5);
+  SY.trendT+=dt;if(SY.trendT>=0.25){SY.trendT=0;const R=syR();TREND.push([SY.dead?NaN:SY.f,SY.g1on&&!SY.dead?SY.P1/R*100:NaN,SY.closed?SY.P2/R*100:NaN]);if(TREND.length>240)TREND.shift()}
+  SC.tick(dt);syDraw();requestAnimationFrame(syLoop);
 }
-function syDraw(kw1){
-  const L=syLimits(),e=syEval();
-  $('#sy-v1').textContent=fmt(SY.v1);$('#sy-f1').textContent=fmt(SY.f1,2);
-  $('#sy-v2').textContent=fmt(SY.closed?SY.v1:SY.v2);$('#sy-f2').textContent=fmt(SY.closed?SY.f1:SY.f2,2);
-  $('#sy-kw2').textContent=fmt(SY.closed?($('#sy-ct').checked?SY.kw2/3:SY.kw2):0);$('#sy-kw2r').textContent=fmt(SY.closed?SY.kw2:0);$('#sy-kw1').textContent=SY.g1trip?'DISPARO':fmt(kw1);
-  {const pf=clamp(+$('#sy-pf').value||0.85,0.5,1),load=+$('#sy-load').value,qL=load*Math.tan(Math.acos(pf));
-   const kq2=SY.closed?qL/2+SY.qbias:0,kq1=qL-kq2,kw2=SY.closed?SY.kw2:0;
-   const pfOf=(p,q)=>p<=0&&Math.abs(q)<1?'—':fmt(p/Math.hypot(p,q),2)+(q<0?' cap':'');
-   $('#sy-kq2').textContent=fmt(kq2);$('#sy-kq1').textContent=fmt(kq1);$('#sy-pf2').textContent=SY.closed?pfOf(kw2,kq2):'—';$('#sy-pf1').textContent=pfOf(kw1,kq1);
-   $('#sy-vbus-v').textContent=`${(+$('#sy-vbus').value>0?'+':'')+$('#sy-vbus').value} % · ${fmt(SY.v1)} V`;}
-  // needle
-  const a=SY.running?SY.phi:0;
-  $('#sy-needle').setAttribute('transform',`rotate(${a} 110 110)`);
-  $('#sy-needle').style.opacity=SY.running?1:.25;
-  const w=L.ang*Math.PI/180,R=96,x1=110-R*Math.sin(w),x2=110+R*Math.sin(w),y=110-R*Math.cos(w);
-  $('#sy-win').setAttribute('d',`M110 110 L${x1} ${y} A${R} ${R} 0 0 1 ${x2} ${y} Z`);
-  const sl=SY.f2-SY.f1;
-  $('#sy-dir').textContent=!SY.running?'':SY.closed?'EN PARALELO':Math.abs(sl)<0.005?'SIN GIRO':sl>0?'GIRA → RÁPIDO':'GIRA ← LENTO';
-  // checks
-  const items=[['Secuencia',e.ok.rot,e.rot?'L1-L2-L3':'INVERTIDA'],['ΔV',e.ok.dv,SY.running?fmt(e.dvp,1)+' %':'—'],['Deslizamiento',e.ok.slip,SY.running?(sl>=0?'+':'')+fmt(sl,2)+' Hz':'—'],['Ángulo',e.ok.ang,SY.running?fmt(e.ang,0)+'°':'—']];
-  $('#sy-checks').innerHTML=items.map(([t,ok,m])=>`<div class="check ${SY.running||t==='Secuencia'?(ok?'pass':'fail'):''}"><span class="t">${t}</span><span class="m">${m}</span></div>`).join('');
-  // state pill
+function syDraw(){
+  const L=syLimits(),e=syEval(),R=syR(),ctk=syFault('ct')?1/3:1;
+  $('#sy-v1').textContent=fmt(SY.v);$('#sy-f1').textContent=fmt(SY.f,2);
+  $('#sy-v2').textContent=fmt(SY.v2);$('#sy-f2').textContent=fmt(SY.f2,2);
+  $('#sy-kw1').textContent=SY.g1on?fmt(SY.P1):SY.g1start>0?'ARRANCA':'FUERA';
+  $('#sy-kw2').textContent=fmt(SY.closed?SY.P2*ctk:0);$('#sy-kw2r').textContent=fmt(SY.closed?SY.P2:0);
+  $('#sy-kwl').textContent=SY.dead?'0':fmt(syLoadKW());
+  const q=syKvar(),pfOf=(p,qq)=>Math.abs(p)<1&&Math.abs(qq)<1?'—':fmt(p/Math.hypot(p,qq),2)+(qq<0?' cap':'');
+  $('#sy-kq1').textContent=fmt(q.q1);$('#sy-kq2').textContent=fmt(q.q2);
+  $('#sy-pf1').textContent=SY.g1on?pfOf(SY.P1,q.q1):'—';$('#sy-pf2').textContent=SY.closed?pfOf(SY.P2,q.q2):'—';
+  $('#sy-vbus-v').textContent=`${(+$('#sy-vbus').value>0?'+':'')+$('#sy-vbus').value} % · ${fmt(syVbus())} V`;
+  const live=SY.g2run&&!SY.dead;
+  $('#sy-needle').setAttribute('transform',`rotate(${live&&!SY.closed?SY.phi:0} 110 110)`);$('#sy-needle').style.opacity=live?1:.25;
+  const w=L.ang*Math.PI/180,Rr=96,x1=110-Rr*Math.sin(w),x2=110+Rr*Math.sin(w),y=110-Rr*Math.cos(w);
+  $('#sy-win').setAttribute('d',`M110 110 L${x1} ${y} A${Rr} ${Rr} 0 0 1 ${x2} ${y} Z`);
+  const sl=SY.f2-SY.f;
+  $('#sy-dir').textContent=!SY.g2run?'':SY.dead?'BARRA MUERTA':SY.closed?'EN PARALELO':Math.abs(sl)<0.005?'SIN GIRO':sl>0?'GIRA → RÁPIDO':'GIRA ← LENTO';
+  // lámparas: con secuencia correcta se apagan juntas; con secuencia invertida "giran"
+  const s=syFault('rot')?-1:1,r=SY.v?SY.v2/SY.v:0;
+  for(let k=0;k<3;k++){let b=0;
+    if(live&&!SY.closed){const a1=-120*k*Math.PI/180,a2=(SY.phi-120*k*s)*Math.PI/180;b=clamp(Math.hypot(Math.cos(a1)-r*Math.cos(a2),Math.sin(a1)-r*Math.sin(a2))/2,0,1)}
+    $('#sy-l'+k).setAttribute('opacity',(0.08+0.92*b).toFixed(2))}
+  const items=[['Secuencia',e.rot,e.rot?'L1-L2-L3':'INVERTIDA'],['ΔV',e.ok.dv,live?fmt(e.dvp,1)+' %':'—'],['Deslizamiento',e.ok.slip,live?(sl>=0?'+':'')+fmt(sl,2)+' Hz':'—'],['Ángulo',e.ok.ang,live?fmt(e.ang,0)+'°':'—']];
+  $('#sy-checks').innerHTML=items.map(([t,ok,m])=>`<div class="check ${(live&&!SY.closed)||t==='Secuencia'?(ok?'pass':'fail'):''}"><span class="t">${t}</span><span class="m">${m}</span></div>`).join('');
   const p=$('#sy-state');
-  const st=SY.tripped?['bad','Alarma: disparo']:SY.closed?['ok','En paralelo']:SY.running?(e.all?['ok','En ventana']:['warn','Sincronizando']):['idle','Parado'];
+  const st=SY.tripped?['bad','Alarma: disparo']:SY.syncFail?['bad','Falla de sincronismo']:SY.closed?['ok','En paralelo']:SY.g2run?(SY.dead?['warn','Barra muerta']:e.all?['ok','En ventana']:['warn','Sincronizando']):['idle','Parado'];
   p.className='pill '+st[0];p.textContent=st[1];
   $('#sy-k-stop').classList.toggle('lit',SY.mode==='stop');$('#sy-k-man').classList.toggle('lit',SY.mode==='manual');$('#sy-k-auto').classList.toggle('lit',SY.mode==='auto');
-  $('#sy-k-start').classList.toggle('lit',SY.running);$('#sy-k-close').classList.toggle('lit',SY.closed);
-  syWave();
+  $('#sy-k-start').classList.toggle('lit',SY.g2run);$('#sy-k-close').classList.toggle('lit',SY.closed);
+  syWave();syTrendDraw();
 }
 function syWave(){
-  const c=$('#sy-wave'),g=c.getContext('2d'),W=c.width,H=c.height;
-  g.clearRect(0,0,W,H);
-  const ink3=cssVar('--ink3'),acc=cssVar('--accent'),live=cssVar('--live'),rule=cssVar('--rule'),ink2=cssVar('--ink2');
+  const c=$('#sy-wave'),g=c.getContext('2d'),W=c.width,H=c.height;g.clearRect(0,0,W,H);
+  const acc=cssVar('--accent'),live=cssVar('--live'),rule=cssVar('--rule'),ink2=cssVar('--ink2'),ink3=cssVar('--ink3');
   g.strokeStyle=rule;g.lineWidth=1;g.beginPath();g.moveTo(0,H/2);g.lineTo(W,H/2);g.stroke();
-  const cyc=2.5,amp=H*0.34;
-  const draw=(phase,ampK,col,w)=>{g.strokeStyle=col;g.lineWidth=w;g.beginPath();for(let x=0;x<=W;x+=3){const t=x/W*cyc*2*Math.PI;const y=H/2-amp*ampK*Math.sin(t+phase);x?g.lineTo(x,y):g.moveTo(x,y)}g.stroke()};
-  draw(0,1,acc,3);
-  if(SY.running){const k=(SY.closed?SY.v1:SY.v2)/SY.v1;draw(SY.closed?0:SY.phi*Math.PI/180,k,live,2);
-    // diferencia
-    g.strokeStyle=ink3;g.setLineDash([4,4]);g.lineWidth=1.5;g.beginPath();
-    for(let x=0;x<=W;x+=3){const t=x/W*cyc*2*Math.PI;const d=Math.sin(t)-k*Math.sin(t+(SY.closed?0:SY.phi*Math.PI/180));const y=H/2-amp*d;x?g.lineTo(x,y):g.moveTo(x,y)}g.stroke();g.setLineDash([]);}
-  g.font='22px "IBM Plex Mono", monospace';g.fillStyle=acc;g.fillText('Barra',12,28);g.fillStyle=live;g.fillText('Grupo 2',100,28);g.fillStyle=ink2;g.fillText('Diferencia',230,28);
+  const cyc=2.5,amp=H*0.34,vn=syVbus();
+  const draw=(ph,k,col,w,dash)=>{g.strokeStyle=col;g.lineWidth=w;g.setLineDash(dash||[]);g.beginPath();for(let x=0;x<=W;x+=3){const t=x/W*cyc*2*Math.PI;const yy=H/2-amp*k*Math.sin(t+ph);x?g.lineTo(x,yy):g.moveTo(x,yy)}g.stroke();g.setLineDash([])};
+  if(!SY.dead)draw(0,SY.v/vn,acc,3);
+  if(SY.g2run&&!SY.closed){const ph=SY.dead?0:SY.phi*Math.PI/180;draw(ph,SY.v2/vn,live,2);
+    if(!SY.dead){g.strokeStyle=ink3;g.setLineDash([4,4]);g.lineWidth=1.5;g.beginPath();
+      for(let x=0;x<=W;x+=3){const t=x/W*cyc*2*Math.PI;const dd=SY.v/vn*Math.sin(t)-SY.v2/vn*Math.sin(t+ph);const yy=H/2-amp*dd;x?g.lineTo(x,yy):g.moveTo(x,yy)}g.stroke();g.setLineDash([])}}
+  g.font='22px "IBM Plex Mono", monospace';g.fillStyle=acc;g.fillText(SY.dead?'Barra sin tensión':'Barra',12,28);g.fillStyle=live;g.fillText('Grupo 2',SY.dead?260:100,28);if(!SY.dead){g.fillStyle=ink2;g.fillText('Diferencia',230,28)}
 }
+function syTrendDraw(){
+  const c=$('#sy-trend'),g=c.getContext('2d'),W=c.width,H=c.height;g.clearRect(0,0,W,H);
+  const rule=cssVar('--rule'),ink2=cssVar('--ink2'),acc=cssVar('--accent'),live=cssVar('--live'),warn=cssVar('--warn');
+  const padL=58,padR=12,top1=14,h1=100,top2=140,h2=100,xw=W-padL-padR;
+  const X=i=>padL+xw*(i/(240-1)),Y1=f=>top1+h1*(1-(clamp(f,55,65)-55)/10),Y2=pc=>top2+h2*(1-(clamp(pc,-20,120)+20)/140);
+  g.font='18px "IBM Plex Mono", monospace';g.fillStyle=ink2;g.strokeStyle=rule;g.lineWidth=1;
+  [[55,Y1],[60,Y1],[65,Y1]].forEach(([v,Y])=>{g.beginPath();g.moveTo(padL,Y(v));g.lineTo(W-padR,Y(v));g.stroke();g.fillText(v+'',8,Y(v)+6)});
+  [[0,Y2],[50,Y2],[100,Y2]].forEach(([v,Y])=>{g.beginPath();g.moveTo(padL,Y(v));g.lineTo(W-padR,Y(v));g.stroke();g.fillText(v+'%',4,Y(v)+6)});
+  const off=240-TREND.length;
+  const line=(idx,Y,col,w)=>{g.strokeStyle=col;g.lineWidth=w;g.beginPath();let pen=false;TREND.forEach((p,i)=>{const v=p[idx];if(isNaN(v)){pen=false;return}const x=X(i+off),yy=Y(v);pen?g.lineTo(x,yy):g.moveTo(x,yy);pen=true});g.stroke()};
+  line(0,Y1,acc,3);line(1,Y2,warn,2.5);line(2,Y2,live,2.5);
+  g.fillStyle=acc;g.fillText('Hz barra',padL+6,top1+18);g.fillStyle=warn;g.fillText('G1 % nominal',padL+6,top2+18);g.fillStyle=live;g.fillText('G2 % real',padL+170,top2+18);
+}
+
+/* ---------- ejercicios con evaluación ---------- */
+const SC={act:null,t:0,
+  ev(type,d){if(this.act&&this.act.on)this.act.on(type,d||{})},
+  tick(dt){if(!this.act)return;this.t+=dt;$('#sc-time').textContent=`Tiempo: ${fmt(this.t,0)} s`;if(this.act.tick)this.act.tick(dt)},
+  start(id){const sc=SCENARIOS[id];this.act=Object.assign({id},sc);this.t=0;$('#sc-res').textContent='';$('#sc-diag').hidden=id!=='s5';
+    ['rot','msc','ct','gov'].forEach(k=>$('#sy-'+k).checked=false);$('#sy-cs').checked=true;$('#sy-shed').checked=false;$('#sy-dead').checked=false;
+    sc.setup.call(this.act);$('#sc-obj').textContent=sc.obj;const p=$('#sc-pill');p.className='pill warn';p.textContent='Ejercicio en curso';syLog('EJERCICIO: '+sc.name,'e-ok')},
+  finish(score,msg){if(!this.act)return;const id=this.act.id,name=SCENARIOS[id].name;score=Math.round(clamp(score,0,100));
+    $('#sc-res').innerHTML=`<b>${name}: ${score}/100</b> · ${msg}`;const p=$('#sc-pill');p.className='pill '+(score>=70?'ok':'bad');p.textContent=score>=70?'Aprobado':'Repetir';
+    const best=store.get('dse-sc',{});if(!best[id]||score>best[id])best[id]=score;store.set('dse-sc',best);scBest();
+    syLog(`Resultado del ejercicio: ${score}/100.`,score>=70?'e-ok':'e-bad');this.act=null;$('#sc-diag').hidden=true}
+};
+function scSetLoad(v){$('#sy-load').value=v;$('#sy-load-v').textContent=fmt(v)+' kW'}
+const SCENARIOS={
+  s1:{name:'Sincronización manual de precisión',obj:'Grupo 2 arrancado en MANUAL. Sincroniza con gobernador y AVR y cierra con el menor ángulo, ΔV y un deslizamiento positivo pequeño. Cada intento bloqueado por check sync resta 5 puntos.',
+    setup(){$('#sy-ctl').value='iso';syInit();syMode('manual');syStart();this.blk=0},
+    on(t,d){if(t==='blocked')this.blk++;
+      if(t==='close'&&!d.dead){const pa=40*Math.max(0,1-Math.abs(d.phi)/10),pv=30*Math.max(0,1-d.dvp/5),ps=d.slip>0?30*Math.max(0,1-Math.abs(d.slip-0.07)/0.15):0;
+        SC.finish(pa+pv+ps-5*this.blk,`ángulo ${fmt(Math.abs(d.phi),1)}° (${fmt(pa,0)}/40), ΔV ${fmt(d.dvp,1)} % (${fmt(pv,0)}/30), deslizamiento ${fmt(d.slip,2)} Hz (${fmt(ps,0)}/30)${this.blk?`, ${this.blk} cierre(s) bloqueado(s)`:''}.`)}},
+    tick(){if(SC.t>180)SC.finish(0,'Tiempo agotado.')}},
+  s2:{name:'Reparto de carga en droop',obj:'Los dos grupos están en paralelo en modo droop: el grupo 1 lleva 1 200 kW y el grupo 2 nada. Con los gobernadores de ambos, deja los dos grupos con la misma carga (±5 %) y la barra en 60,0 ± 0,1 Hz durante 5 s.',
+    setup(){$('#sy-ctl').value='droop';scSetLoad(1200);syInit();syMode('manual');syStart();SY.runup=0;SY.sp2=FN;SY.f2=FN;SY.v2=SY.v;SY.phi=0;SY.closed=true;SY.Pm2=0;this.okT=0;syLog('Grupo 2 en paralelo y en vacío.')},
+    tick(dt){const R=syR();const ok=SY.g1on&&SY.closed&&Math.abs(SY.P1-SY.P2)/R<=0.05&&Math.abs(SY.f-FN)<=0.1;this.okT=ok?this.okT+dt:0;
+      if(this.okT>=5)SC.finish(Math.max(50,100-SC.t*0.4),`reparto ${fmt(SY.P1)} / ${fmt(SY.P2)} kW a ${fmt(SY.f,2)} Hz en ${fmt(SC.t,0)} s.`);
+      else if(SC.t>180)SC.finish(0,'Tiempo agotado.')},
+    on(t){if(['uf','rp1','rp2','blackout','trip2'].includes(t))SC.finish(0,'Un grupo disparó durante el reparto.')}},
+  s3:{name:'Arranque de motor de 450 kW',obj:'El grupo 1 lleva 700 kW solo. En 60 s arranca un motor de 450 kW. Prepara la planta para que no dispare por baja frecuencia: pon el grupo 2 en paralelo o habilita el deslastre.',
+    setup(){$('#sy-ctl').value='iso';scSetLoad(700);syInit();this.fired=false;this.fmin=FN},
+    tick(){if(!SY.dead)this.fmin=Math.min(this.fmin,SY.f);
+      if(!this.fired&&SC.t>=60){this.fired=true;syMotor()}
+      if(this.fired&&SC.t>=80)SC.finish(SY.shed>0?70:100,`frecuencia mínima ${fmt(this.fmin,2)} Hz${SY.shed>0?'; se salvó la planta deslastrando el 30 % de la carga':'; sin pérdida de carga'}.`)},
+    on(t){if(t==='uf'||t==='blackout')SC.finish(0,'Disparo por baja frecuencia: la planta quedó sin energía.')}},
+  s4:{name:'Recuperación de apagón',obj:'El grupo 1 disparó y la barra está muerta. Vuelve a energizar la barra lo antes posible. El cierre en barra muerta está deshabilitado en la configuración.',
+    setup(){$('#sy-ctl').value='iso';scSetLoad(600);syInit();syTripG1('Grupo 1 disparó (falla simulada por el instructor).');this.seen=false},
+    tick(){if(SY.dead)this.seen=true;if(this.seen&&!SY.dead)SC.finish(Math.max(40,100-SC.t),`barra energizada en ${fmt(SC.t,0)} s.`);else if(SC.t>120)SC.finish(0,'Tiempo agotado.')}},
+  s5:{name:'Diagnóstico de falla oculta',obj:'Hay una falla oculta en la planta (no aparece marcada en la lista). Opera el grupo 2: arranca, sincroniza y reparte. Observa lámparas, lecturas y alarmas, y responde el diagnóstico.',
+    setup(){$('#sy-ctl').value='iso';syInit();this.f=['rot','msc','ct','gov'][Math.floor(Math.random()*4)];SY.hidden=this.f}}
+};
+const SC_NAMES={rot:'secuencia de fases invertida',msc:'enlace MSC cortado',ct:'TC con polaridad invertida',gov:'salida al gobernador invertida'};
+function scBest(){const b=store.get('dse-sc',{});const t=Object.keys(SCENARIOS).filter(k=>b[k]!=null).map(k=>`${k.slice(1)}: ${b[k]}`);$('#sc-best').textContent=t.length?'Mejores notas en este navegador · '+t.join(' · '):''}
+function syMotor(){const R=syR(),Ron=(SY.g1on?R:0)+(SY.closed?R:0);if(SY.dead){syLog('No hay tensión en barra para arrancar el motor.','e-warn');return}
+  SY.extra+=450;SY.vdip=Math.min(0.3,SY.vdip+0.12*450/Math.max(R,Ron));syLog('Arranque de motor: +450 kW de golpe y caída de tensión transitoria.','e-warn')}
+
 function syBind(){
   $('#sy-k-stop').onclick=()=>syMode('stop');$('#sy-k-man').onclick=()=>syMode('manual');$('#sy-k-auto').onclick=()=>syMode('auto');
   $('#sy-k-start').onclick=syStart;$('#sy-k-close').onclick=()=>syClose('man');$('#sy-k-open').onclick=syOpen;
   $('#sy-gov-up').onclick=()=>syAdjF(0.1);$('#sy-gov-dn').onclick=()=>syAdjF(-0.1);$('#sy-gov-fine-up').onclick=()=>syAdjF(0.02);$('#sy-gov-fine-dn').onclick=()=>syAdjF(-0.02);
   $('#sy-avr-up').onclick=()=>syAdjV(4);$('#sy-avr-dn').onclick=()=>syAdjV(-4);
-  $('#sy-reset').onclick=syInit;
-  $$('[data-preset]').forEach(b=>b.onclick=()=>{const [sl,dv,an]=b.dataset.preset.split(',');$('#sy-slip').value=sl;$('#sy-dv').value=dv;$('#sy-ang').value=an;syLog(`Ventana de check sync: ${b.textContent} → ${sl} Hz, ${dv} %, ${an}°.`)});
-  $('#sy-ct').onchange=e=>{SY.ctWarn=false;syLog(e.target.checked?'Falla oculta introducida: TC de L1 con polaridad invertida. Pon en paralelo y compara kW del módulo con kW real.':'TC corregido.',e.target.checked?'e-warn':'e-ok')};
+  $('#sy-g1-up').onclick=()=>syAdjG1(0.1);$('#sy-g1-dn').onclick=()=>syAdjG1(-0.1);
+  $('#sy-g1-trip').onclick=()=>{if(SY.g1on){syTripG1('Grupo 1 disparado (falla simulada).');SC.ev('g1trip')}};
+  $('#sy-g1-start').onclick=()=>{if(SY.g1on||SY.g1start>0)return;SY.g1start=8;syLog('Grupo 1 arrancando: entra a la barra en 8 s.')};
+  $('#sy-step-up').onclick=()=>{SY.extra+=100;syLog('Escalón de carga +100 kW.')};
+  $('#sy-step-dn').onclick=()=>{SY.extra-=100;syLog('Escalón de carga −100 kW.')};
+  $('#sy-motor').onclick=syMotor;
+  $('#sy-restore').onclick=()=>{SY.extra=0;SY.shed=0;syLog('Cargas repuestas a la carga base.')};
+  $('#sy-reset').onclick=()=>{SC.act=null;$('#sc-diag').hidden=true;syInit()};
   $('#sy-load').oninput=e=>$('#sy-load-v').textContent=fmt(e.target.value)+' kW';
   $('#sy-vn').onchange=()=>{syMode('stop');syInit()};
-  $('#sy-vbus').onchange=e=>{const o=+e.target.value;syLog(`Cambio de tensión de barra: ${o>0?'+':''}${o} % (${fmt(syVbus())} V).${SY.closed?' En paralelo el grupo 2 sigue a la barra.':''}`,Math.abs(o)>=8?'e-warn':undefined)};
-  $('#sy-rot').onchange=e=>syLog(e.target.checked?'Falla introducida: L2 y L3 cruzadas en el sensado del grupo 2.':'Secuencia corregida.',e.target.checked?'e-warn':'e-ok');
-  $('#sy-cs').onchange=e=>syLog(e.target.checked?'Check sync activado.':'Check sync DESACTIVADO: el módulo cerrará aunque esté fuera de ventana. Solo para ver las consecuencias.',e.target.checked?'e-ok':'e-bad');
+  $('#sy-ctl').onchange=e=>syLog('Modo de control: '+e.target.selectedOptions[0].textContent+'.');
+  $('#sy-vbus').onchange=e=>{const o=+e.target.value;syLog(`Cambio de tensión de barra: ${o>0?'+':''}${o} % (${fmt(syVbus())} V).`,Math.abs(o)>=8?'e-warn':undefined)};
+  $('#sy-rot').onchange=e=>syLog(e.target.checked?'Falla: L2 y L3 cruzadas en el sensado del grupo 2. Observa las lámparas.':'Secuencia corregida.',e.target.checked?'e-warn':'e-ok');
+  $('#sy-ct').onchange=e=>{SY.ctWarn=false;syLog(e.target.checked?'Falla oculta: TC de L1 con polaridad invertida.':'TC corregido.',e.target.checked?'e-warn':'e-ok')};
+  $('#sy-gov').onchange=e=>syLog(e.target.checked?'Falla: salida al gobernador invertida (subir baja la velocidad).':'Salida al gobernador corregida.',e.target.checked?'e-warn':'e-ok');
+  $('#sy-cs').onchange=e=>syLog(e.target.checked?'Check sync activado.':'Check sync DESACTIVADO: el módulo cerrará aunque esté fuera de ventana.',e.target.checked?'e-ok':'e-bad');
+  $$('[data-preset]').forEach(b=>b.onclick=()=>{const [sl,dv,an]=b.dataset.preset.split(',');$('#sy-slip').value=sl;$('#sy-dv').value=dv;$('#sy-ang').value=an;syLog(`Ventana de check sync: ${b.textContent} → ${sl} Hz, ${dv} %, ${an}°.`)});
+  $('#sc-start').onclick=()=>SC.start($('#sc-sel').value);
+  $('#sc-stop').onclick=()=>{if(SC.act)SC.finish(0,'Ejercicio terminado por el usuario.')};
+  $('#sc-answer').onclick=()=>{if(!SC.act||SC.act.id!=='s5')return;const a=$('#sc-ans').value,f=SC.act.f;
+    SC.finish(a===f?Math.max(50,100-SC.t/3):0,a===f?`correcto: ${SC_NAMES[f]}, en ${fmt(SC.t,0)} s.`:`la falla era ${SC_NAMES[f]}.`);SY.hidden=null};
   const ticks=$('#sy-ticks');let s='';for(let i=0;i<36;i++){const a=i*10*Math.PI/180,r1=i%9===0?80:86;s+=`<line x1="${110+r1*Math.sin(a)}" y1="${110-r1*Math.cos(a)}" x2="${110+94*Math.sin(a)}" y2="${110-94*Math.cos(a)}" stroke="var(--ink3)" stroke-width="${i%9===0?2:1}"/>`}ticks.innerHTML=s;
+  scBest();
 }
-function syTick(){}
 
 /* ================= TTA ================= */
 const TT_TIMERS=[

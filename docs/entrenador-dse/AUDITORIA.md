@@ -63,3 +63,18 @@ Las 15 preguntas originales se mantienen: ninguna contradice las fuentes. Se agr
 - Guía de fallas DSE7320 (terceros, MPU y CAN): https://accessories.huaquanpower.net/dse7320-controller-guide/
 - DS 024-2016-EM: https://lpderecho.pe/reglamento-de-seguridad-y-salud-ocupacional-en-mineria-ds-024-2016-em/
 - RESESATE-2013 (RM 111-2013-MEM/DM): https://buenaventura.com/wp-content/uploads/2024/10/RM-111-2013-EM-DM-Reglamento-de-Seguridad-y-Salud-en-el-Trabajo-en-Electricidad.pdf
+
+## 6. Mejora del simulador de sincronismo (segunda iteración)
+
+Referencias de funciones: módulos de aprendizaje de Woodward (isócrono, droop, carga base), herramientas de emulación de ComAp, DEIF y Woodward (plantas emuladas con fallas) y simuladores de sala de máquinas Wärtsilä TechSim y Kongsberg K-Sim (sincronización, reparto y emergencias evaluadas). El código y la interfaz son propios.
+
+- Modelo dinámico: barra con inercia, gobernadores con droop y retardo, y control isócrono del módulo con reparto en % de nominal.
+- Modos de control: isócrono con MSC, droop con reparto manual y carga base en el grupo 2.
+- Lámparas de sincronización (método de lámparas apagadas): con la secuencia invertida, las lámparas «giran».
+- Escalones de carga, arranque de motor de 450 kW con caída de tensión, deslastre por baja frecuencia y protecciones de baja/alta frecuencia y potencia inversa en ambos grupos.
+- Disparo y rearranque del grupo 1, apagón y cierre en barra muerta.
+- Arranque del grupo 2 con rampa de 6 s, alarma de falla de sincronismo y falla nueva: salida al gobernador invertida.
+- Tendencia de 60 s: frecuencia y % de carga de cada grupo.
+- Cinco ejercicios calificados de 0 a 100: sincronización manual de precisión, reparto en droop, arranque de motor, recuperación de apagón y diagnóstico de falla oculta.
+
+Pruebas automáticas: 15 casos del modelo y de los ejercicios, más los 19 de la auditoría anterior. Todos pasan, sin errores de JavaScript.
