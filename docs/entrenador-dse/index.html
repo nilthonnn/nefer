@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entrenador DSE Sincronismo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Simulador de entrenamiento básico en sincronismo, transferencia automática (TTA), tablero y programación de módulos de control DSE para grupos electrógenos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: consola de tablero — barra de módulos arriba, área de trabajo con panel de instrumentos + panel lateral de lectura */
+:root{
+  --bg:#ECEFEE; --panel:#FFFFFF; --panel2:#F5F7F6; --ink:#15201F; --ink2:#4B5957; --ink3:#7A8886;
+  --rule:#CBD4D2; --accent:#0E6E6A; --accent-soft:#DCEDEB;
+  --lcd:#1B2B33; --lcd-ink:#C3E4EE; --lcd-dim:#6E8F9A;
+  --ok:#2E7D3F; --warn:#A86A12; --bad:#B8322B; --live:#C2410C;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#101615; --panel:#172020; --panel2:#1C2626; --ink:#E2EAE8; --ink2:#A0AFAC; --ink3:#748482;
+  --rule:#2B3836; --accent:#4FB8B0; --accent-soft:#183331;
+  --lcd:#0B1418; --lcd-ink:#BFE3EE; --lcd-dim:#5E7E89;
+  --ok:#5FBF72; --warn:#E0A042; --bad:#EF6A5F; --live:#F08A4B; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#101615; --panel:#172020; --panel2:#1C2626; --ink:#E2EAE8; --ink2:#A0AFAC; --ink3:#748482;
+  --rule:#2B3836; --accent:#4FB8B0; --accent-soft:#183331;
+  --lcd:#0B1418; --lcd-ink:#BFE3EE; --lcd-dim:#5E7E89;
+  --ok:#5FBF72; --warn:#E0A042; --bad:#EF6A5F; --live:#F08A4B; color-scheme:dark }
+*{box-sizing:border-box}
+html,body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 3rem}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--panel)}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;letter-spacing:.01em;text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:clamp(1.7rem,1.3rem+1.6vw,2.4rem)} h2{font-size:1.6rem} h3{font-size:1.2rem}
+p{margin:0} a{color:var(--accent)}
+.wrap{max-width:72rem;margin:0 auto}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--panel);border-bottom:1px solid var(--rule);
+  margin-left:calc(-1*max(16px,env(safe-area-inset-left,0px)));margin-right:calc(-1*max(16px,env(safe-area-inset-right,0px)));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top .wrap{display:flex;gap:.4rem 1.2rem;align-items:center;flex-wrap:wrap;padding-block:.6rem}
+.brand{font-family:var(--f-display);font-weight:700;font-size:1.25rem;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.brand small{font-weight:500;color:var(--ink3);letter-spacing:.06em;margin-left:.4rem;font-size:.8rem}
+nav.tabs{display:flex;gap:.25rem;overflow-x:auto;flex:1 1 auto;min-width:0;scrollbar-width:thin}
+nav.tabs a{font-family:var(--f-display);font-size:1.02rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;text-decoration:none;
+  color:var(--ink2);padding:.35rem .7rem;border-radius:4px;white-space:nowrap}
+nav.tabs a[aria-current="page"]{background:var(--ink);color:var(--panel)}
+nav.tabs a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{padding-top:1.4rem}
+section.view{display:flex;flex-direction:column;gap:1.2rem}
+.lead{max-width:62ch;color:var(--ink2)}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:1.2rem}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}
+@media (max-width:860px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:1rem;display:flex;flex-direction:column;gap:.75rem;min-width:0}
+.card.flat{background:var(--panel2)}
+.row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center}
+.btn{font:600 .9rem var(--f-body);border:1px solid var(--rule);background:var(--panel2);color:var(--ink);padding:.45rem .8rem;border-radius:4px;cursor:pointer;min-height:2.3rem}
+.btn:hover{border-color:var(--ink3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.on{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.key{font:600 .78rem var(--f-mono);letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--rule);border-bottom-width:3px;background:var(--panel);color:var(--ink);
+  border-radius:5px;padding:.5rem .6rem;cursor:pointer;min-width:4.4rem;display:flex;flex-direction:column;align-items:center;gap:.2rem}
+.key .led{width:.55rem;height:.55rem;border-radius:50%;background:var(--rule)}
+.key.lit .led{background:var(--live);box-shadow:0 0 6px var(--live)}
+.key.ok.lit .led{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+label.f{display:flex;flex-direction:column;gap:.2rem;font-size:.82rem;color:var(--ink2);min-width:0}
+input[type=number],select,input[type=text]{font:500 .95rem var(--f-mono);padding:.35rem .5rem;border:1px solid var(--rule);border-radius:4px;background:var(--panel);color:var(--ink);width:100%}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.lcd{background:var(--lcd);color:var(--lcd-ink);font-family:var(--f-mono);border-radius:4px;padding:.7rem .8rem;font-size:.9rem;font-variant-numeric:tabular-nums;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:.35rem .9rem;box-shadow:inset 0 0 0 2px #00000033}
+.lcd .k{color:var(--lcd-dim);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em}
+.lcd .v{font-size:1.15rem}
+.lcd .full{grid-column:1/-1;border-top:1px solid #ffffff22;padding-top:.35rem}
+.pill{display:inline-flex;align-items:center;gap:.35rem;font:600 .74rem var(--f-mono);letter-spacing:.05em;text-transform:uppercase;padding:.2rem .5rem;border-radius:3px;border:1px solid currentColor}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--warn)} .pill.bad{color:var(--bad)} .pill.idle{color:var(--ink3)}
+.checks{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:.5rem}
+.check{border:1px solid var(--rule);border-radius:4px;padding:.45rem .6rem;display:flex;flex-direction:column;gap:.1rem;font-variant-numeric:tabular-nums}
+.check .t{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--ink3)}
+.check .m{font:500 1rem var(--f-mono)}
+.check.pass{border-color:var(--ok)} .check.pass .m{color:var(--ok)}
+.check.fail{border-color:var(--bad)} .check.fail .m{color:var(--bad)}
+.log{font:.8rem/1.5 var(--f-mono);background:var(--panel2);border:1px solid var(--rule);border-radius:4px;padding:.6rem;max-height:15rem;overflow:auto;white-space:pre-wrap;font-variant-numeric:tabular-nums}
+.log .e-ok{color:var(--ok)} .log .e-warn{color:var(--warn)} .log .e-bad{color:var(--bad)}
+.note{font-size:.82rem;color:var(--ink3);max-width:70ch}
+.callout{border-left:3px solid var(--warn);background:var(--panel2);padding:.6rem .8rem;font-size:.88rem;color:var(--ink2)}
+canvas{width:100%;height:auto;display:block;background:var(--panel2);border-radius:4px;max-width:100%}
+.scope-wrap{display:grid;grid-template-columns:minmax(0,15rem) minmax(0,1fr);gap:1rem;align-items:center}
+@media (max-width:620px){.scope-wrap{grid-template-columns:minmax(0,1fr)}}
+svg text{font-family:var(--f-mono)}
+.seq{display:flex;flex-wrap:wrap;gap:.3rem}
+.seq span{font:500 .72rem var(--f-mono);text-transform:uppercase;letter-spacing:.04em;padding:.25rem .45rem;border-radius:3px;border:1px solid var(--rule);color:var(--ink3)}
+.seq span.now{background:var(--accent);border-color:var(--accent);color:var(--panel)}
+.seq span.done{color:var(--ink);border-color:var(--ink3)}
+.bar{height:.7rem;background:var(--panel2);border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);transition:width .2s}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{text-align:left;padding:.4rem .5rem;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:var(--f-display);font-size:.95rem;text-transform:uppercase;letter-spacing:.04em;color:var(--ink2)}
+.scroll{overflow-x:auto}
+.sld .el{cursor:pointer}
+.sld .el:hover .hl,.sld .el.sel .hl{stroke:var(--accent);stroke-width:3}
+.sld .el:focus{outline:none}
+.sld .el:focus-visible .hl{stroke:var(--accent);stroke-width:3}
+.cfg-tabs{display:flex;flex-wrap:wrap;gap:.25rem;border-bottom:1px solid var(--rule);padding-bottom:.4rem}
+.cfg-tabs button{font:600 .8rem var(--f-body);background:none;border:0;padding:.35rem .55rem;border-radius:3px;color:var(--ink2);cursor:pointer}
+.cfg-tabs button.on{background:var(--accent-soft);color:var(--accent)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem}
+.q{border-top:1px solid var(--rule);padding-top:.8rem;display:flex;flex-direction:column;gap:.45rem}
+.q .opts{display:flex;flex-direction:column;gap:.3rem}
+.q label{display:flex;gap:.5rem;align-items:flex-start;padding:.35rem .5rem;border-radius:4px;border:1px solid transparent;cursor:pointer}
+.q label:hover{border-color:var(--rule)}
+.q label.right{border-color:var(--ok);color:var(--ok)}
+.q label.wrong{border-color:var(--bad);color:var(--bad)}
+.q .why{font-size:.85rem;color:var(--ink2)}
+.score{font:600 2.4rem var(--f-display)}
+ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3rem}
+.disclaimer{font-size:.78rem;color:var(--ink3);border-top:1px solid var(--rule);padding-top:1rem;margin-top:2rem}
+.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:.25rem .8rem;font-size:.88rem}
+.kv dt{color:var(--ink3)} .kv dd{margin:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand">Entrenador DSE<small>sincronismo · TTA</small></div>
+  <nav class="tabs" aria-label="Módulos">
+    <a href="#inicio">Inicio</a>
+    <a href="#fundamentos">Base teórica</a>
+    <a href="#sincronismo">Sincronismo</a>
+    <a href="#tta">TTA</a>
+    <a href="#tablero">Tablero</a>
+    <a href="#programacion">Programación</a>
+    <a href="#mina">Mina</a>
+    <a href="#evaluacion">Evaluación</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+
+<!-- ============ INICIO ============ -->
+<section class="view" id="v-inicio">
+  <div class="eyebrow">Programa de entrenamiento básico · grupos electrógenos con control DSE</div>
+  <h1>Sincronismo, transferencia automática y tablero de grupos electrógenos</h1>
+  <p class="lead">Simulador para técnicos que operan y mantienen grupos electrógenos en mina con módulos de control Deep Sea Electronics (DSE). Practica la sincronización de un grupo con la barra, la secuencia de la transferencia automática (TTA / ATS) ante una falla de red, la lectura del unifilar del tablero y la configuración de los parámetros que el módulo usa para decidir.</p>
+  <div class="grid3">
+    <div class="card"><div class="eyebrow">Módulo 1 · 20 min</div><h3>Base teórica</h3><p>Las cuatro condiciones de sincronismo, qué hace cada módulo DSE y cómo se comunican por el enlace MSC.</p><a class="btn" href="#fundamentos">Abrir</a></div>
+    <div class="card"><div class="eyebrow">Módulo 2 · práctica</div><h3>Sincronismo</h3><p>Sincronoscopio, gobernador y AVR. Cierra el interruptor dentro de la ventana de check sync y reparte carga.</p><a class="btn primary" href="#sincronismo">Practicar</a></div>
+    <div class="card"><div class="eyebrow">Módulo 3 · práctica</div><h3>Transferencia (TTA)</h3><p>Secuencia AMF completa con temporizadores reales: falla de red, arranque, transferencia, retorno y enfriamiento.</p><a class="btn primary" href="#tta">Practicar</a></div>
+    <div class="card"><div class="eyebrow">Módulo 4</div><h3>Tablero y circuito</h3><p>Unifilar interactivo: interruptores, TC, TP, barra, módulos y enlace MSC. Qué señal llega a cada borne del módulo.</p><a class="btn" href="#tablero">Abrir</a></div>
+    <div class="card"><div class="eyebrow">Módulo 5 · práctica</div><h3>Programación</h3><p>Editor de configuración al estilo del software de configuración del fabricante, con ejercicios que se verifican.</p><a class="btn" href="#programacion">Abrir</a></div>
+    <div class="card"><div class="eyebrow">Módulo 6 · cierre</div><h3>Mina y evaluación</h3><p>Reducción de potencia por altitud, seguridad en tablero y examen de 15 preguntas con nota.</p><a class="btn" href="#evaluacion">Evaluar</a></div>
+  </div>
+  <div class="card flat">
+    <h3>Módulos DSE que cubre el entrenamiento</h3>
+    <div class="scroll"><table>
+      <thead><tr><th>Módulo</th><th>Función</th><th>Dónde aparece aquí</th></tr></thead>
+      <tbody>
+        <tr><td><b>DSE7320 MKII</b></td><td>Control de un grupo con falla automática de red (AMF). Gobierna el interruptor de red y el del generador en una transferencia abierta.</td><td>TTA, modo «Grupo único»</td></tr>
+        <tr><td><b>DSE8610 MKII</b></td><td>Control de grupo con sincronismo y reparto de carga. Varios grupos comparten la barra y se comunican por el enlace MSC.</td><td>Sincronismo, Tablero</td></tr>
+        <tr><td><b>DSE8660 MKII</b></td><td>Control de red y transferencia (ATS) para sistemas con DSE8610. Monitorea la red, ordena arrancar a los grupos y sincroniza con la red para transferencia cerrada.</td><td>TTA, modo «Barra con sincronismo»</td></tr>
+        <tr><td><b>Enlace MSC</b></td><td>Multi Set Communications: bus de datos entre módulos de la serie 8600. Reparto de carga, primer grupo en barra, prioridad de marcha.</td><td>Base teórica, Tablero</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <p class="callout">Los valores de ajuste de este simulador son <b>valores didácticos de ejemplo</b>. Los ajustes del equipo real salen del estudio de coordinación de la instalación y de los manuales del fabricante (DSE 057-253 para 7310/7320 MKII, 057-254 para 8610 MKII, 057-259 para 8660 MKII). Antes de tocar un tablero energizado, aplica el procedimiento de bloqueo y etiquetado de la operación.</p>
+</section>
+
+<!-- ============ FUNDAMENTOS ============ -->
+<section class="view" id="v-fundamentos" hidden>
+  <div class="eyebrow">Módulo 1</div>
+  <h2>Base teórica</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Las cuatro condiciones para cerrar en paralelo</h3>
+      <p>Un generador que entra a una barra viva debe igualar a la barra en estas cuatro magnitudes. Si cierra fuera de ellas, la diferencia de tensión entre ambos lados circula como corriente entre las máquinas: golpe mecánico al acople, disparo por sobrecorriente o potencia inversa.</p>
+      <div class="scroll"><table>
+        <thead><tr><th>Condición</th><th>Quién la corrige</th><th>Ventana didáctica</th></tr></thead>
+        <tbody>
+          <tr><td><b>Secuencia de fases</b> (L1-L2-L3)</td><td>Cableado. Se verifica una vez en la puesta en marcha con secuencímetro.</td><td>Debe coincidir. Sin tolerancia.</td></tr>
+          <tr><td><b>Tensión</b> ΔV</td><td>Regulador de tensión (AVR). El módulo lo ajusta por salida analógica o pulsos.</td><td>≤ 4 % de la nominal</td></tr>
+          <tr><td><b>Frecuencia</b> (deslizamiento)</td><td>Gobernador de velocidad (ECM del motor por CAN J1939 o salida analógica).</td><td>≤ 0,2 Hz, grupo algo más rápido que la barra</td></tr>
+          <tr><td><b>Ángulo de fase</b> Δφ</td><td>Resultado del deslizamiento: el ángulo gira a 360° × Δf por segundo.</td><td>≤ 10°</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note">Por qué el grupo entrante va algo más rápido: al cerrar con deslizamiento positivo el grupo toma carga enseguida. Con deslizamiento negativo, la barra lo arrastra y aparece potencia inversa por un instante.</p>
+    </div>
+    <div class="card">
+      <h3>Sincronoscopio</h3>
+      <p>La aguja muestra el ángulo entre la tensión del grupo y la de la barra. Si gira en sentido horario, el grupo va más rápido. La velocidad de giro es el deslizamiento: una vuelta cada 5 s equivale a 0,2 Hz.</p>
+      <svg viewBox="0 0 220 220" role="img" aria-label="Sincronoscopio de ejemplo con la ventana de cierre a las 12 en punto" style="max-width:15rem;margin:0 auto">
+        <circle cx="110" cy="110" r="96" fill="var(--panel2)" stroke="var(--rule)" stroke-width="2"/>
+        <path d="M110 110 L93.3 15.5 A96 96 0 0 1 126.7 15.5 Z" fill="var(--ok)" opacity=".25"/>
+        <text x="110" y="34" text-anchor="middle" font-size="11" fill="var(--ink2)">0°</text>
+        <text x="196" y="114" text-anchor="end" font-size="11" fill="var(--ink2)">RÁPIDO →</text>
+        <text x="24" y="114" font-size="11" fill="var(--ink2)">← LENTO</text>
+        <line x1="110" y1="110" x2="160" y2="40" stroke="var(--live)" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="110" cy="110" r="7" fill="var(--ink)"/>
+      </svg>
+      <h3>Reparto de carga</h3>
+      <ul class="tight">
+        <li><b>Activa (kW)</b>: cada DSE8610 ajusta su gobernador para que todos los grupos queden al mismo % de su potencia nominal. Va por el enlace MSC (isócrono).</li>
+        <li><b>Reactiva (kVAr)</b>: igual, actuando sobre el AVR para repartir el factor de potencia.</li>
+        <li><b>Rampa</b>: al entrar o salir, el grupo toma o suelta carga en rampa para no golpear a los demás.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Transferencia: abierta, cerrada y suave</h3>
+      <dl class="kv">
+        <dt>Abierta</dt><dd>Abre un interruptor y luego cierra el otro (corte-antes-de-cierre). La carga queda sin tensión durante el tiempo de transferencia. Es la del DSE7320.</dd>
+        <dt>Cerrada</dt><dd>El grupo se sincroniza con la red, cierran ambos durante un instante (típicamente &lt; 100 ms) y abre el que sale. La carga no ve corte. Requiere DSE8660 + DSE8610 y permiso de la distribuidora.</dd>
+        <dt>Suave</dt><dd>Como la cerrada, pero la carga pasa en rampa de una fuente a la otra antes de abrir.</dd>
+      </dl>
+      <p class="note">Ante una falla de red siempre es abierta: no hay red con qué sincronizar. La cerrada aplica al retorno a red y a las pruebas con carga.</p>
+    </div>
+    <div class="card">
+      <h3>Enlace MSC</h3>
+      <ul class="tight">
+        <li>Conecta DSE8610 y DSE8660 en cadena (daisy chain), sin derivaciones.</li>
+        <li>Cable apantallado de par trenzado de 120 Ω (Belden 9841 o equivalente) y resistencia de terminación en los extremos.</li>
+        <li>Longitud total de referencia: hasta 240 m. Para más distancia, extensor de enlace MSC.</li>
+        <li>Hasta 32 DSE8610 y 32 DSE8660 por enlace, con un máximo combinado de 40 módulos de la serie 8600.</li>
+        <li>Si un módulo pierde el enlace, salta la alarma <i>MSC Failure</i> y aplica la acción configurada.</li>
+      </ul>
+      <p class="note">Fuente: guía de enlace MSC del fabricante (056-011). Verifica los límites con la revisión vigente.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SINCRONISMO ============ -->
+<section class="view" id="v-sincronismo" hidden>
+  <div class="eyebrow">Módulo 2 · práctica</div>
+  <h2>Sincronizar el grupo 2 con la barra</h2>
+  <p class="lead">El grupo 1 ya alimenta la barra. Arranca el grupo 2, lleva su tensión y frecuencia a las de la barra y cierra su interruptor cuando la aguja pase por la ventana verde. En modo automático el módulo lo hace solo: observa qué ajusta y en qué orden.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h3>Panel del grupo 2 · DSE8610</h3>
+        <span id="sy-state" class="pill idle">Parado</span>
+      </div>
+      <div class="row" role="group" aria-label="Teclas del módulo">
+        <button class="key" id="sy-k-stop"><span class="led"></span>Stop</button>
+        <button class="key" id="sy-k-man"><span class="led"></span>Manual</button>
+        <button class="key" id="sy-k-auto"><span class="led"></span>Auto</button>
+        <button class="key ok" id="sy-k-start"><span class="led"></span>Arrancar</button>
+        <button class="key ok" id="sy-k-close"><span class="led"></span>Cerrar G2</button>
+        <button class="key" id="sy-k-open"><span class="led"></span>Abrir G2</button>
+      </div>
+      <div class="scope-wrap">
+        <svg id="sy-scope" viewBox="0 0 220 220" role="img" aria-label="Sincronoscopio">
+          <circle cx="110" cy="110" r="96" fill="var(--panel2)" stroke="var(--rule)" stroke-width="2"/>
+          <path id="sy-win" fill="var(--ok)" opacity=".25"/>
+          <g id="sy-ticks"></g>
+          <text x="110" y="34" text-anchor="middle" font-size="11" fill="var(--ink2)">0°</text>
+          <text x="110" y="196" text-anchor="middle" font-size="11" fill="var(--ink2)">180°</text>
+          <line id="sy-needle" x1="110" y1="110" x2="110" y2="24" stroke="var(--live)" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="110" cy="110" r="7" fill="var(--ink)"/>
+          <text id="sy-dir" x="110" y="140" text-anchor="middle" font-size="11" fill="var(--ink2)"></text>
+        </svg>
+        <canvas id="sy-wave" width="640" height="300" aria-label="Formas de onda de la barra y del grupo 2"></canvas>
+      </div>
+      <div class="lcd" aria-live="off">
+        <div><div class="k">Barra · V</div><div class="v" id="sy-v1">480</div></div>
+        <div><div class="k">Barra · Hz</div><div class="v" id="sy-f1">60.00</div></div>
+        <div><div class="k">Grupo 2 · V</div><div class="v" id="sy-v2">0</div></div>
+        <div><div class="k">Grupo 2 · Hz</div><div class="v" id="sy-f2">0.00</div></div>
+        <div><div class="k">Grupo 2 · kW</div><div class="v" id="sy-kw2">0</div></div>
+        <div><div class="k">Grupo 1 · kW</div><div class="v" id="sy-kw1">0</div></div>
+        <div class="full" id="sy-msg">Grupo 2 parado. Pulsa MANUAL y luego ARRANCAR.</div>
+      </div>
+      <div class="checks" id="sy-checks"></div>
+      <div class="grid2" style="gap:.8rem">
+        <div class="card flat">
+          <b>Gobernador (velocidad)</b>
+          <div class="row"><button class="btn" id="sy-gov-dn">− Hz</button><button class="btn" id="sy-gov-up">+ Hz</button><button class="btn" id="sy-gov-fine-dn">−0,02</button><button class="btn" id="sy-gov-fine-up">+0,02</button></div>
+        </div>
+        <div class="card flat">
+          <b>AVR (tensión)</b>
+          <div class="row"><button class="btn" id="sy-avr-dn">− V</button><button class="btn" id="sy-avr-up">+ V</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Escenario</h3>
+      <div class="fields">
+        <label class="f">Tensión nominal de barra
+          <select id="sy-vn"><option value="480">480 V</option><option value="440">440 V</option><option value="4160">4160 V</option></select></label>
+        <label class="f">Carga de la barra (kW)
+          <input type="range" id="sy-load" min="0" max="1600" step="10" value="900"><span id="sy-load-v" class="note">900 kW</span></label>
+        <label class="f">Potencia de cada grupo (kW)
+          <input type="number" id="sy-rating" value="1000" min="100" step="50"></label>
+        <label class="f">Rampa de carga (kW/s)
+          <input type="number" id="sy-ramp" value="100" min="10" step="10"></label>
+      </div>
+      <h3>Ventana de check sync</h3>
+      <div class="fields">
+        <label class="f">ΔV máx (%)<input type="number" id="sy-dv" value="4" step="0.5" min="0.5"></label>
+        <label class="f">Deslizamiento máx (Hz)<input type="number" id="sy-slip" value="0.2" step="0.05" min="0.05"></label>
+        <label class="f">Ángulo máx (°)<input type="number" id="sy-ang" value="10" step="1" min="2"></label>
+      </div>
+      <div class="row">
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-cs" checked> Check sync activo (bloquea cierres fuera de ventana)</label>
+      </div>
+      <h3>Fallas para practicar</h3>
+      <div class="row">
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-rot"> Secuencia de fases invertida (L2↔L3)</label>
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="sy-msc"> Enlace MSC cortado</label>
+      </div>
+      <div class="row"><button class="btn" id="sy-reset">Reiniciar escenario</button></div>
+      <h3>Registro de eventos</h3>
+      <div class="log" id="sy-log" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TTA ============ -->
+<section class="view" id="v-tta" hidden>
+  <div class="eyebrow">Módulo 3 · práctica</div>
+  <h2>Transferencia automática ante falla de red</h2>
+  <p class="lead">Pon el módulo en AUTO, provoca una falla de red y sigue cada temporizador. Luego devuelve la red y observa el retorno y el enfriamiento. Inyecta fallas para ver cómo responde el módulo.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <h3 id="tt-title">Panel AMF · DSE7320</h3>
+        <span id="tt-state" class="pill idle">Red en carga</span>
+      </div>
+      <div class="row" role="group" aria-label="Teclas del módulo de transferencia">
+        <button class="key" id="tt-k-stop"><span class="led"></span>Stop</button>
+        <button class="key" id="tt-k-man"><span class="led"></span>Manual</button>
+        <button class="key" id="tt-k-test"><span class="led"></span>Prueba</button>
+        <button class="key" id="tt-k-auto"><span class="led"></span>Auto</button>
+        <button class="key ok" id="tt-k-start"><span class="led"></span>Arrancar</button>
+        <button class="key" id="tt-k-xfer"><span class="led"></span>Transferir</button>
+      </div>
+      <svg id="tt-sld" viewBox="0 0 520 230" role="img" aria-label="Esquema de transferencia: red, generador y carga">
+        <text x="80" y="22" text-anchor="middle" font-size="12" fill="var(--ink2)">RED</text>
+        <circle id="tt-src-m" cx="80" cy="50" r="20" fill="var(--panel2)" stroke="var(--ink)" stroke-width="2"/>
+        <text x="80" y="55" text-anchor="middle" font-size="14" fill="var(--ink)">~</text>
+        <line id="tt-w-m1" x1="80" y1="70" x2="80" y2="100" stroke="var(--ink3)" stroke-width="3"/>
+        <g id="tt-br-m"><rect x="66" y="100" width="28" height="28" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/><text id="tt-br-m-t" x="80" y="119" text-anchor="middle" font-size="11" fill="var(--ink)">Q1</text></g>
+        <line id="tt-w-m2" x1="80" y1="128" x2="80" y2="170" stroke="var(--ink3)" stroke-width="3"/>
+        <text x="440" y="22" text-anchor="middle" font-size="12" fill="var(--ink2)">GENERADOR</text>
+        <circle id="tt-src-g" cx="440" cy="50" r="20" fill="var(--panel2)" stroke="var(--ink)" stroke-width="2"/>
+        <text x="440" y="55" text-anchor="middle" font-size="14" fill="var(--ink)">G</text>
+        <line id="tt-w-g1" x1="440" y1="70" x2="440" y2="100" stroke="var(--ink3)" stroke-width="3"/>
+        <g id="tt-br-g"><rect x="426" y="100" width="28" height="28" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/><text id="tt-br-g-t" x="440" y="119" text-anchor="middle" font-size="11" fill="var(--ink)">Q2</text></g>
+        <line id="tt-w-g2" x1="440" y1="128" x2="440" y2="170" stroke="var(--ink3)" stroke-width="3"/>
+        <line id="tt-bus" x1="80" y1="170" x2="440" y2="170" stroke="var(--ink3)" stroke-width="5"/>
+        <line id="tt-w-l" x1="260" y1="170" x2="260" y2="195" stroke="var(--ink3)" stroke-width="3"/>
+        <rect id="tt-load" x="215" y="195" width="90" height="26" rx="3" fill="var(--panel2)" stroke="var(--ink)" stroke-width="2"/>
+        <text x="260" y="213" text-anchor="middle" font-size="11" fill="var(--ink)">CARGA</text>
+        <text x="260" y="150" text-anchor="middle" font-size="10" fill="var(--ink3)">enclavamiento Q1 / Q2</text>
+        <text id="tt-rpm" x="440" y="92" text-anchor="middle" font-size="10" fill="var(--ink2)"></text>
+      </svg>
+      <div class="lcd">
+        <div><div class="k">Red · V</div><div class="v" id="tt-vm">480</div></div>
+        <div><div class="k">Gen · V</div><div class="v" id="tt-vg">0</div></div>
+        <div><div class="k">Gen · Hz</div><div class="v" id="tt-fg">0.0</div></div>
+        <div><div class="k">Motor · rpm</div><div class="v" id="tt-rpmv">0</div></div>
+        <div><div class="k">Aceite · kPa</div><div class="v" id="tt-oil">0</div></div>
+        <div><div class="k">Temporizador</div><div class="v" id="tt-timer">—</div></div>
+        <div class="full" id="tt-msg">Red sana. Módulo en STOP.</div>
+      </div>
+      <div class="seq" id="tt-seq"></div>
+      <div class="row">
+        <span class="note">Velocidad de simulación</span>
+        <button class="btn on" data-speed="1">×1</button><button class="btn" data-speed="5">×5</button><button class="btn" data-speed="20">×20</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Configuración</h3>
+      <div class="fields">
+        <label class="f">Sistema
+          <select id="tt-sys"><option value="7320">Grupo único · DSE7320 (transferencia abierta)</option><option value="8660">Barra con sincronismo · DSE8660 + DSE8610</option></select></label>
+        <label class="f">Retorno a red
+          <select id="tt-ret"><option value="abierta">Abierta</option><option value="cerrada">Cerrada (sincroniza con red)</option></select></label>
+      </div>
+      <h3>Red</h3>
+      <div class="row">
+        <button class="btn" id="tt-m-ok">Red normal</button>
+        <button class="btn danger" id="tt-m-fail">Falla total de red</button>
+        <button class="btn" id="tt-m-low">Baja tensión (−18 %)</button>
+        <button class="btn" id="tt-m-blip">Microcorte 1 s</button>
+      </div>
+      <h3>Fallas a inyectar</h3>
+      <div class="row">
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="tt-f-start"> Motor no arranca</label>
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="tt-f-oil"> Baja presión de aceite</label>
+        <label class="row" style="gap:.35rem"><input type="checkbox" id="tt-f-aux"> Auxiliar de Q2 no confirma</label>
+      </div>
+      <div class="row"><button class="btn" id="tt-reset">Reiniciar · Stop/Reset</button></div>
+      <h3>Temporizadores (s)</h3>
+      <div class="fields" id="tt-timers"></div>
+      <h3>Registro</h3>
+      <div class="log" id="tt-log" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TABLERO ============ -->
+<section class="view" id="v-tablero" hidden>
+  <div class="eyebrow">Módulo 4</div>
+  <h2>Tablero de sincronismo · unifilar</h2>
+  <p class="lead">Dos grupos con DSE8610 y una acometida de red con DSE8660 sobre una barra común. Toca cada elemento para ver su función, qué señal lleva al módulo y qué revisar en mantenimiento.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="scroll">
+      <svg class="sld" viewBox="0 0 760 470" style="min-width:560px" role="group" aria-label="Unifilar del tablero">
+        <defs><marker id="arr" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--ink2)"/></marker></defs>
+        <!-- barra -->
+        <g class="el" data-el="barra" tabindex="0"><line class="hl" x1="40" y1="220" x2="720" y2="220" stroke="var(--ink)" stroke-width="7"/><text x="720" y="210" text-anchor="end" font-size="12" fill="var(--ink2)">BARRA 480 V · 60 Hz</text></g>
+        <!-- red -->
+        <g class="el" data-el="red" tabindex="0"><circle class="hl" cx="120" cy="40" r="22" fill="var(--panel2)" stroke="var(--ink)" stroke-width="2"/><text x="120" y="45" text-anchor="middle" font-size="15" fill="var(--ink)">~</text><text x="152" y="44" font-size="12" fill="var(--ink2)">RED</text></g>
+        <line x1="120" y1="62" x2="120" y2="74" stroke="var(--ink)" stroke-width="2"/>
+        <g class="el" data-el="trafo" tabindex="0"><circle class="hl" cx="120" cy="86" r="12" fill="none" stroke="var(--ink)" stroke-width="2"/><circle cx="120" cy="102" r="12" fill="none" stroke="var(--ink)" stroke-width="2"/><text x="140" y="98" font-size="11" fill="var(--ink2)">TR</text></g>
+        <line x1="120" y1="114" x2="120" y2="150" stroke="var(--ink)" stroke-width="2"/>
+        <g class="el" data-el="tpred" tabindex="0"><line x1="120" y1="128" x2="70" y2="128" stroke="var(--ink2)" stroke-width="1.5"/><circle class="hl" cx="60" cy="128" r="9" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/><text x="60" y="152" text-anchor="middle" font-size="10" fill="var(--ink2)">TP-R</text></g>
+        <g class="el" data-el="q1" tabindex="0"><rect class="hl" x="104" y="150" width="32" height="32" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/><text x="120" y="171" text-anchor="middle" font-size="11" fill="var(--ink)">Q1</text></g>
+        <line x1="120" y1="182" x2="120" y2="220" stroke="var(--ink)" stroke-width="2"/>
+        <g class="el" data-el="tcred" tabindex="0"><circle class="hl" cx="120" cy="200" r="8" fill="none" stroke="var(--ink)" stroke-width="2"/><text x="134" y="204" font-size="10" fill="var(--ink2)">TC-R</text></g>
+        <!-- carga -->
+        <g class="el" data-el="carga" tabindex="0"><line x1="260" y1="220" x2="260" y2="300" stroke="var(--ink)" stroke-width="2" marker-end="url(#arr)"/><rect class="hl" x="215" y="305" width="90" height="28" rx="3" fill="var(--panel2)" stroke="var(--ink)" stroke-width="2"/><text x="260" y="324" text-anchor="middle" font-size="11" fill="var(--ink)">CARGAS</text></g>
+        <!-- grupo 1 -->
+        <line x1="420" y1="220" x2="420" y2="258" stroke="var(--ink)" stroke-width="2"/>
+        <g class="el" data-el="tcgen" tabindex="0"><circle class="hl" cx="420" cy="240" r="8" fill="none" stroke="var(--ink)" stroke-width="2"/><text x="434" y="244" font-size="10" fill="var(--ink2)">TC-G1</text></g>
+        <g class="el" data-el="q2" tabindex="0"><rect class="hl" x="404" y="258" width="32" height="32" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/><text x="420" y="279" text-anchor="middle" font-size="11" fill="var(--ink)">Q2</text></g>
+        <line x1="420" y1="290" x2="420" y2="338" stroke="var(--ink)" stroke-width="2"/>
+        <g class="el" data-el="tpgen" tabindex="0"><line x1="420" y1="312" x2="380" y2="312" stroke="var(--ink2)" stroke-width="1.5"/><circle class="hl" cx="371" cy="312" r="9" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/><text x="371" y="336" text-anchor="middle" font-size="10" fill="var(--ink2)">TP-G1</text></g>
+        <g class="el" data-el="gen" tabindex="0"><circle class="hl" cx="420" cy="360" r="22" fill="var(--panel2)" stroke="var(--ink)" stroke-width="2"/><text x="420" y="365" text-anchor="middle" font-size="14" fill="var(--ink)">G1</text></g>
+        <!-- grupo 2 -->
+        <line x1="600" y1="220" x2="600" y2="258" stroke="var(--ink)" stroke-width="2"/>
+        <circle cx="600" cy="240" r="8" fill="none" stroke="var(--ink)" stroke-width="2"/><text x="614" y="244" font-size="10" fill="var(--ink2)">TC-G2</text>
+        <g class="el" data-el="q2" tabindex="0"><rect class="hl" x="584" y="258" width="32" height="32" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/><text x="600" y="279" text-anchor="middle" font-size="11" fill="var(--ink)">Q3</text></g>
+        <line x1="600" y1="290" x2="600" y2="338" stroke="var(--ink)" stroke-width="2"/>
+        <g class="el" data-el="gen" tabindex="0"><circle class="hl" cx="600" cy="360" r="22" fill="var(--panel2)" stroke="var(--ink)" stroke-width="2"/><text x="600" y="365" text-anchor="middle" font-size="14" fill="var(--ink)">G2</text></g>
+        <!-- neutro / tierra -->
+        <g class="el" data-el="tierra" tabindex="0"><line x1="420" y1="382" x2="420" y2="400" stroke="var(--ink2)" stroke-width="1.5"/><line class="hl" x1="408" y1="400" x2="432" y2="400" stroke="var(--ink2)" stroke-width="2"/><line x1="412" y1="405" x2="428" y2="405" stroke="var(--ink2)" stroke-width="2"/><line x1="416" y1="410" x2="424" y2="410" stroke="var(--ink2)" stroke-width="2"/><text x="404" y="408" text-anchor="end" font-size="10" fill="var(--ink2)">N / PE</text></g>
+        <!-- modulos -->
+        <g class="el" data-el="m8660" tabindex="0"><rect class="hl" x="20" y="250" width="110" height="44" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="75" y="270" text-anchor="middle" font-size="12" fill="var(--ink)">DSE8660</text><text x="75" y="285" text-anchor="middle" font-size="9" fill="var(--ink2)">red / ATS</text></g>
+        <g class="el" data-el="m8610" tabindex="0"><rect class="hl" x="460" y="380" width="96" height="40" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="508" y="398" text-anchor="middle" font-size="12" fill="var(--ink)">DSE8610</text><text x="508" y="412" text-anchor="middle" font-size="9" fill="var(--ink2)">G1</text></g>
+        <g class="el" data-el="m8610" tabindex="0"><rect class="hl" x="640" y="380" width="96" height="40" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/><text x="688" y="398" text-anchor="middle" font-size="12" fill="var(--ink)">DSE8610</text><text x="688" y="412" text-anchor="middle" font-size="9" fill="var(--ink2)">G2</text></g>
+        <g class="el" data-el="msc" tabindex="0"><path d="M75 294 V448 H688 V420 M508 420 V448" fill="none" stroke="transparent" stroke-width="16"/><path class="hl" d="M75 294 V448 H688 V420 M508 420 V448" fill="none" stroke="var(--live)" stroke-width="2" stroke-dasharray="6 4"/><text x="250" y="442" font-size="11" fill="var(--live)">ENLACE MSC (bus de datos)</text></g>
+        <g class="el" data-el="can" tabindex="0"><path class="hl" d="M462 384 L440 372" stroke="var(--ink2)" stroke-width="2" fill="none"/><text x="462" y="372" font-size="10" fill="var(--ink2)">CAN J1939</text></g>
+      </svg>
+      </div>
+      <p class="note">Toca o selecciona con Tab y Enter. Q3, G2 y su DSE8610 repiten lo descrito para el grupo 1.</p>
+    </div>
+    <div class="card" id="tb-info" aria-live="polite">
+      <div class="eyebrow">Elemento</div>
+      <h3 id="tb-name">Selecciona un elemento</h3>
+      <p id="tb-desc">El unifilar muestra solo un hilo por circuito trifásico. Cada elemento resaltable tiene ficha de función, conexión al módulo y verificaciones.</p>
+      <dl class="kv" id="tb-kv"></dl>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Conexiones típicas a un módulo DSE de generador</h3>
+    <p class="note">La numeración de bornes cambia entre modelos y revisiones. Usa siempre el diagrama de cableado del manual del módulo instalado; esta tabla agrupa las señales por función.</p>
+    <div class="scroll"><table>
+      <thead><tr><th>Grupo de señales</th><th>Qué se conecta</th><th>Prueba en campo</th></tr></thead>
+      <tbody>
+        <tr><td>Alimentación DC</td><td>Batería del grupo, + y −, con fusible. Rango de operación amplio para soportar la caída de tensión del arranque.</td><td>Tensión en bornes durante el arranque. Caídas fuertes reinician el módulo.</td></tr>
+        <tr><td>Parada de emergencia</td><td>Contacto NC en serie con la alimentación de salidas de combustible y arranque.</td><td>Pulsar la seta con el motor en marcha: debe parar sin depender del software.</td></tr>
+        <tr><td>Sensado de tensión del generador</td><td>L1, L2, L3, N, con fusibles. En media tensión, por TP.</td><td>Secuencia de fases y tensión entre fases en el display.</td></tr>
+        <tr><td>Sensado de barra / red</td><td>L1, L2, L3 (y N) del lado barra o red, para check sync y monitoreo de red.</td><td>Misma secuencia que el generador. Si se invierte, el módulo no sincroniza.</td></tr>
+        <tr><td>Transformadores de corriente</td><td>Un TC por fase (y uno de tierra si aplica), secundario 5 A o 1 A, común a borne.</td><td>Nunca abrir un secundario de TC con carga. Polaridad P1/S1 hacia el generador.</td></tr>
+        <tr><td>Salidas de relé</td><td>Combustible, arranque, cerrar/abrir interruptor de generador y de red, alarma común.</td><td>Forzar salidas desde el software de configuración con el motor bloqueado.</td></tr>
+        <tr><td>Entradas digitales</td><td>Auxiliares de Q1/Q2, presión de aceite y temperatura (si no vienen por CAN), arranque remoto.</td><td>Ver el estado de cada entrada en la pantalla de instrumentación.</td></tr>
+        <tr><td>CAN J1939</td><td>ECM del motor: velocidad, presión, temperatura, códigos de falla y referencia de velocidad.</td><td>Resistencia de 120 Ω en cada extremo del bus; con todo apagado se mide ~60 Ω entre CAN H y L.</td></tr>
+        <tr><td>Gobernador y AVR</td><td>Por CAN o por salidas analógicas a la tarjeta de velocidad y al regulador.</td><td>Sentido: subir velocidad desde el módulo debe subir los Hz.</td></tr>
+        <tr><td>Comunicaciones</td><td>Enlace MSC (8600), RS485 Modbus a SCADA, USB para configuración.</td><td>Alarma MSC con un cable suelto a propósito durante la puesta en marcha.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- ============ PROGRAMACION ============ -->
+<section class="view" id="v-programacion" hidden>
+  <div class="eyebrow">Módulo 5 · práctica</div>
+  <h2>Programación del módulo</h2>
+  <p class="lead">Editor de configuración simplificado con la misma lógica que el software de configuración del fabricante: cada función se asigna a una entrada o salida y cada protección tiene umbral y retardo. Resuelve los ejercicios; el verificador revisa tu configuración.</p>
+  <div class="grid2">
+    <div class="card">
+      <div class="cfg-tabs" id="pg-tabs" role="tablist"></div>
+      <div class="fields" id="pg-fields"></div>
+      <div class="row"><button class="btn primary" id="pg-check">Verificar ejercicios</button><button class="btn" id="pg-def">Cargar configuración de fábrica</button><button class="btn" id="pg-copy">Copiar configuración (JSON)</button></div>
+      <p class="note" id="pg-copy-msg"></p>
+    </div>
+    <div class="card">
+      <h3>Ejercicios</h3>
+      <div id="pg-ex" style="display:flex;flex-direction:column;gap:.6rem"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MINA ============ -->
+<section class="view" id="v-mina" hidden>
+  <div class="eyebrow">Contexto de operación</div>
+  <h2>Grupos electrógenos en mina de altura</h2>
+  <p class="lead">Las minas del sur del Perú operan a más de 3 500 m s. n. m. El aire menos denso reduce la potencia del motor y la capacidad de refrigeración, y cambia lo que el reparto de carga puede pedirle a cada grupo.</p>
+  <div class="grid2">
+    <div class="card">
+      <h3>Potencia disponible por altitud</h3>
+      <p class="note">Cálculo lineal simplificado. Usa la curva de reducción de la hoja de datos del motor; los valores que vienen cargados son un ejemplo.</p>
+      <div class="fields">
+        <label class="f">Potencia nominal del grupo (kW)<input type="number" id="mn-kw" value="1000" step="50"></label>
+        <label class="f">Altitud del sitio (m)<input type="number" id="mn-alt" value="3800" step="100"></label>
+        <label class="f">Altitud sin reducción (m)<input type="number" id="mn-thr" value="1500" step="100"></label>
+        <label class="f">Reducción por cada 300 m (%)<input type="number" id="mn-pct" value="3" step="0.5"></label>
+        <label class="f">Grupos en paralelo<input type="number" id="mn-n" value="2" min="1" step="1"></label>
+        <label class="f">Demanda de la carga (kW)<input type="number" id="mn-load" value="1500" step="50"></label>
+      </div>
+      <div class="lcd">
+        <div><div class="k">Reducción</div><div class="v" id="mn-red">—</div></div>
+        <div><div class="k">kW por grupo</div><div class="v" id="mn-out">—</div></div>
+        <div><div class="k">kW en barra</div><div class="v" id="mn-tot">—</div></div>
+        <div><div class="k">Carga por grupo</div><div class="v" id="mn-pg">—</div></div>
+        <div class="full" id="mn-msg"></div>
+      </div>
+      <div class="bar" aria-hidden="true"><i id="mn-bar" style="width:0"></i></div>
+    </div>
+    <div class="card">
+      <h3>Antes de intervenir el tablero</h3>
+      <ul class="tight">
+        <li>Permiso de trabajo y análisis de riesgo aprobados por la supervisión del área.</li>
+        <li>Bloqueo y etiquetado de <b>todas</b> las fuentes: red, cada grupo (interruptor y arranque), baterías y cargadores. Un tablero de sincronismo tiene más de una fuente viva.</li>
+        <li>Pon el módulo en STOP y retira el arranque remoto antes de trabajar en el motor: en AUTO puede arrancar solo por una falla de red.</li>
+        <li>Verifica ausencia de tensión con detector probado antes y después.</li>
+        <li>Cortocircuita los secundarios de los TC antes de desconectar el módulo.</li>
+        <li>EPP para arco eléctrico según la categoría del tablero.</li>
+      </ul>
+      <h3>Rutina de inspección del sistema de sincronismo</h3>
+      <ul class="tight">
+        <li>Registro de eventos del módulo: cierres fallidos, alarmas MSC, potencia inversa.</li>
+        <li>Prueba con carga mensual en modo PRUEBA, con transferencia y retorno.</li>
+        <li>Torque de bornes de potencia y de los TC.</li>
+        <li>Batería y cargador: tensión de flotación, densidad o prueba de capacidad.</li>
+        <li>Respaldo del archivo de configuración tras cada cambio, con fecha y responsable.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EVALUACION ============ -->
+<section class="view" id="v-evaluacion" hidden>
+  <div class="eyebrow">Módulo 6 · cierre</div>
+  <h2>Evaluación</h2>
+  <div class="grid2">
+    <div class="card" id="qz-box"></div>
+    <div class="card" style="align-self:start;position:sticky;top:5rem">
+      <label class="f">Nombre del participante<input type="text" id="qz-name" placeholder="Nombre y apellido" autocomplete="name"></label>
+      <div class="score" id="qz-score">— / 15</div>
+      <div class="bar"><i id="qz-bar" style="width:0"></i></div>
+      <p class="note" id="qz-res">Responde todas y pulsa Calificar. Aprobación: 12 de 15.</p>
+      <div class="row"><button class="btn primary" id="qz-grade">Calificar</button><button class="btn" id="qz-reset">Reiniciar</button></div>
+      <p class="note" id="qz-best"></p>
+    </div>
+  </div>
+</section>
+
+<p class="disclaimer">Material de entrenamiento independiente. No es documentación oficial de Deep Sea Electronics, del distribuidor de los equipos ni del titular de la operación minera. DSE es marca de Deep Sea Electronics Ltd. Los ajustes reales se toman del manual vigente del módulo y del estudio de la instalación.</p>
+</main>
+
+<script>
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const fmt=(n,d=0)=>Number(n).toLocaleString('es-PE',{minimumFractionDigits:d,maximumFractionDigits:d});
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+function logTo(el,msg,cls,t){const d=document.createElement('div');if(cls)d.className=cls;d.textContent=(t!=null?`[${t}] `:'')+msg;el.prepend(d);while(el.children.length>80)el.lastChild.remove();}
+function cssVar(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+
+/* ---------- router ---------- */
+const VIEWS=['inicio','fundamentos','sincronismo','tta','tablero','programacion','mina','evaluacion'];
+function route(){const h=(location.hash||'#inicio').slice(1);const v=VIEWS.includes(h)?h:'inicio';
+  VIEWS.forEach(x=>{$('#v-'+x).hidden=x!==v});
+  $$('nav.tabs a').forEach(a=>a.setAttribute('aria-current',a.getAttribute('href')==='#'+v?'page':'false'));
+  window.scrollTo(0,0);}
+addEventListener('hashchange',route);
+
+/* ================= SINCRONISMO ================= */
+const SY={};
+function syInit(){
+  Object.assign(SY,{mode:'stop',running:false,closed:false,f1:60,v1:+$('#sy-vn').value,f2:0,v2:0,
+    phi:Math.random()*360-180,kw2:0,inWinT:0,startT:0,tripped:false,lastMsg:''});
+  $('#sy-log').textContent='';
+  syLog('Escenario listo. Grupo 1 en barra, grupo 2 parado.','e-ok');
+}
+const syLimits=()=>({dv:+$('#sy-dv').value,slip:+$('#sy-slip').value,ang:+$('#sy-ang').value});
+function syLog(m,c){logTo($('#sy-log'),m,c,new Date().toLocaleTimeString('es-PE'))}
+function syMsg(m){SY.lastMsg=m;$('#sy-msg').textContent=m}
+function syEval(){
+  const L=syLimits(),V=SY.v1;
+  const dvp=SY.v1?Math.abs(SY.v2-SY.v1)/V*100:100, slip=SY.f2-SY.f1, ang=Math.abs(SY.phi);
+  const rot=!$('#sy-rot').checked;
+  return {dvp,slip,ang,rot,ok:{dv:dvp<=L.dv,slip:Math.abs(slip)<=L.slip,ang:ang<=L.ang,rot},all:SY.running&&dvp<=L.dv&&Math.abs(slip)<=L.slip&&ang<=L.ang&&rot,L};
+}
+function syClose(by){
+  if(SY.closed)return;
+  if(!SY.running){syLog('Cierre rechazado: el grupo 2 no está generando.','e-warn');return}
+  const e=syEval();
+  if($('#sy-cs').checked && !e.all){
+    const why=[];if(!e.ok.rot)why.push('secuencia de fases');if(!e.ok.dv)why.push(`ΔV ${fmt(e.dvp,1)} %`);if(!e.ok.slip)why.push(`deslizamiento ${fmt(e.slip,2)} Hz`);if(!e.ok.ang)why.push(`ángulo ${fmt(e.ang,0)}°`);
+    syLog('Check sync bloqueó el cierre: fuera de ventana en '+why.join(', ')+'.','e-warn');syMsg('Cierre bloqueado por check sync.');return;
+  }
+  // severidad del cierre: |V1 - V2∠φ| / V1
+  const r=SY.v2/SY.v1, ph=SY.phi*Math.PI/180;
+  let pu=Math.hypot(1-r*Math.cos(ph),r*Math.sin(ph));
+  if(!e.ok.rot){pu=Math.max(pu,1.7)}
+  if(pu>0.35){
+    SY.tripped=true;SY.running=false;SY.kw2=0;
+    syLog(`CIERRE FUERA DE SINCRONISMO: diferencia de tensión ${fmt(pu*100,0)} % de la nominal. Golpe en acople, disparo por sobrecorriente. Grupo 2 parado con alarma.`,'e-bad');
+    syMsg('Disparo. Revisar acople, devanados e interruptor antes de volver a arrancar. Pulsa STOP para rearmar.');
+    syTick();return;
+  }
+  SY.closed=true;SY.phi=0;SY.f2=SY.f1;
+  const sev=pu<0.1?'limpio':'con golpe moderado';
+  syLog(`Q3 cerrado ${by==='auto'?'por el sincronizador automático':'en manual'} · cierre ${sev} (ΔE ${fmt(pu*100,1)} %).`,pu<0.1?'e-ok':'e-warn');
+  if(e.slip<0)syLog('Cerró con deslizamiento negativo: potencia inversa momentánea en el grupo 2.','e-warn');
+  syMsg('En paralelo. El grupo 2 toma carga en rampa.');
+}
+function syOpen(){if(!SY.closed)return;SY.closed=false;SY.unloading=false;SY.kw2=0;syLog('Q3 abierto. El grupo 1 queda con toda la carga.','e-warn');syMsg('Grupo 2 en vacío.')}
+function syMode(m){
+  if(m==='stop'){SY.mode='stop';if(SY.closed)syOpen();SY.running=false;SY.tripped=false;SY.f2=0;SY.v2=0;syMsg('Grupo 2 parado.');syLog('STOP/Reset.');}
+  else{if(SY.tripped){syLog('Hay una alarma activa. Pulsa STOP para rearmar.','e-warn');return}SY.mode=m;
+    syLog(m==='auto'?'Modo AUTO: el módulo arranca, sincroniza y cierra solo.':'Modo MANUAL.');
+    if(m==='auto'&&!SY.running)syStart();}
+}
+function syStart(){if(SY.mode==='stop'){syLog('Pasa a MANUAL o AUTO antes de arrancar.','e-warn');return}
+  if(SY.running||SY.tripped)return;SY.running=true;SY.f2=58.6+Math.random()*2.4;SY.v2=SY.v1*(0.9+Math.random()*0.18);
+  if(SY.v1>1000)SY.v2=Math.round(SY.v2);syLog(`Grupo 2 arrancado: ${fmt(SY.f2,2)} Hz, ${fmt(SY.v2,0)} V.`);syMsg('Iguala tensión y frecuencia con la barra.');}
+function syAdjF(d){if(!SY.running||SY.closed)return;SY.f2=clamp(SY.f2+d,55,65)}
+function syAdjV(d){if(!SY.running||SY.closed)return;SY.v2=clamp(SY.v2+d*SY.v1/480,SY.v1*0.8,SY.v1*1.2)}
+let syPrev=performance.now();
+function syLoop(now){
+  const dt=Math.min(0.1,(now-syPrev)/1000);syPrev=now;
+  SY.v1=+$('#sy-vn').value;
+  const load=+$('#sy-load').value, rating=+$('#sy-rating').value, ramp=+$('#sy-ramp').value;
+  if(SY.running&&!SY.closed){
+    if(SY.mode==='auto'){
+      const near=Math.abs(SY.v2-SY.v1)/SY.v1<0.02&&Math.abs(SY.f2-SY.f1-0.1)<0.05;const tf=SY.f1+(near&&Math.abs(SY.phi)>60?0.18:0.1);SY.f2+=clamp(tf-SY.f2,-0.25*dt,0.25*dt);
+      SY.v2+=clamp(SY.v1-SY.v2,-0.02*SY.v1*dt,0.02*SY.v1*dt);
+    }
+    SY.phi+=360*(SY.f2-SY.f1)*dt;SY.phi=((SY.phi+180)%360+360)%360-180;
+    const e=syEval();
+    if(SY.mode==='auto'&&e.all){SY.inWinT+=dt;if(SY.inWinT>0.15){SY.inWinT=0;syClose('auto')}}else SY.inWinT=0;
+  }
+  if(SY.closed){
+    const msc=!$('#sy-msc').checked;
+    const target=msc?Math.min(load*rating/(2*rating),rating):SY.kw2;
+    if(!msc&&!SY.mscAlarm){SY.mscAlarm=true;syLog('Alarma MSC Failure: se pierde el reparto de carga. El grupo 2 mantiene su potencia; el grupo 1 absorbe todas las variaciones.','e-bad')}
+    if(msc&&SY.mscAlarm){SY.mscAlarm=false;syLog('Enlace MSC restablecido. Reparto en % de nominal reanudado.','e-ok')}
+    SY.kw2+=clamp(target-SY.kw2,-ramp*dt,ramp*dt);
+  }
+  const kw1=Math.max(0,load-(SY.closed?SY.kw2:0));
+  if(kw1>rating*1.1&&!SY.ovl){SY.ovl=true;syLog(`Grupo 1 sobrecargado (${fmt(kw1)} kW). Pon en paralelo el grupo 2.`,'e-warn')}
+  if(kw1<=rating&&SY.ovl)SY.ovl=false;
+  syDraw(kw1);
+  requestAnimationFrame(syLoop);
+}
+function syDraw(kw1){
+  const L=syLimits(),e=syEval();
+  $('#sy-v1').textContent=fmt(SY.v1);$('#sy-f1').textContent=fmt(SY.f1,2);
+  $('#sy-v2').textContent=fmt(SY.closed?SY.v1:SY.v2);$('#sy-f2').textContent=fmt(SY.closed?SY.f1:SY.f2,2);
+  $('#sy-kw2').textContent=fmt(SY.closed?SY.kw2:0);$('#sy-kw1').textContent=fmt(kw1);
+  // needle
+  const a=SY.running?SY.phi:0;
+  $('#sy-needle').setAttribute('transform',`rotate(${a} 110 110)`);
+  $('#sy-needle').style.opacity=SY.running?1:.25;
+  const w=L.ang*Math.PI/180,R=96,x1=110-R*Math.sin(w),x2=110+R*Math.sin(w),y=110-R*Math.cos(w);
+  $('#sy-win').setAttribute('d',`M110 110 L${x1} ${y} A${R} ${R} 0 0 1 ${x2} ${y} Z`);
+  const sl=SY.f2-SY.f1;
+  $('#sy-dir').textContent=!SY.running?'':SY.closed?'EN PARALELO':Math.abs(sl)<0.005?'SIN GIRO':sl>0?'GIRA → RÁPIDO':'GIRA ← LENTO';
+  // checks
+  const items=[['Secuencia',e.ok.rot,e.rot?'L1-L2-L3':'INVERTIDA'],['ΔV',e.ok.dv,SY.running?fmt(e.dvp,1)+' %':'—'],['Deslizamiento',e.ok.slip,SY.running?(sl>=0?'+':'')+fmt(sl,2)+' Hz':'—'],['Ángulo',e.ok.ang,SY.running?fmt(e.ang,0)+'°':'—']];
+  $('#sy-checks').innerHTML=items.map(([t,ok,m])=>`<div class="check ${SY.running||t==='Secuencia'?(ok?'pass':'fail'):''}"><span class="t">${t}</span><span class="m">${m}</span></div>`).join('');
+  // state pill
+  const p=$('#sy-state');
+  const st=SY.tripped?['bad','Alarma: disparo']:SY.closed?['ok','En paralelo']:SY.running?(e.all?['ok','En ventana']:['warn','Sincronizando']):['idle','Parado'];
+  p.className='pill '+st[0];p.textContent=st[1];
+  $('#sy-k-stop').classList.toggle('lit',SY.mode==='stop');$('#sy-k-man').classList.toggle('lit',SY.mode==='manual');$('#sy-k-auto').classList.toggle('lit',SY.mode==='auto');
+  $('#sy-k-start').classList.toggle('lit',SY.running);$('#sy-k-close').classList.toggle('lit',SY.closed);
+  syWave();
+}
+function syWave(){
+  const c=$('#sy-wave'),g=c.getContext('2d'),W=c.width,H=c.height;
+  g.clearRect(0,0,W,H);
+  const ink3=cssVar('--ink3'),acc=cssVar('--accent'),live=cssVar('--live'),rule=cssVar('--rule'),ink2=cssVar('--ink2');
+  g.strokeStyle=rule;g.lineWidth=1;g.beginPath();g.moveTo(0,H/2);g.lineTo(W,H/2);g.stroke();
+  const cyc=2.5,amp=H*0.34;
+  const draw=(phase,ampK,col,w)=>{g.strokeStyle=col;g.lineWidth=w;g.beginPath();for(let x=0;x<=W;x+=3){const t=x/W*cyc*2*Math.PI;const y=H/2-amp*ampK*Math.sin(t+phase);x?g.lineTo(x,y):g.moveTo(x,y)}g.stroke()};
+  draw(0,1,acc,3);
+  if(SY.running){const k=(SY.closed?SY.v1:SY.v2)/SY.v1;draw(SY.closed?0:SY.phi*Math.PI/180,k,live,2);
+    // diferencia
+    g.strokeStyle=ink3;g.setLineDash([4,4]);g.lineWidth=1.5;g.beginPath();
+    for(let x=0;x<=W;x+=3){const t=x/W*cyc*2*Math.PI;const d=Math.sin(t)-k*Math.sin(t+(SY.closed?0:SY.phi*Math.PI/180));const y=H/2-amp*d;x?g.lineTo(x,y):g.moveTo(x,y)}g.stroke();g.setLineDash([]);}
+  g.font='22px "IBM Plex Mono", monospace';g.fillStyle=acc;g.fillText('Barra',12,28);g.fillStyle=live;g.fillText('Grupo 2',100,28);g.fillStyle=ink2;g.fillText('Diferencia',230,28);
+}
+function syBind(){
+  $('#sy-k-stop').onclick=()=>syMode('stop');$('#sy-k-man').onclick=()=>syMode('manual');$('#sy-k-auto').onclick=()=>syMode('auto');
+  $('#sy-k-start').onclick=syStart;$('#sy-k-close').onclick=()=>syClose('man');$('#sy-k-open').onclick=syOpen;
+  $('#sy-gov-up').onclick=()=>syAdjF(0.1);$('#sy-gov-dn').onclick=()=>syAdjF(-0.1);$('#sy-gov-fine-up').onclick=()=>syAdjF(0.02);$('#sy-gov-fine-dn').onclick=()=>syAdjF(-0.02);
+  $('#sy-avr-up').onclick=()=>syAdjV(4);$('#sy-avr-dn').onclick=()=>syAdjV(-4);
+  $('#sy-reset').onclick=syInit;
+  $('#sy-load').oninput=e=>$('#sy-load-v').textContent=fmt(e.target.value)+' kW';
+  $('#sy-vn').onchange=()=>{syMode('stop');syInit()};
+  $('#sy-rot').onchange=e=>syLog(e.target.checked?'Falla introducida: L2 y L3 cruzadas en el sensado del grupo 2.':'Secuencia corregida.',e.target.checked?'e-warn':'e-ok');
+  $('#sy-cs').onchange=e=>syLog(e.target.checked?'Check sync activado.':'Check sync DESACTIVADO: el módulo cerrará aunque esté fuera de ventana. Solo para ver las consecuencias.',e.target.checked?'e-ok':'e-bad');
+  const ticks=$('#sy-ticks');let s='';for(let i=0;i<36;i++){const a=i*10*Math.PI/180,r1=i%9===0?80:86;s+=`<line x1="${110+r1*Math.sin(a)}" y1="${110-r1*Math.cos(a)}" x2="${110+94*Math.sin(a)}" y2="${110-94*Math.cos(a)}" stroke="var(--ink3)" stroke-width="${i%9===0?2:1}"/>`}ticks.innerHTML=s;
+}
+function syTick(){}
+
+/* ================= TTA ================= */
+const TT_TIMERS=[
+  ['transitorio','Retardo transitorio de red',2],['arranque','Retardo de arranque',5],['precal','Precalentamiento',0],
+  ['crank','Tiempo de arranque (crank)',10],['reposo','Reposo entre intentos',10],['intentos','Intentos de arranque',3],
+  ['seguridad','Retardo de protecciones',10],['calent','Calentamiento',3],['transf','Tiempo de transferencia',1],
+  ['retorno','Retardo de retorno a red',30],['enfr','Enfriamiento',60]];
+const TT={};
+const TT_SEQ=[['red','Red en carga'],['transitorio','Transitorio'],['arranque','Retardo arranque'],['precal','Precalent.'],['crank','Arranque'],['seguridad','Protecciones'],['calent','Calentamiento'],['transf','Transferencia'],['gen','Gen en carga'],['retorno','Retorno'],['sync','Sincroniza red'],['retransf','Retransferencia'],['enfr','Enfriamiento']];
+function ttT(k){return +($('#tt-tm-'+k)?.value ?? TT_TIMERS.find(t=>t[0]===k)[2])}
+function ttInit(){
+  Object.assign(TT,{mode:'stop',mains:'ok',state:'red',t:0,clock:0,q1:true,q2:false,rpm:0,oil:0,vg:0,fg:0,attempt:0,alarm:null,dark:0,blip:0,speed:TT.speed||1,running:false,manualReq:false});
+  $('#tt-log').textContent='';ttLog('Sistema listo: red sana, Q1 cerrado, módulo en STOP.','e-ok');
+}
+function ttLog(m,c){const s=TT.clock;logTo($('#tt-log'),m,c,`${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`)}
+function ttMainsOk(){return TT.mains==='ok'&&TT.blip<=0}
+function ttGo(st,msg,c){TT.state=st;TT.t=0;if(msg)ttLog(msg,c)}
+function ttSetMode(m){
+  if(m==='stop'){TT.mode='stop';TT.alarm=null;TT.running=false;TT.rpm=0;TT.q2=false;TT.attempt=0;
+    if(ttMainsOk()){TT.q1=true;ttGo('red','STOP/Reset: motor parado, carga en red.')}else{TT.q1=false;ttGo('red','STOP/Reset con la red caída: la carga queda sin energía.','e-bad')}
+    return}
+  if(TT.alarm){ttLog('Alarma de parada activa. Pulsa STOP para rearmar antes de cambiar de modo.','e-warn');return}
+  TT.mode=m;ttLog({manual:'Modo MANUAL: arranca con la tecla ARRANCAR; transfiere con TRANSFERIR.',auto:'Modo AUTO: el módulo vigila la red.',test:'Modo PRUEBA: arranca y transfiere la carga al grupo aunque la red esté sana.'}[m]);
+  if(m==='test'&&TT.state==='red')ttGo('arranque');
+  if(m==='auto'&&TT.state==='gen'&&ttMainsOk())ttGo('retorno','Red sana en AUTO: inicia retardo de retorno.');
+}
+function ttFail(name){TT.alarm=name;TT.running=false;TT.q2=false;TT.state='alarma';TT.t=0;ttLog('PARADA POR ALARMA: '+name,'e-bad')}
+function ttStep(dt){
+  TT.clock+=dt;TT.t+=dt;if(TT.blip>0)TT.blip-=dt;
+  const ok=ttMainsOk(),auto=TT.mode==='auto',test=TT.mode==='test',sys=$('#tt-sys').value,closed=$('#tt-ret').value==='cerrada'&&sys==='8660';
+  // motor físico
+  if(TT.running){TT.rpm+= (1800-TT.rpm)*Math.min(1,dt*3);TT.oil+=(420-TT.oil)*Math.min(1,dt*2)}
+  else if(TT.state!=='crank'){TT.rpm=Math.max(0,TT.rpm-600*dt);TT.oil=Math.max(0,TT.oil-300*dt)}
+  TT.fg=TT.rpm/30;TT.vg=TT.rpm>1700?480:TT.rpm/1800*480*0.9;
+  // si Q1 cerrado y red cae, Q1 abre por subtensión (la carga queda oscura)
+  if(TT.q1&&!ok&&TT.state!=='red'&&!['transitorio'].includes(TT.state)){}
+  const loadOn=(TT.q1&&ok)||(TT.q2&&TT.running);
+  if(!loadOn)TT.dark+=dt;
+  switch(TT.state){
+    case 'red':
+      if(ok&&!TT.q1&&!TT.q2){TT.q1=true;ttLog('Red sana: Q1 cierra.','e-ok')}
+      if(!ok&&(auto)){ttGo('transitorio',TT.mains==='low'?'Red en baja tensión: inicia retardo transitorio.':'Falla de red detectada: inicia retardo transitorio.','e-warn')}
+      if(TT.mode==='manual'&&TT.manualReq){TT.manualReq=false;ttGo('arranque','Arranque manual solicitado.')}
+      break;
+    case 'transitorio':
+      if(ok){ttGo('red','La red volvió dentro del retardo transitorio: no se arranca el grupo. (Así se filtran los microcortes.)','e-ok');break}
+      if(TT.t>=ttT('transitorio')){ttGo('arranque');ttLog('Falla de red confirmada.','e-warn');if(TT.q1){TT.q1=false;ttLog('Q1 abre (red fuera de límites).','e-warn')}}
+      break;
+    case 'arranque':
+      if(auto&&ok){ttGo('red','La red se recuperó antes del arranque. Vuelve a vigilancia.','e-ok');TT.q1=true;break}
+      if(TT.t>=ttT('arranque'))ttGo(ttT('precal')>0?'precal':'crank','Señal de combustible ON.'+(ttT('precal')>0?' Precalentamiento.':''));
+      break;
+    case 'precal': if(TT.t>=ttT('precal'))ttGo('crank'); break;
+    case 'crank':
+      if(TT.t===dt||TT.t<=dt+1e-6){TT.attempt++;ttLog(`Arranque: intento ${TT.attempt} de ${ttT('intentos')}.`)}
+      TT.rpm=Math.min(TT.rpm+250*dt,$('#tt-f-start').checked?220:600);
+      if(!$('#tt-f-start').checked&&TT.t>=2.5){TT.running=true;ttLog(`Motor arrancó (desacople de arranque a ${fmt(TT.rpm)} rpm).`,'e-ok');ttGo('seguridad','Retardo de protecciones activo: presión de aceite aún no se evalúa.');break}
+      if(TT.t>=ttT('crank')){
+        if(TT.attempt>=ttT('intentos')){ttFail('Falla de arranque (Fail to Start)');break}
+        ttGo('reposo',`Intento ${TT.attempt} fallido. Reposo del motor de arranque.`,'e-warn');TT.rpm=0;
+      }
+      break;
+    case 'reposo': if(TT.t>=ttT('reposo'))ttGo('crank'); break;
+    case 'seguridad':
+      if(TT.t>=ttT('seguridad')){ if($('#tt-f-oil').checked){ttFail('Baja presión de aceite');TT.oil=40;break}
+        ttGo('calent','Protecciones habilitadas. Calentamiento.');}
+      break;
+    case 'calent':
+      if(TT.t>=ttT('calent')&&TT.vg>=456){
+        if(auto&&ok){ttGo('enfr','La red volvió durante el calentamiento: el grupo no toma carga y se enfría.','e-ok');TT.q1=true;break}
+        if(TT.mode==='manual'){ttGo('gen','Grupo listo en vacío. Pulsa TRANSFERIR para tomar carga.');TT.manualWait=true;break}
+        ttGo('transf','Grupo disponible. Transferencia a generador.');
+        if(TT.q1){TT.q1=false;ttLog('Q1 abre (transferencia abierta).')}
+      }
+      break;
+    case 'transf':
+      if(TT.t>=ttT('transf')){
+        if($('#tt-f-aux').checked){ttFail('Interruptor de generador no confirmó cierre (Gen breaker failed to close)');break}
+        TT.q2=true;ttGo('gen','Q2 cerrado: carga en generador.','e-ok');TT.manualWait=false;
+      }
+      break;
+    case 'gen':
+      if(TT.mode==='manual'&&TT.manualWait&&TT.manualReq){TT.manualReq=false;TT.manualWait=false;if(TT.q1&&ok){TT.q1=false;ttLog('Q1 abre.')}ttGo('transf','Transferencia manual a generador.')}
+      if(auto&&ok)ttGo('retorno','Red sana: inicia retardo de retorno a red.','e-ok');
+      break;
+    case 'retorno':
+      if(!ok){ttGo('gen','La red volvió a fallar durante el retorno: el grupo sigue con la carga.','e-warn');break}
+      if(TT.t>=ttT('retorno')){
+        if(closed){ttGo('sync','Retorno cerrado: el DSE8660 sincroniza el grupo con la red.')}
+        else{TT.q2=false;ttGo('retransf','Q2 abre (retransferencia abierta).')}
+      }
+      break;
+    case 'sync':
+      if(TT.t>=3){TT.q1=true;ttLog('Red y grupo en sincronismo: Q1 cierra. Ambos en paralelo por un instante.','e-ok');TT.q2=false;ttLog('Q2 abre: retransferencia sin corte.','e-ok');ttGo('enfr','Enfriamiento sin carga.')}
+      break;
+    case 'retransf':
+      if(TT.t>=ttT('transf')){TT.q1=true;ttGo('enfr','Q1 cerrado: carga en red. Enfriamiento del motor sin carga.','e-ok')}
+      break;
+    case 'enfr':
+      if(!ok&&auto){ttGo('transf','Falla de red durante el enfriamiento: retoma la carga.','e-warn');if(TT.q1)TT.q1=false;break}
+      if(TT.t>=ttT('enfr')){TT.running=false;ttGo('red','Enfriamiento completo. Motor parado. Sistema en vigilancia.','e-ok')}
+      break;
+    case 'alarma': break;
+  }
+  if(test&&TT.state==='red'&&!TT.alarm&&!TT.running)ttGo('arranque');
+}
+function ttDraw(){
+  const ok=ttMainsOk();
+  $('#tt-vm').textContent=TT.mains==='low'&&TT.blip<=0?'394':ok?'480':'0';
+  $('#tt-vg').textContent=fmt(TT.vg);$('#tt-fg').textContent=fmt(TT.fg,1);$('#tt-rpmv').textContent=fmt(TT.rpm);$('#tt-oil').textContent=fmt(TT.oil);
+  const tmap={transitorio:'transitorio',arranque:'arranque',precal:'precal',crank:'crank',reposo:'reposo',seguridad:'seguridad',calent:'calent',transf:'transf',retransf:'transf',retorno:'retorno',enfr:'enfr'};
+  const k=tmap[TT.state];$('#tt-timer').textContent=k?`${fmt(Math.max(0,ttT(k)-TT.t),0)} s`:'—';
+  const labels={red:ok?'Red en carga':'Sin energía',transitorio:'Retardo transitorio',arranque:'Retardo de arranque',precal:'Precalentamiento',crank:'Arrancando',reposo:'Reposo arranque',seguridad:'Retardo protecciones',calent:'Calentamiento',transf:'Transfiriendo',gen:TT.manualWait?'Listo en vacío':'Gen en carga',retorno:'Retardo retorno',sync:'Sincronizando con red',retransf:'Retransfiriendo',enfr:'Enfriamiento',alarma:'ALARMA'};
+  const p=$('#tt-state');p.textContent=labels[TT.state];p.className='pill '+(TT.state==='alarma'?'bad':(TT.state==='red'&&ok)||TT.state==='gen'?'ok':TT.state==='red'?'bad':'warn');
+  const loadOn=(TT.q1&&ok)||(TT.q2&&TT.running);
+  $('#tt-msg').textContent=TT.alarm?`ALARMA: ${TT.alarm}. Pulsa STOP para rearmar.`:`Carga ${loadOn?'energizada':'SIN ENERGÍA'} · Q1 ${TT.q1?'cerrado':'abierto'} · Q2 ${TT.q2?'cerrado':'abierto'} · tiempo sin energía acumulado ${fmt(TT.dark,1)} s`;
+  const live=cssVar('--live'),dim=cssVar('--ink3'),okc=cssVar('--ok');
+  const mainsLive=ok,genLive=TT.vg>400;
+  $('#tt-w-m1').setAttribute('stroke',mainsLive?live:dim);$('#tt-src-m').setAttribute('stroke',mainsLive?live:dim);
+  $('#tt-w-g1').setAttribute('stroke',genLive?live:dim);$('#tt-src-g').setAttribute('stroke',genLive?live:dim);
+  $('#tt-w-m2').setAttribute('stroke',TT.q1&&mainsLive?live:dim);$('#tt-w-g2').setAttribute('stroke',TT.q2&&genLive?live:dim);
+  $('#tt-bus').setAttribute('stroke',loadOn?live:dim);$('#tt-w-l').setAttribute('stroke',loadOn?live:dim);$('#tt-load').setAttribute('stroke',loadOn?live:dim);
+  $('#tt-br-m rect').setAttribute('fill',TT.q1?okc:'var(--panel)');$('#tt-br-g rect').setAttribute('fill',TT.q2?okc:'var(--panel)');
+  $('#tt-br-m-t').setAttribute('fill',TT.q1?'#fff':cssVar('--ink'));$('#tt-br-g-t').setAttribute('fill',TT.q2?'#fff':cssVar('--ink'));
+  $('#tt-rpm').textContent=TT.rpm>0?fmt(TT.rpm)+' rpm':'';
+  ['stop','man','test','auto'].forEach(m=>$('#tt-k-'+m).classList.toggle('lit',TT.mode===({man:'manual'}[m]||m)));
+  $('#tt-k-start').classList.toggle('lit',TT.running);
+  const idx=TT_SEQ.findIndex(s=>s[0]===(TT.state==='reposo'?'crank':TT.state));
+  $('#tt-seq').innerHTML=TT_SEQ.map((s,i)=>`<span class="${i===idx?'now':i<idx?'done':''}">${s[1]}</span>`).join('');
+  $('#tt-title').textContent=$('#tt-sys').value==='7320'?'Panel AMF · DSE7320':'Panel de red · DSE8660 (+ DSE8610)';
+}
+let ttPrev=performance.now(),ttAcc=0;
+function ttLoop(now){const dt=Math.min(0.25,(now-ttPrev)/1000);ttPrev=now;ttAcc+=dt*TT.speed;
+  while(ttAcc>=0.05){ttStep(0.05);ttAcc-=0.05}ttDraw();requestAnimationFrame(ttLoop)}
+function ttBind(){
+  $('#tt-timers').innerHTML=TT_TIMERS.map(([k,l,v])=>`<label class="f">${l}<input type="number" id="tt-tm-${k}" value="${v}" min="0" step="${k==='transf'?0.5:1}"></label>`).join('');
+  $('#tt-k-stop').onclick=()=>ttSetMode('stop');$('#tt-k-man').onclick=()=>ttSetMode('manual');$('#tt-k-test').onclick=()=>ttSetMode('test');$('#tt-k-auto').onclick=()=>ttSetMode('auto');
+  $('#tt-k-start').onclick=()=>{if(TT.mode!=='manual'){ttLog('ARRANCAR funciona en MANUAL.','e-warn');return}if(TT.state==='red'){TT.manualReq=true}};
+  $('#tt-k-xfer').onclick=()=>{if(TT.mode==='manual'&&TT.state==='gen'&&TT.manualWait){TT.manualReq=true}else ttLog('TRANSFERIR: en MANUAL, con el grupo listo en vacío.','e-warn')};
+  $('#tt-m-ok').onclick=()=>{TT.mains='ok';ttLog('Red normal.','e-ok')};
+  $('#tt-m-fail').onclick=()=>{TT.mains='fail';ttLog('Falla total de red.','e-bad')};
+  $('#tt-m-low').onclick=()=>{TT.mains='low';ttLog('Red en baja tensión: 394 V (umbral didáctico 85 %).','e-warn')};
+  $('#tt-m-blip').onclick=()=>{TT.blip=1;ttLog('Microcorte de red de 1 s.','e-warn')};
+  $('#tt-reset').onclick=()=>{ttInit()};
+  $$('[data-speed]').forEach(b=>b.onclick=()=>{TT.speed=+b.dataset.speed;$$('[data-speed]').forEach(x=>x.classList.toggle('on',x===b))});
+  $('#tt-sys').onchange=e=>{$('#tt-ret').disabled=e.target.value==='7320';if(e.target.value==='7320')$('#tt-ret').value='abierta';ttLog(e.target.value==='7320'?'Sistema: grupo único con DSE7320.':'Sistema: DSE8660 controla la red y ordena a los DSE8610 por MSC.')};
+  $('#tt-ret').disabled=true;
+}
+
+/* ================= TABLERO ================= */
+const TB={
+  red:{n:'Acometida de red',d:'Fuente principal. El DSE8660 (o el DSE7320 en grupo único) mide su tensión y frecuencia para decidir si está sana.',k:[['Señal al módulo','Sensado trifásico de tensión de red (vía TP en media tensión).'],['Protecciones típicas','Sub/sobretensión, sub/sobrefrecuencia, secuencia de fases, desbalance, ROCOF y salto vectorial (en paralelo con red).'],['Verificar','Que la secuencia en el display coincida con la del generador.']]},
+  trafo:{n:'Transformador de acometida',d:'Baja la tensión de la red a la de la barra. Su grupo de conexión define el desfase que verá el check sync en transferencia cerrada.',k:[['Dato clave','Grupo de conexión (p. ej. Dyn11): desfase de 30° entre primario y secundario.'],['Al módulo','Si el sensado de red se toma en el primario, se compensa el desfase en la configuración.']]},
+  tpred:{n:'Transformador de potencial · red',d:'Reduce la tensión de red a un nivel que el módulo puede medir. En baja tensión el módulo mide directo con fusibles.',k:[['Relación','Se configura en el módulo (primario/secundario).'],['Verificar','Fusibles del secundario. Un fusible abierto se ve como falla de red de una fase.']]},
+  q1:{n:'Q1 · Interruptor de red',d:'Conecta la red a la barra. Lo abre y cierra el DSE8660 o el DSE7320.',k:[['Señales','Salida de cierre y de apertura (o bobina de mínima), entrada de auxiliar de posición.'],['Enclavamiento','Eléctrico y mecánico con Q2 en transferencia abierta. En transferencia cerrada el enclavamiento es lógico y temporizado.'],['Falla típica','Auxiliar desajustado: el módulo da alarma de falla de cierre aunque el interruptor esté cerrado.']]},
+  tcred:{n:'TC · red',d:'Mide la corriente de red para potencia importada y para limitar importación/exportación en paralelo.',k:[['Secundario','5 A o 1 A según el módulo.'],['Seguridad','Nunca abrir el secundario con corriente: aparece alta tensión.']]},
+  barra:{n:'Barra común',d:'Punto donde se juntan red y grupos. Su tensión es la referencia del check sync de cada DSE8610.',k:[['Primer grupo en barra','Con la barra muerta, el MSC elige un solo grupo para cerrar primero y evita que dos cierren a la vez sin sincronizar.'],['Sensado','Cada DSE8610 mide la barra y su propio generador.']]},
+  carga:{n:'Cargas',d:'Alimentadores aguas abajo. Las cargas de motor grandes (bombas, fajas, chancadoras) causan escalones de carga que el grupo debe soportar.',k:[['Desconexión de carga','El módulo puede soltar cargas no críticas por salidas configurables si un grupo se sobrecarga.'],['Escalón','Revisar la capacidad de toma de carga en bloque del motor a la altitud del sitio.']]},
+  tcgen:{n:'TC · generador',d:'Tres TC miden la corriente de cada fase. De aquí salen kW, kVAr, factor de potencia y las protecciones de sobrecorriente.',k:[['Polaridad','P1 hacia el generador. Un TC invertido da kW negativo y dispara por potencia inversa al poner en paralelo.'],['Prueba','Con carga resistiva, los tres kW por fase deben ser positivos y parecidos.']]},
+  q2:{n:'Interruptor de generador (Q2 / Q3)',d:'Conecta cada grupo a la barra. El DSE8610 lo cierra solo cuando el check sync está en ventana o con barra muerta.',k:[['Señales','Cerrar (pulso), abrir (pulso o mantenida), auxiliar de posición.'],['Tiempo de cierre','El sincronizador compensa el tiempo mecánico de cierre del interruptor para cerrar en 0°.'],['Falla típica','Resorte sin cargar: el pulso de cierre llega y el interruptor no cierra.']]},
+  tpgen:{n:'Sensado del generador',d:'Tensión trifásica del generador. Con ella se calcula ΔV, frecuencia y ángulo frente a la barra.',k:[['Verificar','Secuencia de fases y que no haya fusibles abiertos.']]},
+  gen:{n:'Grupo electrógeno',d:'Motor diésel y alternador. El motor recibe la referencia de velocidad del módulo (CAN o analógica); el alternador, la de tensión a través del AVR.',k:[['Base del grupo','Bastidor con aisladores antivibración. La puesta a tierra del bastidor va a la malla del sitio.'],['Lecturas por CAN','rpm, presión de aceite, temperatura, horas, códigos de falla del ECM.']]},
+  tierra:{n:'Neutro y tierra',d:'Con varios grupos en paralelo hay que decidir dónde se aterriza el neutro para evitar corrientes circulantes de tercer armónico.',k:[['Regla','Definida por el diseño de la instalación (un solo punto, resistencia de puesta a tierra, etc.).'],['Verificar','Continuidad del conductor de protección y valor de la malla.']]},
+  m8660:{n:'DSE8660 MKII · control de red',d:'Monitorea la red, ordena arrancar a los grupos por MSC cuando falla, controla Q1 y hace transferencia cerrada o suave al volver.',k:[['Funciones','Arranque por falla de red, retorno, prueba con carga, recorte de picos, exportación a red.'],['Comunicación','Enlace MSC con los DSE8610.']]},
+  m8610:{n:'DSE8610 MKII · control de grupo',d:'Controla el motor, el alternador y su interruptor. Sincroniza con la barra y reparte kW y kVAr con los otros grupos.',k:[['Sincronizador','Ajusta velocidad y tensión hasta entrar en ventana y da la orden de cierre.'],['Reparto','Isócrono por MSC o por caída de velocidad (droop) si se configura.'],['Prioridad','Arranque/parada por demanda de carga y equilibrio de horas.']]},
+  msc:{n:'Enlace MSC',d:'Bus de datos entre los módulos 8600. Sin él no hay reparto de carga ni decisión de primer grupo en barra.',k:[['Cable','Par trenzado apantallado de 120 Ω, en cadena, sin derivaciones.'],['Terminación','Resistencia en los dos extremos físicos de la cadena.'],['Alarma','MSC Failure / Too few sets: revisar terminación, malla y bornes.']]},
+  can:{n:'CAN J1939 al ECM',d:'Comunicación con la electrónica del motor. Trae lecturas y lleva la referencia de velocidad.',k:[['Terminación','120 Ω en cada extremo. Con todo apagado, ~60 Ω entre CAN H y CAN L.'],['Configuración','El tipo de motor se elige en el módulo para que interprete bien los mensajes.']]}
+};
+function tbBind(){
+  $$('.sld .el').forEach(g=>{const show=()=>{const it=TB[g.dataset.el];if(!it)return;$$('.sld .el').forEach(x=>x.classList.toggle('sel',x.dataset.el===g.dataset.el));
+    $('#tb-name').textContent=it.n;$('#tb-desc').textContent=it.d;$('#tb-kv').innerHTML=it.k.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('')};
+    g.addEventListener('click',show);g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();show()}});
+    g.setAttribute('role','button');g.setAttribute('aria-label',(TB[g.dataset.el]||{}).n||'elemento')});
+}
+
+/* ================= PROGRAMACION ================= */
+const FN_IN=['Sin uso','Auxiliar interruptor generador','Auxiliar interruptor red','Arranque remoto con carga','Arranque remoto sin carga','Inhibir retorno automático','Baja presión de aceite (contacto)','Alta temperatura (contacto)','Bajo nivel de combustible'];
+const FN_OUT=['Sin uso','Cerrar interruptor generador','Abrir interruptor generador','Cerrar interruptor red','Abrir interruptor red','Alarma común','Grupo disponible','Desconexión de carga 1'];
+const PG_SCHEMA={
+  'Entradas digitales':[['inA','Entrada A','sel',FN_IN],['inB','Entrada B','sel',FN_IN],['inC','Entrada C','sel',FN_IN],['inD','Entrada D','sel',FN_IN]],
+  'Salidas':[['outE','Salida E (relé)','sel',FN_OUT],['outF','Salida F (relé)','sel',FN_OUT],['outG','Salida G (relé)','sel',FN_OUT],['outH','Salida H (relé)','sel',FN_OUT]],
+  'Temporizadores':[['tTrans','Retardo transitorio de red (s)','num'],['tStart','Retardo de arranque (s)','num'],['tCrank','Tiempo de arranque (s)','num'],['nAtt','Intentos de arranque','num'],['tSafe','Retardo de protecciones (s)','num'],['tRet','Retardo de retorno a red (s)','num'],['tCool','Enfriamiento (s)','num']],
+  'Red':[['mUV','Subtensión de red (% nominal)','num'],['mOV','Sobretensión de red (% nominal)','num'],['mUF','Subfrecuencia de red (Hz)','num'],['mOF','Sobrefrecuencia de red (Hz)','num']],
+  'Generador':[['gVn','Tensión nominal (V)','num'],['gFn','Frecuencia nominal (Hz)','num'],['gKw','Potencia nominal (kW)','num'],['gCT','Relación TC (primario A)','num'],['gRP','Potencia inversa (% nominal)','num'],['gRPd','Retardo potencia inversa (s)','num']],
+  'Sincronismo':[['sSlip','Deslizamiento máx (Hz)','num'],['sAng','Ángulo de fase máx (°)','num'],['sDV','Diferencia de tensión máx (%)','num'],['sFail','Tiempo de falla de sincronismo (s)','num'],['sDead','Cierre con barra muerta','sel',['Deshabilitado','Habilitado']]],
+  'Reparto de carga':[['lsMode','Modo de reparto','sel',['Isócrono por MSC','Caída de velocidad (droop)']],['lsRamp','Rampa de carga (%/s)','num'],['lsStart','Arranque por demanda (% carga)','num'],['lsStop','Parada por demanda (% carga)','num'],['lsMSC','Acción ante falla MSC','sel',['Solo indicación','Alarma','Disparo eléctrico']]],
+  'Motor (CAN)':[['eType','Tipo de motor / ECM','sel',['Convencional (sin CAN)','Motor electrónico J1939 genérico','Volvo EMS2','Perkins ECM','Caterpillar ADEM']],['eSpeed','Referencia de velocidad','sel',['Salida analógica','Por CAN J1939']]]
+};
+const PG_DEF={inA:'Sin uso',inB:'Sin uso',inC:'Sin uso',inD:'Sin uso',outE:'Sin uso',outF:'Sin uso',outG:'Sin uso',outH:'Sin uso',
+  tTrans:2,tStart:5,tCrank:10,nAtt:3,tSafe:10,tRet:30,tCool:60,mUV:80,mOV:115,mUF:55,mOF:65,gVn:400,gFn:50,gKw:500,gCT:500,gRP:15,gRPd:5,
+  sSlip:0.5,sAng:25,sDV:10,sFail:0,sDead:'Deshabilitado',lsMode:'Caída de velocidad (droop)',lsRamp:3,lsStart:80,lsStop:30,lsMSC:'Solo indicación',eType:'Convencional (sin CAN)',eSpeed:'Salida analógica'};
+let PG=store.get('dse-pg',null)||{...PG_DEF};
+const PG_EX=[
+  {t:'1 · Placa del grupo',d:'El grupo es de 1 000 kW, 480 V, 60 Hz, con TC de 1 600/5 A. Carga esos datos en «Generador».',chk:c=>[[c.gVn==480,'Tensión 480 V'],[c.gFn==60,'Frecuencia 60 Hz'],[c.gKw==1000,'Potencia 1 000 kW'],[c.gCT==1600,'TC 1 600 A']]},
+  {t:'2 · Auxiliares y órdenes de interruptores',d:'Entrada C = auxiliar de interruptor de generador. Entrada D = auxiliar de interruptor de red. Salida E = cerrar generador, F = cerrar red. Sin funciones duplicadas.',chk:c=>{const ins=[c.inA,c.inB,c.inC,c.inD].filter(x=>x!=='Sin uso'),outs=[c.outE,c.outF,c.outG,c.outH].filter(x=>x!=='Sin uso');
+    return [[c.inC==='Auxiliar interruptor generador','Entrada C'],[c.inD==='Auxiliar interruptor red','Entrada D'],[c.outE==='Cerrar interruptor generador','Salida E'],[c.outF==='Cerrar interruptor red','Salida F'],[new Set(ins).size===ins.length&&new Set(outs).size===outs.length,'Sin duplicados']]}},
+  {t:'3 · Ventana de check sync',d:'Deslizamiento máx 0,2 Hz o menos, ángulo máx 10° o menos, ΔV máx 4 % o menos. Tiempo de falla de sincronismo entre 30 y 120 s (no 0: si nunca entra en ventana, debe dar alarma).',chk:c=>[[c.sSlip>0&&c.sSlip<=0.2,'Deslizamiento'],[c.sAng>0&&c.sAng<=10,'Ángulo'],[c.sDV>0&&c.sDV<=4,'ΔV'],[c.sFail>=30&&c.sFail<=120,'Falla de sincronismo']]},
+  {t:'4 · Temporizadores de TTA',d:'Retardo transitorio entre 1 y 5 s (filtra microcortes). Retorno a red de al menos 30 s (confirma que la red se estabilizó). Enfriamiento de al menos 60 s. Retardo de protecciones mayor que el tiempo que tarda en subir la presión de aceite (≥ 8 s).',chk:c=>[[c.tTrans>=1&&c.tTrans<=5,'Transitorio'],[c.tRet>=30,'Retorno'],[c.tCool>=60,'Enfriamiento'],[c.tSafe>=8,'Protecciones']]},
+  {t:'5 · Reparto de carga y potencia inversa',d:'Reparto isócrono por MSC con acción «Disparo eléctrico» ante falla MSC. Potencia inversa entre 5 y 15 % con retardo de 2 a 10 s. Habilita el cierre con barra muerta.',chk:c=>[[c.lsMode==='Isócrono por MSC','Modo isócrono'],[c.lsMSC==='Disparo eléctrico','Acción MSC'],[c.gRP>=5&&c.gRP<=15,'Potencia inversa %'],[c.gRPd>=2&&c.gRPd<=10,'Retardo'],[c.sDead==='Habilitado','Barra muerta']]},
+  {t:'6 · Motor electrónico',d:'El motor tiene ECM con J1939: elige un tipo de motor por CAN y la referencia de velocidad por CAN.',chk:c=>[[c.eType!=='Convencional (sin CAN)','Tipo de motor'],[c.eSpeed==='Por CAN J1939','Referencia de velocidad']]}
+];
+let pgTab=Object.keys(PG_SCHEMA)[0];
+function pgRender(){
+  $('#pg-tabs').innerHTML=Object.keys(PG_SCHEMA).map(k=>`<button role="tab" aria-selected="${k===pgTab}" class="${k===pgTab?'on':''}" data-t="${k}">${k}</button>`).join('');
+  $$('#pg-tabs button').forEach(b=>b.onclick=()=>{pgTab=b.dataset.t;pgRender()});
+  $('#pg-fields').innerHTML=PG_SCHEMA[pgTab].map(([k,l,ty,opts])=>ty==='sel'
+    ?`<label class="f">${l}<select id="pg-${k}" data-k="${k}">${opts.map(o=>`<option${PG[k]===o?' selected':''}>${o}</option>`).join('')}</select></label>`
+    :`<label class="f">${l}<input type="number" step="any" id="pg-${k}" data-k="${k}" value="${PG[k]}"></label>`).join('');
+  $$('#pg-fields [data-k]').forEach(el=>el.onchange=()=>{PG[el.dataset.k]=el.tagName==='SELECT'?el.value:+el.value;store.set('dse-pg',PG)});
+}
+function pgCheck(show){
+  $('#pg-ex').innerHTML=PG_EX.map(ex=>{const r=ex.chk(PG),ok=r.every(x=>x[0]);
+    return `<div class="card flat" style="gap:.4rem"><div class="row" style="justify-content:space-between"><b>${ex.t}</b>${show?`<span class="pill ${ok?'ok':'bad'}">${ok?'Correcto':'Revisar'}</span>`:''}</div><p style="font-size:.9rem">${ex.d}</p>${show?`<div class="row">${r.map(([o,n])=>`<span class="pill ${o?'ok':'bad'}">${n}</span>`).join('')}</div>`:''}</div>`}).join('');
+}
+function pgBind(){pgRender();pgCheck(false);
+  $('#pg-check').onclick=()=>pgCheck(true);
+  $('#pg-def').onclick=()=>{PG={...PG_DEF};store.set('dse-pg',PG);pgRender();pgCheck(false)};
+  $('#pg-copy').onclick=()=>{const t=JSON.stringify(PG,null,2);navigator.clipboard.writeText(t).then(()=>$('#pg-copy-msg').textContent='Configuración copiada al portapapeles.',()=>{$('#pg-copy-msg').textContent='No se pudo copiar. Selecciona el texto:';const pre=document.createElement('pre');pre.className='log';pre.textContent=t;$('#pg-copy-msg').after(pre)})};
+}
+
+/* ================= MINA ================= */
+function mnCalc(){
+  const kw=+$('#mn-kw').value,alt=+$('#mn-alt').value,thr=+$('#mn-thr').value,pct=+$('#mn-pct').value,n=Math.max(1,+$('#mn-n').value),load=+$('#mn-load').value;
+  const red=Math.min(60,Math.max(0,(alt-thr)/300*pct)),out=kw*(1-red/100),tot=out*n,pg=load/n,use=pg/out*100;
+  $('#mn-red').textContent=fmt(red,1)+' %';$('#mn-out').textContent=fmt(out);$('#mn-tot').textContent=fmt(tot);$('#mn-pg').textContent=fmt(use,0)+' %';
+  $('#mn-bar').style.width=clamp(use,0,100)+'%';$('#mn-bar').style.background=use>100?'var(--bad)':use>85?'var(--warn)':'var(--accent)';
+  $('#mn-msg').textContent=use>100?`Sobrecarga: faltan ${fmt(load-tot)} kW. Agrega un grupo o programa desconexión de cargas.`:use>85?'Margen bajo para escalones de carga. Revisa la prioridad de arranque por demanda.':`Con ${n} grupo(s) queda ${fmt(tot-load)} kW de reserva en barra.`;
+}
+function mnBind(){$$('#v-mina input').forEach(i=>i.oninput=mnCalc);mnCalc()}
+
+/* ================= EVALUACION ================= */
+const QZ=[
+  ['¿Cuáles son las cuatro condiciones para poner un generador en paralelo con una barra viva?',['Tensión, frecuencia, ángulo de fase y secuencia de fases','Tensión, corriente, potencia y factor de potencia','Frecuencia, rpm, presión de aceite y temperatura','Tensión, frecuencia, kW y kVAr'],0,'Las cuatro deben coincidir. La secuencia se verifica en la puesta en marcha; las otras tres las ajusta el sincronizador.'],
+  ['En el sincronoscopio la aguja gira en sentido horario, una vuelta cada 10 s. ¿Qué significa?',['El grupo va 0,1 Hz más rápido que la barra','El grupo va 10 Hz más lento','La tensión del grupo es 10 % mayor','La secuencia está invertida'],0,'Una vuelta (360°) cada 10 s es 0,1 Hz de deslizamiento; horario = grupo más rápido.'],
+  ['¿Por qué se prefiere que el grupo entrante esté ligeramente más rápido que la barra al cerrar?',['Para que tome carga y no entre en potencia inversa','Para que suba la tensión','Para reducir el consumo de combustible','No importa el sentido'],0,'Con deslizamiento positivo el grupo empuja carga al cerrar. Si va más lento, la barra lo arrastra como motor.'],
+  ['¿Qué módulo DSE monitorea la red y ordena arrancar a varios DSE8610 por el enlace MSC?',['DSE8660 MKII','DSE7320 MKII','DSE4520','DSE855'],0,'El DSE8660 MKII es el control de red/ATS para sistemas de sincronismo con DSE8610.'],
+  ['El DSE7320 MKII, sin otros módulos, hace transferencia:',['Abierta (corte antes de cierre)','Cerrada sin corte','Suave en rampa con la red','No hace transferencia'],0,'Es un control AMF de grupo único con transferencia abierta.'],
+  ['La red cae 1 s y vuelve. El retardo transitorio de red está en 2 s. ¿Qué hace el módulo en AUTO?',['Nada: la red volvió antes de cumplirse el retardo','Arranca el grupo y transfiere','Da alarma de falla de arranque','Abre Q2'],0,'El retardo transitorio filtra microcortes para no arrancar en falso.'],
+  ['¿Para qué sirve el retardo de protecciones (safety on delay)?',['Para no evaluar presión de aceite y similares mientras el motor está subiendo de velocidad','Para retrasar la transferencia','Para enfriar el motor','Para esperar a la red'],0,'Al arrancar la presión de aceite aún es baja; sin este retardo el motor pararía por alarma falsa.'],
+  ['¿Por qué existe el retardo de retorno a red?',['Para confirmar que la red se estabilizó antes de devolverle la carga','Para calentar el motor','Para cargar la batería','Para sincronizar los TC'],0,'Evita transferencias repetidas si la red vuelve inestable.'],
+  ['¿Qué ocurre si se abre el secundario de un TC con el generador en carga?',['Aparece una tensión peligrosa en los bornes del secundario','La corriente baja a cero sin riesgo','El módulo mide más potencia','El interruptor se cierra'],0,'Un TC con secundario abierto genera alta tensión: cortocircuitar antes de desconectar.'],
+  ['Un TC del generador está con la polaridad invertida. ¿Qué verás al poner en paralelo?',['kW negativo en esa fase y posible disparo por potencia inversa','Frecuencia más alta','Nada, el módulo lo corrige','Tensión cero'],0,'La polaridad P1 va hacia el generador; invertida, el módulo calcula potencia en sentido contrario.'],
+  ['¿Qué función cumple el enlace MSC entre DSE8610?',['Reparto de carga, primer grupo en barra y prioridad de marcha','Alimentar los módulos','Medir la tensión de barra','Comunicación con el ECM'],0,'El MSC es el bus entre módulos 8600; el ECM va por CAN J1939.'],
+  ['Midiendo con todo apagado entre CAN H y CAN L de un bus J1939 bien terminado, esperas aproximadamente:',['60 Ω','120 Ω','0 Ω','Circuito abierto'],0,'Dos resistencias de 120 Ω en paralelo dan 60 Ω.'],
+  ['En una mina a 3 800 m, ¿qué efecto tiene la altitud sobre el grupo?',['Reduce la potencia disponible del motor y la capacidad de enfriamiento','Aumenta la potencia','Solo cambia la frecuencia','No tiene efecto con turbo'],0,'El aire menos denso reduce potencia; se aplica la curva de reducción del fabricante.'],
+  ['Antes de intervenir el motor de un grupo con módulo en AUTO, lo primero es:',['Poner el módulo en STOP y bloquear todas las fuentes, incluido el arranque','Abrir Q2 y trabajar','Desconectar el enlace MSC','Bajar el retardo de arranque'],0,'En AUTO el grupo puede arrancar solo ante una falla de red.'],
+  ['Al volver la red con transferencia cerrada, ¿qué hace el sistema DSE8660 + DSE8610?',['Sincroniza el grupo con la red, cierra Q1 un instante en paralelo y abre el grupo','Abre Q2 y luego cierra Q1 con corte','Para el motor sin transferir','Cierra Q1 sin sincronizar'],0,'La transferencia cerrada evita el corte a la carga; necesita sincronismo con la red.']
+];
+let qzOrder=[];
+function qzShuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function qzRender(){
+  qzOrder=QZ.map((q,i)=>({i,opts:qzShuffle(q[1].map((t,k)=>({t,k})))}));
+  $('#qz-box').innerHTML='<h3>Examen · 15 preguntas</h3>'+qzOrder.map((o,n)=>{const q=QZ[o.i];return `<div class="q" id="q${n}"><b>${n+1}. ${q[0]}</b><div class="opts">${o.opts.map(op=>`<label><input type="radio" name="qz${n}" value="${op.k}"> <span>${op.t}</span></label>`).join('')}</div><p class="why" hidden>${q[3]}</p></div>`}).join('');
+  $('#qz-score').textContent='— / 15';$('#qz-bar').style.width='0';$('#qz-res').textContent='Responde todas y pulsa Calificar. Aprobación: 12 de 15.';
+}
+function qzGrade(){
+  let s=0,miss=0;
+  qzOrder.forEach((o,n)=>{const q=QZ[o.i],sel=document.querySelector(`input[name=qz${n}]:checked`);
+    $$(`#q${n} label`).forEach(l=>{l.classList.remove('right','wrong');const v=+l.querySelector('input').value;if(v===q[2])l.classList.add('right');else if(sel&&+sel.value===v)l.classList.add('wrong')});
+    $(`#q${n} .why`).hidden=false;if(!sel)miss++;else if(+sel.value===q[2])s++;});
+  $('#qz-score').textContent=`${s} / 15`;$('#qz-bar').style.width=(s/15*100)+'%';$('#qz-bar').style.background=s>=12?'var(--ok)':'var(--bad)';
+  const name=$('#qz-name').value.trim()||'Participante';
+  $('#qz-res').textContent=`${name}: ${s>=12?'APROBADO':'NO APROBADO'} · ${new Date().toLocaleDateString('es-PE')}${miss?` · ${miss} sin responder`:''}`;
+  const best=store.get('dse-qz-best',null);if(!best||s>best.s){store.set('dse-qz-best',{s,name,d:new Date().toISOString()})}qzBest();
+}
+function qzBest(){const b=store.get('dse-qz-best',null);$('#qz-best').textContent=b?`Mejor nota en este navegador: ${b.s}/15 (${b.name}, ${new Date(b.d).toLocaleDateString('es-PE')}).`:''}
+function qzBind(){qzRender();qzBest();$('#qz-grade').onclick=qzGrade;$('#qz-reset').onclick=qzRender;
+  $('#qz-name').value=store.get('dse-qz-name','');$('#qz-name').oninput=e=>store.set('dse-qz-name',e.target.value)}
+
+/* ---------- arranque ---------- */
+syBind();syInit();requestAnimationFrame(syLoop);
+ttBind();ttInit();requestAnimationFrame(ttLoop);
+tbBind();pgBind();mnBind();qzBind();route();
+</script>
+</body>
+</html>
