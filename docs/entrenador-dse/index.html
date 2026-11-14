@@ -276,6 +276,10 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
         <div><div class="k">Grupo 2 · Hz</div><div class="v" id="sy-f2">0.00</div></div>
         <div><div class="k">Grupo 2 · kW</div><div class="v" id="sy-kw2">0</div></div>
         <div><div class="k">Grupo 1 · kW</div><div class="v" id="sy-kw1">0</div></div>
+        <div><div class="k">Grupo 2 · kVAr</div><div class="v" id="sy-kq2">0</div></div>
+        <div><div class="k">Grupo 1 · kVAr</div><div class="v" id="sy-kq1">0</div></div>
+        <div><div class="k">Grupo 2 · FP</div><div class="v" id="sy-pf2">—</div></div>
+        <div><div class="k">Grupo 1 · FP</div><div class="v" id="sy-pf1">—</div></div>
         <div class="full" id="sy-msg">Grupo 2 parado. Pulsa MANUAL y luego ARRANCAR.</div>
       </div>
       <div class="checks" id="sy-checks"></div>
@@ -287,6 +291,7 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
         <div class="card flat">
           <b>AVR (tensión)</b>
           <div class="row"><button class="btn" id="sy-avr-dn">− V</button><button class="btn" id="sy-avr-up">+ V</button></div>
+          <p class="note">Antes de cerrar, el AVR cambia la tensión del grupo. En paralelo la tensión la fija la barra: subir el AVR solo aumenta los kVAr que entrega el grupo.</p>
         </div>
       </div>
     </div>
@@ -295,6 +300,10 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
       <div class="fields">
         <label class="f">Tensión nominal de barra
           <select id="sy-vn"><option value="480">480 V</option><option value="440">440 V</option><option value="4160">4160 V</option></select></label>
+        <label class="f">Cambio de tensión de la barra
+          <input type="range" id="sy-vbus" min="-10" max="10" step="1" value="0"><span id="sy-vbus-v" class="note">0 % · 480 V</span></label>
+        <label class="f">Factor de potencia de la carga
+          <input type="number" id="sy-pf" value="0.85" min="0.6" max="1" step="0.01"></label>
         <label class="f">Carga de la barra (kW)
           <input type="range" id="sy-load" min="0" max="1600" step="10" value="900"><span id="sy-load-v" class="note">900 kW</span></label>
         <label class="f">Potencia de cada grupo (kW)
@@ -385,11 +394,26 @@ ul.tight{margin:0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.3r
         <label class="f">Retorno a red
           <select id="tt-ret"><option value="abierta">Abierta</option><option value="cerrada">Cerrada (sincroniza con red)</option></select></label>
       </div>
+      <h3>Tensión del sistema</h3>
+      <div class="fields">
+        <label class="f">Tensión nominal (módulo configurado)
+          <select id="tt-vn"><option value="220">220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="480" selected>480 V</option></select></label>
+        <label class="f">Conmutador de tensión del grupo
+          <select id="tt-gsel"><option value="220">220 V</option><option value="380">380 V</option><option value="440">440 V</option><option value="480" selected>480 V</option></select></label>
+        <label class="f">Ajuste del AVR del grupo
+          <input type="range" id="tt-avr" min="85" max="115" step="1" value="100"><span id="tt-avr-v" class="note">100 % · 480 V</span></label>
+        <label class="f">Subtensión (% nominal)<input type="number" id="tt-uv" value="85" min="50" max="99" step="1"></label>
+        <label class="f">Sobretensión (% nominal)<input type="number" id="tt-ov" value="110" min="101" max="130" step="1"></label>
+      </div>
+      <p class="note">El módulo compara la red y el grupo contra la tensión nominal configurada. Si cambias el conmutador del grupo sin reconfigurar el módulo, el grupo para por sub o sobretensión al terminar el calentamiento.</p>
       <h3>Red</h3>
+      <label class="f">Tensión de red
+        <input type="range" id="tt-mpct" min="0" max="130" step="1" value="100"><span id="tt-mpct-v" class="note">100 % · 480 V</span></label>
       <div class="row">
         <button class="btn" id="tt-m-ok">Red normal</button>
         <button class="btn danger" id="tt-m-fail">Falla total de red</button>
-        <button class="btn" id="tt-m-low">Baja tensión (−18 %)</button>
+        <button class="btn" id="tt-m-low">Baja tensión (82 %)</button>
+        <button class="btn" id="tt-m-high">Sobretensión (115 %)</button>
         <button class="btn" id="tt-m-blip">Microcorte 1 s</button>
       </div>
       <h3>Fallas a inyectar</h3>
@@ -591,7 +615,7 @@ addEventListener('hashchange',route);
 const SY={};
 function syInit(){
   Object.assign(SY,{mode:'stop',running:false,closed:false,f1:60,v1:+$('#sy-vn').value,f2:0,v2:0,
-    phi:Math.random()*360-180,kw2:0,inWinT:0,startT:0,tripped:false,lastMsg:''});
+    phi:Math.random()*360-180,kw2:0,qbias:0,inWinT:0,startT:0,tripped:false,lastMsg:''});
   $('#sy-log').textContent='';
   syLog('Escenario listo. Grupo 1 en barra, grupo 2 parado.','e-ok');
 }
@@ -628,7 +652,7 @@ function syClose(by){
   if(e.slip<0)syLog('Cerró con deslizamiento negativo: potencia inversa momentánea en el grupo 2.','e-warn');
   syMsg('En paralelo. El grupo 2 toma carga en rampa.');
 }
-function syOpen(){if(!SY.closed)return;SY.closed=false;SY.unloading=false;SY.kw2=0;syLog('Q3 abierto. El grupo 1 queda con toda la carga.','e-warn');syMsg('Grupo 2 en vacío.')}
+function syOpen(){if(!SY.closed)return;SY.closed=false;SY.qbias=0;SY.unloading=false;SY.kw2=0;syLog('Q3 abierto. El grupo 1 queda con toda la carga.','e-warn');syMsg('Grupo 2 en vacío.')}
 function syMode(m){
   if(m==='stop'){SY.mode='stop';if(SY.closed)syOpen();SY.running=false;SY.tripped=false;SY.f2=0;SY.v2=0;syMsg('Grupo 2 parado.');syLog('STOP/Reset.');}
   else{if(SY.tripped){syLog('Hay una alarma activa. Pulsa STOP para rearmar.','e-warn');return}SY.mode=m;
@@ -639,11 +663,16 @@ function syStart(){if(SY.mode==='stop'){syLog('Pasa a MANUAL o AUTO antes de arr
   if(SY.running||SY.tripped)return;SY.running=true;SY.f2=58.6+Math.random()*2.4;SY.v2=SY.v1*(0.9+Math.random()*0.18);
   if(SY.v1>1000)SY.v2=Math.round(SY.v2);syLog(`Grupo 2 arrancado: ${fmt(SY.f2,2)} Hz, ${fmt(SY.v2,0)} V.`);syMsg('Iguala tensión y frecuencia con la barra.');}
 function syAdjF(d){if(!SY.running||SY.closed)return;SY.f2=clamp(SY.f2+d,55,65)}
-function syAdjV(d){if(!SY.running||SY.closed)return;SY.v2=clamp(SY.v2+d*SY.v1/480,SY.v1*0.8,SY.v1*1.2)}
+function syAdjV(d){if(!SY.running)return;const vn=+$('#sy-vn').value;
+  if(SY.closed){const r=+$('#sy-rating').value;SY.qbias+=d/4*0.04*r;const now=Date.now();if(now-(SY.avrLogT||0)<3000)return;SY.avrLogT=now;syLog(`AVR ${d>0?'sube':'baja'} excitación en paralelo: el grupo 2 ${d>0?'entrega más':'entrega menos'} kVAr; la tensión de barra casi no cambia.`);return}
+  SY.v2=clamp(SY.v2+d*vn/480,SY.v1*0.8,SY.v1*1.2)}
+function syVbus(){const vn=+$('#sy-vn').value,o=+$('#sy-vbus').value;return vn*(1+o/100)}
 let syPrev=performance.now();
 function syLoop(now){
   const dt=Math.min(0.1,(now-syPrev)/1000);syPrev=now;
-  SY.v1=+$('#sy-vn').value;
+  const vOld=SY.v1;SY.v1=syVbus();
+  if(Math.abs(SY.v1-vOld)>0.5&&SY.running&&!SY.closed&&SY.mode!=='auto'&&Math.abs(SY.v2-SY.v1)/SY.v1*100>+$('#sy-dv').value&&!SY.vWarn){SY.vWarn=true;syLog('La tensión de barra cambió: el grupo 2 quedó fuera de la ventana de ΔV. Corrige con el AVR.','e-warn')}
+  if(Math.abs(SY.v2-SY.v1)/SY.v1*100<=+$('#sy-dv').value)SY.vWarn=false;
   const load=+$('#sy-load').value, rating=+$('#sy-rating').value, ramp=+$('#sy-ramp').value;
   if(SY.running&&!SY.closed){
     if(SY.mode==='auto'){
@@ -660,6 +689,13 @@ function syLoop(now){
     if(!msc&&!SY.mscAlarm){SY.mscAlarm=true;syLog('Alarma MSC Failure: se pierde el reparto de carga. El grupo 2 mantiene su potencia; el grupo 1 absorbe todas las variaciones.','e-bad')}
     if(msc&&SY.mscAlarm){SY.mscAlarm=false;syLog('Enlace MSC restablecido. Reparto en % de nominal reanudado.','e-ok')}
     SY.kw2+=clamp(target-SY.kw2,-ramp*dt,ramp*dt);
+    // reparto de reactivos: en AUTO con MSC el módulo corrige la excitación hacia el reparto parejo
+    if(msc&&SY.mode==='auto')SY.qbias+=clamp(-SY.qbias,-0.05*rating*dt,0.05*rating*dt);
+    const pf=clamp(+$('#sy-pf').value||0.85,0.5,1),qL=load*Math.tan(Math.acos(pf)),kq2=qL/2+SY.qbias;
+    if(kq2<-0.25*rating){SY.tripped=true;SY.closed=false;SY.running=false;SY.kw2=0;SY.qbias=0;
+      syLog(`Disparo del grupo 2 por pérdida de excitación (kVAr inverso ${fmt(kq2)} kVAr). Bajaste demasiado el AVR en paralelo: el grupo absorbe reactivos de la barra.`,'e-bad');syMsg('Disparo por pérdida de excitación. Pulsa STOP para rearmar.')}
+    else if(kq2>0.75*rating&&!SY.qWarn){SY.qWarn=true;syLog('Grupo 2 sobreexcitado: corriente reactiva circulando entre grupos. Baja el AVR o pasa a AUTO para que el módulo reparta los kVAr.','e-warn')}
+    else if(kq2<=0.6*rating)SY.qWarn=false;
   }
   const kw1=Math.max(0,load-(SY.closed?SY.kw2:0));
   if(kw1>rating*1.1&&!SY.ovl){SY.ovl=true;syLog(`Grupo 1 sobrecargado (${fmt(kw1)} kW). Pon en paralelo el grupo 2.`,'e-warn')}
@@ -672,6 +708,11 @@ function syDraw(kw1){
   $('#sy-v1').textContent=fmt(SY.v1);$('#sy-f1').textContent=fmt(SY.f1,2);
   $('#sy-v2').textContent=fmt(SY.closed?SY.v1:SY.v2);$('#sy-f2').textContent=fmt(SY.closed?SY.f1:SY.f2,2);
   $('#sy-kw2').textContent=fmt(SY.closed?SY.kw2:0);$('#sy-kw1').textContent=fmt(kw1);
+  {const pf=clamp(+$('#sy-pf').value||0.85,0.5,1),load=+$('#sy-load').value,qL=load*Math.tan(Math.acos(pf));
+   const kq2=SY.closed?qL/2+SY.qbias:0,kq1=qL-kq2,kw2=SY.closed?SY.kw2:0;
+   const pfOf=(p,q)=>p<=0&&Math.abs(q)<1?'—':fmt(p/Math.hypot(p,q),2)+(q<0?' cap':'');
+   $('#sy-kq2').textContent=fmt(kq2);$('#sy-kq1').textContent=fmt(kq1);$('#sy-pf2').textContent=SY.closed?pfOf(kw2,kq2):'—';$('#sy-pf1').textContent=pfOf(kw1,kq1);
+   $('#sy-vbus-v').textContent=`${(+$('#sy-vbus').value>0?'+':'')+$('#sy-vbus').value} % · ${fmt(SY.v1)} V`;}
   // needle
   const a=SY.running?SY.phi:0;
   $('#sy-needle').setAttribute('transform',`rotate(${a} 110 110)`);
@@ -713,6 +754,7 @@ function syBind(){
   $('#sy-reset').onclick=syInit;
   $('#sy-load').oninput=e=>$('#sy-load-v').textContent=fmt(e.target.value)+' kW';
   $('#sy-vn').onchange=()=>{syMode('stop');syInit()};
+  $('#sy-vbus').onchange=e=>{const o=+e.target.value;syLog(`Cambio de tensión de barra: ${o>0?'+':''}${o} % (${fmt(syVbus())} V).${SY.closed?' En paralelo el grupo 2 sigue a la barra.':''}`,Math.abs(o)>=8?'e-warn':undefined)};
   $('#sy-rot').onchange=e=>syLog(e.target.checked?'Falla introducida: L2 y L3 cruzadas en el sensado del grupo 2.':'Secuencia corregida.',e.target.checked?'e-warn':'e-ok');
   $('#sy-cs').onchange=e=>syLog(e.target.checked?'Check sync activado.':'Check sync DESACTIVADO: el módulo cerrará aunque esté fuera de ventana. Solo para ver las consecuencias.',e.target.checked?'e-ok':'e-bad');
   const ticks=$('#sy-ticks');let s='';for(let i=0;i<36;i++){const a=i*10*Math.PI/180,r1=i%9===0?80:86;s+=`<line x1="${110+r1*Math.sin(a)}" y1="${110-r1*Math.cos(a)}" x2="${110+94*Math.sin(a)}" y2="${110-94*Math.cos(a)}" stroke="var(--ink3)" stroke-width="${i%9===0?2:1}"/>`}ticks.innerHTML=s;
@@ -729,11 +771,16 @@ const TT={};
 const TT_SEQ=[['red','Red en carga'],['transitorio','Transitorio'],['arranque','Retardo arranque'],['precal','Precalent.'],['crank','Arranque'],['seguridad','Protecciones'],['calent','Calentamiento'],['transf','Transferencia'],['gen','Gen en carga'],['retorno','Retorno'],['sync','Sincroniza red'],['retransf','Retransferencia'],['enfr','Enfriamiento']];
 function ttT(k){return +($('#tt-tm-'+k)?.value ?? TT_TIMERS.find(t=>t[0]===k)[2])}
 function ttInit(){
-  Object.assign(TT,{mode:'stop',mains:'ok',state:'red',t:0,clock:0,q1:true,q2:false,rpm:0,oil:0,vg:0,fg:0,attempt:0,alarm:null,dark:0,blip:0,speed:TT.speed||1,running:false,manualReq:false});
-  $('#tt-log').textContent='';ttLog('Sistema listo: red sana, Q1 cerrado, módulo en STOP.','e-ok');
+  Object.assign(TT,{mode:'stop',mpct:100,gvT:0,state:'red',t:0,clock:0,q1:true,q2:false,rpm:0,oil:0,vg:0,fg:0,attempt:0,alarm:null,dark:0,blip:0,speed:TT.speed||1,running:false,manualReq:false});
+  $('#tt-mpct').value=100;$('#tt-log').textContent='';ttLog('Sistema listo: red sana, Q1 cerrado, módulo en STOP.','e-ok');ttMainsLbl();
 }
 function ttLog(m,c){const s=TT.clock;logTo($('#tt-log'),m,c,`${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`)}
-function ttMainsOk(){return TT.mains==='ok'&&TT.blip<=0}
+const ttVn=()=>+$('#tt-vn').value, ttUV=()=>+$('#tt-uv').value, ttOV=()=>+$('#tt-ov').value;
+function ttMainsV(){return TT.blip>0?0:ttVn()*TT.mpct/100}
+function ttMainsOk(){return TT.blip<=0&&TT.mpct>=ttUV()&&TT.mpct<=ttOV()}
+function ttGenOut(){return +$('#tt-gsel').value*(+$('#tt-avr').value)/100}
+function ttSetMains(p,msg,c){TT.mpct=p;$('#tt-mpct').value=p;ttLog(msg||`Tensión de red: ${p} % (${fmt(ttVn()*p/100)} V).`,c);ttMainsLbl()}
+function ttMainsLbl(){$('#tt-mpct-v').textContent=`${TT.mpct} % · ${fmt(ttVn()*TT.mpct/100)} V`;$('#tt-avr-v').textContent=`${$('#tt-avr').value} % · ${fmt(ttGenOut())} V`}
 function ttGo(st,msg,c){TT.state=st;TT.t=0;if(msg)ttLog(msg,c)}
 function ttSetMode(m){
   if(m==='stop'){TT.mode='stop';TT.alarm=null;TT.running=false;TT.rpm=0;TT.q2=false;TT.attempt=0;
@@ -751,7 +798,13 @@ function ttStep(dt){
   // motor físico
   if(TT.running){TT.rpm+= (1800-TT.rpm)*Math.min(1,dt*3);TT.oil+=(420-TT.oil)*Math.min(1,dt*2)}
   else if(TT.state!=='crank'){TT.rpm=Math.max(0,TT.rpm-600*dt);TT.oil=Math.max(0,TT.oil-300*dt)}
-  TT.fg=TT.rpm/30;TT.vg=TT.rpm>1700?480:TT.rpm/1800*480*0.9;
+  const vout=ttGenOut();TT.fg=TT.rpm/30;TT.vg=TT.rpm>1700?vout:TT.rpm/1800*vout*0.9;
+  // protección de tensión del generador (habilitada después del retardo de protecciones)
+  if(TT.running&&TT.rpm>1700&&['calent','transf','gen','retorno','sync','retransf','enfr'].includes(TT.state)){
+    const gp=TT.vg/ttVn()*100;
+    if(gp<ttUV()||gp>ttOV()){TT.gvT+=dt;if(TT.gvT>=2){ttFail(`${gp<ttUV()?'Subtensión':'Sobretensión'} de generador: ${fmt(TT.vg)} V = ${fmt(gp,0)} % de ${ttVn()} V nominal. Revisa el conmutador de tensión del grupo, el AVR o la configuración del módulo.`);return}}
+    else TT.gvT=0;
+  } else TT.gvT=0;
   // si Q1 cerrado y red cae, Q1 abre por subtensión (la carga queda oscura)
   if(TT.q1&&!ok&&TT.state!=='red'&&!['transitorio'].includes(TT.state)){}
   const loadOn=(TT.q1&&ok)||(TT.q2&&TT.running);
@@ -759,7 +812,7 @@ function ttStep(dt){
   switch(TT.state){
     case 'red':
       if(ok&&!TT.q1&&!TT.q2){TT.q1=true;ttLog('Red sana: Q1 cierra.','e-ok')}
-      if(!ok&&(auto)){ttGo('transitorio',TT.mains==='low'?'Red en baja tensión: inicia retardo transitorio.':'Falla de red detectada: inicia retardo transitorio.','e-warn')}
+      if(!ok&&(auto)){ttGo('transitorio',TT.blip>0||TT.mpct===0?'Falla de red detectada: inicia retardo transitorio.':`${TT.mpct<ttUV()?'Subtensión':'Sobretensión'} de red (${fmt(ttMainsV())} V, ${TT.mpct} %): inicia retardo transitorio.`,'e-warn')}
       if(TT.mode==='manual'&&TT.manualReq){TT.manualReq=false;ttGo('arranque','Arranque manual solicitado.')}
       break;
     case 'transitorio':
@@ -786,7 +839,7 @@ function ttStep(dt){
         ttGo('calent','Protecciones habilitadas. Calentamiento.');}
       break;
     case 'calent':
-      if(TT.t>=ttT('calent')&&TT.vg>=456){
+      if(TT.t>=ttT('calent')&&TT.rpm>1700){
         if(auto&&ok){ttGo('enfr','La red volvió durante el calentamiento: el grupo no toma carga y se enfría.','e-ok');TT.q1=true;break}
         if(TT.mode==='manual'){ttGo('gen','Grupo listo en vacío. Pulsa TRANSFERIR para tomar carga.');TT.manualWait=true;break}
         ttGo('transf','Grupo disponible. Transferencia a generador.');
@@ -810,9 +863,17 @@ function ttStep(dt){
         else{TT.q2=false;ttGo('retransf','Q2 abre (retransferencia abierta).')}
       }
       break;
-    case 'sync':
+    case 'sync':{
+      const dv=Math.abs(TT.vg-ttMainsV())/ttVn()*100;
+      if(dv>4){ if(!TT.syncWarn){TT.syncWarn=true;ttLog(`Sincronismo con red en espera: ΔV ${fmt(dv,1)} % (máx 4 %). El módulo ajusta el AVR; si no alcanza, revisa la tensión del grupo.`,'e-warn')}
+        // el módulo corre el AVR hacia la tensión de red dentro de ±10 %
+        const avr=$('#tt-avr'),need=ttMainsV()/(+$('#tt-gsel').value)*100,cur=+avr.value;
+        if(Math.abs(need-100)<=10&&Math.abs(need-cur)>=1){avr.value=cur+Math.sign(need-cur);ttMainsLbl()}
+        if(TT.t>=30){TT.syncWarn=false;ttFail('Falla de sincronismo con la red: no se igualó la tensión en 30 s.')}
+        break}
+      TT.syncWarn=false;
       if(TT.t>=3){TT.q1=true;ttLog('Red y grupo en sincronismo: Q1 cierra. Ambos en paralelo por un instante.','e-ok');TT.q2=false;ttLog('Q2 abre: retransferencia sin corte.','e-ok');ttGo('enfr','Enfriamiento sin carga.')}
-      break;
+      break;}
     case 'retransf':
       if(TT.t>=ttT('transf')){TT.q1=true;ttGo('enfr','Q1 cerrado: carga en red. Enfriamiento del motor sin carga.','e-ok')}
       break;
@@ -826,16 +887,16 @@ function ttStep(dt){
 }
 function ttDraw(){
   const ok=ttMainsOk();
-  $('#tt-vm').textContent=TT.mains==='low'&&TT.blip<=0?'394':ok?'480':'0';
+  $('#tt-vm').textContent=fmt(ttMainsV());
   $('#tt-vg').textContent=fmt(TT.vg);$('#tt-fg').textContent=fmt(TT.fg,1);$('#tt-rpmv').textContent=fmt(TT.rpm);$('#tt-oil').textContent=fmt(TT.oil);
   const tmap={transitorio:'transitorio',arranque:'arranque',precal:'precal',crank:'crank',reposo:'reposo',seguridad:'seguridad',calent:'calent',transf:'transf',retransf:'transf',retorno:'retorno',enfr:'enfr'};
   const k=tmap[TT.state];$('#tt-timer').textContent=k?`${fmt(Math.max(0,ttT(k)-TT.t),0)} s`:'—';
   const labels={red:ok?'Red en carga':'Sin energía',transitorio:'Retardo transitorio',arranque:'Retardo de arranque',precal:'Precalentamiento',crank:'Arrancando',reposo:'Reposo arranque',seguridad:'Retardo protecciones',calent:'Calentamiento',transf:'Transfiriendo',gen:TT.manualWait?'Listo en vacío':'Gen en carga',retorno:'Retardo retorno',sync:'Sincronizando con red',retransf:'Retransfiriendo',enfr:'Enfriamiento',alarma:'ALARMA'};
   const p=$('#tt-state');p.textContent=labels[TT.state];p.className='pill '+(TT.state==='alarma'?'bad':(TT.state==='red'&&ok)||TT.state==='gen'?'ok':TT.state==='red'?'bad':'warn');
-  const loadOn=(TT.q1&&ok)||(TT.q2&&TT.running);
-  $('#tt-msg').textContent=TT.alarm?`ALARMA: ${TT.alarm}. Pulsa STOP para rearmar.`:`Carga ${loadOn?'energizada':'SIN ENERGÍA'} · Q1 ${TT.q1?'cerrado':'abierto'} · Q2 ${TT.q2?'cerrado':'abierto'} · tiempo sin energía acumulado ${fmt(TT.dark,1)} s`;
+  const loadOn=(TT.q1&&ttMainsV()>0)||(TT.q2&&TT.running);
+  $('#tt-msg').textContent=TT.alarm?`ALARMA: ${TT.alarm.replace(/\.$/,'')}. Pulsa STOP para rearmar.`:`Carga ${loadOn?'energizada':'SIN ENERGÍA'} · Q1 ${TT.q1?'cerrado':'abierto'} · Q2 ${TT.q2?'cerrado':'abierto'} · tiempo sin energía acumulado ${fmt(TT.dark,1)} s`;
   const live=cssVar('--live'),dim=cssVar('--ink3'),okc=cssVar('--ok');
-  const mainsLive=ok,genLive=TT.vg>400;
+  const mainsLive=ttMainsV()>0,genLive=TT.vg>0.8*ttVn();
   $('#tt-w-m1').setAttribute('stroke',mainsLive?live:dim);$('#tt-src-m').setAttribute('stroke',mainsLive?live:dim);
   $('#tt-w-g1').setAttribute('stroke',genLive?live:dim);$('#tt-src-g').setAttribute('stroke',genLive?live:dim);
   $('#tt-w-m2').setAttribute('stroke',TT.q1&&mainsLive?live:dim);$('#tt-w-g2').setAttribute('stroke',TT.q2&&genLive?live:dim);
@@ -857,9 +918,17 @@ function ttBind(){
   $('#tt-k-stop').onclick=()=>ttSetMode('stop');$('#tt-k-man').onclick=()=>ttSetMode('manual');$('#tt-k-test').onclick=()=>ttSetMode('test');$('#tt-k-auto').onclick=()=>ttSetMode('auto');
   $('#tt-k-start').onclick=()=>{if(TT.mode!=='manual'){ttLog('ARRANCAR funciona en MANUAL.','e-warn');return}if(TT.state==='red'){TT.manualReq=true}};
   $('#tt-k-xfer').onclick=()=>{if(TT.mode==='manual'&&TT.state==='gen'&&TT.manualWait){TT.manualReq=true}else ttLog('TRANSFERIR: en MANUAL, con el grupo listo en vacío.','e-warn')};
-  $('#tt-m-ok').onclick=()=>{TT.mains='ok';ttLog('Red normal.','e-ok')};
-  $('#tt-m-fail').onclick=()=>{TT.mains='fail';ttLog('Falla total de red.','e-bad')};
-  $('#tt-m-low').onclick=()=>{TT.mains='low';ttLog('Red en baja tensión: 394 V (umbral didáctico 85 %).','e-warn')};
+  $('#tt-m-ok').onclick=()=>ttSetMains(100,'Red normal.','e-ok');
+  $('#tt-m-fail').onclick=()=>ttSetMains(0,'Falla total de red.','e-bad');
+  $('#tt-m-low').onclick=()=>ttSetMains(82,`Red en baja tensión: ${fmt(ttVn()*.82)} V (82 %, umbral ${ttUV()} %).`,'e-warn');
+  $('#tt-m-high').onclick=()=>ttSetMains(115,`Red en sobretensión: ${fmt(ttVn()*1.15)} V (115 %, umbral ${ttOV()} %).`,'e-warn');
+  $('#tt-mpct').onchange=e=>ttSetMains(+e.target.value);
+  $('#tt-mpct').oninput=e=>{TT.mpct=+e.target.value;ttMainsLbl()};
+  $('#tt-avr').oninput=ttMainsLbl;
+  $('#tt-avr').onchange=e=>ttLog(`AVR del grupo al ${e.target.value} %: salida ${fmt(ttGenOut())} V.`);
+  $('#tt-vn').onchange=e=>{ttMainsLbl();ttLog(`Tensión nominal del módulo: ${e.target.value} V. Red y grupo se evalúan contra este valor.`)};
+  $('#tt-gsel').onchange=e=>{ttMainsLbl();const m=+e.target.value!==ttVn();ttLog(`Conmutador de tensión del grupo en ${e.target.value} V.${m?` No coincide con los ${ttVn()} V configurados en el módulo.`:''}`,m?'e-warn':'e-ok')};
+  ttMainsLbl();
   $('#tt-m-blip').onclick=()=>{TT.blip=1;ttLog('Microcorte de red de 1 s.','e-warn')};
   $('#tt-reset').onclick=()=>{ttInit()};
   $$('[data-speed]').forEach(b=>b.onclick=()=>{TT.speed=+b.dataset.speed;$$('[data-speed]').forEach(x=>x.classList.toggle('on',x===b))});
