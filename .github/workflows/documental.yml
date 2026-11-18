@@ -126,8 +126,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: trabajo-plan-${{ github.run_id }}
-          # La raíz del artefacto es trabajo/ (ancestro común de lo subido).
-          path: documental/salidas/${{ needs.plan.outputs.slug }}/trabajo
+          # La raíz del artefacto es documental/salidas (la parte sin comodines
+          # de los patrones de subida): dentro viene <slug>/trabajo/...
+          path: documental/salidas
       - name: Render del tramo
         run: python -m documental --config "$RUNNER_TEMP/canal-ci.toml" tramo "$GUION" --parte ${{ matrix.parte }} --voz kokoro --sin-stock --estricto
       - uses: actions/upload-artifact@v4
@@ -154,12 +155,13 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: trabajo-plan-${{ github.run_id }}
-          # La raíz del artefacto es trabajo/ (ancestro común de lo subido).
-          path: documental/salidas/${{ needs.plan.outputs.slug }}/trabajo
+          # La raíz del artefacto es documental/salidas (la parte sin comodines
+          # de los patrones de subida): dentro viene <slug>/trabajo/...
+          path: documental/salidas
       - uses: actions/download-artifact@v4
         with:
           pattern: trabajo-tramo-*-${{ github.run_id }}
-          path: documental/salidas/${{ needs.plan.outputs.slug }}/trabajo
+          path: documental/salidas
           merge-multiple: true
       - name: Ensamblar
         run: python -m documental --config "$RUNNER_TEMP/canal-ci.toml" ensamblar "$GUION" --voz kokoro --sin-stock --estricto
