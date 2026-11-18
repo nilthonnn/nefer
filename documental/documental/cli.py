@@ -4,6 +4,9 @@
     guion "tema" -o g.json      escribe un guion con Claude para revisarlo
     validar g.json              comprueba el guion y estima la duración
     render g.json [--previa]    produce el video (--previa: voz local, sin gastar créditos)
+    plan g.json --partes-max 8  voz + línea de tiempo + tramos de render (para CI en paralelo)
+    tramo g.json --parte k      renderiza el tramo k del plan (video sin audio)
+    ensamblar g.json            une los tramos (-c copy), audio y paquete de publicación
     cola agregar|procesar|estado|reintentar
 """
 
@@ -18,7 +21,7 @@ from pathlib import Path
 from . import config as m_config
 from . import entrada, registro
 from .errores import DocumentalError, ErrorConfiguracion
-from .pipeline import Opciones, producir
+from .pipeline import Opciones, cantidad_de_tramos, ensamblar, preparar, producir, renderizar_tramo
 
 log = registro.obtener("cli")
 
@@ -89,6 +92,53 @@ def cmd_render(args, cfg) -> int:
     if r.video.name.endswith(".previa.mp4"):
         print("Es una VISTA PREVIA con marca de agua: no se puede publicar. Quita --previa para la versión final.")
     print(f"Paquete: {r.carpeta} (miniatura.jpg, descripcion.txt, subtitulos.srt, metadatos.json, auditoria.md)")
+    if bloqueos:
+        print(f"ATENCIÓN: {bloqueos} bloqueo(s) de monetización, ver auditoria.md")
+    return 0
+
+
+def _plan_guardado(g, cfg, args):
+    """Rehace el plan con los mismos tramos que fijó `plan` (otra máquina, mismo resultado)."""
+    import json
+
+    ruta = cfg.salida / g.slug / "trabajo" / "plan.json"
+    if not ruta.is_file():
+        raise ErrorConfiguracion(f"No hay plan en {ruta}: ejecuta antes `documental plan`")
+    guardado = json.loads(ruta.read_text(encoding="utf-8"))
+    plan = preparar(g, cfg, _voz(cfg, args.previa, args.voz), _opciones(args), partes=len(guardado["partes"]))
+    if [[t.escena.id for t in plan.tramos[a:b]] for a, b in plan.partes] != [p["escenas"] for p in guardado["partes"]]:
+        raise ErrorConfiguracion("El plan no coincide con el guardado (¿cambió el guion o la voz?): vuelve a ejecutar `plan`")
+    return plan
+
+
+def cmd_plan(args, cfg) -> int:
+    import json
+
+    g = entrada.cargar(Path(args.guion))
+    # Primero con un tramo para conocer la duración real (la voz queda en caché).
+    total = preparar(g, cfg, _voz(cfg, args.previa, args.voz), _opciones(args), partes=1).total
+    n = cantidad_de_tramos(total, args.partes_max, args.segundos_por_parte)
+    plan = preparar(g, cfg, _voz(cfg, args.previa, args.voz), _opciones(args), partes=n)
+    resumen = {"slug": g.slug, "duracion": round(plan.total, 2), "partes": list(range(len(plan.partes)))}
+    print(json.dumps(resumen, ensure_ascii=False))
+    if args.salida_json:
+        Path(args.salida_json).write_text(json.dumps(resumen, ensure_ascii=False), encoding="utf-8")
+    return 0
+
+
+def cmd_tramo(args, cfg) -> int:
+    g = entrada.cargar(Path(args.guion))
+    plan = _plan_guardado(g, cfg, args)
+    print(renderizar_tramo(g, cfg, plan, args.parte, _opciones(args)))
+    return 0
+
+
+def cmd_ensamblar(args, cfg) -> int:
+    g = entrada.cargar(Path(args.guion))
+    plan = _plan_guardado(g, cfg, args)
+    r = ensamblar(g, cfg, plan, _opciones(args))
+    print(f"\nVideo: {r.video}  ({r.duracion / 60:.1f} min)")
+    bloqueos = sum(1 for h in r.hallazgos if h.nivel == "bloqueo")
     if bloqueos:
         print(f"ATENCIÓN: {bloqueos} bloqueo(s) de monetización, ver auditoria.md")
     return 0
@@ -187,6 +237,25 @@ def construir_parser() -> argparse.ArgumentParser:
     sp.add_argument("guion")
     flags_render(sp)
     sp.set_defaults(fn=cmd_render)
+
+    sp = sub.add_parser("plan", help="voz, línea de tiempo y tramos de render (CI en paralelo)")
+    sp.add_argument("guion")
+    sp.add_argument("--partes-max", type=int, default=8, help="tramos como máximo (jobs en paralelo)")
+    sp.add_argument("--segundos-por-parte", type=float, default=180.0, help="duración objetivo de cada tramo")
+    sp.add_argument("--salida-json", help="escribe aquí el resumen (slug, duración, índices de tramo)")
+    flags_render(sp)
+    sp.set_defaults(fn=cmd_plan)
+
+    sp = sub.add_parser("tramo", help="renderiza un tramo del plan")
+    sp.add_argument("guion")
+    sp.add_argument("--parte", type=int, required=True)
+    flags_render(sp)
+    sp.set_defaults(fn=cmd_tramo)
+
+    sp = sub.add_parser("ensamblar", help="une los tramos y arma el paquete de publicación")
+    sp.add_argument("guion")
+    flags_render(sp)
+    sp.set_defaults(fn=cmd_ensamblar)
 
     sp = sub.add_parser("cola", help="cola de trabajos en disco")
     sp.add_argument("accion", choices=["agregar", "procesar", "estado", "reintentar"])

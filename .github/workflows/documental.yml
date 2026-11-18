@@ -50,39 +50,119 @@ jobs:
       - uses: actions/checkout@v4
       - run: python -m pytest -q -rs
 
-  render:
-    name: render del documental (Kokoro + Remotion)
+  # Voz (Kokoro) de todas las escenas, línea de tiempo y reparto en tramos.
+  plan:
+    name: voz y plan de tramos
     needs: [imagen, pruebas]
     runs-on: ubuntu-24.04
-    timeout-minutes: 150
-    container:
+    timeout-minutes: 60
+    container: &contenedor
       image: ${{ needs.imagen.outputs.imagen }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-    env:
+    env: &entorno
       GUION: ${{ github.event.inputs.guion || 'ejemplos/ia-sin-electricidad.json' }}
-      # Sin DOCUMENTAL_SALIDA: en un job con contenedor, github.workspace es la
-      # ruta del host, no la montada; la salida por defecto ya es documental/salidas.
       # Kokoro habla ~160 palabras/min; a 0,95 queda en el ritmo pausado de un
       # documental (~150/min), el que usa la estimación de duración del guion.
       DOCUMENTAL_KOKORO_VELOCIDAD: "0.95"
       # En los PR se exige que la muestra llegue a 15 min; a mano, lo que se pida.
       MINUTOS: ${{ github.event_name == 'pull_request' && '15' || github.event.inputs.minutos || '0' }}
+      # Sin DOCUMENTAL_SALIDA: en un job con contenedor, github.workspace es la
+      # ruta del host, no la montada; la salida por defecto ya es documental/salidas.
+    outputs:
+      slug: ${{ steps.plan.outputs.slug }}
+      partes: ${{ steps.plan.outputs.partes }}
     steps:
       - uses: actions/checkout@v4
-      - name: Remotion (node_modules de la imagen)
-        working-directory: .
-        run: enlazar-node-modules documental/remotion documental
-      - name: Configuración de CI (archivo más liviano)
+      - &config
+        name: Configuración de CI (archivo más liviano)
         # Mismo canal.toml, con compresión algo mayor: el artefacto de 15 min
         # debe poder descargarse sin esperar gigas.
         run: |
           sed -e 's/^crf = 18 /crf = 23 /' -e 's/^preset = "medium"/preset = "veryfast"/' config/canal.toml > "$RUNNER_TEMP/canal-ci.toml"
           grep -E '^(crf|preset)' "$RUNNER_TEMP/canal-ci.toml"
       - run: python -m documental validar "$GUION"
-      - name: Render
-        run: python -m documental --config "$RUNNER_TEMP/canal-ci.toml" render "$GUION" --voz kokoro --sin-stock --estricto
+      - name: Voz y plan
+        id: plan
+        run: |
+          python -m documental --config "$RUNNER_TEMP/canal-ci.toml" plan "$GUION" --voz kokoro --sin-stock --estricto \
+            --partes-max 8 --segundos-por-parte 180 --salida-json "$RUNNER_TEMP/plan.json"
+          python - <<'PY2' >> "$GITHUB_OUTPUT"
+          import json, os
+          p = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "plan.json"), encoding="utf-8"))
+          print(f"slug={p['slug']}")
+          print(f"partes={json.dumps(p['partes'])}")
+          PY2
+      - name: Voz y plan (para los tramos)
+        uses: actions/upload-artifact@v4
+        with:
+          name: trabajo-plan-${{ github.run_id }}
+          path: |
+            documental/salidas/*/trabajo/voz/
+            documental/salidas/*/trabajo/plan.json
+          retention-days: 1
+          if-no-files-found: error
+
+  # Un job por tramo (~3 min de video cada uno): visuales de Remotion,
+  # fundidos y subtítulos. Corren en paralelo.
+  tramo:
+    name: tramo ${{ matrix.parte }}
+    needs: [imagen, plan]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: true
+      matrix:
+        parte: ${{ fromJSON(needs.plan.outputs.partes) }}
+    container: *contenedor
+    env: *entorno
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remotion (node_modules de la imagen)
+        working-directory: .
+        run: enlazar-node-modules documental/remotion documental
+      - *config
+      - uses: actions/download-artifact@v4
+        with:
+          name: trabajo-plan-${{ github.run_id }}
+          # La raíz del artefacto es trabajo/ (ancestro común de lo subido).
+          path: documental/salidas/${{ needs.plan.outputs.slug }}/trabajo
+      - name: Render del tramo
+        run: python -m documental --config "$RUNNER_TEMP/canal-ci.toml" tramo "$GUION" --parte ${{ matrix.parte }} --voz kokoro --sin-stock --estricto
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trabajo-tramo-${{ matrix.parte }}-${{ github.run_id }}
+          path: |
+            documental/salidas/*/trabajo/partes/parte_*.mp4
+            documental/salidas/*/trabajo/visual/*.json
+          retention-days: 1
+          if-no-files-found: error
+
+  # Une los tramos sin recodificar el video (-c copy), codifica el audio una
+  # sola vez y arma el paquete de publicación.
+  ensamblar:
+    name: ensamblar el documental
+    needs: [imagen, plan, tramo]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    container: *contenedor
+    env: *entorno
+    steps:
+      - uses: actions/checkout@v4
+      - *config
+      - uses: actions/download-artifact@v4
+        with:
+          name: trabajo-plan-${{ github.run_id }}
+          # La raíz del artefacto es trabajo/ (ancestro común de lo subido).
+          path: documental/salidas/${{ needs.plan.outputs.slug }}/trabajo
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: trabajo-tramo-*-${{ github.run_id }}
+          path: documental/salidas/${{ needs.plan.outputs.slug }}/trabajo
+          merge-multiple: true
+      - name: Ensamblar
+        run: python -m documental --config "$RUNNER_TEMP/canal-ci.toml" ensamblar "$GUION" --voz kokoro --sin-stock --estricto
       - name: Comprobar la duración
         run: |
           python - <<'PY'

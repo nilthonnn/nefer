@@ -84,3 +84,76 @@ def exportar(video: Path, audio: Path, salida: Path, cfg: Config, subtitulos_ass
     ffmpeg(argumentos, "exportar MP4 final", cwd=carpeta)
     duracion = verificar(video, video=True).duracion
     verificar(salida, duracion=duracion, video=True, audio=True, tolerancia=0.3)
+
+
+# --- Render por tramos ---------------------------------------------------------
+#
+# Un documental largo se divide en tramos contiguos de escenas que se
+# renderizan en paralelo (un job de CI por tramo). Cada tramo sale con los
+# MISMOS parámetros de codificación y el número exacto de fotogramas que le
+# toca en la línea de tiempo global, así se unen con ``-c copy`` (sin volver
+# a codificar el video). El audio no se corta: se codifica una sola vez sobre
+# el video unido; cortar AAC en tramos deja chasquidos en cada unión.
+
+
+def _codificacion_video(cfg: Config) -> list[str]:
+    v = cfg.video
+    return [
+        "-c:v", "libx264", "-preset", v.preset, "-crf", str(v.crf), "-profile:v", "high",
+        "-pix_fmt", "yuv420p", "-r", str(v.fps), "-g", str(v.fps // 2), "-bf", "2",
+    ]
+
+
+def exportar_tramo(video: Path, salida: Path, cfg: Config, inicio_global: float, fotogramas: int,
+                   subtitulos_ass: Path | None = None, marca: str = "") -> None:
+    """Codifica un tramo (solo video) listo para unirse con ``-c copy``.
+
+    Los subtítulos se queman con la línea de tiempo GLOBAL: se adelantan los
+    tiempos del tramo a su posición real, se aplica el ASS completo y se
+    devuelven a cero. Así cada tramo muestra exactamente lo que mostraría el
+    render de una sola pieza, incluidas las frases que cruzan la unión.
+    """
+    if fotogramas < 1:
+        raise ValueError("un tramo necesita al menos un fotograma")
+    v = cfg.video
+    filtros: list[str] = []
+    carpeta = None
+    if subtitulos_ass is not None:
+        carpeta = subtitulos_ass.parent
+        filtros += [f"setpts=PTS+{inicio_global:.6f}/TB", f"ass={subtitulos_ass.name}", f"setpts=PTS-{inicio_global:.6f}/TB"]
+    if marca:
+        from ..visuales.tarjetas import ruta_fuente
+
+        texto = marca.replace(":", " ").replace("'", " ")
+        filtros.append(
+            f"drawtext=fontfile='{ruta_fuente()}':text='{texto}':fontsize={int(v.alto * 0.045)}"
+            f":fontcolor=white@0.55:box=1:boxcolor=red@0.45:boxborderw=18:x=(w-text_w)/2:y=h*0.05"
+        )
+    # Si al tramo le falta medio fotograma por redondeo, se repite el último.
+    filtros.append("tpad=stop_mode=clone:stop_duration=1")
+    ffmpeg(
+        ["-i", str(video.resolve()), "-vf", ",".join(filtros), "-an", *_codificacion_video(cfg),
+         "-frames:v", str(fotogramas), str(salida.resolve())],
+        f"exportar tramo ({fotogramas} fotogramas)", cwd=carpeta,
+    )
+    verificar(salida, duracion=fotogramas / v.fps, video=True, tolerancia=1.5 / v.fps + 0.02)
+
+
+def unir_tramos(tramos: list[Path], audio: Path, salida: Path, duracion: float) -> None:
+    """Une los tramos sin recodificar el video y añade el audio (AAC, una sola pasada)."""
+    if not tramos:
+        raise ValueError("no hay tramos que unir")
+    lista = salida.with_suffix(".tramos.txt")
+    lista.write_text("".join(f"file '{t.resolve()}'\n" for t in tramos), encoding="utf-8")
+    mudo = salida.with_suffix(".mudo.mp4")
+    try:
+        ffmpeg(["-f", "concat", "-safe", "0", "-i", str(lista), "-c", "copy", str(mudo)], f"unir {len(tramos)} tramos (-c copy)")
+        ffmpeg(
+            ["-i", str(mudo), "-i", str(audio.resolve()), "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
+             "-c:a", "aac", "-b:a", "384k", "-ar", "48000", "-movflags", "+faststart", "-shortest", str(salida.resolve())],
+            "añadir audio al video unido",
+        )
+    finally:
+        lista.unlink(missing_ok=True)
+        mudo.unlink(missing_ok=True)
+    verificar(salida, duracion=duracion, video=True, audio=True, tolerancia=0.3)

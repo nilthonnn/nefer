@@ -161,15 +161,20 @@ def linea_de_tiempo(escenas: list[tuple[str, Escena]], voces: dict[str, Locucion
 # --- Etapa 3: visuales -------------------------------------------------------------
 
 
-def _visuales(tramos: list[Tramo], selector: Selector, carpeta: Path, cfg: Config) -> dict[str, ClipEscena]:
+def _visuales(tramos: list[Tramo], selector: Selector, carpeta: Path, cfg: Config,
+              rango: tuple[int, int] | None = None) -> dict[str, ClipEscena]:
+    """Clips de las escenas ``tramos[desde:hasta]`` (todas si no hay rango)."""
     carpeta.mkdir(parents=True, exist_ok=True)
     T = cfg.video.transicion_segundos
+    desde, hasta = rango or (0, len(tramos))
     clips: dict[str, ClipEscena] = {}
-    for i, tramo in enumerate(tramos):
+    for i in range(desde, hasta):
+        tramo = tramos[i]
         escena = tramo.escena
         slog = de_escena(log, escena.id)
-        # Todas menos la última duran T de más: es el solape del fundido.
-        duracion = round(tramo.duracion + (T if i + 1 < len(tramos) else 0.0), 3)
+        # Todas menos la última DEL TRAMO duran T de más: es el solape del
+        # fundido. Entre tramos el corte es seco (se unen sin recodificar).
+        duracion = round(tramo.duracion + (T if i + 1 < hasta else 0.0), 3)
         clave = _clave(VERSION_VISUALES, asdict(escena.visual), escena.narracion if escena.visual.tipo == "stock" else "",
                        duracion, asdict(cfg.video))
         destino = carpeta / f"{escena.id}.mp4"
@@ -197,92 +202,220 @@ def _visuales(tramos: list[Tramo], selector: Selector, carpeta: Path, cfg: Confi
 
 
 # --- Orquestación ------------------------------------------------------------------
+#
+# Tres etapas que también pueden correr en máquinas distintas (CI en paralelo):
+#   preparar  → auditoría del guion, voz de cada escena, línea de tiempo y tramos
+#   tramo k   → visuales de sus escenas, fundidos, subtítulos → parte_k.mp4
+#   ensamblar → audio, unión de tramos con -c copy, paquete de publicación
+# ``producir`` las encadena en una sola máquina. Todo lo intermedio queda en
+# ``trabajo/`` con claves de contenido: otra etapa (u otro job) lo reutiliza.
+
+SEGUNDOS_POR_TRAMO = 180.0  # con 30 fps, 5400 fotogramas por job de CI
 
 
-def producir(guion: Guion, cfg: Config, voz: ProveedorVoz, opciones: Opciones | None = None) -> Resultado:
-    """Produce el video completo y su paquete de publicación."""
+@dataclass
+class Plan:
+    carpeta: Path
+    trabajo: Path
+    tramos: list[Tramo]
+    total: float
+    hallazgos: list[Hallazgo]
+    licencia: tuple[bool | None, str]
+    previa: bool
+    partes: list[tuple[int, int]]
+
+
+def partir(tramos: list[Tramo], cantidad: int) -> list[tuple[int, int]]:
+    """Divide las escenas en ``cantidad`` tramos contiguos de duración parecida.
+
+    Cada corte cae en el inicio de escena más cercano al ideal, prefiriendo
+    el inicio de un capítulo si está a menos de un 25 % del tramo de
+    distancia: ahí el corte seco entre tramos no se nota.
+    """
+    n = len(tramos)
+    cantidad = max(1, min(cantidad, n))
+    if cantidad == 1:
+        return [(0, n)]
+    total = tramos[-1].inicio + tramos[-1].duracion
+    largo = total / cantidad
+    cortes: list[int] = []
+    for j in range(1, cantidad):
+        ideal = j * largo
+        minimo = (cortes[-1] if cortes else 0) + 1
+        maximo = n - (cantidad - j)
+        candidatos = range(minimo, maximo + 1)
+        capitulos = [i for i in candidatos
+                     if tramos[i].capitulo != tramos[i - 1].capitulo and abs(tramos[i].inicio - ideal) <= 0.25 * largo]
+        opciones = capitulos or list(candidatos)
+        cortes.append(min(opciones, key=lambda i: abs(tramos[i].inicio - ideal)))
+    limites = [0, *cortes, n]
+    return [(limites[k], limites[k + 1]) for k in range(cantidad)]
+
+
+def cantidad_de_tramos(total: float, maximo: int, segundos: float = SEGUNDOS_POR_TRAMO) -> int:
+    return max(1, min(maximo, -(-int(total) // max(1, int(segundos)))))
+
+
+def preparar(guion: Guion, cfg: Config, voz: ProveedorVoz, opciones: Opciones | None = None,
+             partes: int = 1) -> Plan:
+    """Auditoría del guion, voz y línea de tiempo. ``partes`` = tramos de render."""
     opciones = opciones or Opciones()
     exigir_herramientas("ffmpeg", "ffprobe")
     carpeta = cfg.salida / guion.slug
     trabajo = carpeta / "trabajo"
     trabajo.mkdir(parents=True, exist_ok=True)
-    manejador = a_archivo(carpeta / "render.log.jsonl")
     historial = leer_registro(cfg.salida / "registro.jsonl")
+
+    # Auditoría del guion y de la licencia de la voz, antes de gastar nada.
+    licencia = voz.licencia()
+    previa = licencia[0] is False
+    hallazgos = auditar_guion(guion, historial, cfg)
+    if opciones.estricto:
+        bloqueos = [h.mensaje for h in hallazgos if h.nivel == "bloqueo"]
+        if licencia[0] is False and not previa_permitida(voz):
+            bloqueos.append(f"voz sin licencia comercial: {licencia[1]}")
+        if bloqueos:
+            (carpeta / "auditoria.md").write_text(informe(hallazgos), encoding="utf-8")
+            raise ErrorMonetizacion("guion no monetizable, no se sintetiza la voz:\n- " + "\n- ".join(bloqueos))
+    log.info("voz: %s", licencia[1] or voz.nombre)
+
+    escenas = secuencia(guion, cfg)
+    voces = _voz(escenas, voz, trabajo / "voz", cfg)
+    tramos = linea_de_tiempo(escenas, voces, cfg)
+    total = tramos[-1].inicio + tramos[-1].duracion
+    division = partir(tramos, partes)
+    log.info("duración: %.1f min en %d escenas, %d tramo(s) de render", total / 60, len(tramos), len(division))
+    (trabajo / "plan.json").write_text(json.dumps({
+        "slug": guion.slug, "duracion": total, "escenas": len(tramos),
+        "partes": [{"desde": a, "hasta": b, "escenas": [t.escena.id for t in tramos[a:b]]} for a, b in division],
+    }, ensure_ascii=False, indent=2), encoding="utf-8")
+    return Plan(carpeta, trabajo, tramos, total, hallazgos, licencia, previa, division)
+
+
+def _selector(guion: Guion, cfg: Config, plan: Plan, opciones: Opciones) -> tuple[Selector, dict]:
     ruta_stock = cfg.salida / "stock_usados.jsonl"
+    stock_otros = stock_de_otros_videos(ruta_stock, guion.slug) if cfg.monetizacion.stock_unico_en_canal else {}
+    return Selector(cfg, plan.trabajo / "stock", opciones.usar_remotion, opciones.usar_stock, set(stock_otros)), stock_otros
+
+
+def _palabras_globales(tramos: list[Tramo]) -> list[Palabra]:
+    return [Palabra(p.texto, round(t.inicio + p.inicio, 3), round(t.inicio + p.fin, 3))
+            for t in tramos if t.escena.visual.tipo != "final" for p in t.locucion.palabras]
+
+
+def _ruta_tramo(plan: Plan, k: int) -> Path:
+    return plan.trabajo / "partes" / f"parte_{k:02d}.mp4"
+
+
+def renderizar_tramo(guion: Guion, cfg: Config, plan: Plan, k: int, opciones: Opciones | None = None) -> Path:
+    """Visuales, fundidos y subtítulos de las escenas del tramo ``k`` → video sin audio."""
+    opciones = opciones or Opciones()
+    if not 0 <= k < len(plan.partes):
+        raise ValueError(f"tramo {k} fuera de rango (hay {len(plan.partes)})")
+    desde, hasta = plan.partes[k]
+    selector, _ = _selector(guion, cfg, plan, opciones)
+    clips = _visuales(plan.tramos, selector, plan.trabajo / "visual", cfg, (desde, hasta))
+    propios = plan.tramos[desde:hasta]
+
+    ass = plan.trabajo / "subtitulos.ass"
+    if cfg.subtitulos.quemados and not ass.is_file():
+        ass.write_text(subtitulos.a_ass(_palabras_globales(plan.tramos), cfg), encoding="utf-8")
+
+    fps = cfg.video.fps
+    inicio = propios[0].inicio
+    fin = propios[-1].inicio + propios[-1].duracion
+    fotogramas = round(fin * fps) - round(inicio * fps)
+    destino = _ruta_tramo(plan, k)
+    destino.parent.mkdir(parents=True, exist_ok=True)
+    mudo = destino.with_suffix(".mudo.mp4")
+    montaje.encadenar([clips[t.escena.id].ruta for t in propios], [t.duracion for t in propios], mudo, cfg)
+    montaje.exportar_tramo(mudo, destino, cfg, round(inicio * fps) / fps, fotogramas,
+                           ass if cfg.subtitulos.quemados else None,
+                           marca="VISTA PREVIA - NO PUBLICAR" if plan.previa else "")
+    mudo.unlink(missing_ok=True)
+    log.info("tramo %d/%d listo: escenas %d-%d, %d fotogramas", k + 1, len(plan.partes), desde + 1, hasta, fotogramas)
+    return destino
+
+
+def _clips_guardados(plan: Plan) -> tuple[dict[str, ClipEscena], dict[str, str]]:
+    """Metadatos de los clips que dejaron los tramos (pueden venir de otros jobs)."""
+    clips: dict[str, ClipEscena] = {}
+    respaldos: dict[str, str] = {}
+    for t in plan.tramos:
+        meta = plan.trabajo / "visual" / f"{t.escena.id}.json"
+        if not meta.is_file():
+            raise ErrorMonetizacion(f"falta el visual de la escena {t.escena.id}: ¿se renderizaron todos los tramos?")
+        datos = json.loads(meta.read_text(encoding="utf-8"))
+        clips[t.escena.id] = ClipEscena(plan.trabajo / "visual" / f"{t.escena.id}.mp4", datos["propio"],
+                                        [Atribucion(**a) for a in datos["atribuciones"]], datos["ids_stock"])
+        if datos.get("respaldo"):
+            respaldos[t.escena.id] = datos["respaldo"]
+    return clips, respaldos
+
+
+def ensamblar(guion: Guion, cfg: Config, plan: Plan, opciones: Opciones | None = None) -> Resultado:
+    """Audio, unión de los tramos (-c copy) y paquete de publicación."""
+    opciones = opciones or Opciones()
+    tramos, trabajo, carpeta, total = plan.tramos, plan.trabajo, plan.carpeta, plan.total
+    partes = [_ruta_tramo(plan, k) for k in range(len(plan.partes))]
+    faltan = [p.name for p in partes if not p.is_file()]
+    if faltan:
+        raise ErrorMonetizacion("faltan tramos de video: " + ", ".join(faltan))
+    clips, respaldos = _clips_guardados(plan)
+    for t in tramos:
+        t.clip = clips[t.escena.id]
+
+    _, stock_otros = _selector(guion, cfg, plan, opciones)
+    hallazgos = plan.hallazgos + auditar_render(guion, tramos, clips, respaldos, plan.licencia, stock_otros, cfg)
+    (carpeta / "auditoria.md").write_text(informe(hallazgos), encoding="utf-8")
+    for h in hallazgos:
+        (log.warning if h.nivel == "bloqueo" else log.info)("auditoría %s: %s", h.nivel, h.mensaje)
+    if opciones.estricto and any(h.nivel == "bloqueo" and h.fase == "render" for h in hallazgos if not plan.previa):
+        raise ErrorMonetizacion(f"bloqueos de monetización en el render; ver {carpeta / 'auditoria.md'}")
+
+    # Audio
+    voz_unida = trabajo / "voz.wav"
+    m_audio.unir_voz([(t.locucion.audio, t.duracion) for t in tramos], voz_unida)
+    pista = m_audio.elegir_musica(cfg.carpeta_musica, guion.slug)
+    if pista is None:
+        log.warning("sin música de fondo (pon pistas con licencia en %s)", cfg.carpeta_musica)
+    audio_final = trabajo / "audio.wav"
+    m_audio.mezclar(voz_unida, pista, audio_final, total, cfg)
+    (carpeta / "subtitulos.srt").write_text(subtitulos.a_srt(_palabras_globales(tramos)), encoding="utf-8")
+
+    # Video: una vista previa lleva marca de agua y otro nombre de archivo, así
+    # es imposible subirla por error creyendo que es la versión final.
+    video = carpeta / (f"{guion.slug}.previa.mp4" if plan.previa else f"{guion.slug}.mp4")
+    montaje.unir_tramos(partes, audio_final, video, total)
+
+    # Publicación
+    fotograma = _fotograma_miniatura(tramos, trabajo)
+    miniatura(guion.miniatura or guion.titulo, fotograma, carpeta / "miniatura.jpg", cfg)
+    atribuciones = [a for t in tramos for a in clips[t.escena.id].atribuciones]
+    escribir_paquete(carpeta, guion, tramos, atribuciones, m_audio.creditos_musica(pista), sintetica=True, previa=plan.previa)
+    registrar(cfg.salida / "registro.jsonl", guion, total, previa=plan.previa)
+    registrar_stock(cfg.salida / "stock_usados.jsonl", guion.slug, [i for c in clips.values() for i in c.ids_stock])
+    return Resultado(carpeta=carpeta, video=video, duracion=total, hallazgos=hallazgos)
+
+
+def producir(guion: Guion, cfg: Config, voz: ProveedorVoz, opciones: Opciones | None = None) -> Resultado:
+    """Produce el video completo y su paquete de publicación en esta máquina (un solo tramo)."""
+    opciones = opciones or Opciones()
+    carpeta = cfg.salida / guion.slug
+    carpeta.mkdir(parents=True, exist_ok=True)
+    manejador = a_archivo(carpeta / "render.log.jsonl")
     t0 = time.monotonic()
     try:
         log.info("«%s» → %s", guion.titulo, carpeta)
-
-        # 0. Auditoría del guion y de la licencia de la voz, antes de gastar nada.
-        licencia = voz.licencia()
-        previa = licencia[0] is False
-        hallazgos = auditar_guion(guion, historial, cfg)
-        if opciones.estricto:
-            bloqueos = [h.mensaje for h in hallazgos if h.nivel == "bloqueo"]
-            if licencia[0] is False and not previa_permitida(voz):
-                bloqueos.append(f"voz sin licencia comercial: {licencia[1]}")
-            if bloqueos:
-                (carpeta / "auditoria.md").write_text(informe(hallazgos), encoding="utf-8")
-                raise ErrorMonetizacion("guion no monetizable, no se sintetiza la voz:\n- " + "\n- ".join(bloqueos))
-        log.info("voz: %s", licencia[1] or voz.nombre)
-
-        escenas = secuencia(guion, cfg)
-        voces = _voz(escenas, voz, trabajo / "voz", cfg)
-        tramos = linea_de_tiempo(escenas, voces, cfg)
-        total = tramos[-1].inicio + tramos[-1].duracion
-        log.info("duración: %.1f min en %d escenas", total / 60, len(tramos))
-
-        stock_otros = stock_de_otros_videos(ruta_stock, guion.slug) if cfg.monetizacion.stock_unico_en_canal else {}
-        selector = Selector(cfg, trabajo / "stock", opciones.usar_remotion, opciones.usar_stock, set(stock_otros))
-        clips = _visuales(tramos, selector, trabajo / "visual", cfg)
-        for t in tramos:
-            t.clip = clips[t.escena.id]
-
-        hallazgos += auditar_render(guion, tramos, clips, selector.respaldos, licencia, stock_otros, cfg)
-        (carpeta / "auditoria.md").write_text(informe(hallazgos), encoding="utf-8")
-        for h in hallazgos:
-            (log.warning if h.nivel == "bloqueo" else log.info)("auditoría %s: %s", h.nivel, h.mensaje)
-        if opciones.estricto and any(h.nivel == "bloqueo" and h.fase == "render" for h in hallazgos if not previa):
-            raise ErrorMonetizacion(f"bloqueos de monetización en el render; ver {carpeta / 'auditoria.md'}")
-
-        # Audio
-        voz_unida = trabajo / "voz.wav"
-        m_audio.unir_voz([(t.locucion.audio, t.duracion) for t in tramos], voz_unida)
-        pista = m_audio.elegir_musica(cfg.carpeta_musica, guion.slug)
-        if pista is None:
-            log.warning("sin música de fondo (pon pistas con licencia en %s)", cfg.carpeta_musica)
-        audio_final = trabajo / "audio.wav"
-        m_audio.mezclar(voz_unida, pista, audio_final, total, cfg)
-
-        # Subtítulos con tiempo global
-        palabras = [Palabra(p.texto, round(t.inicio + p.inicio, 3), round(t.inicio + p.fin, 3))
-                    for t in tramos if t.escena.visual.tipo != "final" for p in t.locucion.palabras]
-        ass = trabajo / "subtitulos.ass"
-        ass.write_text(subtitulos.a_ass(palabras, cfg), encoding="utf-8")
-        (carpeta / "subtitulos.srt").write_text(subtitulos.a_srt(palabras), encoding="utf-8")
-
-        # Video. Una vista previa lleva marca de agua y otro nombre de archivo:
-        # así es imposible subirla por error creyendo que es la versión final.
-        mudo = trabajo / "video_mudo.mp4"
-        montaje.encadenar([clips[t.escena.id].ruta for t in tramos], [t.duracion for t in tramos], mudo, cfg)
-        video = carpeta / (f"{guion.slug}.previa.mp4" if previa else f"{guion.slug}.mp4")
-        montaje.exportar(mudo, audio_final, video, cfg, ass if cfg.subtitulos.quemados else None,
-                         marca="VISTA PREVIA - NO PUBLICAR" if previa else "")
-
-        # Publicación
-        fotograma = _fotograma_miniatura(tramos, trabajo)
-        miniatura(guion.miniatura or guion.titulo, fotograma, carpeta / "miniatura.jpg", cfg)
-        atribuciones = [a for t in tramos for a in clips[t.escena.id].atribuciones]
-        escribir_paquete(carpeta, guion, tramos, atribuciones, m_audio.creditos_musica(pista), sintetica=True, previa=previa)
-        registrar(cfg.salida / "registro.jsonl", guion, total, previa=previa)
-        registrar_stock(ruta_stock, guion.slug, [i for c in clips.values() for i in c.ids_stock])
-
-        log.info("listo en %.0f s: %s", time.monotonic() - t0, video)
-        return Resultado(carpeta=carpeta, video=video, duracion=total, hallazgos=hallazgos)
+        plan = preparar(guion, cfg, voz, opciones, partes=1)
+        renderizar_tramo(guion, cfg, plan, 0, opciones)
+        r = ensamblar(guion, cfg, plan, opciones)
+        log.info("listo en %.0f s: %s", time.monotonic() - t0, r.video)
+        return r
     except ErrorMonetizacion:
         raise
     except Exception:
-        log.exception("el render falló; los intermedios quedan en %s para reanudar", trabajo)
+        log.exception("el render falló; los intermedios quedan en %s para reanudar", carpeta / "trabajo")
         raise
     finally:
         quitar(manejador)
@@ -296,7 +429,7 @@ def previa_permitida(voz: ProveedorVoz) -> bool:
 def _fotograma_miniatura(tramos: list[Tramo], trabajo: Path) -> Path | None:
     """Toma un fotograma del primer clip de stock (suele ser el más llamativo)."""
     for t in tramos:
-        if t.clip is not None and not t.clip.propio:
+        if t.clip is not None and not t.clip.propio and t.clip.ruta.is_file():
             salida = trabajo / "fotograma.jpg"
             try:
                 ffmpeg(["-ss", f"{t.duracion / 2:.2f}", "-i", str(t.clip.ruta), "-frames:v", "1", "-q:v", "2", str(salida)], "fotograma miniatura")
