@@ -32,7 +32,7 @@ jobs:
   pruebas:
     name: pruebas (documental)
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -41,15 +41,17 @@ jobs:
           cache: pip
           cache-dependency-path: documental/pyproject.toml
       - name: Binarios del sistema
-        # Un espejo de apt lento colgó este paso hasta el límite del job:
-        # cada intento tiene su propio tope y se reintenta.
-        timeout-minutes: 8
+        # El espejo de apt del runner (ec2) bajaba a pocos kB/s: se usa el
+        # archivo oficial de Ubuntu, sin paquetes recomendados, con topes.
+        timeout-minutes: 15
         run: |
+          sudo sed -i -E 's#https?://[a-z0-9.-]*\.ec2\.archive\.ubuntu\.com#http://archive.ubuntu.com#' /etc/apt/sources.list.d/ubuntu.sources || true
+          APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=20"
           for i in 1 2 3; do
-            sudo timeout 120 apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 update -q && break
+            sudo timeout 120 apt-get $APT update -q && break
             echo "::warning::apt-get update falló (intento $i); reintento"; sleep 5
           done
-          sudo timeout 300 apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 install -y -q ffmpeg espeak-ng
+          sudo timeout 720 apt-get $APT install -y -q --no-install-recommends ffmpeg espeak-ng
       - run: pip install -e ".[dev]"
       - run: python -m pytest -q -rs
 
@@ -80,15 +82,16 @@ jobs:
           cache: npm
           cache-dependency-path: documental/remotion/package-lock.json
       - name: Binarios y tipografías
-        timeout-minutes: 10
+        timeout-minutes: 18
         run: |
+          sudo sed -i -E 's#https?://[a-z0-9.-]*\.ec2\.archive\.ubuntu\.com#http://archive.ubuntu.com#' /etc/apt/sources.list.d/ubuntu.sources || true
           APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=20"
           for i in 1 2 3; do
             sudo timeout 120 apt-get $APT update -q && break
             echo "::warning::apt-get update falló (intento $i); reintento"; sleep 5
           done
-          sudo timeout 300 apt-get $APT install -y -q ffmpeg espeak-ng
-          sudo timeout 120 apt-get $APT install -y -q fonts-inter || echo "::notice::fonts-inter no disponible; se usa DejaVu"
+          sudo timeout 720 apt-get $APT install -y -q --no-install-recommends ffmpeg espeak-ng
+          sudo timeout 120 apt-get $APT install -y -q --no-install-recommends fonts-inter || echo "::notice::fonts-inter no disponible; se usa DejaVu"
       - name: Dependencias (Kokoro con PyTorch CPU)
         run: |
           pip install -e ".[dev]"
