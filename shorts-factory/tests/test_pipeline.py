@@ -82,3 +82,28 @@ def test_qa_exige_datos_verificables(monkeypatch, cfg, serie, tendencia, tmp_pat
     base.artefactos["serie_origen"] = "worldbank"
     salida = p.qa(base)
     assert salida["publicable"] is True and salida["motivos_no_publicable"] == []
+
+
+def test_publicar_usa_seo_rapido_y_sube_la_miniatura(monkeypatch, cfg, serie, tendencia, tmp_path):
+    from shortsfactory.models import ResultadoSubida
+    from shortsfactory.publisher import youtube
+
+    capturado, miniaturas = {}, []
+
+    def subir(cfg_, video, meta, yt=None):
+        capturado.update(meta)
+        return ResultadoSubida(video_id="v9", url="https://youtube.com/shorts/v9", privacidad="private",
+                               titulo=meta["snippet"]["title"], unidades_cuota=1600)
+
+    monkeypatch.setattr(youtube, "subir", subir)
+    monkeypatch.setattr(youtube, "subir_miniatura", lambda cfg_, vid, img, yt=None: miniaturas.append((vid, img)) or True)
+    rapido = type("R", (), {"json": lambda self, *a, **k: {
+        "titulo": "Por qué la inflación sigue lejos de 2014", "etiquetas": ["inflación", "precios", "datos"],
+        "gancho": "Un dato que el gráfico deja claro."}})()
+    imagen = tmp_path / "miniatura.jpg"
+    imagen.write_bytes(b"\xff\xd8")
+    p = Pipeline(cfg.model_copy(update={"seo_llm": True}), modelo_rapido=rapido)
+    salida = p.publicar(_registro(serie, tendencia, tmp_path, miniatura=str(imagen)))
+    assert capturado["snippet"]["title"].startswith("Por qué la inflación")
+    assert capturado["snippet"]["tags"][0] == "inflación"
+    assert miniaturas == [("v9", imagen)] and salida["miniatura_subida"] is True

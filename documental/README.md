@@ -116,6 +116,20 @@ python -m documental validar guiones/guerra-corrientes.json
 python -m documental render guiones/guerra-corrientes.json --estricto
 ```
 
+### Por tramos en varias máquinas (lo que hace CI)
+
+```bash
+python -m documental plan g.json --voz kokoro --partes-max 8   # voz + línea de tiempo + tramos (~3 min c/u)
+python -m documental tramo g.json --parte 0 --voz kokoro       # un job por tramo, en paralelo
+python -m documental ensamblar g.json --voz kokoro             # une con -c copy, audio y paquete
+```
+
+Los cortes caen en el inicio de escena más cercano a partes iguales (mejor si
+es un cambio de capítulo). Cada tramo sale con el número exacto de fotogramas
+de su posición y los subtítulos de la línea de tiempo global, así se unen sin
+recodificar el video; el audio se codifica una sola vez sobre el total.
+`render` hace lo mismo con un solo tramo, en una sola máquina.
+
 ### En lote (cola en disco)
 
 ```bash

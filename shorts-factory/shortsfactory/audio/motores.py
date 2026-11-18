@@ -29,6 +29,7 @@ log = obtener("voz")
 class MotorVoz(Protocol):
     nombre: str
     publicable: bool
+    concurrente: bool  # ¿puede sintetizar varias frases a la vez sin compartir estado?
 
     def sintetizar(self, texto: str, destino: Path, velocidad: float) -> tuple[Path, float, list[PalabraT], bool]:
         """Devuelve (wav 48 kHz mono, duración, palabras con tiempo relativo, ¿tiempos exactos?)."""
@@ -42,6 +43,7 @@ def _a_wav48(entrada: Path, salida: Path) -> None:
 class Kokoro:
     nombre = "kokoro"
     publicable = True
+    concurrente = False  # un modelo compartido; PyTorch ya usa todos los núcleos
 
     def __init__(self, voz: str) -> None:
         try:
@@ -88,6 +90,7 @@ class Kokoro:
 class Edge:
     nombre = "edge"
     publicable = True
+    concurrente = True  # cada frase es una petición de red independiente
 
     def __init__(self, voz: str) -> None:
         try:
@@ -126,6 +129,7 @@ class Edge:
 class Espeak:
     nombre = "espeak"
     publicable = False
+    concurrente = True  # un proceso por frase
 
     def __init__(self) -> None:
         if shutil.which("espeak-ng") is None:

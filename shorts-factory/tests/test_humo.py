@@ -47,3 +47,17 @@ def test_humo_renderiza_150_fotogramas(cfg, tmp_path):
     cfg = cfg.model_copy(update={"remotion_browser": NAVEGADOR})
     salida = ejecutar(cfg, tmp_path / "humo.mp4", fotogramas=150)
     assert salida.is_file() and salida.stat().st_size > 0
+
+
+def test_validacion_zod_real_acepta_y_rechaza(cfg, serie):
+    from shortsfactory.visuals import validacion
+
+    if not validacion.disponible(cfg):
+        pytest.skip("node o node_modules de Remotion no disponibles")
+    datos = provisional.props_provisionales("r1", guion_bueno(), serie, variacion.elegir(3, []), 30)
+    assert validacion.validar(cfg, datos) == []
+    datos["segmentos"][1]["hasta"] = datos["segmentos"][1]["desde"]
+    datos["diseno"]["colores"]["texto"] = "rojo"
+    problemas = validacion.validar(cfg, datos)
+    assert any(p.startswith("diseno.colores.texto") for p in problemas)
+    assert any("segmento 1" in p for p in problemas)

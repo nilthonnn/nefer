@@ -2,7 +2,7 @@
 pydantic>=2.7,<3
 pydantic-settings>=2.3,<3
 requests>=2.31,<3
-anthropic>=0.40
+anthropic>=2.3,<3  # output_config (structured outputs) y fallbacks del servidor
 openai>=1.40
 edge-tts>=7.0,<8
 google-api-python-client>=2.130,<3
