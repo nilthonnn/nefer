@@ -23,87 +23,57 @@ concurrency:
 
 permissions:
   contents: read
+  packages: write  # imagen.yml publica la imagen en GHCR si aún no existe
 
 defaults:
   run:
     working-directory: documental
 
 jobs:
+  # Imagen con Python, Kokoro (pesos incluidos), Node, Remotion, Chromium y
+  # FFmpeg. Nada se instala con apt en los jobs: el espejo de Ubuntu del
+  # runner llegó a bajar a pocos kB/s y la instalación de ffmpeg no terminaba.
+  imagen:
+    uses: ./.github/workflows/imagen.yml
+
   pruebas:
     name: pruebas (documental)
+    needs: imagen
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 10
+    container:
+      image: ${{ needs.imagen.outputs.imagen }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: documental/pyproject.toml
-      - name: Binarios del sistema
-        # El espejo de apt del runner (ec2) bajaba a pocos kB/s: se usa el
-        # archivo oficial de Ubuntu, sin paquetes recomendados, con topes.
-        timeout-minutes: 15
-        run: |
-          sudo sed -i -E 's#https?://[a-z0-9.-]*\.ec2\.archive\.ubuntu\.com#http://archive.ubuntu.com#' /etc/apt/sources.list.d/ubuntu.sources || true
-          APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=20"
-          for i in 1 2 3; do
-            sudo timeout 120 apt-get $APT update -q && break
-            echo "::warning::apt-get update falló (intento $i); reintento"; sleep 5
-          done
-          sudo timeout 720 apt-get $APT install -y -q --no-install-recommends ffmpeg espeak-ng
-      - run: pip install -e ".[dev]"
       - run: python -m pytest -q -rs
 
   render:
     name: render del documental (Kokoro + Remotion)
-    needs: pruebas
+    needs: [imagen, pruebas]
     runs-on: ubuntu-24.04
     timeout-minutes: 150
+    container:
+      image: ${{ needs.imagen.outputs.imagen }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     env:
       GUION: ${{ github.event.inputs.guion || 'ejemplos/ia-sin-electricidad.json' }}
-      DOCUMENTAL_SALIDA: ${{ github.workspace }}/documental/salidas
+      # Sin DOCUMENTAL_SALIDA: en un job con contenedor, github.workspace es la
+      # ruta del host, no la montada; la salida por defecto ya es documental/salidas.
       # Kokoro habla ~160 palabras/min; a 0,95 queda en el ritmo pausado de un
       # documental (~150/min), el que usa la estimación de duración del guion.
       DOCUMENTAL_KOKORO_VELOCIDAD: "0.95"
       # En los PR se exige que la muestra llegue a 15 min; a mano, lo que se pida.
       MINUTOS: ${{ github.event_name == 'pull_request' && '15' || github.event.inputs.minutos || '0' }}
-      HF_HOME: ${{ github.workspace }}/.cache/huggingface
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: documental/pyproject.toml
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: documental/remotion/package-lock.json
-      - name: Binarios y tipografías
-        timeout-minutes: 18
-        run: |
-          sudo sed -i -E 's#https?://[a-z0-9.-]*\.ec2\.archive\.ubuntu\.com#http://archive.ubuntu.com#' /etc/apt/sources.list.d/ubuntu.sources || true
-          APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=20"
-          for i in 1 2 3; do
-            sudo timeout 120 apt-get $APT update -q && break
-            echo "::warning::apt-get update falló (intento $i); reintento"; sleep 5
-          done
-          sudo timeout 720 apt-get $APT install -y -q --no-install-recommends ffmpeg espeak-ng
-          sudo timeout 120 apt-get $APT install -y -q --no-install-recommends fonts-inter || echo "::notice::fonts-inter no disponible; se usa DejaVu"
-      - name: Dependencias (Kokoro con PyTorch CPU)
-        run: |
-          pip install -e ".[dev]"
-          pip install --extra-index-url https://download.pytorch.org/whl/cpu "kokoro>=0.7.16" soundfile
-      - name: Caché del modelo de voz
-        uses: actions/cache@v4
-        with:
-          path: .cache/huggingface
-          key: hf-kokoro-v1
-      - name: Remotion y navegador headless
-        working-directory: documental/remotion
-        run: npm ci && npx remotion browser ensure
+      - name: Remotion (node_modules de la imagen)
+        working-directory: .
+        run: enlazar-node-modules documental/remotion documental
       - name: Configuración de CI (archivo más liviano)
         # Mismo canal.toml, con compresión algo mayor: el artefacto de 15 min
         # debe poder descargarse sin esperar gigas.

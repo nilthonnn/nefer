@@ -1,0 +1,9 @@
+# La imagen de producción (docker/produccion.Dockerfile) solo necesita los
+# manifiestos de dependencias: todo lo demás queda fuera del contexto.
+*
+!docker/
+!shorts-factory/requirements.txt
+!shorts-factory/remotion/package.json
+!shorts-factory/remotion/package-lock.json
+!documental/remotion/package.json
+!documental/remotion/package-lock.json
