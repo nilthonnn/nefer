@@ -1,0 +1,65 @@
+name: shortsfactory-pr
+
+# Comprobaciones rápidas de cada PR de shorts-factory (objetivo: un par de
+# minutos). Todo corre en la imagen de producción, sin instalar nada:
+#   1. TypeScript: tipos + pruebas de lógica pura (lib/geometria.ts) con node.
+#   2. Python: la suite sin red (cuota, validadores, FSM, publicador con dobles…).
+#   3. Render de humo: 150 fotogramas (5 s) de un Short de plantilla con audio
+#      mudo: Remotion compila y las props de Python pasan el Zod de schema.ts.
+# El Short REAL de muestra (Kokoro + Banco Mundial) ya no corre en cada PR:
+# se lanza a mano en shortsfactory-autopilot con modo=muestra.
+on:
+  pull_request:
+    paths:
+      - "shorts-factory/**"
+      - "docker/**"
+      - ".dockerignore"
+      - ".github/workflows/pr-checks.yml"
+      - ".github/workflows/imagen.yml"
+      - ".github/workflows/autopilot.yml"
+
+concurrency:
+  group: shortsfactory-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write  # imagen.yml publica la imagen si aún no existe
+
+jobs:
+  imagen:
+    uses: ./.github/workflows/imagen.yml
+
+  checks:
+    name: pruebas + render de humo
+    needs: imagen
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    container:
+      image: ${{ needs.imagen.outputs.imagen }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        working-directory: shorts-factory
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remotion (node_modules de la imagen)
+        working-directory: .
+        run: enlazar-node-modules shorts-factory/remotion shorts-factory
+      - name: TypeScript (tipos + lógica pura)
+        working-directory: shorts-factory/remotion
+        run: npm test
+      - name: Python (sin red)
+        run: python -m pytest -q -rs
+      - name: Render de humo (150 fotogramas)
+        run: python -m shortsfactory humo --frames 150 --salida runs/humo/humo.mp4
+      - name: Video de humo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: humo-${{ github.run_id }}
+          path: shorts-factory/runs/humo/humo.mp4
+          retention-days: 14
+          if-no-files-found: ignore

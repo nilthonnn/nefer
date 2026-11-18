@@ -8,6 +8,7 @@
     shortsfactory doctor              # binarios, claves y Remotion
     shortsfactory auth                # obtener YOUTUBE_REFRESH_TOKEN (una vez, en local)
     shortsfactory cuota               # unidades usadas hoy
+    shortsfactory humo [--frames 150] # render de humo para los PR (sin LLM, voz ni red)
 
 Códigos de salida: 0 ok · 1 run fallido · 2 configuración · 3 cuota agotada ·
 4 no publicable (con --exigir-publicable).
@@ -136,6 +137,17 @@ def cmd_cuota(args, cfg: Settings) -> int:
     return 0
 
 
+def cmd_humo(args, cfg: Settings) -> int:
+    from pathlib import Path
+
+    from .humo import ejecutar
+
+    salida = Path(args.salida) if args.salida else cfg.dir_runs / "humo" / "humo.mp4"
+    ejecutar(cfg, salida, fotogramas=args.frames)
+    print(f"humo ok: {salida}")
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="shortsfactory", description="ShortsFactory-Enterprise")
     p.add_argument("--log", help="DEBUG, INFO, WARNING")
@@ -165,6 +177,11 @@ def parser() -> argparse.ArgumentParser:
     sub.add_parser("doctor", help="comprobar el entorno").set_defaults(fn=cmd_doctor)
     sub.add_parser("auth", help="autorizar YouTube y obtener el refresh token").set_defaults(fn=cmd_auth)
     sub.add_parser("cuota", help="cuota de YouTube usada hoy").set_defaults(fn=cmd_cuota)
+
+    s = sub.add_parser("humo", help="render corto de comprobación (Remotion + Zod), sin LLM ni voz")
+    s.add_argument("--frames", type=int, default=150, help="fotogramas a renderizar (150 = 5 s a 30 fps)")
+    s.add_argument("--salida", help="MP4 de salida (por defecto runs/humo/humo.mp4)")
+    s.set_defaults(fn=cmd_humo)
     return p
 
 
