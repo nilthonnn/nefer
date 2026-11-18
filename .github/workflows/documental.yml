@@ -41,7 +41,15 @@ jobs:
           cache: pip
           cache-dependency-path: documental/pyproject.toml
       - name: Binarios del sistema
-        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg espeak-ng
+        # Un espejo de apt lento colgó este paso hasta el límite del job:
+        # cada intento tiene su propio tope y se reintenta.
+        timeout-minutes: 8
+        run: |
+          for i in 1 2 3; do
+            sudo timeout 120 apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 update -q && break
+            echo "::warning::apt-get update falló (intento $i); reintento"; sleep 5
+          done
+          sudo timeout 300 apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 install -y -q ffmpeg espeak-ng
       - run: pip install -e ".[dev]"
       - run: python -m pytest -q -rs
 
@@ -72,10 +80,15 @@ jobs:
           cache: npm
           cache-dependency-path: documental/remotion/package-lock.json
       - name: Binarios y tipografías
+        timeout-minutes: 10
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q ffmpeg espeak-ng
-          sudo apt-get install -y -q fonts-inter || echo "::notice::fonts-inter no disponible; se usa DejaVu"
+          APT="-o Acquire::Retries=3 -o Acquire::http::Timeout=20"
+          for i in 1 2 3; do
+            sudo timeout 120 apt-get $APT update -q && break
+            echo "::warning::apt-get update falló (intento $i); reintento"; sleep 5
+          done
+          sudo timeout 300 apt-get $APT install -y -q ffmpeg espeak-ng
+          sudo timeout 120 apt-get $APT install -y -q fonts-inter || echo "::notice::fonts-inter no disponible; se usa DejaVu"
       - name: Dependencias (Kokoro con PyTorch CPU)
         run: |
           pip install -e ".[dev]"
