@@ -12,7 +12,7 @@ import requests
 
 from ..errors import ShortsError
 from ..logs import obtener
-from ..memory import similitud
+from ..memory import similitud_tema
 from ..models import Tendencia
 from .http import obtener_json
 from .worldbank import normalizar
@@ -51,19 +51,19 @@ def relevante(t: Tendencia) -> bool:
     return any(f" {k} " in texto for k in TEMAS)
 
 
-def elegir(candidatas: list[Tendencia], cubiertos: list[str], umbral: float = 0.3) -> Tendencia:
-    """La más popular que sea del nicho y no se parezca a temas ya cubiertos."""
+def elegir(candidatas: list[Tendencia], cubiertos: list[str], umbral: float = 0.6) -> Tendencia:
+    """La más popular que sea del nicho y no se parezca a temas ya cubiertos (``memory.similitud_tema``)."""
     for t in sorted(candidatas, key=lambda t: t.puntaje, reverse=True):
         if not relevante(t):
             continue
-        if any(similitud(normalizar(t.titulo), normalizar(c)) > umbral for c in cubiertos):
+        if any(similitud_tema(t.titulo, c) >= umbral for c in cubiertos if c):
             log.debug("descartada (ya cubierta): %s", t.titulo)
             continue
         return t
     raise ShortsError("Ninguna tendencia nueva de tecnología/economía; usa --topic")
 
 
-def buscar(cubiertos: list[str], sesion: requests.Session | None = None) -> Tendencia:
+def buscar(cubiertos: list[str], sesion: requests.Session | None = None, umbral: float = 0.6) -> Tendencia:
     candidatas: list[Tendencia] = []
     for nombre, fuente in (("gdelt", gdelt), ("hackernews", hackernews)):
         try:
@@ -72,4 +72,4 @@ def buscar(cubiertos: list[str], sesion: requests.Session | None = None) -> Tend
             log.warning("fuente de tendencias %s no disponible: %s", nombre, e)
     if not candidatas:
         raise ShortsError("No respondió ninguna fuente de tendencias")
-    return elegir(candidatas, cubiertos)
+    return elegir(candidatas, cubiertos, umbral)

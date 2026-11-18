@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     dir_estado: Path = Field(RAIZ / "estado", validation_alias=_alias("SF_DIR_ESTADO", "dir_estado"))
     semilla: int | None = Field(None, validation_alias=_alias("SF_SEMILLA", "semilla"))
     similitud_maxima: float = Field(0.35, gt=0, lt=1, validation_alias=_alias("SF_SIMILITUD_MAX", "similitud_maxima"))
+    # Deduplicación de temas ANTES de escribir el guion (memory.similitud_tema).
+    similitud_tema_maxima: float = Field(0.6, gt=0, le=1, validation_alias=_alias("SF_SIMILITUD_TEMA_MAX", "similitud_tema_maxima"))
+    dedup_ultimas: int = Field(50, ge=1, le=1000, validation_alias=_alias("SF_DEDUP_ULTIMAS", "dedup_ultimas"))
 
     # --- YouTube --------------------------------------------------------------------
     youtube_client_secret: SecretStr | None = Field(

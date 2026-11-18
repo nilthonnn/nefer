@@ -96,9 +96,17 @@ class Pipeline:
         tema = r.opciones.get("tema")
         if tema:
             t = Tendencia(titulo=tema, fuente="manual")
+            # Antes de gastar en LLM, voz y render: ¿ya se publicó algo así?
+            parecido, fila = self.memoria.tema_mas_parecido(tema, self.cfg.dedup_ultimas)
+            if fila is not None and parecido >= self.cfg.similitud_tema_maxima and not r.opciones.get("permitir_repetido"):
+                raise ErrorContenido(
+                    f"Tema demasiado parecido a uno de los últimos {self.cfg.dedup_ultimas} Shorts "
+                    f"({parecido:.0%}): «{fila.get('tema') or fila.get('titulo')}» ({fila.get('fecha', '?')}). "
+                    "Elige otro ángulo o usa --permitir-repetido."
+                )
         else:
-            cubiertos = [e.get("tema", "") for e in self.memoria.entradas(60)]
-            t = tendencias.buscar(cubiertos, sesion=self.sesion_http)
+            cubiertos = [e.get("tema", "") for e in self.memoria.entradas(self.cfg.dedup_ultimas)]
+            t = tendencias.buscar(cubiertos, sesion=self.sesion_http, umbral=self.cfg.similitud_tema_maxima)
         log.info("tema: %s (%s)", t.titulo, t.fuente)
         return {"tendencia": t.model_dump()}
 
@@ -117,6 +125,12 @@ class Pipeline:
                 pais = str(fijado.get("pais", "WLD"))
             else:
                 indicador, pais = worldbank.elegir(t.titulo, self.memoria.indicadores_recientes())
+            repetido = self.memoria.angulo_repetido(t.titulo, indicador.id, self.cfg.dedup_ultimas)
+            if repetido is not None and not r.opciones.get("permitir_repetido"):
+                raise ErrorContenido(
+                    f"Mismo ángulo que «{repetido.get('titulo') or repetido.get('tema')}» ({repetido.get('fecha', '?')}): "
+                    f"mismo dato ({indicador.id}) y tema parecido. Elige otro ángulo o usa --permitir-repetido."
+                )
             serie = worldbank.descargar(indicador, pais, sesion=self.sesion_http)
             origen = "worldbank"
         log.info("dato: %s · %s (%d puntos, %s)", serie.indicador, serie.pais_nombre, len(serie.puntos), origen)

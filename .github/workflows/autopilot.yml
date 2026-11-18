@@ -115,6 +115,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     container: *contenedor
+    permissions:
+      contents: write   # solo para versionar historial.jsonl en la rama estado-produccion
+      packages: read
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -134,14 +137,23 @@ jobs:
         working-directory: .
         run: enlazar-node-modules shorts-factory/remotion shorts-factory
 
-      # Memoria del canal (anti-repetición) y contabilidad de cuota entre runs:
-      # se restaura la última y se guarda una nueva al final, aunque falle.
+      # Caché de Actions: complemento (cuota.json y copia del historial). Se
+      # restaura la última y se guarda una nueva al final, aunque falle.
       - name: Restaurar estado del canal
         uses: actions/cache/restore@v4
         with:
           path: shorts-factory/estado
           key: sf-estado-${{ github.run_id }}
           restore-keys: sf-estado-
+
+      # Fuente de verdad del historial: la rama huérfana estado-produccion
+      # (no caduca como la caché). Se fusiona con lo restaurado de la caché.
+      - name: Traer historial del canal (rama estado-produccion)
+        run: |
+          # En el contenedor el checkout pertenece a otro usuario: git lo
+          # rechaza ("dubious ownership") si no se marca como seguro.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          python -m shortsfactory historial bajar --repo ..
 
       - run: python -m shortsfactory doctor
 
@@ -160,6 +172,11 @@ jobs:
             exit 0
           fi
           exit $codigo
+
+      - name: Versionar historial (rama estado-produccion)
+        if: steps.run.outcome == 'success'
+        run: |
+          python -m shortsfactory historial subir --repo .. --mensaje "estado: run ${{ github.run_id }}"
 
       - name: Guardar estado del canal
         if: always()
