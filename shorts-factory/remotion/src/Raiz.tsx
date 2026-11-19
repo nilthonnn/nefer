@@ -1,6 +1,7 @@
 import React from "react";
-import { CalculateMetadataFunction, Composition } from "remotion";
-import { esquemaShort, type PropsShort } from "./schema";
+import { CalculateMetadataFunction, Composition, Still } from "remotion";
+import { Miniatura } from "./Miniatura";
+import { esquemaMiniatura, esquemaShort, type PropsMiniatura, type PropsShort } from "./schema";
 import { Short } from "./Short";
 
 const ejemplo: PropsShort = {
@@ -29,16 +30,29 @@ const metadatos: CalculateMetadataFunction<PropsShort> = ({ props }) => ({
   fps: props.fps,
 });
 
+const ejemploMiniatura: PropsMiniatura = {
+  titulo: "La inflación que nadie vio venir",
+  cifra: "133 %",
+  contexto: "Argentina · 2023",
+  fuente: "Fuente: Banco Mundial",
+  colores: ejemplo.diseno.colores,
+  tipografia: "Montserrat",
+};
+
 export const Raiz: React.FC = () => (
-  <Composition
-    id="Short"
-    component={Short}
-    schema={esquemaShort}
-    width={1080}
-    height={1920}
-    fps={30}
-    durationInFrames={300}
-    defaultProps={ejemplo}
-    calculateMetadata={metadatos}
-  />
+  <>
+    <Composition
+      id="Short"
+      component={Short}
+      schema={esquemaShort}
+      width={1080}
+      height={1920}
+      fps={30}
+      durationInFrames={300}
+      defaultProps={ejemplo}
+      calculateMetadata={metadatos}
+    />
+    <Still id="Miniatura" component={Miniatura} schema={esquemaMiniatura} width={1280} height={720}
+      defaultProps={ejemploMiniatura} />
+  </>
 );

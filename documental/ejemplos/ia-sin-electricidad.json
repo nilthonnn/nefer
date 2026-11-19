@@ -1,0 +1,1039 @@
+{
+  "slug": "ia-sin-electricidad",
+  "estructura": "misterio",
+  "titulo": "La inteligencia artificial se está quedando sin electricidad",
+  "miniatura": "LA IA SE QUEDA SIN LUZ",
+  "descripcion": "La inteligencia artificial no vive en la nube: vive en edificios llenos de chips que consumen electricidad como ciudades enteras. En este video seguimos esa electricidad: cuánta usa la IA, dónde ya no alcanza, por qué las tecnológicas están reabriendo centrales nucleares y cómo esa carrera puede terminar en tu factura de luz.\n\nY al final, la pregunta que más nos importa en este canal: qué significa todo esto para quien quiere producir su propia energía.",
+  "etiquetas": [
+    "inteligencia artificial",
+    "energía",
+    "centros de datos",
+    "electricidad",
+    "energía nuclear",
+    "independencia energética",
+    "off grid",
+    "paneles solares",
+    "tecnología",
+    "factura de luz",
+    "ChatGPT",
+    "Microsoft",
+    "Google"
+  ],
+  "fuentes": [
+    "Agencia Internacional de Energía (IEA), Energy and AI (2025)",
+    "Cálculo propio a partir de los datos de la IEA (1 TWh = 1.000 millones de kWh)",
+    "Central Statistics Office de Irlanda: consumo eléctrico de los centros de datos (2023)",
+    "PJM Interconnection: subasta de capacidad 2025/2026 (julio de 2024)",
+    "Constellation Energy: acuerdo con Microsoft para reiniciar Three Mile Island 1 (septiembre de 2024)",
+    "Google y Kairos Power: acuerdo de reactores modulares (octubre de 2024)",
+    "Amazon y X-energy: acuerdo de reactores modulares (octubre de 2024)",
+    "BloombergNEF: compradores corporativos de energía limpia (2024)",
+    "UBS, citado por Reuters: usuarios de ChatGPT (febrero de 2023)",
+    "Reuters: Google rediseña su centro de datos de Cerrillos, Chile (septiembre de 2024)",
+    "William Stanley Jevons, The Coal Question (1865)"
+  ],
+  "capitulos": [
+    {
+      "titulo": "El gancho",
+      "escenas": [
+        {
+          "narracion": "Cada vez que le haces una pregunta a una inteligencia artificial, en algún lugar del mundo se enciende algo mucho más grande que tu teléfono: un edificio lleno de chips que consume electricidad como una ciudad.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "data center server racks lights"
+            ]
+          }
+        },
+        {
+          "narracion": "Y ese apetito está creciendo tan rápido que las empresas más ricas del planeta están haciendo algo impensable hace cinco años: reabrir centrales nucleares.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "nuclear power plant cooling towers"
+            ]
+          }
+        },
+        {
+          "narracion": "Hoy vamos a seguir esa electricidad. Cuánta usa la inteligencia artificial, dónde ya no alcanza, quién paga la cuenta, y qué significa para cualquiera que quiera producir su propia energía.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "power lines city night aerial"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "La nube no existe",
+      "escenas": [
+        {
+          "narracion": "Empecemos por un malentendido. Solemos decir que la inteligencia artificial vive en la nube, como si fuera algo etéreo. Pero la nube no existe: es la computadora de otra persona.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "cloud sky timelapse"
+            ]
+          }
+        },
+        {
+          "narracion": "En concreto, son centros de datos: naves industriales con miles de servidores apilados, cables, transformadores y sistemas de refrigeración que funcionan las veinticuatro horas.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "server room corridor cables"
+            ]
+          }
+        },
+        {
+          "narracion": "Un centro de datos grande puede ocupar el espacio de varios estadios de fútbol, y necesita su propia conexión eléctrica, como la de una pequeña ciudad industrial.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "aerial industrial buildings parking"
+            ]
+          }
+        },
+        {
+          "narracion": "Los modelos de inteligencia artificial gastan energía dos veces. Primero, durante el entrenamiento, cuando miles de chips procesan durante semanas una cantidad gigantesca de texto e imágenes.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "gpu chips close up"
+            ]
+          }
+        },
+        {
+          "narracion": "Y después, cada vez que alguien los usa. Una respuesta por separado consume poco, pero se multiplica por cientos de millones de personas, todos los días.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "people using smartphones street"
+            ]
+          }
+        },
+        {
+          "narracion": "Y todo ese trabajo produce calor. Una parte importante de la electricidad de un centro de datos no se va en calcular, sino en enfriar las máquinas para que no se dañen.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "industrial cooling fans"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "La explosión",
+      "escenas": [
+        {
+          "narracion": "El punto de quiebre tiene fecha: el treinta de noviembre de dos mil veintidós, cuando se lanzó ChatGPT.",
+          "visual": {
+            "tipo": "linea_tiempo",
+            "datos": {
+              "titulo": "La carrera de la inteligencia artificial",
+              "hitos": [
+                {
+                  "anio": "2022",
+                  "texto": "Se lanza ChatGPT"
+                },
+                {
+                  "anio": "2023",
+                  "texto": "Cien millones de usuarios en unos dos meses"
+                },
+                {
+                  "anio": "2024",
+                  "texto": "Las tecnológicas firman acuerdos nucleares"
+                },
+                {
+                  "anio": "2025",
+                  "texto": "La IEA calcula la demanda de los centros de datos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "narracion": "Según estimaciones del banco UBS, llegó a unos cien millones de usuarios en apenas dos meses. Ninguna aplicación de consumo había crecido así de rápido.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 100,
+              "prefijo": "",
+              "sufijo": " M",
+              "decimales": 0,
+              "etiqueta": "millones de usuarios de ChatGPT en unos dos meses",
+              "fuente": "UBS, citado por Reuters: usuarios de ChatGPT (febrero de 2023)"
+            }
+          },
+          "pausa": 0.5
+        },
+        {
+          "narracion": "A partir de ahí empezó una carrera. Cada gran empresa tecnológica quiso su propio modelo, y para entrenarlo y ofrecerlo necesitaba más chips, más edificios y, sobre todo, más electricidad.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "construction site large building cranes"
+            ]
+          }
+        },
+        {
+          "narracion": "Para sostenerla, las grandes tecnológicas pasaron a invertir decenas de miles de millones de dólares al año en infraestructura: terrenos, edificios, chips y conexiones eléctricas.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "money stock market screen"
+            ]
+          }
+        },
+        {
+          "narracion": "Los chips especializados que mueven a la inteligencia artificial se volvieron el producto más buscado del sector. Y cada uno de esos chips consume bastante más que un procesador común.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "semiconductor wafer close up"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "El tamaño del problema",
+      "escenas": [
+        {
+          "narracion": "¿Cuánta electricidad estamos hablando? La Agencia Internacional de Energía publicó en dos mil veinticinco su primer gran informe sobre energía e inteligencia artificial.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "power grid control room screens"
+            ]
+          }
+        },
+        {
+          "narracion": "Según ese informe, los centros de datos del mundo consumieron unos cuatrocientos quince teravatios hora en dos mil veinticuatro. Es alrededor del uno y medio por ciento de toda la electricidad del planeta.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 415,
+              "prefijo": "",
+              "sufijo": " TWh",
+              "decimales": 0,
+              "etiqueta": "teravatios hora consumidos por los centros de datos en 2024",
+              "fuente": "Agencia Internacional de Energía (IEA), Energy and AI (2025)"
+            }
+          },
+          "pausa": 0.6
+        },
+        {
+          "narracion": "Y la proyección es que esa cifra se duplique con creces hacia dos mil treinta, hasta unos novecientos cuarenta y cinco teravatios hora.",
+          "visual": {
+            "tipo": "comparativa",
+            "datos": {
+              "titulo": "Consumo de los centros de datos",
+              "unidad": "TWh",
+              "barras": [
+                {
+                  "etiqueta": "2024",
+                  "valor": 415
+                },
+                {
+                  "etiqueta": "2030 (proyección)",
+                  "valor": 945
+                }
+              ],
+              "fuente": "Agencia Internacional de Energía (IEA), Energy and AI (2025)",
+              "destacar": "mayor"
+            }
+          }
+        },
+        {
+          "narracion": "Para dimensionarlo: según la misma agencia, eso sería algo más que todo el consumo eléctrico actual de Japón. Un país entero, solo para guardar, mover y procesar datos.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "tokyo skyline night lights"
+            ]
+          }
+        },
+        {
+          "narracion": "Y no todo ese consumo es inteligencia artificial: los centros de datos también guardan tus fotos, tus correos y tus series. Pero la inteligencia artificial es la parte que más rápido está creciendo.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "streaming video screen tv"
+            ]
+          }
+        },
+        {
+          "narracion": "Uno y medio por ciento puede sonar poco. El problema no es el promedio mundial. El problema es que esa demanda no se reparte: se concentra en muy pocos lugares.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "map city lights from space"
+            ]
+          },
+          "pausa": 0.4
+        }
+      ]
+    },
+    {
+      "titulo": "¿Cuánto es un teravatio hora?",
+      "escenas": [
+        {
+          "narracion": "Antes de seguir, traduzcamos esas cifras a algo que se pueda imaginar. Un teravatio hora son mil millones de kilovatios hora, y el kilovatio hora es la unidad que aparece en tu factura de luz.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 1000,
+              "prefijo": "",
+              "sufijo": "",
+              "decimales": 0,
+              "etiqueta": "millones de kWh en un solo teravatio hora",
+              "fuente": "Cálculo propio a partir de los datos de la IEA (1 TWh = 1.000 millones de kWh)"
+            }
+          }
+        },
+        {
+          "narracion": "Tomemos una casa de ejemplo que consume trescientos kilovatios hora al mes. En un año, usa unos tres mil seiscientos.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 3600,
+              "prefijo": "",
+              "sufijo": " kWh",
+              "decimales": 0,
+              "etiqueta": "kWh al año de una casa que consume 300 kWh al mes",
+              "fuente": "Cálculo propio a partir de los datos de la IEA (1 TWh = 1.000 millones de kWh)"
+            }
+          }
+        },
+        {
+          "narracion": "Con esa referencia, la electricidad de los centros de datos en dos mil veinticuatro alcanzaría para unos ciento quince millones de casas como esa durante un año entero. Y la de dos mil treinta, para más de doscientos sesenta millones.",
+          "visual": {
+            "tipo": "comparativa",
+            "datos": {
+              "titulo": "Casas equivalentes (300 kWh al mes)",
+              "unidad": "millones",
+              "barras": [
+                {
+                  "etiqueta": "Centros de datos 2024",
+                  "valor": 115
+                },
+                {
+                  "etiqueta": "Centros de datos 2030",
+                  "valor": 262
+                }
+              ],
+              "fuente": "Cálculo propio a partir de los datos de la IEA (1 TWh = 1.000 millones de kWh)",
+              "destacar": "mayor"
+            }
+          },
+          "pausa": 0.6
+        },
+        {
+          "narracion": "Es una comparación ilustrativa: una casa real puede consumir mucho más o mucho menos según el país y el clima. Pero da la escala correcta del problema.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "suburban houses aerial"
+            ]
+          }
+        },
+        {
+          "narracion": "Ahora pensemos en un solo edificio. Un centro de datos de cien megavatios funcionando sin parar consume unos ochocientos setenta y seis mil megavatios hora al año, lo mismo que unas doscientas cuarenta mil casas de nuestro ejemplo.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 876,
+              "prefijo": "",
+              "sufijo": "",
+              "decimales": 0,
+              "etiqueta": "mil MWh al año: un centro de datos de 100 MW funcionando sin parar",
+              "fuente": "Cálculo propio a partir de los datos de la IEA (1 TWh = 1.000 millones de kWh)"
+            }
+          }
+        },
+        {
+          "narracion": "Y los proyectos más grandes que se anuncian para inteligencia artificial ya no se miden en decenas de megavatios, sino en cientos, e incluso en gigavatios.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "huge industrial complex aerial"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "Donde ya no alcanza: Irlanda",
+      "escenas": [
+        {
+          "narracion": "Irlanda es el ejemplo perfecto. Gracias a sus impuestos bajos y su clima fresco, se convirtió en la casa europea de muchas empresas tecnológicas y de sus centros de datos.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "dublin city river"
+            ]
+          }
+        },
+        {
+          "narracion": "Según la oficina de estadística irlandesa, en dos mil veintitrés los centros de datos consumieron el veintiuno por ciento de toda la electricidad medida del país. En dos mil quince eran apenas el cinco por ciento.",
+          "visual": {
+            "tipo": "comparativa",
+            "datos": {
+              "titulo": "Electricidad de Irlanda usada por centros de datos",
+              "unidad": "%",
+              "barras": [
+                {
+                  "etiqueta": "2015",
+                  "valor": 5
+                },
+                {
+                  "etiqueta": "2023",
+                  "valor": 21
+                }
+              ],
+              "fuente": "Central Statistics Office de Irlanda: consumo eléctrico de los centros de datos (2023)",
+              "destacar": "menor"
+            }
+          },
+          "pausa": 0.6
+        },
+        {
+          "narracion": "Un solo tipo de edificio pasó a consumir más de una de cada cinco unidades de electricidad del país. Por eso el operador de la red irlandesa empezó a poner condiciones muy estrictas a las nuevas conexiones, sobre todo alrededor de Dublín.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "electricity pylons countryside"
+            ]
+          }
+        },
+        {
+          "narracion": "En la práctica, las nuevas conexiones de centros de datos en la zona de Dublín quedaron casi en pausa durante varios años, a la espera de más capacidad en la red.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "dublin street evening"
+            ]
+          }
+        },
+        {
+          "narracion": "Irlanda no es un caso aislado. En el norte de Virginia, en Estados Unidos, está la mayor concentración de centros de datos del mundo, y allí también la red eléctrica se volvió el cuello de botella.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "large warehouse buildings aerial"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "La factura llega a casa",
+      "escenas": [
+        {
+          "narracion": "Ahora viene la parte que más nos toca. Cuando una red necesita mucha más potencia de la que tiene, alguien tiene que pagar por construirla. Y ese alguien no siempre es la empresa que la pide.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "electricity bill paper home"
+            ]
+          }
+        },
+        {
+          "narracion": "En el este de Estados Unidos, la red la coordina un operador llamado PJM. Cada año hace una subasta para asegurar que haya suficiente capacidad de generación en el futuro.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "electric substation transformers"
+            ]
+          }
+        },
+        {
+          "narracion": "En julio de dos mil veinticuatro, el precio de esa capacidad pasó de unos veintinueve dólares por megavatio y día a casi doscientos setenta. Se multiplicó por más de nueve.",
+          "visual": {
+            "tipo": "comparativa",
+            "datos": {
+              "titulo": "Precio de capacidad en PJM",
+              "unidad": "US$ por MW-día",
+              "barras": [
+                {
+                  "etiqueta": "2024/2025",
+                  "valor": 28.92
+                },
+                {
+                  "etiqueta": "2025/2026",
+                  "valor": 269.92
+                }
+              ],
+              "fuente": "PJM Interconnection: subasta de capacidad 2025/2026 (julio de 2024)",
+              "destacar": "menor"
+            }
+          },
+          "pausa": 0.6
+        },
+        {
+          "narracion": "Nueve coma tres veces: ese es el salto entre una subasta y la siguiente.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 9.3,
+              "prefijo": "",
+              "sufijo": "x",
+              "decimales": 1,
+              "etiqueta": "veces subió el precio de capacidad en PJM de un año al otro",
+              "fuente": "PJM Interconnection: subasta de capacidad 2025/2026 (julio de 2024)"
+            }
+          }
+        },
+        {
+          "narracion": "El propio operador y los analistas señalaron como una de las causas el crecimiento de la demanda, con los centros de datos a la cabeza. Y ese costo termina repartido en las facturas de hogares y comercios.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "family home kitchen evening lights"
+            ]
+          }
+        },
+        {
+          "narracion": "Y no es un fenómeno solo de Estados Unidos: en cualquier país donde la demanda crezca más rápido que la red, la presión sobre los precios aparece tarde o temprano.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "electricity tower city sunset"
+            ]
+          }
+        },
+        {
+          "narracion": "Aquí está la paradoja: la inteligencia artificial que usas gratis en tu teléfono puede terminar cobrándose, en parte, en tu factura de luz.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "person looking at phone night"
+            ]
+          },
+          "pausa": 0.5
+        }
+      ]
+    },
+    {
+      "titulo": "La vuelta de la energía nuclear",
+      "escenas": [
+        {
+          "narracion": "Las tecnológicas tienen un problema adicional: prometieron ser neutras en carbono. Necesitan muchísima electricidad, todo el tiempo, y que no emita dióxido de carbono. La respuesta que eligieron sorprendió a muchos.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "nuclear plant river morning"
+            ]
+          }
+        },
+        {
+          "narracion": "El atractivo es claro: una central nuclear produce enormes cantidades de electricidad en muy poco terreno, y no emite dióxido de carbono mientras funciona.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "nuclear plant aerial river"
+            ]
+          }
+        },
+        {
+          "narracion": "En septiembre de dos mil veinticuatro, Microsoft firmó un acuerdo de veinte años con Constellation Energy para volver a encender la unidad uno de Three Mile Island, en Pensilvania.",
+          "visual": {
+            "tipo": "linea_tiempo",
+            "datos": {
+              "titulo": "Las tecnológicas apuestan por la energía nuclear",
+              "hitos": [
+                {
+                  "anio": "2019",
+                  "texto": "Three Mile Island 1 cierra por razones económicas"
+                },
+                {
+                  "anio": "2024",
+                  "texto": "Microsoft acuerda reiniciarla"
+                },
+                {
+                  "anio": "2024",
+                  "texto": "Google y Amazon apuestan por reactores modulares"
+                },
+                {
+                  "anio": "2030",
+                  "texto": "Primeros reactores modulares previstos"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "narracion": "Sí, Three Mile Island, el nombre asociado al peor accidente nuclear de la historia de Estados Unidos, en mil novecientos setenta y nueve. Aquel accidente fue en la unidad dos; la unidad uno siguió operando hasta dos mil diecinueve.",
+          "visual": {
+            "tipo": "linea_tiempo",
+            "datos": {
+              "titulo": "Three Mile Island",
+              "hitos": [
+                {
+                  "anio": "1974",
+                  "texto": "Entra en servicio la unidad 1"
+                },
+                {
+                  "anio": "1979",
+                  "texto": "Accidente en la unidad 2"
+                },
+                {
+                  "anio": "2019",
+                  "texto": "Cierra la unidad 1"
+                },
+                {
+                  "anio": "2024",
+                  "texto": "Acuerdo para reiniciarla"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "narracion": "La energía nuclear tiene una ventaja clave para un centro de datos: produce lo mismo de día y de noche, haya sol o no haya viento.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "power plant night lights"
+            ]
+          }
+        },
+        {
+          "narracion": "Un mes después, Google firmó con Kairos Power para comprar energía de pequeños reactores modulares: hasta quinientos megavatios hacia dos mil treinta y cinco.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 500,
+              "prefijo": "",
+              "sufijo": " MW",
+              "decimales": 0,
+              "etiqueta": "megavatios de reactores modulares acordados por Google hacia 2035",
+              "fuente": "Google y Kairos Power: acuerdo de reactores modulares (octubre de 2024)"
+            }
+          },
+          "pausa": 0.5
+        },
+        {
+          "narracion": "Y Amazon anunció una inversión en X-energy, otra empresa de reactores modulares, con la meta de sumar más de cinco gigavatios hacia dos mil treinta y nueve.",
+          "visual": {
+            "tipo": "cifra",
+            "datos": {
+              "valor": 5,
+              "prefijo": "",
+              "sufijo": " GW",
+              "decimales": 0,
+              "etiqueta": "gigavatios de reactores modulares que busca Amazon hacia 2039",
+              "fuente": "Amazon y X-energy: acuerdo de reactores modulares (octubre de 2024)"
+            }
+          }
+        },
+        {
+          "narracion": "Hay que decirlo con claridad: los reactores modulares todavía no están funcionando a escala comercial. Son apuestas a varios años. Mientras tanto, la demanda crece hoy.",
+          "visual": {
+            "tipo": "titular",
+            "datos": {
+              "antetitulo": "Ojo",
+              "titulo": "Los reactores modulares aún no operan a escala comercial"
+            }
+          },
+          "pausa": 0.4
+        }
+      ]
+    },
+    {
+      "titulo": "Gas, sol y baterías: la carrera por enchufarse",
+      "escenas": [
+        {
+          "narracion": "Mientras llega la energía nuclear, la urgencia empuja hacia lo que esté disponible. En varios proyectos, eso significa turbinas de gas instaladas junto al centro de datos.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "gas turbine power plant"
+            ]
+          }
+        },
+        {
+          "narracion": "La razón es el tiempo: una turbina de gas se instala en meses, una central nuclear nueva tarda años, y una línea de transmisión puede tardar todavía más.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "power line construction workers"
+            ]
+          }
+        },
+        {
+          "narracion": "Es la solución más rápida, pero también la más polémica: más emisiones, más ruido y vecinos preocupados por la calidad del aire.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "smoke stack sky"
+            ]
+          }
+        },
+        {
+          "narracion": "Al mismo tiempo, las grandes tecnológicas son desde hace años los mayores compradores privados de energía renovable del mundo. Según BloombergNEF, Amazon encabezó esa lista varios años seguidos.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "solar farm aerial view"
+            ]
+          }
+        },
+        {
+          "narracion": "Y aquí aparece una idea que este canal conoce bien. Algunos proyectos ya no esperan a la red pública: generan su propia energía al lado del edificio, con paneles, baterías y su propia conexión.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "battery storage containers solar"
+            ]
+          }
+        },
+        {
+          "narracion": "Es decir, las empresas más poderosas del planeta están practicando la independencia energética. Lo que antes parecía cosa de una cabaña en el campo, ahora lo hace un centro de datos.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "off grid cabin solar panels"
+            ]
+          },
+          "pausa": 0.5
+        }
+      ]
+    },
+    {
+      "titulo": "El agua: la otra factura",
+      "escenas": [
+        {
+          "narracion": "Hay un recurso del que se habla menos: el agua. Muchos centros de datos se enfrían con sistemas de evaporación, que consumen agua de forma continua.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "water cooling tower steam"
+            ]
+          }
+        },
+        {
+          "narracion": "En zonas con sequía, esto se volvió un conflicto. Comunidades de distintos países se han opuesto a nuevos centros de datos por miedo a que compitan con el agua para consumo humano y para el campo.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "dry cracked land drought"
+            ]
+          }
+        },
+        {
+          "narracion": "Lo que muestra el agua es lo mismo que muestra la electricidad: aunque el servicio parezca invisible, cada centro de datos se apoya en recursos físicos y locales.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "river water flowing"
+            ]
+          }
+        },
+        {
+          "narracion": "Algunas empresas ya publican cuánta agua consumen sus centros de datos y prometen devolver más de la que usan. Cumplirlo, y medirlo bien, es otro desafío abierto.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "water reservoir dam"
+            ]
+          }
+        },
+        {
+          "narracion": "Por eso algunos diseños nuevos usan refrigeración en circuito cerrado o enfriamiento con aire. Consumen menos agua, aunque a veces gastan más electricidad. No hay solución gratis.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "industrial pipes water system"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "¿Y en América Latina?",
+      "escenas": [
+        {
+          "narracion": "¿Y en América Latina? La región también entró en la carrera. Querétaro, en México, se convirtió en uno de los principales polos de centros de datos del país.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "mexico city skyline"
+            ]
+          }
+        },
+        {
+          "narracion": "Chile y Brasil atraen proyectos por su conectividad y por algo que los centros de datos desean: energía renovable abundante. El desierto de Atacama tiene una de las radiaciones solares más altas del planeta.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "atacama desert solar plant"
+            ]
+          }
+        },
+        {
+          "narracion": "Y con los proyectos llegaron los conflictos. En dos mil veinticuatro, un tribunal ambiental chileno pidió revisar un centro de datos de Google en Cerrillos por su uso de agua, y la empresa anunció que lo rediseñaría con enfriamiento por aire.",
+          "visual": {
+            "tipo": "linea_tiempo",
+            "datos": {
+              "titulo": "América Latina entra en la carrera",
+              "hitos": [
+                {
+                  "anio": "Querétaro",
+                  "texto": "polo de centros de datos en México"
+                },
+                {
+                  "anio": "Atacama",
+                  "texto": "sol para alimentar la nube"
+                },
+                {
+                  "anio": "Cerrillos",
+                  "texto": "un proyecto revisado por el agua"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "narracion": "Para países con abundante sol y viento, la oportunidad es atraer centros de datos que funcionen con energía limpia generada en la propia región.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "wind turbines hills"
+            ]
+          }
+        },
+        {
+          "narracion": "Para la región es una oportunidad y un riesgo al mismo tiempo: inversión y empleo, pero también competencia por la electricidad y el agua que necesitan hogares, minas y campos.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "farm irrigation field"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "¿Más eficiencia, más consumo?",
+      "escenas": [
+        {
+          "narracion": "La respuesta obvia sería: hagamos chips más eficientes. Y se están haciendo. Cada generación hace más cálculos con la misma energía.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "microchip circuit macro"
+            ]
+          }
+        },
+        {
+          "narracion": "Pero en mil ochocientos sesenta y cinco, el economista William Stanley Jevons notó algo incómodo. Cuando las máquinas de vapor se volvieron más eficientes, Inglaterra no usó menos carbón: usó más.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "old steam engine train"
+            ]
+          }
+        },
+        {
+          "narracion": "Se conoce como la paradoja de Jevons: cuando algo se vuelve más barato de usar, lo usamos mucho más, y el consumo total sube.",
+          "visual": {
+            "tipo": "linea_tiempo",
+            "datos": {
+              "titulo": "La paradoja de Jevons",
+              "hitos": [
+                {
+                  "anio": "Paso 1",
+                  "texto": "La tecnología se vuelve más eficiente"
+                },
+                {
+                  "anio": "Paso 2",
+                  "texto": "Usarla resulta más barato"
+                },
+                {
+                  "anio": "Paso 3",
+                  "texto": "Se usa mucho más"
+                },
+                {
+                  "anio": "Resultado",
+                  "texto": "El consumo total puede aumentar"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "narracion": "Un ejemplo cercano: las bombillas led gastan mucho menos que las incandescentes, y aun así hoy iluminamos más espacios, durante más horas y con más pantallas encendidas que nunca.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "city led lights night street"
+            ]
+          }
+        },
+        {
+          "narracion": "Por eso, cuando escuches que un nuevo modelo es más eficiente, conviene hacer la pregunta completa: ¿más eficiente por respuesta, o en total?",
+          "visual": {
+            "tipo": "titular",
+            "datos": {
+              "antetitulo": "La pregunta correcta",
+              "titulo": "¿Más eficiente por respuesta, o en total?"
+            }
+          }
+        },
+        {
+          "narracion": "Con la inteligencia artificial puede pasar lo mismo. Si cada respuesta cuesta menos energía, aparecerán miles de usos nuevos. La eficiencia ayuda, pero no garantiza que la demanda baje.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "busy city crowd timelapse"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "Qué significa para ti",
+      "escenas": [
+        {
+          "narracion": "Volvamos a casa. Si la demanda de electricidad crece más rápido que la capacidad de las redes, hay dos efectos probables: precios más altos y redes más tensionadas en los momentos de mayor consumo.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "city blackout night street"
+            ]
+          }
+        },
+        {
+          "narracion": "Ninguna de las dos cosas la puedes controlar. Lo que sí puedes controlar es cuánto dependes de esa red.",
+          "visual": {
+            "tipo": "titular",
+            "datos": {
+              "antetitulo": "Lo que sí controlas",
+              "titulo": "Cuánto dependes de la red"
+            }
+          },
+          "pausa": 0.5
+        },
+        {
+          "narracion": "Por eso la lógica de un sistema solar con baterías ya no es solo ecológica. Es la misma lógica que están siguiendo las tecnológicas: asegurar tu propia energía antes de que se vuelva escasa o cara.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "home solar battery garage"
+            ]
+          }
+        },
+        {
+          "narracion": "Las baterías agregan otra ventaja: puedes cargarlas con el sol o cuando la energía es más barata, y usarlas justo cuando la red está más exigida y más cara.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "battery charging indicator"
+            ]
+          }
+        },
+        {
+          "narracion": "No hace falta desconectarse por completo. Un sistema que cubra lo esencial, como la heladera, la iluminación y la conexión a internet, ya te da margen frente a cortes y subidas de precio.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "refrigerator kitchen home"
+            ]
+          }
+        },
+        {
+          "narracion": "Y si piensas hacerlo, el primer paso es el mismo que da un ingeniero de centros de datos: medir. Saber cuánta energía usas de verdad, aparato por aparato, antes de comprar un solo panel.",
+          "visual": {
+            "tipo": "linea_tiempo",
+            "datos": {
+              "titulo": "Tu propio plan de energía",
+              "hitos": [
+                {
+                  "anio": "Paso 1",
+                  "texto": "Medir el consumo real"
+                },
+                {
+                  "anio": "Paso 2",
+                  "texto": "Elegir lo esencial"
+                },
+                {
+                  "anio": "Paso 3",
+                  "texto": "Dimensionar paneles y baterías"
+                },
+                {
+                  "anio": "Paso 4",
+                  "texto": "Instalar y monitorear"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "narracion": "No se trata de miedo, sino de planificación. Los mismos números que usan las empresas para decidir dónde construir te sirven para decidir cuánto sol necesitas en tu techo.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "person writing calculator notebook"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "titulo": "El veredicto",
+      "escenas": [
+        {
+          "narracion": "Entonces, ¿la inteligencia artificial se está quedando sin electricidad? En algunos lugares, ya choca contra el límite de la red. En otros, la están alimentando con lo que haya a mano, del gas a la energía nuclear.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "transmission towers sunset"
+            ]
+          }
+        },
+        {
+          "narracion": "Lo seguro es que la energía se convirtió en el verdadero límite de esta tecnología. No los algoritmos, no los datos: los kilovatios.",
+          "visual": {
+            "tipo": "titular",
+            "datos": {
+              "antetitulo": "El verdadero límite",
+              "titulo": "No son los algoritmos: son los kilovatios"
+            }
+          },
+          "pausa": 0.5
+        },
+        {
+          "narracion": "La próxima vez que le hagas una pregunta a una inteligencia artificial, recuerda el viaje completo: un chip, un edificio, una red eléctrica y, en algún lugar, una central encendida.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "phone screen chat app"
+            ]
+          }
+        },
+        {
+          "narracion": "Y en esa carrera, quien tenga su propia energía tendrá ventaja, sea un gigante tecnológico o una familia con unos paneles en el techo.",
+          "visual": {
+            "tipo": "stock",
+            "busqueda": [
+              "family house rooftop solar sunset"
+            ]
+          }
+        },
+        {
+          "narracion": "Si quieres ver cuántos paneles y cuántas baterías necesita una casa real, con los números de verdad, te dejo ese video aquí. Nos vemos en la próxima investigación.",
+          "visual": {
+            "tipo": "final",
+            "datos": {
+              "mensaje": "¿Cuánta energía necesita tu casa?"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

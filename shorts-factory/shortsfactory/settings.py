@@ -44,9 +44,16 @@ class Settings(BaseSettings):
     anthropic_api_key: SecretStr | None = Field(None, validation_alias=_alias("ANTHROPIC_API_KEY", "anthropic_api_key"))
     openai_api_key: SecretStr | None = Field(None, validation_alias=_alias("OPENAI_API_KEY", "openai_api_key"))
     llm_correcciones: int = Field(2, ge=0, le=5, validation_alias=_alias("SF_LLM_CORRECCIONES", "llm_correcciones"))
+    # Modelo barato para estructura (reparar JSON contra Zod, SEO). El guion lo escribe llm_modelo.
+    llm_modelo_rapido: str = Field("claude-haiku-5-5", validation_alias=_alias("SF_LLM_MODELO_RAPIDO", "llm_modelo_rapido"))
+    llm_reparaciones: int = Field(2, ge=0, le=5, validation_alias=_alias("SF_LLM_REPARACIONES", "llm_reparaciones"))
+    seo_llm: bool = Field(True, validation_alias=_alias("SF_SEO_LLM", "seo_llm"),
+                          description="Título y etiquetas propuestos por el modelo rápido (si falla, reglas fijas).")
 
     # --- Voz ------------------------------------------------------------------------
     tts_motor: Literal["kokoro", "edge", "espeak"] = Field("kokoro", validation_alias=_alias("SF_TTS", "tts_motor"))
+    tts_hilos: int = Field(4, ge=1, le=16, validation_alias=_alias("SF_TTS_HILOS", "tts_hilos"),
+                           description="Frases sintetizadas a la vez con motores que lo admiten (Edge, espeak).")
     kokoro_voz: str = Field("em_alex", validation_alias=_alias("SF_KOKORO_VOZ", "kokoro_voz"))
     edge_voz: str = Field("es-MX-JorgeNeural", validation_alias=_alias("SF_EDGE_VOZ", "edge_voz"))
 
@@ -64,6 +71,9 @@ class Settings(BaseSettings):
     dir_estado: Path = Field(RAIZ / "estado", validation_alias=_alias("SF_DIR_ESTADO", "dir_estado"))
     semilla: int | None = Field(None, validation_alias=_alias("SF_SEMILLA", "semilla"))
     similitud_maxima: float = Field(0.35, gt=0, lt=1, validation_alias=_alias("SF_SIMILITUD_MAX", "similitud_maxima"))
+    # Deduplicación de temas ANTES de escribir el guion (memory.similitud_tema).
+    similitud_tema_maxima: float = Field(0.6, gt=0, le=1, validation_alias=_alias("SF_SIMILITUD_TEMA_MAX", "similitud_tema_maxima"))
+    dedup_ultimas: int = Field(50, ge=1, le=1000, validation_alias=_alias("SF_DEDUP_ULTIMAS", "dedup_ultimas"))
 
     # --- YouTube --------------------------------------------------------------------
     youtube_client_secret: SecretStr | None = Field(
@@ -77,6 +87,9 @@ class Settings(BaseSettings):
     youtube_categoria: str = Field("28", validation_alias=_alias("SF_YOUTUBE_CATEGORIA", "youtube_categoria"))
     youtube_cuota_diaria: int = Field(10_000, gt=0, validation_alias=_alias("SF_YOUTUBE_CUOTA", "youtube_cuota_diaria"))
     youtube_costo_subida: int = Field(1_600, gt=0, validation_alias=_alias("SF_YOUTUBE_COSTO_SUBIDA", "youtube_costo_subida"))
+    youtube_costo_miniatura: int = Field(50, gt=0, validation_alias=_alias("SF_YOUTUBE_COSTO_MINIATURA", "youtube_costo_miniatura"))
+    youtube_miniatura: bool = Field(True, validation_alias=_alias("SF_YOUTUBE_MINIATURA", "youtube_miniatura"),
+                                    description="Subir la miniatura propia con thumbnails.set (requiere canal verificado).")
     youtube_contenido_sintetico: bool = Field(False, validation_alias=_alias("SF_YOUTUBE_SINTETICO", "youtube_contenido_sintetico"))
 
     @field_validator("fps")

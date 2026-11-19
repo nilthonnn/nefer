@@ -116,6 +116,20 @@ python -m documental validar guiones/guerra-corrientes.json
 python -m documental render guiones/guerra-corrientes.json --estricto
 ```
 
+### Por tramos en varias máquinas (lo que hace CI)
+
+```bash
+python -m documental plan g.json --voz kokoro --partes-max 8   # voz + línea de tiempo + tramos (~3 min c/u)
+python -m documental tramo g.json --parte 0 --voz kokoro       # un job por tramo, en paralelo
+python -m documental ensamblar g.json --voz kokoro             # une con -c copy, audio y paquete
+```
+
+Los cortes caen en el inicio de escena más cercano a partes iguales (mejor si
+es un cambio de capítulo). Cada tramo sale con el número exacto de fotogramas
+de su posición y los subtítulos de la línea de tiempo global, así se unen sin
+recodificar el video; el audio se codifica una sola vez sobre el total.
+`render` hace lo mismo con un solo tramo, en una sola máquina.
+
 ### En lote (cola en disco)
 
 ```bash
@@ -146,6 +160,7 @@ duración de cada escena la decide la voz, nunca el guion.
 | `final` | Pantalla final de 20 s con huecos para los elementos de YouTube | se añade sola si falta |
 
 Hay ejemplos en `ejemplos/`:
+- `ia-sin-electricidad.json`: **15 minutos**, tema actual («La inteligencia artificial se está quedando sin electricidad»): 14 capítulos, ~2.300 palabras, estructura de misterio, 11 fuentes (IEA, PJM, CSO Irlanda...), ~30 % de visual propio. Con Kokoro a velocidad 0,95 dura unos 15 min.
 - `guerra-de-las-corrientes.json`: el ejemplo completo y monetizable (9 min, 8 capítulos, estructura de duelo, 7 fuentes, ~37 % de visual propio, sin titulares manuales).
 - `historia-panel-solar.json`: un ejemplo corto (no llega a 8 min).
 - `independencia-energetica.md`: el formato Markdown, más cómodo para escribir a mano.
@@ -211,6 +226,17 @@ La auditoría no garantiza la aprobación: la decide una persona en YouTube.
   clip dura un tramo más el tiempo de la transición, que se solapa con la
   siguiente escena, así que los fundidos nunca desplazan la imagen respecto
   de la voz.
+
+## Voz Kokoro (sin claves) y render en CI
+
+`--voz kokoro` usa Kokoro-82M (licencia Apache-2.0, apta para monetizar), local y sin
+cuenta: `pip install --extra-index-url https://download.pytorch.org/whl/cpu kokoro soundfile`.
+Voz con `DOCUMENTAL_KOKORO_VOZ` (`em_alex`, `em_santa`, `ef_dora`) y ritmo con
+`DOCUMENTAL_KOKORO_VELOCIDAD`. Los subtítulos se sincronizan con la duración de cada fonema.
+
+El workflow `.github/workflows/documental.yml` renderiza el documental completo (Kokoro +
+Remotion) en cada PR que toca `documental/` o a mano (Actions → documental → Run workflow),
+y deja el MP4 con su paquete de publicación como artefacto. No publica nada.
 
 ## Pruebas
 

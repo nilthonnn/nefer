@@ -105,9 +105,9 @@ Un Short solo es **publicable** si cumple todo esto (si no, `PUBLICACION` lo blo
 
 Los **guiones editoriales** (`guiones/*.json`) son la vía más sólida: el ángulo y las frases
 son de autoría humana, y las cifras salen de la serie mediante huecos (`{ultimo}`,
-`{anio_primero}`, `{verbo}`...), así nunca quedan mal copiadas. En cada PR, el job `muestra`
-produce uno real (Kokoro + Banco Mundial) y falla si no sale publicable; el MP4 queda como
-artefacto.
+`{anio_primero}`, `{verbo}`...), así nunca quedan mal copiadas. Para producir uno real sin
+publicar (Kokoro + Banco Mundial, falla si no sale publicable): Actions → `shortsfactory-autopilot`
+con `modo = muestra`. En cada PR corre `pr-checks.yml`: pruebas y un render de humo de 5 s.
 
 ## YouTube: configuración (una vez)
 
@@ -135,6 +135,10 @@ En *Settings → Secrets and variables → Actions*:
 | `SF_LLM`, `SF_LLM_MODELO` | `anthropic`, `claude-opus-5-5` |
 | `SF_TTS`, `SF_KOKORO_VOZ` | `kokoro`, `em_alex` |
 
+Para generar un Short de prueba sin publicar nada: Actions → `shortsfactory-autopilot` →
+**Run workflow** con `modo = muestra` (y, si quieres, otro `guion` editorial). Corre el mismo
+job que en los PR: Kokoro, datos del Banco Mundial y `--exigir-publicable`; el MP4 queda como artefacto.
+
 El workflow corre cada 6 h (minuto 17) o a mano, con tema y destino. Cada ejecución guarda la
 memoria del canal en caché y sube como artefacto el video, el estado, el guion y los logs
 (14 días). Si la cuota está agotada, termina con un aviso y no lo cuenta como fallo.
@@ -142,7 +146,22 @@ memoria del canal en caché y sube como artefacto el video, el estado, el guion 
 ## Pruebas
 
 ```bash
-python -m pytest -q                              # 71 pruebas, sin red (dobles para LLM, HTTP, YouTube y voz)
+python -m pytest -q                              # ~115 pruebas, sin red (dobles para LLM, HTTP, YouTube y voz)
+python -m shortsfactory humo                     # render de 150 fotogramas: Remotion compila y las props pasan Zod
 SF_TEST_RENDER=1 python -m pytest -q -m render   # render real de punta a punta
 (cd remotion && npm test)                        # tipos + lógica pura en TypeScript
 ```
+
+## Novedades de la arquitectura
+
+| Qué | Dónde | Por qué |
+|---|---|---|
+| Imagen Docker con todo preinstalado (Kokoro con pesos y voces `em_alex`/`ef_dora`, Chromium, FFmpeg, node_modules) | `docker/produccion.Dockerfile`, `.github/workflows/imagen.yml` | Ningún job pierde minutos en apt/pip/npm. La etiqueta es el hash de los manifiestos: solo se reconstruye si cambian. |
+| PR en minutos | `.github/workflows/pr-checks.yml` | Tipos TS, pytest sin red y render de humo de 150 fotogramas con audio mudo. |
+| Historial en rama huérfana | `estado_git.py`, rama `estado-produccion` | La caché de Actions caduca; la rama no. Dos runs a la vez fusionan por `run_id` y no pierden filas. |
+| Deduplicación de temas | `memory.similitud_tema`, etapas TENDENCIA/DATOS | Bloquea un tema o ángulo parecido a los últimos 50 ANTES de pagar el guion (`--permitir-repetido` lo desactiva). |
+| LLM híbrido | `scripts/generador.py`, `scripts/rapido.py` | El guion lo escribe `claude-opus-5-5`; reparar el JSON contra Zod y el SEO, `claude-haiku-5-5`. Salida con *structured outputs* (Opus 5.5 rechaza `tool_choice` forzado). |
+| Auto-reparación contra Zod | `visuals/validacion.py` + `remotion/src/lib/validar-props.ts` | Las props que saldrían del guion se validan con el mismo Zod del render; el error exacto vuelve al modelo rápido (2 intentos). |
+| Miniatura propia | composición `Miniatura`, `visuals/miniatura.py`, `youtube.subir_miniatura` | El dato del gancho en 1280×720, subido con `thumbnails().set`; sin cuota o con canal sin verificar se omite en silencio. |
+| Masterización | `audio/mezcla.py`, `qa.py` | -14 LUFS y -1 dBTP (ya existía); el QA ahora también mide el pico real. |
+

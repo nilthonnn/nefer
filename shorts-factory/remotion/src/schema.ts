@@ -62,6 +62,18 @@ export const esquemaShort = z
     });
   });
 
+// Miniatura 1280×720 (lo que recomienda YouTube): el dato más impactante del
+// guion, grande, con el título y el contexto. Se renderiza con `remotion still`.
+export const esquemaMiniatura = z.object({
+  titulo: z.string().min(1).max(100),
+  cifra: z.string().min(1).max(16),
+  contexto: z.string().max(80),
+  fuente: z.string().max(120),
+  colores: esquemaDiseno.shape.colores,
+  tipografia: z.enum(FUENTES),
+});
+
 export type PropsShort = z.infer<typeof esquemaShort>;
+export type PropsMiniatura = z.infer<typeof esquemaMiniatura>;
 export type Diseno = z.infer<typeof esquemaDiseno>;
 export type Palabra = z.infer<typeof esquemaPalabra>;

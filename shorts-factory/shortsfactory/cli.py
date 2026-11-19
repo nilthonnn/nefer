@@ -8,6 +8,8 @@
     shortsfactory doctor              # binarios, claves y Remotion
     shortsfactory auth                # obtener YOUTUBE_REFRESH_TOKEN (una vez, en local)
     shortsfactory cuota               # unidades usadas hoy
+    shortsfactory humo [--frames 150] # render de humo para los PR (sin LLM, voz ni red)
+    shortsfactory historial bajar|subir  # memoria del canal en la rama huérfana estado-produccion
 
 Códigos de salida: 0 ok · 1 run fallido · 2 configuración · 3 cuota agotada ·
 4 no publicable (con --exigir-publicable).
@@ -58,7 +60,7 @@ def cmd_run(args, cfg: Settings) -> int:
     if args.guion and args.auto_trend:
         raise ErrorConfiguracion("Un guion editorial va con --topic, no con --auto-trend")
     opciones = {"tema": args.topic, "publicar": args.publicar, "semilla": args.seed, "serie_archivo": args.serie,
-                "guion_archivo": args.guion}
+                "guion_archivo": args.guion, "permitir_repetido": args.permitir_repetido}
     r = Pipeline(cfg).ejecutar(opciones)
     codigo = _resumen(r)
     if codigo == 0 and args.exigir_publicable and not r.artefactos.get("publicable"):
@@ -136,6 +138,32 @@ def cmd_cuota(args, cfg: Settings) -> int:
     return 0
 
 
+def cmd_historial(args, cfg: Settings) -> int:
+    from pathlib import Path
+
+    from . import estado_git
+
+    repo = Path(args.repo).resolve()
+    if args.accion == "bajar":
+        nuevas = estado_git.bajar(cfg.dir_estado, repo, rama=args.rama)
+        print(f"historial: {nuevas} fila(s) nuevas desde {args.rama}")
+    else:
+        subido = estado_git.subir(cfg.dir_estado, repo, args.mensaje, rama=args.rama)
+        print(f"historial {'versionado' if subido else 'sin cambios'} en {args.rama}")
+    return 0
+
+
+def cmd_humo(args, cfg: Settings) -> int:
+    from pathlib import Path
+
+    from .humo import ejecutar
+
+    salida = Path(args.salida) if args.salida else cfg.dir_runs / "humo" / "humo.mp4"
+    ejecutar(cfg, salida, fotogramas=args.frames)
+    print(f"humo ok: {salida}")
+    return 0
+
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="shortsfactory", description="ShortsFactory-Enterprise")
     p.add_argument("--log", help="DEBUG, INFO, WARNING")
@@ -151,6 +179,8 @@ def parser() -> argparse.ArgumentParser:
     r.add_argument("--serie", help="JSON de una Serie local en lugar del Banco Mundial")
     r.add_argument("--guion", help="guion editorial (JSON con huecos {ultimo}, {anio_ultimo}...) en lugar del LLM")
     r.add_argument("--exigir-publicable", action="store_true", help="salir con código 4 si el Short no es publicable")
+    r.add_argument("--permitir-repetido", action="store_true",
+                   help="no bloquear un tema o ángulo parecido a los últimos Shorts (SF_DEDUP_ULTIMAS)")
     r.set_defaults(fn=cmd_run)
 
     s = sub.add_parser("reanudar", help="continuar un run fallido o interrumpido")
@@ -165,6 +195,18 @@ def parser() -> argparse.ArgumentParser:
     sub.add_parser("doctor", help="comprobar el entorno").set_defaults(fn=cmd_doctor)
     sub.add_parser("auth", help="autorizar YouTube y obtener el refresh token").set_defaults(fn=cmd_auth)
     sub.add_parser("cuota", help="cuota de YouTube usada hoy").set_defaults(fn=cmd_cuota)
+
+    s = sub.add_parser("historial", help="sincronizar estado/historial.jsonl con la rama huérfana estado-produccion")
+    s.add_argument("accion", choices=["bajar", "subir"])
+    s.add_argument("--repo", default=".", help="checkout de git con permiso de push (por defecto, el actual)")
+    s.add_argument("--rama", default="estado-produccion")
+    s.add_argument("--mensaje", default="estado: historial del canal")
+    s.set_defaults(fn=cmd_historial)
+
+    s = sub.add_parser("humo", help="render corto de comprobación (Remotion + Zod), sin LLM ni voz")
+    s.add_argument("--frames", type=int, default=150, help="fotogramas a renderizar (150 = 5 s a 30 fps)")
+    s.add_argument("--salida", help="MP4 de salida (por defecto runs/humo/humo.mp4)")
+    s.set_defaults(fn=cmd_humo)
     return p
 
 

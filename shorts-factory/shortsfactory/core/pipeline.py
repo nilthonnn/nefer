@@ -16,17 +16,17 @@ from typing import Any
 
 from .. import qa
 from ..audio import mezcla, motores
-from ..errors import ErrorContenido
+from ..errors import ErrorContenido, ShortsError
 from ..logs import a_archivo, obtener, quitar
 from ..memory import Memoria
 from ..models import Guion, Narracion, Serie, Tendencia, Variacion
 from ..publisher import seo
 from ..publisher.cuota import Cuota
-from ..scripts import editorial, generador
+from ..scripts import editorial, generador, rapido
 from ..scripts.heuristicas import evaluar
 from ..settings import Settings
 from ..sources import tendencias, worldbank
-from ..visuals import render, variacion
+from ..visuals import miniatura, provisional, render, validacion, variacion
 from ..visuals.broll import BRoll
 from .fsm import Estado, MaquinaEstados, Politica, Registro
 
@@ -49,11 +49,12 @@ def nuevo_id() -> str:
 
 class Pipeline:
     def __init__(self, cfg: Settings, yt: Any = None, motor_voz: Any = None, proveedor_llm: Any = None,
-                 sesion_http: Any = None) -> None:
+                 sesion_http: Any = None, reparador: Any = None, modelo_rapido: Any = None) -> None:
         self.cfg = cfg
         self.memoria = Memoria(cfg.dir_estado)
         # Inyectables en pruebas (dobles de YouTube, voz, LLM y HTTP).
         self.yt, self.motor_voz, self.proveedor_llm, self.sesion_http = yt, motor_voz, proveedor_llm, sesion_http
+        self.reparador, self.modelo_rapido = reparador, modelo_rapido
 
     def dir_run(self, run_id: str) -> Path:
         return self.cfg.dir_runs / run_id
@@ -96,9 +97,17 @@ class Pipeline:
         tema = r.opciones.get("tema")
         if tema:
             t = Tendencia(titulo=tema, fuente="manual")
+            # Antes de gastar en LLM, voz y render: ¿ya se publicó algo así?
+            parecido, fila = self.memoria.tema_mas_parecido(tema, self.cfg.dedup_ultimas)
+            if fila is not None and parecido >= self.cfg.similitud_tema_maxima and not r.opciones.get("permitir_repetido"):
+                raise ErrorContenido(
+                    f"Tema demasiado parecido a uno de los últimos {self.cfg.dedup_ultimas} Shorts "
+                    f"({parecido:.0%}): «{fila.get('tema') or fila.get('titulo')}» ({fila.get('fecha', '?')}). "
+                    "Elige otro ángulo o usa --permitir-repetido."
+                )
         else:
-            cubiertos = [e.get("tema", "") for e in self.memoria.entradas(60)]
-            t = tendencias.buscar(cubiertos, sesion=self.sesion_http)
+            cubiertos = [e.get("tema", "") for e in self.memoria.entradas(self.cfg.dedup_ultimas)]
+            t = tendencias.buscar(cubiertos, sesion=self.sesion_http, umbral=self.cfg.similitud_tema_maxima)
         log.info("tema: %s (%s)", t.titulo, t.fuente)
         return {"tendencia": t.model_dump()}
 
@@ -117,6 +126,12 @@ class Pipeline:
                 pais = str(fijado.get("pais", "WLD"))
             else:
                 indicador, pais = worldbank.elegir(t.titulo, self.memoria.indicadores_recientes())
+            repetido = self.memoria.angulo_repetido(t.titulo, indicador.id, self.cfg.dedup_ultimas)
+            if repetido is not None and not r.opciones.get("permitir_repetido"):
+                raise ErrorContenido(
+                    f"Mismo ángulo que «{repetido.get('titulo') or repetido.get('tema')}» ({repetido.get('fecha', '?')}): "
+                    f"mismo dato ({indicador.id}) y tema parecido. Elige otro ángulo o usa --permitir-repetido."
+                )
             serie = worldbank.descargar(indicador, pais, sesion=self.sesion_http)
             origen = "worldbank"
         log.info("dato: %s · %s (%d puntos, %s)", serie.indicador, serie.pais_nombre, len(serie.puntos), origen)
@@ -125,14 +140,25 @@ class Pipeline:
     def guion(self, r: Registro) -> dict:
         t = Tendencia.model_validate(r.artefactos["tendencia"])
         serie = Serie.model_validate(r.artefactos["serie"])
-        rng = random.Random(r.artefactos["variacion"]["semilla"])
+        v = Variacion.model_validate(r.artefactos["variacion"])
+        rng = random.Random(v.semilla)
+        # Las props que saldrán de este guion deben pasar el Zod de schema.ts:
+        # se comprueba ahora (tiempos estimados), antes de pagar voz y render.
+        validar = None
+        if validacion.disponible(self.cfg):
+            def validar(g: Guion) -> list[str]:
+                return validacion.validar(self.cfg, provisional.props_provisionales(r.run_id, g, serie, v, self.cfg.fps))
         if r.opciones.get("guion_archivo"):
             g = editorial.construir(editorial.leer(Path(r.opciones["guion_archivo"])), serie)
             ev = evaluar(g, serie, t, self.cfg.duracion_max, self.memoria, self.cfg.similitud_maxima)
             if not ev.ok:
                 raise ErrorContenido("El guion editorial no pasa las heurísticas:\n- " + "\n- ".join(ev.errores))
+            problemas = validar(g) if validar else []
+            if problemas:
+                raise ErrorContenido("El guion editorial no pasa la validación del render (Zod):\n- " + "\n- ".join(problemas))
         else:
-            g, ev = generador.escribir(self.cfg, t, serie, self.memoria, self.proveedor_llm, rng)
+            g, ev = generador.escribir(self.cfg, t, serie, self.memoria, self.proveedor_llm, rng,
+                                       validar=validar, reparar=self.reparador)
         if not ev.ok and g.generador != "plantilla":
             raise ErrorContenido("guion inválido: " + "; ".join(ev.errores))
         (self.dir_run(r.run_id) / "guion.json").write_text(g.model_dump_json(indent=2), encoding="utf-8")
@@ -184,7 +210,14 @@ class Pipeline:
         datos = render.props(r.run_id, g, n, serie, v, segs, self.cfg.fps)
         salida = dir_run / "short.mp4"
         render.renderizar(self.cfg, datos, salida)
-        return {"video": str(salida)}
+        artefactos: dict[str, Any] = {"video": str(salida)}
+        # La miniatura es un extra: si falla, el Short sigue (YouTube pone la automática).
+        try:
+            artefactos["miniatura"] = str(miniatura.renderizar(
+                self.cfg, miniatura.props(g, serie, v), dir_run / "miniatura.jpg"))
+        except ShortsError as e:
+            log.warning("sin miniatura propia: %s", e)
+        return artefactos
 
     def qa(self, r: Registro) -> dict:
         info = qa.revisar(Path(r.artefactos["video"]), self.cfg.duracion_max, self.cfg.fps, self.cfg.lufs)
@@ -217,7 +250,11 @@ class Pipeline:
         t = Tendencia.model_validate(r.artefactos["tendencia"])
         v = Variacion.model_validate(r.artefactos["variacion"])
         creditos = [*r.artefactos.get("creditos", []), mezcla.creditos_musica(self.cfg, v.semilla)]
-        meta = youtube.cuerpo(self.cfg, seo.titulo(g), seo.descripcion(g, serie, t, creditos), seo.etiquetas(g, serie), destino)
+        propuesta = None
+        if self.cfg.seo_llm and (self.modelo_rapido is not None or rapido.disponible(self.cfg)):
+            propuesta = seo.optimizar(g, serie, self.modelo_rapido or rapido.ModeloRapido(self.cfg))
+        titulo, descripcion, etiquetas = seo.metadatos(g, serie, t, creditos, propuesta)
+        meta = youtube.cuerpo(self.cfg, titulo, descripcion, etiquetas, destino)
         Cuota(self.cfg.dir_estado, self.cfg.youtube_cuota_diaria).reservar(self.cfg.youtube_costo_subida)
         res = youtube.subir(self.cfg, Path(r.artefactos["video"]), meta, yt=self.yt)
         self.memoria.registrar(
@@ -225,4 +262,8 @@ class Pipeline:
             variacion=v.firma(), broll=r.artefactos.get("broll_ids", []), video_id=res.video_id, privacidad=res.privacidad,
         )
         log.info("publicado: %s (%s)", res.url, res.privacidad)
-        return {"publicado": True, "subida": res.model_dump()}
+        salida: dict[str, Any] = {"publicado": True, "subida": res.model_dump()}
+        imagen = r.artefactos.get("miniatura")
+        if self.cfg.youtube_miniatura and imagen and Path(imagen).is_file():
+            salida["miniatura_subida"] = youtube.subir_miniatura(self.cfg, res.video_id, Path(imagen), yt=self.yt)
+        return salida

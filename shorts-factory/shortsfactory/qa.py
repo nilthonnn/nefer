@@ -29,16 +29,26 @@ def revisar(video: Path, duracion_max: float, fps: int, lufs: float) -> dict:
         problemas.append("sin pista de audio")
     if not 5 <= dur <= duracion_max + 0.1:
         problemas.append(f"dura {dur:.2f} s (máximo {duracion_max:.0f} s)")
-    medido = _lufs(video) if a is not None else None
+    medido, pico = _sonoridad(video) if a is not None else (None, None)
     if medido is not None and abs(medido - lufs) > 1.5:
         problemas.append(f"sonoridad {medido:.1f} LUFS (objetivo {lufs:.0f})")
+    # El objetivo es -1 dBTP; la codificación AAC puede subir el pico unas décimas.
+    if pico is not None and pico > PICO_MAXIMO + 0.5:
+        problemas.append(f"pico real {pico:.1f} dBTP (máximo {PICO_MAXIMO:.0f} dBTP)")
     if problemas:
         raise ErrorContenido("QA del video: " + "; ".join(problemas))
-    return {"duracion": round(dur, 3), "lufs": medido}
+    return {"duracion": round(dur, 3), "lufs": medido, "pico_dbtp": pico}
 
 
-def _lufs(video: Path) -> float | None:
-    p = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-i", str(video), "-af", "ebur128=framelog=quiet",
+PICO_MAXIMO = -1.0
+
+
+def _sonoridad(video: Path) -> tuple[float | None, float | None]:
+    """(sonoridad integrada en LUFS, pico real en dBTP) con el medidor EBU R128."""
+    p = subprocess.run(["ffmpeg", "-hide_banner", "-nostdin", "-i", str(video), "-af", "ebur128=framelog=quiet:peak=true",
                         "-f", "null", "-"], capture_output=True, text=True, timeout=600)
-    m = re.findall(r"I:\s+(-?\d+(?:\.\d+)?) LUFS", p.stderr)
-    return float(m[-1]) if m else None
+    integrada = re.findall(r"I:\s+(-?\d+(?:\.\d+)?) LUFS", p.stderr)
+    pico = re.findall(r"Peak:\s+(-?(?:\d+(?:\.\d+)?|inf)) dBFS", p.stderr)
+    lufs = float(integrada[-1]) if integrada else None
+    tp = float(pico[-1]) if pico and pico[-1] not in ("-inf", "inf") else None
+    return lufs, tp

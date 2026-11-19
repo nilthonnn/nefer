@@ -7,7 +7,13 @@
   dos Shorts del canal nunca tienen exactamente el mismo ritmo.
 - Si la voz se pasa de la duración máxima, se acelera hasta un 12 % (sin
   cambiar el tono); si aun así no cabe, el guion es demasiado largo.
-- La música (opcional) se atenúa bajo la voz y se normaliza todo a -14 LUFS.
+- La música (opcional) se atenúa bajo la voz y se normaliza todo a -14 LUFS
+  con True Peak -1 dBTP (loudnorm en dos pasadas, el estándar de YouTube).
+- Síntesis concurrente: los motores que lo admiten (Edge: red; espeak:
+  procesos) sintetizan varias frases a la vez (``SF_TTS_HILOS``). Kokoro
+  NO: en CPU PyTorch ya usa todos los núcleos en cada frase y el pipeline
+  comparte un único modelo en memoria; en paralelo solo multiplicaría la
+  RAM sin acelerar. Las frases se ensamblan siempre en orden.
 """
 
 from __future__ import annotations
@@ -15,6 +21,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from ..errors import ErrorContenido, ErrorRender
@@ -29,15 +36,26 @@ ACELERACION_MAXIMA = 1.12
 COLA_LOOP = 0.15  # sin silencio final largo: el loop debe sentirse continuo
 
 
+def sintetizar_frases(guion: Guion, motor: MotorVoz, velocidad: float, carpeta: Path, hilos: int) -> list:
+    """Todas las frases, en paralelo si el motor lo admite; el resultado conserva el orden."""
+    trabajos = [(f.texto, carpeta / f"frase{i:02d}") for i, f in enumerate(guion.frases)]
+    if not getattr(motor, "concurrente", False) or hilos <= 1 or len(trabajos) == 1:
+        return [motor.sintetizar(texto, destino, velocidad) for texto, destino in trabajos]
+    with ThreadPoolExecutor(max_workers=min(hilos, len(trabajos))) as pool:
+        # map conserva el orden y propaga la primera excepción (p. ej., ErrorTransitorio).
+        return list(pool.map(lambda tr: motor.sintetizar(tr[0], tr[1], velocidad), trabajos))
+
+
 def narrar(guion: Guion, motor: MotorVoz, variacion: Variacion, cfg: Settings, carpeta: Path) -> Narracion:
     carpeta.mkdir(parents=True, exist_ok=True)
+    sintesis = sintetizar_frases(guion, motor, variacion.velocidad_voz, carpeta, cfg.tts_hilos)
     piezas: list[tuple[Path, float]] = []
     palabras: list[PalabraT] = []
     frases: list[tuple[float, float]] = []
     exacta = True
     t = 0.0
     for i, frase in enumerate(guion.frases):
-        wav, d, rel, ex = motor.sintetizar(frase.texto, carpeta / f"frase{i:02d}", variacion.velocidad_voz)
+        wav, d, rel, ex = sintesis[i]
         exacta &= ex
         enfasis = {_norm(p) for p in frase.enfasis}
         palabras += [p.model_copy(update={"inicio": round(p.inicio + t, 3), "fin": round(p.fin + t, 3),

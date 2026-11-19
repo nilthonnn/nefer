@@ -1,0 +1,88 @@
+name: imagen
+
+# Imagen de CI/producción (docker/produccion.Dockerfile) en GHCR.
+#
+# La etiqueta es el hash del Dockerfile y de los manifiestos de dependencias:
+# misma entrada → misma imagen. Si la etiqueta ya existe no se construye nada
+# (unos segundos); si no, se construye y se publica una vez y todos los jobs
+# posteriores la reutilizan. Así un PR que cambia dependencias prueba con SU
+# imagen, no con la de main.
+#
+# La usan pr-checks.yml, autopilot.yml y documental.yml con `uses:`; también
+# se puede lanzar a mano para precalentarla.
+on:
+  workflow_call:
+    outputs:
+      imagen:
+        description: "Referencia completa de la imagen (ghcr.io/...:<hash>)"
+        value: ${{ jobs.imagen.outputs.imagen }}
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  imagen:
+    name: imagen de CI (GHCR)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      imagen: ${{ steps.etiqueta.outputs.imagen }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            docker
+            shorts-factory/requirements.txt
+            shorts-factory/remotion/package.json
+            shorts-factory/remotion/package-lock.json
+            documental/remotion/package.json
+            documental/remotion/package-lock.json
+            .dockerignore
+          sparse-checkout-cone-mode: false
+
+      - name: Etiqueta por contenido
+        id: etiqueta
+        run: |
+          hash=$(cat docker/produccion.Dockerfile docker/enlazar-node-modules.sh .dockerignore \
+                     shorts-factory/requirements.txt \
+                     shorts-factory/remotion/package.json shorts-factory/remotion/package-lock.json \
+                     documental/remotion/package.json documental/remotion/package-lock.json \
+                 | sha256sum | cut -c1-16)
+          repo="ghcr.io/$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')/nefer-produccion"
+          echo "imagen=${repo}:${hash}" >> "$GITHUB_OUTPUT"
+          echo "repo=${repo}" >> "$GITHUB_OUTPUT"
+          echo "Imagen: ${repo}:${hash}"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ¿Ya existe?
+        id: existe
+        run: |
+          if docker manifest inspect "${{ steps.etiqueta.outputs.imagen }}" > /dev/null 2>&1; then
+            echo "si=true" >> "$GITHUB_OUTPUT"
+            echo "La imagen ya está en GHCR: no se reconstruye."
+          else
+            echo "si=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.existe.outputs.si != 'true'
+
+      - name: Construir y publicar
+        if: steps.existe.outputs.si != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/produccion.Dockerfile
+          push: true
+          tags: |
+            ${{ steps.etiqueta.outputs.imagen }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}:main', steps.etiqueta.outputs.repo) || '' }}
+          cache-from: type=gha,scope=nefer-produccion
+          cache-to: type=gha,scope=nefer-produccion,mode=max

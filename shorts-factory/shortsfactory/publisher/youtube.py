@@ -107,3 +107,50 @@ def subir(
         titulo=metadatos["snippet"]["title"],
         unidades_cuota=cfg.youtube_costo_subida,
     )
+
+
+def subir_miniatura(
+    cfg: Settings,
+    video_id: str,
+    imagen: Path,
+    yt: Any = None,
+    intentos: int = 3,
+    dormir: Callable[[float], None] = time.sleep,
+) -> bool:
+    """``thumbnails().set`` tras la subida. Nunca hace fallar la publicación.
+
+    - Reserva ``SF_YOUTUBE_COSTO_MINIATURA`` unidades; sin cuota, se omite.
+    - 403: el canal no puede usar miniaturas propias (requiere verificación
+      telefónica) o la API lo deniega; se registra y se sigue.
+    - 5xx y errores de red: reintento con espera exponencial.
+    Devuelve True si quedó puesta.
+    """
+    from googleapiclient.errors import HttpError
+    from googleapiclient.http import MediaFileUpload
+
+    from .cuota import Cuota
+
+    try:
+        Cuota(cfg.dir_estado, cfg.youtube_cuota_diaria).reservar(cfg.youtube_costo_miniatura)
+    except ErrorCuota as e:
+        log.warning("miniatura omitida: %s", e)
+        return False
+    yt = yt or servicio(cfg)
+    for intento in range(1, intentos + 1):
+        try:
+            media = MediaFileUpload(str(imagen), mimetype="image/jpeg", resumable=False)
+            yt.thumbnails().set(videoId=video_id, media_body=media).execute()
+            log.info("miniatura propia puesta en %s", video_id)
+            return True
+        except HttpError as e:
+            codigo = int(getattr(e.resp, "status", 0))
+            if codigo not in REINTENTABLES:
+                log.warning("YouTube rechazó la miniatura (%s): se queda la automática. %s", codigo,
+                            "¿Canal sin verificar? Las miniaturas propias requieren verificación." if codigo == 403 else "")
+                return False
+        except (ConnectionError, TimeoutError, OSError) as e:
+            log.warning("miniatura: error de red %s", type(e).__name__)
+        if intento < intentos:
+            dormir(min(30.0, 2 ** intento) + random.uniform(0, 1))
+    log.warning("miniatura no subida tras %d intentos: se queda la automática", intentos)
+    return False

@@ -1,3 +1,4 @@
+import json
 import random
 import types
 
@@ -13,20 +14,23 @@ from conftest import guion_bueno
 
 
 class _Anthropic:
-    """Doble del SDK: entrega guiones en orden y registra lo que recibe."""
+    """Doble del SDK: entrega guiones (JSON en texto) en orden y registra lo que recibe."""
 
     def __init__(self, entregas):
         self.entregas = list(entregas)
         self.llamadas = []
         self.messages = self
+        self.beta = types.SimpleNamespace(messages=self)
 
     def create(self, **kw):
         self.llamadas.append({**kw, "messages": list(kw["messages"])})
         e = self.entregas.pop(0)
         if isinstance(e, Exception):
             raise e
-        bloque = types.SimpleNamespace(type="tool_use", id=f"t{len(self.llamadas)}", input=e)
-        return types.SimpleNamespace(content=[bloque], stop_reason="tool_use")
+        if isinstance(e, types.SimpleNamespace):  # respuesta completa (p. ej., una negativa)
+            return e
+        bloque = types.SimpleNamespace(type="text", text=json.dumps(e, ensure_ascii=False))
+        return types.SimpleNamespace(content=[bloque], stop_reason="end_turn")
 
 
 def _cfg(tmp_path, **kw):
@@ -43,10 +47,14 @@ def test_autocorrige_con_las_heuristicas(tmp_path, serie, tendencia):
     assert ev.ok and g.generador == "llm" and len(cliente.llamadas) == 2
     primera = cliente.llamadas[0]
     assert primera["model"] == "claude-opus-5-5"
-    assert primera["tool_choice"] == {"type": "tool", "name": "entregar_guion"}
+    # Opus 5.5 rechaza tool_choice forzado (400): la estructura va por output_config.format.
+    assert "tool_choice" not in primera and "tools" not in primera
+    assert primera["output_config"]["format"]["schema"] is generador.ESQUEMA
+    assert primera["fallbacks"] == "default" and primera["betas"] == ["server-side-fallback-2026-07-01"]
     assert "2024: 4,40" in primera["messages"][0]["content"]  # recibe la serie real
-    correccion = cliente.llamadas[1]["messages"][-1]["content"][0]
-    assert correccion["type"] == "tool_result" and "15" in correccion["content"]
+    historial = cliente.llamadas[1]["messages"]
+    assert historial[-2]["role"] == "assistant" and historial[-1]["role"] == "user"
+    assert "15" in historial[-1]["content"]
 
 
 def test_se_rinde_tras_las_correcciones(tmp_path, serie, tendencia):
@@ -63,7 +71,76 @@ def test_esquema_invalido_se_devuelve_al_modelo(tmp_path, serie, tendencia):
     cliente = _Anthropic([{"titulo": "x"}, guion_bueno().model_dump()])
     proveedor = generador.ProveedorAnthropic(_cfg(tmp_path), cliente)
     g, _ = generador.escribir(_cfg(tmp_path), tendencia, serie, Memoria(tmp_path), proveedor)
-    assert "esquema" in cliente.llamadas[1]["messages"][-1]["content"][0]["content"]
+    assert "esquema" in cliente.llamadas[1]["messages"][-1]["content"]
+
+
+def test_negativa_del_modelo_no_se_toma_como_guion(tmp_path, serie, tendencia):
+    negativa = types.SimpleNamespace(content=[], stop_reason="refusal",
+                                     stop_details=types.SimpleNamespace(category="cyber"))
+    proveedor = generador.ProveedorAnthropic(_cfg(tmp_path), _Anthropic([negativa]))
+    with pytest.raises(ErrorContenido, match="se negó"):
+        generador.escribir(_cfg(tmp_path), tendencia, serie, Memoria(tmp_path), proveedor)
+
+
+def test_zod_rechaza_y_el_modelo_rapido_repara(tmp_path, serie, tendencia):
+    bueno = guion_bueno().model_dump(exclude={"generador"})
+    recibidos = []
+
+    def validar(g):
+        return [] if g.titulo.startswith("Reparado") else ["segmentos.0: hasta <= desde"]
+
+    def reparar(crudo, problemas):
+        recibidos.append(problemas)
+        return {**crudo, "titulo": "Reparado: " + crudo["titulo"]}
+
+    proveedor = generador.ProveedorAnthropic(_cfg(tmp_path), _Anthropic([bueno]))
+    g, ev = generador.escribir(_cfg(tmp_path), tendencia, serie, Memoria(tmp_path), proveedor,
+                               validar=validar, reparar=reparar)
+    assert g.titulo.startswith("Reparado") and ev.ok
+    assert recibidos == [["segmentos.0: hasta <= desde"]]  # recibe el error EXACTO de Zod
+
+
+def test_reparacion_limitada_aborta(tmp_path, serie, tendencia):
+    bueno = guion_bueno().model_dump(exclude={"generador"})
+    llamadas = []
+
+    def reparar(crudo, problemas):
+        llamadas.append(1)
+        return crudo
+
+    proveedor = generador.ProveedorAnthropic(_cfg(tmp_path), _Anthropic([bueno]))
+    with pytest.raises(ErrorContenido, match="validación del render"):
+        generador.escribir(_cfg(tmp_path), tendencia, serie, Memoria(tmp_path), proveedor,
+                           validar=lambda g: ["paginas.0.palabras: Too small"], reparar=reparar)
+    assert len(llamadas) == 2  # SF_LLM_REPARACIONES por defecto
+
+
+def test_sin_reparador_zod_vuelve_al_modelo_principal(tmp_path, serie, tendencia):
+    bueno = guion_bueno().model_dump(exclude={"generador"})
+    otro = {**bueno, "titulo": "Otro título que sí vale"}
+    cliente = _Anthropic([bueno, otro])
+    vistos = []
+
+    def validar(g):
+        vistos.append(g.titulo)
+        return [] if g.titulo == "Otro título que sí vale" else ["segmentos.1: broll sin video"]
+
+    cfg = _cfg(tmp_path, llm_proveedor="openai", llm_modelo="m")  # sin modelo rápido disponible
+    proveedor = generador.ProveedorAnthropic(_cfg(tmp_path), cliente)
+    g, _ = generador.escribir(cfg, tendencia, serie, Memoria(tmp_path), proveedor, validar=validar)
+    assert g.titulo == "Otro título que sí vale" and len(cliente.llamadas) == 2
+    assert "broll sin video" in cliente.llamadas[1]["messages"][-1]["content"]
+
+
+def test_modelo_rapido_usa_haiku_y_structured_outputs(tmp_path):
+    from shortsfactory.scripts.rapido import ModeloRapido
+
+    cliente = _Anthropic([{"a": 1}])
+    datos = ModeloRapido(_cfg(tmp_path), cliente).json("s", "c", {"type": "object"})
+    assert datos == {"a": 1}
+    llamada = cliente.llamadas[0]
+    assert llamada["model"] == "claude-haiku-5-5"
+    assert llamada["output_config"] == {"effort": "low", "format": {"type": "json_schema", "schema": {"type": "object"}}}
 
 
 def test_errores_del_sdk_se_clasifican():

@@ -75,7 +75,8 @@ def limpiar_public(cfg: Settings, run_id: str) -> None:
     shutil.rmtree(cfg.remotion_dir / "public" / "runs" / run_id, ignore_errors=True)
 
 
-def renderizar(cfg: Settings, datos: dict, salida: Path) -> None:
+def renderizar(cfg: Settings, datos: dict, salida: Path, frames: tuple[int, int] | None = None) -> None:
+    """Render del Short. ``frames`` (inicio, fin inclusive) limita el rango: lo usa el render de humo."""
     if not (cfg.remotion_dir / "node_modules" / "remotion").is_dir():
         raise ErrorConfiguracion(f"Remotion sin instalar: cd {cfg.remotion_dir} && npm ci")
     ruta_props = salida.with_suffix(".props.json")
@@ -83,6 +84,11 @@ def renderizar(cfg: Settings, datos: dict, salida: Path) -> None:
     cmd = ["npx", "--no-install", "remotion", "render", "src/index.ts", "Short", str(salida.resolve()),
            f"--props={ruta_props.resolve()}", "--codec=h264", "--crf=18", "--audio-codec=aac",
            "--log=error", f"--concurrency={max(1, (os.cpu_count() or 2) // 2)}"]
+    if frames is not None:
+        inicio, fin = frames
+        if not 0 <= inicio <= fin:
+            raise ValueError(f"rango de fotogramas inválido: {inicio}-{fin}")
+        cmd.append(f"--frames={inicio}-{fin}")
     if cfg.remotion_browser:
         cmd.append(f"--browser-executable={cfg.remotion_browser}")
     try:
