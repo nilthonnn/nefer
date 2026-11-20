@@ -40,7 +40,7 @@ FECHA_FIJA = (2026, 11, 7, 0, 0, 0)
 # computadora con servidor local sirve; abierto como archivo no se registra.
 PIEZAS = ["index.html", "lecciones.js", "energia.js", "proyectos.js", "mina.js", "tablero.js", "manifest.webmanifest",
           "sw.js", "icono.svg", "icono-192.png", "icono-512.png",
-          "AUDITORIA-FUNCIONAL.md", "AUDITORIA-ANDROID.md"]
+          "AUDITORIA-FUNCIONAL.md", "AUDITORIA-ANDROID.md", "AUDITORIA-COMPLETITUD.md"]
 
 LEEME = """LadderLab - Ladder (LAD) para TIA Portal, con ruta de grupos electrogenos y mineria
 ====================================================================================

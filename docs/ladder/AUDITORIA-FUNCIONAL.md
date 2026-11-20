@@ -1,5 +1,7 @@
 # Auditoría funcional de LadderLab
 
+> **Registro de su fecha.** Las cifras de este documento corresponden al momento en que se hizo. El estado al día de todo lo pedido está en [`AUDITORIA-COMPLETITUD.md`](AUDITORIA-COMPLETITUD.md).
+
 Revisión de la app de aprendizaje de Ladder (`docs/ladder/`) contra las normas
 internacionales que gobiernan **lo que enseña** y **lo que simula**: el lenguaje
 y sus instrucciones, la protección y transferencia de grupos electrógenos, el

@@ -1,5 +1,7 @@
 # Auditoría de funcionalidad, operatividad, descargas e instalación en Android
 
+> **Registro de su fecha.** Las cifras de este documento corresponden al momento en que se hizo. El estado al día de todo lo pedido está en [`AUDITORIA-COMPLETITUD.md`](AUDITORIA-COMPLETITUD.md).
+
 Revisión de LadderLab a raíz de un reporte de uso: **«no lo puedo abrir en
 Android»**. Se revisaron todas las formas de llevar la app a un teléfono y se
 corrigió lo que fallaba.

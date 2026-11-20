@@ -32,6 +32,8 @@
   --lamp:#33424C; --hover:rgba(63,193,198,.12); --shadow:none;
 }
 *{box-sizing:border-box}
+/* `hidden` tiene que ganar siempre: .btn y otras clases fijan display y lo pisaban */
+[hidden]{display:none !important}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:15.5px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:hidden}
 a{color:var(--acc)}
@@ -1062,7 +1064,7 @@ const BADGES = [
   { id: "faja", ic: "⛏", n: "Mineral en movimiento", d: "Arranca las fajas en cascada sin atollar chutes", ok: () => propio("faja") },
   { id: "proyectos", ic: "📦", n: "Integrador", d: "Completa los proyectos integradores de la línea de transferencia", ok: () => nivelHecho("proyectos") },
   { id: "diagnostico", ic: "🔍", n: "Detective de planta", d: "Encuentra los dos errores del reto de diagnóstico", ok: () => propio("diagnostico") },
-  { id: "energia", ic: "🏭", n: "Jefe de turno eléctrico", d: "Completa toda la ruta Grupos y minería", ok: () => nivelHecho("energia") },
+  { id: "energia", ic: "🏭", n: "Jefe de turno eléctrico", d: "Completa toda la ruta de la mina: energía y planta", ok: () => nivelHecho("energia") },
   { id: "racha3", ic: "🔥", n: "Constancia", d: "Estudia 3 días seguidos", ok: () => racha() >= 3 },
   { id: "racha7", ic: "🏆", n: "Semana completa", d: "Estudia 7 días seguidos", ok: () => racha() >= 7 },
   { id: "quiz30", ic: "🧠", n: "Cerebro de PLC", d: "Acumula 30 respuestas correctas", ok: () => Object.values(ST.quiz).reduce((a, b) => a + b, 0) >= 30 }
@@ -1102,16 +1104,16 @@ function viewHome() {
   $("#main").innerHTML = `
   <section class="hero"><div>
     <h1>Ladder para TIA Portal, de cero a la planta minera</h1>
-    <p>Aprende LAD como se programa un S7‑1200/1500 y llévalo a lo que se ve en campo: grupos electrógenos, transferencia red‑grupo, sincronismo en paralelo, fajas y bombas. Un PLC simulado con modelo de planta corrige tus retos ciclo por ciclo.</p>
+    <p>Aprende LAD como se programa un S7‑1200/1500 y llévalo a lo que se ve en campo: un tablero de transferencia de tres interruptores, grupos electrógenos en paralelo, la lógica de motores de mina, fajas y bombas. Un PLC simulado con modelo de planta corrige tus retos ciclo por ciclo.</p>
     <div class="btns"><a class="btn" href="#/l/${(cont && estado(cont) !== "done" ? cont : next).id}">${ST.last ? "Continuar" : "Empezar"}: ${esc((cont && estado(cont) !== "done" ? cont : next).titulo)}</a><a class="btn ghost" href="#/lab">Laboratorio libre</a><a class="btn ghost" href="manual/index.html">Manual de uso</a><button class="btn ghost b-inst" ${PEDIR_INSTALAR ? "" : "hidden"}>⤓ Instalar en este equipo</button>${EN_APK || !/Android/i.test(navigator.userAgent) ? "" : `<a class="btn ghost" href="${APK_URL}">Descargar APK para Android</a>`}</div>
   </div>${art}</section>
   ${(() => { const R = rango(), pct = Math.round(100 * (R.x - R.desde) / (R.hasta - R.desde)), rc = racha(), nb = BADGES.filter(b => (ST.badges || []).includes(b.id)).length;
     return `<div class="stats"><div class="card"><p class="sub" style="margin:0">Tu rango</p><div class="rk">${esc(R.nombre)}</div>
       <div class="xpbar"><i style="width:${R.n === RANGOS.length - 1 ? 100 : pct}%"></i></div><p class="sub" style="margin:0">${R.x} XP${R.n < RANGOS.length - 1 ? ` · faltan ${R.hasta - R.x} para «${esc(RANGOS[R.n + 1])}»` : " · rango máximo"}</p>
       <div class="kpis"><div><b>🔥 ${rc}</b>día${rc === 1 ? "" : "s"} seguidos</div><div><b>${Object.keys(ST.reto).length}/${LECCIONES.filter(L => L.reto).length}</b>retos</div><div><b>${nb}/${BADGES.length}</b>insignias</div></div>
-      <p class="sub" style="margin:.3rem 0 0;font-size:.78rem">Cuestionario: 10 XP por respuesta correcta. Reto: 50 XP; 80 XP en la ruta de grupos y minería.</p></div>
+      <p class="sub" style="margin:.3rem 0 0;font-size:.78rem">Cuestionario: 10 XP por respuesta correcta. Reto: 50 XP; 80 XP en la ruta de la mina.</p></div>
       <div class="card"><p class="sub" style="margin:0">Insignias</p><div class="bdg">${BADGES.map(b => `<div class="${(ST.badges || []).includes(b.id) ? "" : "off"}" title="${esc(b.d)}"><span>${b.ic}</span><b>${esc(b.n)}</b>${esc(b.d)}</div>`).join("")}</div></div></div>`; })()}
-  <div class="card ruta"><div class="big">⚡⛏</div><div><h2>Ruta aplicada: grupos electrógenos y minería</h2>
+  <div class="card ruta"><div class="big">⚡⛏</div><div><h2>Ruta aplicada: la mina, energía y planta</h2>
     <p>Protecciones del grupo, <b>TTA red‑grupo</b>, <b>sincronismo de grupos en paralelo</b> con sincronoscopio, arranque por demanda con deslastre, fajas de mineral en cascada con pull‑cord y bombas de relaves con alternancia: casos de planta concentradora como los de las operaciones del sur del Perú. Cada reto corre contra un modelo de planta que responde y detecta cierres fuera de fase o chutes atollados.</p>
     <a class="btn" href="#/l/${(LECCIONES.find(L => L.nivel === "energia" && estado(L) !== "done") || LECCIONES.find(L => L.nivel === "energia")).id}">Ir a la ruta</a> <span class="sub" style="font-size:.82rem">Recomendado tras el nivel intermedio</span></div></div>
   <div class="levels">${NIVELES.map(N => { const ls = LECCIONES.filter(L => L.nivel === N.id), d = ls.filter(L => estado(L) === "done").length;

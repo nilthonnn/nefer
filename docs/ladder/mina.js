@@ -202,3 +202,32 @@ LECCIONES.forEach(function (L) { if (L.reto && GUIAS[L.id]) L.reto.guia = GUIAS[
   var g = LECCIONES.findIndex(function (l) { return l.nivel === "energia"; });
   LECCIONES.splice(g < 0 ? LECCIONES.length : g, 0, L);
 })();
+
+/* guías de los niveles básico, intermedio y avanzado */
+var GUIAS_BASE = {
+  contactos: { estrategia: "<p>Dos salidas, dos segmentos. Para cada una pregúntate: ¿con el sensor en 1 o en 0? En 1 → contacto <b>NA</b>; en 0 → contacto <b>NC</b>. Las dos usan el mismo sensor.</p>",
+    teoria: "<p>El contacto del programa no es el contacto físico: un NC del programa pregunta «¿la señal vale 0?». La bobina escribe en cada ciclo lo que le llega: si deja de llegarle corriente, escribe 0.</p>" },
+  logica: { estrategia: "<p>Escribe la frase como lógica: «(mano izquierda <b>y</b> mano derecha) <b>o</b> llave». El «y» son dos contactos en serie dentro de una rama; el «o», otra rama en paralelo con la llave.</p>",
+    teoria: "<p>Serie = AND: conducen todos. Paralelo = OR: basta una rama. Para que la llave salte sobre <i>los dos</i> pulsadores, su rama tiene que abarcar a ambos (en el editor: <i>Rama paralela</i> y luego <i>Extender rama →</i>).</p>",
+    notas: { 0: "La rama de arriba son las dos manos en serie; la de abajo, la llave. Así la llave sola basta, y las manos necesitan estar las dos." } },
+  enclavamiento: { estrategia: "<p>Es marcha‑paro: <b>(marcha o la propia bomba)</b> en paralelo, y después, en serie, todo lo que puede pararla. Como el paro y el térmico están cableados NC, en reposo valen 1: se usan con contacto <b>NA</b>.</p>",
+    teoria: "<p>La autorretención es el contacto de la propia salida en paralelo con la marcha. Las paradas van <b>después</b> del paralelo para tener prioridad: si se pulsan marcha y paro a la vez, gana el paro.</p>",
+    notas: { 0: "Paro y térmico en serie después del paralelo: cualquiera de los dos corta, también la autorretención." } },
+  setreset: { estrategia: "<p>Una salida que se «memoriza» pide <b>Set</b> en un segmento y <b>Reset</b> en otro. El Set con el sensor; el Reset con el reconocimiento <b>y</b> el sensor ya en 0.</p>",
+    teoria: "<p>Set y Reset solo actúan cuando les llega corriente; si no, la salida conserva su valor. Si los dos actúan en el mismo ciclo gana el que está más abajo.</p>",
+    notas: { 1: "El NC del nivel alto en el reset hace que reconocer no sirva mientras la causa siga presente." } },
+  flancos: { estrategia: "<p>Dos pasos: un <b>pulso de un ciclo</b> con el flanco del pulsador, y un <b>telerruptor</b>: la luz cambia cuando llega el pulso y se mantiene cuando no.</p>",
+    teoria: "<p>Telerruptor en LAD: (pulso <b>y no</b> luz) <b>o</b> (no pulso <b>y</b> luz) → luz. Con el pulso, la luz pasa a lo contrario de lo que era; sin pulso, se mantiene. Funciona porque el pulso dura un solo ciclo.</p>",
+    notas: { 1: "Rama de arriba: llega el pulso con la luz apagada → enciende. Rama de abajo: sin pulso, la luz se mantiene a sí misma." } },
+  temporizadores: { estrategia: "<p>«Arranca 3 s después de encender» es un <b>TON</b>; «sigue 2 s después de apagar» es un <b>TOF</b>. Cada uno en su segmento, con su instancia, y la bobina después de la caja.</p>",
+    teoria: "<p>TON: Q se activa cuando IN lleva PT seguido; si IN cae antes, vuelve a cero. TOF: Q sigue PT después de que IN cae. La caja se pone en serie: deja pasar la corriente según su Q.</p>" },
+  contadores: { estrategia: "<p>Un <b>CTU</b> con el sensor en CU (cuenta flancos, no hace falta un contacto P), el pulsador de nueva caja en R y PV = 6. Su salida Q enciende la luz.</p>",
+    teoria: "<p>Q = CV ≥ PV. R pone CV a cero y tiene prioridad: mientras está activo no se cuenta.</p>" },
+  datos: { estrategia: "<p>Dos MOVE, uno por pulsador, que escriben la consigna, y un comparador ≥ 2000 que enciende la luz. MOVE solo escribe mientras le llega corriente: al soltar, la consigna se conserva.</p>",
+    teoria: "<p>EN = 0 → la caja no se ejecuta y OUT conserva su valor. Un comparador en LAD se comporta como un contacto: conduce si la comparación es cierta.</p>" },
+  secuencias: { estrategia: "<p>Un solo TON de ciclo que se reinicia solo (NC de su propia Q) y <b>ventanas de tiempo</b> sobre su ET: verde 0–4 s, ámbar 4–5 s, rojo 5–8 s. Cada luz es un segmento con sus comparadores en serie.</p>",
+    teoria: "<p>«Entre 4 y 5 s» son dos comparadores en serie: ET ≥ T#4s y ET &lt; T#5s. Las ventanas no se tocan, así que nunca hay dos luces a la vez.</p>" },
+  analogicas: { estrategia: "<p>Histéresis con <b>Set/Reset</b>: Set por debajo del umbral bajo, Reset por encima del alto. Entre los dos no se cumple ninguno y la bomba conserva lo que estaba haciendo.</p>",
+    teoria: "<p>La señal llega en bruto (0…27648 = 0…100 %). 20 % = 5530 y 80 % = 22118. Con un solo umbral la bomba arrancaría y pararía sin fin por el ruido del sensor.</p>" }
+};
+LECCIONES.forEach(function (L) { if (L.reto && !L.reto.guia && GUIAS_BASE[L.id]) L.reto.guia = GUIAS_BASE[L.id]; });

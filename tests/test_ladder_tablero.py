@@ -121,3 +121,13 @@ def test_la_ruta_de_mina_avisa_que_es_un_escenario_de_ejemplo(pag):
     sin_aviso = pag.evaluate("LECCIONES.filter(l => l.nivel === 'energia' && !/de ejemplo/.test((l.mina || '') + l.teoria)).map(l => l.id)")
     assert not sin_aviso, sin_aviso
     assert pag.evaluate("LECCIONES.filter(l => l.nivel === 'tablero').every(l => /foto/i.test(l.teoria))")
+
+
+@pytest.mark.parametrize("ruta", ["#/", "#/l/enclavamiento", "#/l/tta3_auto", "#/lab", "#/ref"])
+def test_lo_oculto_no_se_ve(pag, ruta):
+    """`.btn` fijaba display y pisaba el atributo hidden: el botón «Instalar» y
+    «+ Segmento» se veían donde no servían. La auditoría de completitud lo
+    encontró en una captura del manual."""
+    pag.goto((APP / "index.html").as_uri() + ruta)
+    pag.wait_for_timeout(300)
+    assert pag.evaluate("Array.from(document.querySelectorAll('[hidden]')).filter(e => getComputedStyle(e).display !== 'none').length") == 0
