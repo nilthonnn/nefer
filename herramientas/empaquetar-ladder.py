@@ -38,7 +38,7 @@ FECHA_FIJA = (2026, 11, 7, 0, 0, 0)
 
 # Lo que forma la app en carpeta. El trabajador de servicio va igual: en una
 # computadora con servidor local sirve; abierto como archivo no se registra.
-PIEZAS = ["index.html", "lecciones.js", "energia.js", "proyectos.js", "manifest.webmanifest",
+PIEZAS = ["index.html", "lecciones.js", "energia.js", "proyectos.js", "mina.js", "tablero.js", "manifest.webmanifest",
           "sw.js", "icono.svg", "icono-192.png", "icono-512.png",
           "AUDITORIA-FUNCIONAL.md", "AUDITORIA-ANDROID.md"]
 
@@ -70,10 +70,13 @@ EN LINEA
   {web}  (en Chrome, menu > "Instalar app" o "Agregar a pantalla de inicio")
 
 QUE TRAE
-  - 28 lecciones: basico, intermedio, avanzado, proyectos integradores (linea de
-    transferencia con cilindro neumatico) y "Grupos y mineria".
+  - 32 lecciones: basico, intermedio, avanzado, proyectos integradores (linea de
+    transferencia con cilindro neumatico), tablero de transferencia de tres
+    interruptores y "Mina: energia y planta" (bloque de motor, TTA, sincronismo).
+  - Opcion "Como se resuelve?" en cada reto: estrategia, teoria y la solucion
+    explicada paso a paso.
   - PLC simulado con ciclo de scan de 10 ms, editor grafico de segmentos LAD y HMI.
-  - 24 retos que se corrigen solos, 13 de ellos contra un modelo de planta.
+  - 28 retos que se corrigen solos, 17 de ellos contra un modelo de planta.
   - Laboratorio libre (exporta e importa programas .json) y referencia de instrucciones.
 
 DOCUMENTOS
@@ -107,7 +110,7 @@ def archivo_unico() -> str:
             sys.exit(f"empaquetar-ladder: no encuentro en index.html: {viejo[:60]!r}")
         html = html.replace(viejo, nuevo)
 
-    for js in ("lecciones.js", "energia.js", "proyectos.js"):
+    for js in ("lecciones.js", "energia.js", "proyectos.js", "mina.js", "tablero.js"):
         codigo = _en_linea((APP / js).read_text(encoding="utf-8"))
         cambiar(f'<script src="{js}"></script>', f"<script>\n{codigo}\n</script>")
     svg = base64.b64encode((APP / "icono.svg").read_bytes()).decode("ascii")
@@ -120,7 +123,7 @@ def archivo_unico() -> str:
     html = html.replace('href="manual/index.html"', f'href="{WEB}manual/index.html"')
     cambiar("const UN_ARCHIVO = false;", "const UN_ARCHIVO = true;")
     # Los enlaces a `descargas/` siguen en el texto, pero UN_ARCHIVO los oculta.
-    for resto in ('src="lecciones.js"', 'src="energia.js"', 'src="proyectos.js"', 'href="manual/', 'href="icono'):
+    for resto in ('src="lecciones.js"', 'src="energia.js"', 'src="proyectos.js"', 'src="mina.js"', 'src="tablero.js"', 'href="manual/', 'href="icono'):
         if resto in html:
             sys.exit(f"empaquetar-ladder: quedó una referencia a un archivo de al lado: {resto}")
     return html

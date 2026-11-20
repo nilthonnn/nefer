@@ -225,7 +225,7 @@ jobs:
             echo "2. Ábralo desde Archivos o Descargas."
             echo "3. Android pedirá permitir instalar desde esa fuente: acepte."
             echo
-            echo "No pide permiso de INTERNET: las 28 lecciones, el simulador y el manual van dentro,"
+            echo "No pide permiso de INTERNET: las 32 lecciones, el simulador y el manual van dentro,"
             echo "y el progreso se queda en el teléfono. Los programas exportados se guardan en Descargas."
             echo
             echo "Sin instalar nada: abra \`LadderLab.html\` (en las descargas del sitio) con Chrome."

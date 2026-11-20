@@ -57,7 +57,7 @@ footer{margin-top:3rem;font-size:.82rem;color:var(--ink3)}
   <p style="text-transform:uppercase;letter-spacing:.12em;font-size:.8rem">Manual de uso</p>
   <h1>LadderLab<br>Ladder para TIA Portal</h1>
   <p>Curso y simulador de programación LAD para PLC S7‑1200/1500, de básico a avanzado, con una ruta aplicada a grupos electrógenos y plantas mineras.</p>
-  <p style="margin-top:1rem;font-size:.9rem">Versión de noviembre de 2026 · Windows (instalador), Android (APK) y web · 28 lecciones · 24 retos autocorregidos · funciona sin conexión</p>
+  <p style="margin-top:1rem;font-size:.9rem">Versión de noviembre de 2026 · Windows (instalador), Android (APK) y web · 32 lecciones · 28 retos autocorregidos · funciona sin conexión</p>
   <p class="noprint" style="margin-top:1rem"><a href="../index.html">← Volver a la app</a></p>
 </header>
 
@@ -72,6 +72,7 @@ footer{margin-top:3rem;font-size:.82rem;color:var(--ink3)}
   <li><a href="#editor">El editor de segmentos LAD</a></li>
   <li><a href="#retos">Los retos y el corrector</a></li>
   <li><a href="#proyectos">Proyectos integradores: la línea de transferencia</a></li>
+  <li><a href="#tablero">El tablero de transferencia de tres interruptores</a></li>
   <li><a href="#ruta">La ruta de grupos electrógenos y minería</a></li>
   <li><a href="#lab">Laboratorio libre y referencia</a></li>
   <li><a href="#progreso">Progreso, rangos e insignias</a></li>
@@ -95,7 +96,8 @@ S7‑1200 y S7‑1500. Cada lección combina tres cosas:</p>
 <tr><td>Intermedio</td><td>5</td><td>Flancos, TON/TOF/TP, CTU/CTD, comparar/mover/calcular, estrella‑triángulo</td></tr>
 <tr><td>Avanzado</td><td>4</td><td>OB/FC/FB/DB, secuencias, analógicas (NORM_X, SCALE_X), puesta en marcha y diagnóstico</td></tr>
 <tr><td>Proyectos integradores</td><td>4</td><td>Una máquina completa: dos fajas, cilindro neumático y cuatro sensores; diagnóstico de errores, lotes con contador y supervisión del cilindro</td></tr>
-<tr><td>Grupos y minería</td><td>9</td><td>Protecciones del grupo, falla de arranque, TTA red‑grupo, discrepancia de interruptores, sincronismo, reparto de carga, arranque por demanda, fajas y bombas</td></tr>
+<tr><td>Tablero de transferencia</td><td>3</td><td>Un tablero TTA de tres interruptores: luces de estado, mando manual con llave Local/Remoto y transferencia automática</td></tr>
+<tr><td>Mina: energía y planta</td><td>10</td><td>Bloque estándar de motor (local/remoto, permisivos, confirmación), protecciones del grupo, falla de arranque, TTA red‑grupo, discrepancia de interruptores, sincronismo, reparto de carga, arranque por demanda, fajas y bombas</td></tr>
 </table>
 <p class="tip">TIA Portal, SIMATIC y S7 son marcas de Siemens AG. LadderLab es una herramienta de estudio independiente: no reemplaza a TIA Portal ni a S7‑PLCSIM.</p>
 
@@ -238,6 +240,16 @@ parada) y, en la ruta minera, las <b>fallas del modelo de planta</b>:</p>
 <tr><td>Reiniciar reto</td><td>Vuelve al programa inicial (pide confirmación; pierdes lo hecho).</td></tr>
 <tr><td>Ver solución</td><td>Carga la solución de referencia. El reto se puede completar igual, pero <b>no suma XP ni da su insignia</b>.</td></tr>
 </table>
+<h3>¿Cómo se resuelve? La guía paso a paso</h3>
+<p>Cada reto tiene el botón <b>💡 ¿Cómo se resuelve?</b>. Abre una guía con:</p>
+<ul>
+  <li><b>Estrategia:</b> cómo atacar ese reto en particular, y el método general (lista de señales, una salida por segmento, «y» en serie, «o» en paralelo, «no» con NC…).</li>
+  <li><b>La teoría que necesitas</b> para ese reto, en los retos donde hace falta.</li>
+  <li><b>La solución paso a paso:</b> con <i>Ver el paso N</i> aparece un segmento a la vez, con su diagrama LAD, su explicación en palabras («Cuando… → activa…»), el <b>porqué</b> y notas sobre autorretención, Set/Reset, flancos o ciclos.</li>
+  <li><b>Copiar los pasos vistos a mi programa</b>, para seguir tú con el resto.</li>
+</ul>
+<p>Usar la guía no quita experiencia: lo que no suma XP ni insignia es cargar la solución completa con <i>Ver solución</i>.</p>
+<figure class="mid"><img src="m17-guia.jpg" alt="Guía del reto de mando manual: dos pasos con su diagrama LAD, la explicación y el porqué"><figcaption>La guía del reto de mando manual, en el paso 2 de 5.</figcaption></figure>
 <p class="warn">Si el modelo de planta registra una falla mientras pruebas a mano (por ejemplo, un cierre fuera de fase), el
 simulador lo avisa en el HMI y en la barra de la CPU. Pulsa <b>Reiniciar</b> para borrarla.</p>
 
@@ -255,11 +267,23 @@ simulador lo avisa en el HMI y en la barra de la CPU. Pulsa <b>Reiniciar</b> par
 </table>
 <p class="tip">El corrector prueba cada programa dos veces: con ciclos de scan de 10 ms exactos y con ciclos irregulares,
 como los de un PLC real. Si tu programa solo funciona en uno de los dos casos, te lo dice.</p>
-<h2 id="ruta">9. La ruta de grupos electrógenos y minería</h2>
-<p>Nueve lecciones con casos de planta concentradora y de respaldo de energía, como los de las operaciones mineras del sur del
-Perú. Cada una tiene un HMI y un modelo de planta que responde a tu programa.</p>
+<h2 id="tablero">9. El tablero de transferencia de tres interruptores</h2>
+<p>Un modelo de un tablero TTA de obra: relé con display y columna de LED, <b>CB‑001</b> (red), <b>CB‑002</b> (grupo),
+<b>CB‑003</b> (salida al MCC MC‑011), modo <b>Manual/Automático</b> y llave <b>Local/Remoto</b>. Tres lecciones, de básico a avanzado:</p>
+<table>
+<tr><th>Nivel</th><th>Lección</th><th>El reto</th></tr>
+<tr><td>Básico</td><td>Las luces de estado</td><td>Programar los 10 LED del frente desde los auxiliares, el modo y la presencia de tensión</td></tr>
+<tr><td>Intermedio</td><td>Mando manual y llave Local/Remoto</td><td>Cerrar y abrir CB‑001 y CB‑002 y arrancar el grupo desde el frente, solo en Manual + Local, con enclavamiento</td></tr>
+<tr><td>Avanzado</td><td>Transferencia automática</td><td>Transferir y retransferir solo en Automático, congelar los interruptores en Manual, transición con retardo y enfriamiento</td></tr>
+</table>
+<figure class="mid"><img src="m16-tablero.jpg" alt="HMI del tablero: columna de LED y unifilar con red sin tensión, CB-002 cerrado y la carga alimentada por el grupo"><figcaption>Falla de red en automático: CB‑001 abierto, CB‑002 cerrado y el MCC alimentado por el grupo.</figcaption></figure>
+<p class="tip">Es una interpretación didáctica hecha a partir de la foto del frente de un tablero real: no reproduce su esquema ni la lógica
+de ese equipo, que suele estar programada dentro del propio relé. Para replicar un tablero concreto hacen falta su unifilar y su lógica de control.</p>
+<h2 id="ruta">10. La ruta de grupos electrógenos y minería</h2>
+<p>Diez lecciones con casos de planta concentradora y de respaldo de energía, en escenarios tipo de una mina de cobre en altura como Quellaveco. Cada lección abre con un recuadro <b>⛏ En la mina</b> que explica dónde se usa esa lógica; los equipos, TAG y valores son de ejemplo, no de la planta real. Cada una tiene un HMI y un modelo de planta que responde a tu programa.</p>
 <table>
 <tr><th>Lección</th><th>Qué practicas</th><th>Qué detecta el modelo de planta</th></tr>
+<tr><td>Lógica de mina: el bloque estándar de motor</td><td>Local/Remoto desde la sala de control, permisivos de proceso, emergencia, confirmación de marcha y estado al DCS</td><td>El contactor confirma 300 ms después de la orden (o no, si se simula la falla)</td></tr>
 <tr><td>El grupo visto desde el PLC</td><td>Protecciones con inhibición de la presión de aceite en el arranque; alarmas memorizadas</td><td>La presión sube 3 s después de arrancar</td></tr>
 <tr><td>Falla de arranque</td><td>Ciclos de arranque y reposo, contador de intentos, alarma <i>overcrank</i></td><td>Arrancador engranado con el motor en marcha; arrancador más de 6 s seguidos</td></tr>
 <tr><td>TTA red‑grupo</td><td>Confirmación de falla, abrir antes de cerrar, retorno con red estable, enfriamiento, transición con retardo</td><td>Red y grupo cerrados a la vez; cierre contra la tensión residual de los motores</td></tr>
@@ -277,7 +301,7 @@ Perú. Cada una tiene un HMI y un modelo de planta que responde a tu programa.</
 <p class="tip">Los tiempos están acortados a segundos para poder practicar (en planta, el retorno de red es de 5 a 30 min y la
 sirena de prearranque de 10 a 30 s). Cada lección lo indica.</p>
 
-<h2 id="lab">10. Laboratorio libre y referencia</h2>
+<h2 id="lab">11. Laboratorio libre y referencia</h2>
 <figure><img src="m10-lab.jpg" alt="Laboratorio libre con un programa de marcha‑paro y la tabla de observación abierta"><figcaption>Laboratorio: un OB1 en blanco para practicar.</figcaption></figure>
 <ul>
   <li><b>Laboratorio libre</b> (menú → Herramientas): programa lo que quieras. Las entradas y salidas aparecen solas al usarlas; los <code>%I</code> nuevos son pulsadores NA (marca <i>mantener pulsado</i> para usarlos como selector). Se guarda solo.</li>
@@ -286,7 +310,7 @@ sirena de prearranque de 10 a 30 s). Cada lección lo indica.</p>
 </ul>
 <figure><img src="m11-ref.jpg" alt="Referencia de instrucciones con tarjetas de contactos y bobinas"><figcaption>Referencia de instrucciones.</figcaption></figure>
 
-<h2 id="progreso">11. Progreso, rangos e insignias</h2>
+<h2 id="progreso">12. Progreso, rangos e insignias</h2>
 <table>
 <tr><th>Acción</th><th>Experiencia</th></tr>
 <tr><td>Respuesta correcta en un cuestionario (se cuenta tu mejor intento)</td><td>10 XP</td></tr>
@@ -299,7 +323,7 @@ Hay 12 insignias: por niveles completos, por los retos clave de la ruta minera, 
 <p><b>Dónde se guarda:</b> todo vive en el almacenamiento del navegador, en tu equipo; no se envía a ningún servidor. Para
 empezar de cero, borra los datos del sitio desde la configuración del navegador.</p>
 
-<h2 id="tia">12. De LadderLab a TIA Portal</h2>
+<h2 id="tia">13. De LadderLab a TIA Portal</h2>
 <table>
 <tr><th>En LadderLab</th><th>En TIA Portal</th></tr>
 <tr><td>Segmento</td><td>Segmento (Network) del bloque <code>Main [OB1]</code></td></tr>
@@ -315,7 +339,7 @@ empezar de cero, borra los datos del sitio desde la configuración del navegador
 <p>Para llevar un reto a TIA Portal: crea el proyecto con tu CPU, declara las variables del enunciado con las mismas
 direcciones, copia los segmentos instrucción por instrucción, compila y pruébalo en S7‑PLCSIM.</p>
 
-<h2 id="limites">13. Límites del simulador</h2>
+<h2 id="limites">14. Límites del simulador</h2>
 <ul>
   <li>Simula un subconjunto de LAD: no incluye CTUD, R_TRIG/F_TRIG, NORM_X/SCALE_X, CONVERT, Real ni DInt como instrucciones (se explican en la teoría). Las palabras son Int de 16 bits.</li>
   <li>Al desbordar un Int pone ENO = 0, como TIA; el valor que deja en OUT (saturado en el límite) puede diferir del de la CPU real.</li>
@@ -325,7 +349,7 @@ direcciones, copia los segmentos instrucción por instrucción, compila y pruéb
 </ul>
 <p>El detalle está en la <a href="../AUDITORIA-FUNCIONAL.md">auditoría funcional</a>, que revisa la app contra IEC 61131‑3, IEEE 1547, NFPA 110, ISO 13850, EN 620, WCAG 2.2 y otras normas.</p>
 
-<h2 id="problemas">14. Solución de problemas</h2>
+<h2 id="problemas">15. Solución de problemas</h2>
 <table>
 <tr><th>Síntoma</th><th>Solución</th></tr>
 <tr><td>En Android, la app se ve en blanco</td><td>Abriste <code>LadderLab/index.html</code> desde la carpeta: Android no le deja cargar sus archivos. Usa el APK, la web o <code>LadderLab.html</code> (sección 2).</td></tr>

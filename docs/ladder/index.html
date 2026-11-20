@@ -135,6 +135,21 @@ table.t th{color:var(--ink2);font-weight:600;font-size:.8rem;text-transform:uppe
 .res li.ok{background:var(--good2)}
 .res li.ko{background:var(--bad2)}
 .res .why{display:block;font-family:var(--mono);font-size:.8rem;color:var(--bad);margin-top:.15rem}
+.guia{margin-top:.8rem;border:1px solid var(--line);border-radius:12px;padding:.7rem .9rem;background:var(--canvas)}
+.guia h4{margin:0 0 .4rem;font-size:1rem}
+.guia details{margin:.3rem 0 .6rem}
+.guia summary{cursor:pointer;margin-bottom:.3rem}
+.guia ol{padding-left:1.2rem;margin:.3rem 0;font-size:.9rem}
+.guia .paso{border-top:1px solid var(--line);padding:.6rem 0}
+.guia .pt{font-weight:700;margin-bottom:.3rem}
+.guia .pl{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-bottom:.4rem}
+.guia .pl svg{display:block}
+.guia p{margin:.3rem 0;font-size:.92rem}
+.guia .porque{border-left:3px solid var(--acc);padding-left:.6rem}
+.guia .nota{font-size:.85rem;color:var(--ink2)}
+.guia .acts{margin-top:.5rem}
+.mina{border:1px solid #C98A00;background:var(--warn2);border-radius:10px;padding:.6rem .85rem;margin:0 0 1rem;font-size:.93rem}
+.mina b.t{display:block;margin-bottom:.2rem}
 .banner{padding:.6rem .8rem;border-radius:9px;font-weight:600;margin-top:.6rem}
 .banner.ok{background:var(--good2);color:var(--on)}
 .banner.ko{background:var(--bad2);color:var(--bad)}
@@ -315,6 +330,8 @@ p.lead{color:var(--ink2);margin:.2rem 0 0}
 <script src="lecciones.js"></script>
 <script src="energia.js"></script>
 <script src="proyectos.js"></script>
+<script src="mina.js"></script>
+<script src="tablero.js"></script>
 <script>
 "use strict";
 const $ = (s, r = document) => r.querySelector(s);
@@ -651,6 +668,82 @@ function miniSVG(e, tags, wpx) {
   const ctx = STATIC_CTX(tags), L = lay(e, ctx);
   return `<svg class="lad" viewBox="0 0 ${L.w} ${L.h}" ${wpx ? `width="${wpx}"` : ""} preserveAspectRatio="xMidYMid meet">${drawEl(e, L, 0, 0, ctx)}</svg>`;
 }
+
+/* ===================== guía: explicar un segmento en palabras ===================== */
+const ACCION = { COIL: 1, NCOIL: 1, SET: 1, RESET: 1, MOVE: 1, ADD: 1, SUB: 1, MUL: 1, DIV: 1 };
+function nombreOp(op, tags) {
+  const s = String(op == null ? "" : op).trim(); if (!s) return "«?»";
+  if (/^[+-]?\d+$/.test(s)) return s;
+  if (/^T#/i.test(s)) return s;
+  const bare = s.replace(/^"(.*)"$/, "$1"), up = bare.toUpperCase();
+  const t = (tags || []).find(t => t.addr.toUpperCase() === up || t.name.toLowerCase() === bare.toLowerCase());
+  if (t) return `«${t.name.replace(/_/g, " ")}» (${t.addr})`;
+  const m = /^(.+)\.(Q|ET|CV)$/i.exec(bare);
+  if (m) return { Q: `la salida Q de «${m[1]}»`, ET: `el tiempo transcurrido de «${m[1]}»`, CV: `la cuenta de «${m[1]}»` }[m[2].toUpperCase()];
+  return `«${bare}»`;
+}
+function condTexto(e, tags) {
+  const n = op => nombreOp(op, tags);
+  switch (e.k) {
+    case "NO": return /\.Q$/i.test(e.op) ? `${n(e.op)} está activa` : `${n(e.op)} vale 1`;
+    case "NC": return /\.Q$/i.test(e.op) ? `${n(e.op)} todavía no está activa` : `${n(e.op)} vale 0`;
+    case "P": return `en el instante en que ${n(e.op)} pasa de 0 a 1 (flanco positivo)`;
+    case "N": return `en el instante en que ${n(e.op)} pasa de 1 a 0 (flanco negativo)`;
+    case "NOT": return "lo contrario de lo anterior (NOT)";
+    case "CMP": return `${n(e.a)} ${{ "==": "es igual a", "<>": "es distinto de", ">": "es mayor que", "<": "es menor que", ">=": "es mayor o igual que", "<=": "es menor o igual que" }[e.cmp] || e.cmp} ${n(e.b)}`;
+    case "TON": return `eso se mantiene ${e.pt} seguidos (TON «${e.name}»)`;
+    case "TOF": return `eso, prolongado ${e.pt} después de que deje de cumplirse (TOF «${e.name}»)`;
+    case "TP": return `un pulso de ${e.pt} cuando lo anterior se cumple (TP «${e.name}»)`;
+    case "CTU": return `el contador «${e.name}» llegó a ${e.pv} flancos de lo anterior (se pone a cero con ${n(e.r)})`;
+    case "CTD": return `el contador «${e.name}» bajó a 0 desde ${e.pv} (se carga con ${n(e.ld)})`;
+  }
+  return e.k;
+}
+function accionTexto(e, tags) {
+  const n = op => nombreOp(op, tags);
+  switch (e.k) {
+    case "COIL": return `activa ${n(e.op)} mientras se cumpla, y la apaga cuando no`;
+    case "NCOIL": return `escribe en ${n(e.op)} lo contrario`;
+    case "SET": return `pone ${n(e.op)} a 1 y la deja memorizada (Set)`;
+    case "RESET": return `pone ${n(e.op)} a 0 (Reset)`;
+    case "MOVE": return `copia ${n(e.in)} en ${n(e.out)}`;
+    case "ADD": case "SUB": case "MUL": case "DIV": return `calcula ${n(e.in1)} ${{ ADD: "+", SUB: "−", MUL: "×", DIV: "÷" }[e.k]} ${n(e.in2)} y lo guarda en ${n(e.out)}`;
+  }
+  return "";
+}
+function redTexto(nodo, tags) {
+  if (nodo.t === "E") return condTexto(nodo, tags);
+  if (nodo.t === "P") return "(" + nodo.br.map(b => redTexto(b, tags)).join(", <b>o</b> ") + ")";
+  const partes = nodo.items.map(x => (x.t === "E" && ACCION[x.k]) ? "entonces " + accionTexto(x, tags) : redTexto(x, tags));
+  return partes.length ? partes.join(", <b>y</b> ") : "siempre";
+}
+/* Una explicación del segmento: condición → acción, más lo que conviene notar. */
+function explicarSegmento(seg, tags) {
+  const items = seg.net.items, acciones = [], notas = [];
+  let corte = items.length;
+  for (let i = items.length - 1; i >= 0; i--) { const x = items[i]; if (x.t === "E" && ACCION[x.k]) { acciones.unshift(x); corte = i; } else break; }
+  const cond = { t: "S", items: items.slice(0, corte) };
+  const ops = []; walkEls([{ net: cond }], e => ops.push(e));
+  const salidas = acciones.map(a => String(a.op || a.out || "").toUpperCase());
+  if (ops.some(e => e.k === "NO" && salidas.includes(String(e.op).toUpperCase()) && JSON.stringify(cond).includes('"t":"P"')))
+    notas.push("La rama en paralelo con la propia salida es la <b>autorretención</b>: mantiene la salida activa cuando se suelta el pulsador.");
+  if (ops.some(e => e.k === "NC" && salidas.includes(String(e.op).toUpperCase())))
+    notas.push("El contacto NC de la propia salida hace que el temporizador se reinicie solo al terminar: un <b>ciclo que se repite</b>.");
+  if (ops.some(e => e.k === "P" || e.k === "N")) notas.push("El flanco conduce <b>un solo ciclo</b>: sirve para contar o cambiar de estado una vez por pulsación.");
+  if (acciones.some(a => a.k === "SET")) notas.push("Con Set la salida <b>queda memorizada</b>: hace falta otro segmento con Reset para apagarla.");
+  const sinCond = !cond.items.length;
+  const txtCond = sinCond ? "En <b>cada ciclo</b>" : "Cuando " + redTexto(cond, tags);
+  const txtAcc = acciones.length ? acciones.map(a => accionTexto(a, tags)).join("; y ") : "solo se evalúa la condición (por ejemplo, para hacer correr un temporizador)";
+  return { texto: `${txtCond} → ${txtAcc}.`, notas };
+}
+const ESTRATEGIA_GENERAL = `<ol>
+  <li><b>Haz la lista</b> de entradas y salidas del enunciado, con lo que significa un 1 en cada una (ojo con las cableadas NC).</li>
+  <li><b>Una salida, un segmento.</b> Pregúntate para cada salida: ¿cuándo debe estar activa?</li>
+  <li><b>Traduce</b> «y» a contactos en serie, «o» a ramas en paralelo y «no» a contactos NC.</li>
+  <li>¿Algo debe <b>mantenerse</b> después de soltar un pulsador? Autorretención o Set/Reset.</li>
+  <li>¿Hay <b>tiempos</b> o <b>cuentas</b>? Temporizadores y contadores, cada uno con su instancia.</li>
+  <li><b>Prueba a mano</b> en el simulador antes de Comprobar, y lee el paso que falla.</li>
+</ol>`;
 
 /* ===================== edición de la red ===================== */
 function normalize(s) {
@@ -1042,7 +1135,7 @@ function viewLesson(id) {
     <h1>${esc(L.titulo)}</h1>
     <div class="meta"><span class="pill acc">${N.nombre}</span><span>${L.min} min</span><span class="st"></span><a class="jump" href="#" data-jump>▶ Ir al simulador</a></div>
     <div class="lgrid">
-      <div class="theory">${L.teoria}<section class="quiz"></section></div>
+      <div class="theory">${L.mina ? `<div class="mina"><b class="t">⛏ En la mina</b>${L.mina}</div>` : ""}${L.teoria}<section class="quiz"></section></div>
       <div class="simcol">
         <div class="tabs" role="tablist"><button data-t="ej" class="cur" role="tab">Ejemplo</button>${L.reto ? `<button data-t="reto" role="tab">Reto${ST.reto[id] ? " ✓" : ""}</button>` : ""}</div>
         <div class="retobox"></div><div class="simbox"></div>
@@ -1061,7 +1154,8 @@ function viewLesson(id) {
     const R = L.reto;
     rb.innerHTML = `<div class="reto"><h3>Reto</h3><p class="en">${R.enunciado}</p>
       <div class="tagt">${R.tags.map(t => `<span><b>${esc(t.name)}</b> ${t.addr}${t.type === "pushNC" ? " (NC)" : t.type === "pullcord" ? " (pull‑cord NC, enclava)" : t.type === "switch" ? " (selector)" : ""}</span>`).join("")}</div>
-      <div class="acts"><button class="btn b-chk">▶ Comprobar</button><button class="btn ghost b-ini">Reiniciar reto</button><button class="btn ghost b-sol">Ver solución</button></div>
+      <div class="acts"><button class="btn b-chk">▶ Comprobar</button><button class="btn ghost b-ini">Reiniciar reto</button><button class="btn ghost b-guia">💡 ¿Cómo se resuelve?</button><button class="btn ghost b-sol">Ver solución</button></div>
+      <div class="guia" hidden></div>
       <div class="out"></div></div>`;
     const sim = Sim($(".simbox"), { prog: ST.work[id] ? clone(ST.work[id]) : clone(R.inicio), tags: R.tags, planta: R.planta, editable: true, edit: true, onChange: p => { ST.work[id] = p; save(); } });
     $(".b-chk", rb).onclick = () => {
@@ -1071,6 +1165,30 @@ function viewLesson(id) {
       if (g.ok) { const first = !ST.reto[id]; ST.reto[id] = true; save(); setSt(); actividad(); tabs.forEach(b => { if (b.dataset.t === "reto") b.textContent = "Reto ✓"; }); if (first) toast("Reto superado ✓"); }
     };
     $(".b-ini", rb).onclick = () => { if (!confirm("¿Volver al programa inicial del reto? Se pierde lo que hiciste.")) return; delete ST.work[id]; save(); sim.load(clone(R.inicio), R.tags); $(".out", rb).innerHTML = ""; };
+    /* guía paso a paso: estrategia, teoría y la solución segmento por segmento */
+    const G = R.guia || {}, gbox = $(".guia", rb);
+    let visto = 0;
+    const pintarGuia = () => {
+      const segs = R.solucion;
+      gbox.innerHTML = `<h4>💡 Cómo se resuelve</h4>
+        <details open><summary><b>Estrategia</b></summary>${G.estrategia || ""}${G.estrategia ? "<p class=\"sub\" style=\"margin:.4rem 0 .2rem\">Y el método general:</p>" : ""}${ESTRATEGIA_GENERAL}</details>
+        ${G.teoria ? `<details><summary><b>La teoría que necesitas</b></summary>${G.teoria}</details>` : ""}
+        <div class="pasos">${segs.slice(0, visto).map((sg, i) => { const ex = explicarSegmento(sg, R.tags);
+          return `<div class="paso"><div class="pt">Paso ${i + 1} de ${segs.length}: ${esc(sg.title || "Segmento " + (i + 1))}</div>
+            <div class="pl">${rungSVG(sg.net, STATIC_CTX(R.tags))}</div>
+            <p>${ex.texto}</p>${(G.notas && G.notas[i]) ? `<p class="porque"><b>Por qué:</b> ${G.notas[i]}</p>` : ""}
+            ${ex.notas.map(n => `<p class="nota">${n}</p>`).join("")}</div>`; }).join("")}</div>
+        <div class="acts">${visto < segs.length ? `<button class="btn sm b-gsig">Ver el paso ${visto + 1} de ${segs.length}</button>` : `<span class="sub">Esa es la solución completa. Escríbela tú en el editor y pulsa Comprobar.</span>`}
+          ${visto ? `<button class="btn sm ghost b-gcopiar">Copiar los pasos vistos a mi programa</button>` : ""}<button class="btn sm ghost b-gcerrar">Cerrar la guía</button></div>`;
+      const sig = $(".b-gsig", gbox); if (sig) sig.onclick = () => { visto++; ST.guia = ST.guia || {}; ST.guia[id] = Math.max(ST.guia[id] || 0, visto); save(); pintarGuia(); };
+      const cop = $(".b-gcopiar", gbox); if (cop) cop.onclick = () => {
+        if (!confirm(`¿Reemplazar los primeros ${visto} segmentos de tu programa por los de la guía?`)) return;
+        const p = clone(sim.prog); segs.slice(0, visto).forEach((sg, i) => { p[i] = clone(sg); });
+        ST.work[id] = p; save(); sim.load(p, R.tags); toast("Pasos copiados: termina el resto tú");
+      };
+      $(".b-gcerrar", gbox).onclick = () => { gbox.hidden = true; };
+    };
+    $(".b-guia", rb).onclick = () => { if (!gbox.hidden) { gbox.hidden = true; return; } visto = Math.min((ST.guia || {})[id] || 0, R.solucion.length); gbox.hidden = false; pintarGuia(); gbox.scrollIntoView({ behavior: "smooth", block: "nearest" }); };
     $(".b-sol", rb).onclick = () => { if (!confirm("¿Cargar la solución? Reemplaza tu programa del reto.")) return; const p = clone(R.solucion); ST.work[id] = p; ST.sol = ST.sol || {}; ST.sol[id] = true; save(); sim.load(p, R.tags); $(".out", rb).innerHTML = `<div class="banner ok" style="background:var(--warn2);color:var(--warn)">Solución cargada. Pruébala y pulsa Comprobar. Un reto resuelto con la solución a la vista cuenta como completado, pero no suma XP ni insignia.</div>`; };
   };
   tabs.forEach(b => b.onclick = () => show(b.dataset.t));

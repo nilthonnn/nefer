@@ -122,8 +122,8 @@ jobs:
               pag.reload()
               guardado = pag.evaluate("localStorage.getItem('prueba-windows')")
               print(f"Edge {nav.version}: {lecciones} lecciones, retos {sum(ok for _, ok in retos)}/{len(retos)}, motor={motor}, progreso={guardado}")
-              assert lecciones >= 28, lecciones
-              assert len(retos) >= 24 and all(ok for _, ok in retos), retos
+              assert lecciones >= 32, lecciones
+              assert len(retos) >= 28 and all(ok for _, ok in retos), retos
               assert motor == 1, "el pulsador no arrancó el motor"
               assert guardado == "1", "localStorage no persiste"
               assert not errores, errores
@@ -177,7 +177,7 @@ jobs:
             echo "- Versión **1.${{ github.run_number }}**"
             echo "- Compilada de \`${{ github.sha }}\` (\`${{ github.ref_name }}\`)"
             echo "- SHA-256 \`$SHA\`"
-            echo "- Probada en la integración: se instaló, se abrió con Edge (28 lecciones, 24 retos correctos), se desinstaló sin restos."
+            echo "- Probada en la integración: se instaló, se abrió con Edge (32 lecciones, 28 retos correctos), se desinstaló sin restos."
             echo
             echo "## Cómo se instala"
             echo

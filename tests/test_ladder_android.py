@@ -136,7 +136,7 @@ def test_el_archivo_unico_no_depende_de_nada_al_lado():
     html = _texto(DESCARGAS / "LadderLab.html")
     assert not re.search(r'<script[^>]+src=', html)
     assert 'rel="manifest"' not in html
-    assert not re.search(r'(src|href)="(lecciones|energia|proyectos|icono|manual/)', html)
+    assert not re.search(r'(src|href)="(lecciones|energia|proyectos|mina|tablero|icono|manual/)', html)
     assert "const UN_ARCHIVO = true;" in html
 
 
@@ -145,7 +145,7 @@ def test_el_zip_trae_el_archivo_unico_y_lo_explica():
     nombres = set(z.namelist())
     for n in ("LadderLab-demo/LadderLab.html", "LadderLab-demo/LEEME.txt",
               "LadderLab-demo/Manual-de-uso-LadderLab.pdf", "LadderLab-demo/LadderLab/index.html",
-              "LadderLab-demo/LadderLab/lecciones.js", "LadderLab-demo/LadderLab/energia.js", "LadderLab-demo/LadderLab/proyectos.js",
+              "LadderLab-demo/LadderLab/lecciones.js", "LadderLab-demo/LadderLab/energia.js", "LadderLab-demo/LadderLab/proyectos.js", "LadderLab-demo/LadderLab/mina.js", "LadderLab-demo/LadderLab/tablero.js",
               "LadderLab-demo/LadderLab/manual/index.html"):
         assert n in nombres, n
     assert z.read("LadderLab-demo/LadderLab.html") == (DESCARGAS / "LadderLab.html").read_bytes()
@@ -213,7 +213,7 @@ def test_archivo_unico_en_android_sin_nada_al_lado(nav, tmp_path):
     pag.wait_for_timeout(200)
     assert pag.evaluate("SIM.eng.v['%Q0.0']") == 1, "el dedo no arrancó el motor"
     retos = pag.evaluate("LECCIONES.filter(l => l.reto).map(l => [l.id, grade(l.reto, l.reto.solucion).ok])")
-    assert len(retos) >= 24 and all(ok for _, ok in retos), retos
+    assert len(retos) >= 28 and all(ok for _, ok in retos), retos
     assert pag.evaluate("document.documentElement.scrollWidth") <= 412
     assert not errores, errores
     assert not vecinos, vecinos
@@ -228,7 +228,7 @@ def test_la_carpeta_abierta_como_en_android_no_sirve(nav):
     pag = ctx.new_page()
     errores = []
     pag.on("pageerror", lambda e: errores.append(str(e)))
-    pag.route(re.compile(r".*/(lecciones|energia|proyectos)\.js$"), lambda r: r.abort())
+    pag.route(re.compile(r".*/(lecciones|energia|proyectos|mina|tablero)\.js$"), lambda r: r.abort())
     pag.goto((APP / "index.html").as_uri())
     pag.wait_for_timeout(300)
     assert errores, "si la carpeta funcionara sin sus vecinos, esta prueba sobraría"
