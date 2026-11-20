@@ -2,7 +2,8 @@ LadderLab para Windows
 ======================
 
 Curso y simulador de Ladder (LAD) para TIA Portal, con ruta de grupos
-electrogenos y mineria. 24 lecciones, 20 retos que se corrigen solos.
+electrogenos y mineria. 28 lecciones, 24 retos que se corrigen solos,
+entre ellos una linea de transferencia con fajas y cilindro neumatico.
 
 ABRIR
   Menu Inicio > LadderLab, o el acceso directo del escritorio.

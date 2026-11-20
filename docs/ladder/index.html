@@ -314,6 +314,7 @@ p.lead{color:var(--ink2);margin:.2rem 0 0}
 
 <script src="lecciones.js"></script>
 <script src="energia.js"></script>
+<script src="proyectos.js"></script>
 <script>
 "use strict";
 const $ = (s, r = document) => r.querySelector(s);
@@ -502,18 +503,26 @@ function addrCmp(a, b) {
 }
 
 /* ===================== corrector de retos ===================== */
-function grade(reto, prog) {
+/* opts.irregular: ciclos de duración variable, como los que entrega el navegador en
+   vivo. Un programa correcto tiene que pasar igual: si no, el modelo depende de un redondeo. */
+function grade(reto, prog, opts) {
   const en = new Engine(clone(prog), reto.tags), dt = 10, res = [];
   const pl = reto.planta && typeof PLANTAS !== "undefined" && PLANTAS[reto.planta];
   if (pl && pl.model) en.plant = pl.model;
-  const nm = a => { const t = reto.tags.find(t => t.addr === a); return t ? `"${t.name}" ${a}` : a; };
+  const nm = a => { if (a[0] === "@") return { "@empujes": "Cajas transferidas", "@despachadas": "Cajas despachadas" }[a] || a.slice(1); const t = reto.tags.find(t => t.addr === a); return t ? `"${t.name}" ${a}` : a; };
   const viol = () => {
     if (en.fault) return "Modelo de planta: " + en.fault;
     for (const p of reto.nunca || []) if (en.B(p[0]) && en.B(p[1])) return `${nm(p[0])} y ${nm(p[1])} se activaron a la vez`;
     for (const r of reto.reglas || []) if (en.B(r.si) && !en.B(r.sin)) return r.d;
     return null;
   };
-  const run = ms => { const n = Math.max(1, Math.round(ms / dt)); for (let i = 0; i < n; i++) { en.scan(dt); const b = viol(); if (b) return b; } return null; };
+  const IRR = [10, 1.3, 8.7, 6.1, 3.9, 10, 9.9, 2.4, 7.6, 10], irr = opts && opts.irregular;
+  let k = 0;
+  const run = ms => {
+    if (!irr) { const n = Math.max(1, Math.round(ms / dt)); for (let i = 0; i < n; i++) { en.scan(dt); const b = viol(); if (b) return b; } return null; }
+    for (let t = 0; t < ms - 0.01;) { const d = Math.min(IRR[k++ % IRR.length], ms - t); en.scan(d); t += d; const b = viol(); if (b) return b; }
+    return null;
+  };
   let ok = true;
   for (const st of reto.pasos) {
     let bad = null;
@@ -524,7 +533,7 @@ function grade(reto, prog) {
       bad = run(st.t || 60);
     }
     const wrong = [];
-    for (const a in st.ex) { let g = en.get(a); if (isBit(a)) g = g ? 1 : 0; const x = st.ex[a];
+    for (const a in st.ex) { let g = a[0] === "@" ? (en.ps[a.slice(1)] || 0) : en.get(a); if (isBit(a)) g = g ? 1 : 0; const x = st.ex[a];
       const ok = Array.isArray(x) ? g >= x[0] && g <= x[1] : g === x;
       if (!ok) wrong.push({ a, n: nm(a), exp: Array.isArray(x) ? `entre ${x[0]} y ${x[1]}` : x, got: g }); }
     const pass = !bad && !wrong.length;
@@ -958,6 +967,8 @@ const BADGES = [
   { id: "tta", ic: "🔀", n: "Sin apagón", d: "Supera el reto de transferencia red‑grupo", ok: () => propio("tta") },
   { id: "sincro", ic: "🎯", n: "Mano firme", d: "Sincroniza G2 a la barra sin cierre fuera de fase", ok: () => propio("sincronismo") },
   { id: "faja", ic: "⛏", n: "Mineral en movimiento", d: "Arranca las fajas en cascada sin atollar chutes", ok: () => propio("faja") },
+  { id: "proyectos", ic: "📦", n: "Integrador", d: "Completa los proyectos integradores de la línea de transferencia", ok: () => nivelHecho("proyectos") },
+  { id: "diagnostico", ic: "🔍", n: "Detective de planta", d: "Encuentra los dos errores del reto de diagnóstico", ok: () => propio("diagnostico") },
   { id: "energia", ic: "🏭", n: "Jefe de turno eléctrico", d: "Completa toda la ruta Grupos y minería", ok: () => nivelHecho("energia") },
   { id: "racha3", ic: "🔥", n: "Constancia", d: "Estudia 3 días seguidos", ok: () => racha() >= 3 },
   { id: "racha7", ic: "🏆", n: "Semana completa", d: "Estudia 7 días seguidos", ok: () => racha() >= 7 },
@@ -1054,9 +1065,9 @@ function viewLesson(id) {
       <div class="out"></div></div>`;
     const sim = Sim($(".simbox"), { prog: ST.work[id] ? clone(ST.work[id]) : clone(R.inicio), tags: R.tags, planta: R.planta, editable: true, edit: true, onChange: p => { ST.work[id] = p; save(); } });
     $(".b-chk", rb).onclick = () => {
-      let g; try { g = grade(R, sim.prog); } catch (e) { $(".out", rb).innerHTML = `<div class="banner ko">Error al simular: ${esc(e.message)}</div>`; return; }
+      let g; try { g = grade(R, sim.prog); if (g.ok) { const g2 = grade(R, sim.prog, { irregular: true }); if (!g2.ok) { g = g2; g.irregular = true; } } } catch (e) { $(".out", rb).innerHTML = `<div class="banner ko">Error al simular: ${esc(e.message)}</div>`; return; }
       $(".out", rb).innerHTML = `<ul class="res">${g.res.map((r, k) => `<li class="${r.pass ? "ok" : "ko"}">${r.pass ? "✓" : "✗"} Paso ${k + 1}: ${esc(r.d)}${r.bad ? `<span class="why">${esc(r.bad)}</span>` : ""}${r.wrong.map(w => `<span class="why">${esc(w.n)}: esperaba ${esc(w.exp)}, el programa da ${w.got}</span>`).join("")}</li>`).join("")}</ul>
-        <div class="banner ${g.ok ? "ok" : "ko"}">${g.ok ? "¡Reto superado! Todos los pasos se cumplen." : `Falla en el paso ${g.res.length} de ${g.total}. Revisa tu lógica y vuelve a probar.`}</div>`;
+        <div class="banner ${g.ok ? "ok" : "ko"}">${g.ok ? "¡Reto superado! Todos los pasos se cumplen." : `Falla en el paso ${g.res.length} de ${g.total}${g.irregular ? " cuando los ciclos de scan no duran siempre lo mismo (como en un PLC real)" : ""}. Revisa tu lógica y vuelve a probar.`}</div>`;
       if (g.ok) { const first = !ST.reto[id]; ST.reto[id] = true; save(); setSt(); actividad(); tabs.forEach(b => { if (b.dataset.t === "reto") b.textContent = "Reto ✓"; }); if (first) toast("Reto superado ✓"); }
     };
     $(".b-ini", rb).onclick = () => { if (!confirm("¿Volver al programa inicial del reto? Se pierde lo que hiciste.")) return; delete ST.work[id]; save(); sim.load(clone(R.inicio), R.tags); $(".out", rb).innerHTML = ""; };
