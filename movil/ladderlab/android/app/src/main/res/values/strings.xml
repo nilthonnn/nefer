@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nombre_app">LadderLab</string>
+    <string name="salir_dos_veces">Toca atrás otra vez para salir</string>
+    <!-- Un teléfono puede no traer ninguna aplicación que atienda el selector
+         de archivos. Se dice qué hacer, no sólo que falló. -->
+    <string name="sin_selector">No hay con qué abrir archivos en este teléfono. Guarda el programa .json en Descargas e instala un explorador de archivos.</string>
+    <string name="sin_navegador">No hay un navegador para abrir ese enlace.</string>
+</resources>

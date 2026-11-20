@@ -24,3 +24,6 @@ fotos/
 # Compilacion de Android
 .gradle/
 local.properties
+
+# El manual de LadderLab se publica como descarga
+!docs/ladder/descargas/*.pdf
