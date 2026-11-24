@@ -228,6 +228,6 @@ var GUIAS_BASE = {
   secuencias: { estrategia: "<p>Un solo TON de ciclo que se reinicia solo (NC de su propia Q) y <b>ventanas de tiempo</b> sobre su ET: verde 0–4 s, ámbar 4–5 s, rojo 5–8 s. Cada luz es un segmento con sus comparadores en serie.</p>",
     teoria: "<p>«Entre 4 y 5 s» son dos comparadores en serie: ET ≥ T#4s y ET &lt; T#5s. Las ventanas no se tocan, así que nunca hay dos luces a la vez.</p>" },
   analogicas: { estrategia: "<p>Histéresis con <b>Set/Reset</b>: Set por debajo del umbral bajo, Reset por encima del alto. Entre los dos no se cumple ninguno y la bomba conserva lo que estaba haciendo.</p>",
-    teoria: "<p>La señal llega en bruto (0…27648 = 0…100 %). 20 % = 5530 y 80 % = 22118. Con un solo umbral la bomba arrancaría y pararía sin fin por el ruido del sensor.</p>" }
+    teoria: "<p>La señal llega en bruto (0…27648 = 0…100 %). 20 % = 5530 y 80 % = 22118. Con un solo umbral la bomba arrancaría y pararía sin fin por el ruido del sensor.</p><p><b>La revisión de calidad te dejará una observación INFO</b>, y tiene razón: si el transmisor se corta, la entrada lee más de 27648 y el programa creería que el tanque está lleno. En planta se agrega un segmento con <code>CMP &gt; %IW64 27648</code> que da una alarma de «sensor fuera de rango» y lleva la bomba a un estado seguro. El reto no lo exige para mantenerlo simple.</p>" }
 };
 LECCIONES.forEach(function (L) { if (L.reto && !L.reto.guia && GUIAS_BASE[L.id]) L.reto.guia = GUIAS_BASE[L.id]; });

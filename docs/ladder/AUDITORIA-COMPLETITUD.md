@@ -48,6 +48,7 @@ Fecha: 20 de noviembre de 2026. Rama `ccr-2f7a751b-yz17rd`, pull request #47.
 | 11 | Adaptar a Quellaveco (TTA, automatización, sincronismo de grupos de mina) y crear la opción «cómo resolver el reto» con explicación y teoría | Bloque estándar de motor de mina; recuadro «⛏ En la mina» en las 10 lecciones de la ruta; botón «💡 ¿Cómo se resuelve?» con estrategia, teoría y la solución paso a paso en todos los retos | 26 pruebas | ✅ |
 | 12 | Un modelo del tablero de la foto, de básico a avanzado | Nivel «Tablero de transferencia»: LED de estado (básico), mando manual con llave Local/Remoto (intermedio) y transferencia automática con 3 interruptores (avanzado) | Retos `tta3_*` | ✅ |
 | 13 | Enlaces del APK y del instalador | APK v5 e instalador v3, compilados desde la última versión y enviados | Releases `ladderlab-v5` y `ladderlab-windows-v3` | ✅ |
+| 14 | Buscar en GitHub las skills de ingeniería eléctrica y aplicarlas al proyecto | Revisión de calidad dentro de LadderLab (reglas de *plc-code-analysis*); contenido eléctrico corregido con la skill de ingeniería eléctrica (kW/kVA, alcance de IEEE 1547, derrateo, límites de carga ISO 8528‑1, cuenta de tiempos NFPA 110); skills `ingeniero-electrico`, `pandapower` y `cne-peru` en `.claude/skills` | `tests/test_ladder_calidad.py` (13 pruebas) | ✅ (el plugin de TIA Portal queda para que lo instale el dueño del repositorio) |
 | — | Dirección web pública | `nilthonnn.github.io/nefer/ladder/` | Depende de fusionar el PR y de GitHub Pages | ⏳ |
 
 ---
