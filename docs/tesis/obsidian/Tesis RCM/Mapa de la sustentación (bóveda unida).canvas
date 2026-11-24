@@ -1,0 +1,265 @@
+{
+ "nodes": [
+  {
+   "id": "n0",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/Problema.md",
+   "x": 0,
+   "y": 0,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n1",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/Objetivos e hipótesis.md",
+   "x": 420,
+   "y": 0,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n2",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/Metodología.md",
+   "x": 840,
+   "y": 0,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n3",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/Diagnóstico.md",
+   "x": 0,
+   "y": 320,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n4",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/Selección de equipos críticos.md",
+   "x": 420,
+   "y": 320,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n5",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/Pareto de sistemas.md",
+   "x": 840,
+   "y": 320,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n6",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/AMEF.md",
+   "x": 0,
+   "y": 640,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n7",
+   "type": "file",
+   "file": "Tesis RCM/02 Conceptos/NPR.md",
+   "x": 420,
+   "y": 640,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n8",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/Árbol de decisiones RCM.md",
+   "x": 840,
+   "y": 640,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n9",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/Plan de mantenimiento.md",
+   "x": 0,
+   "y": 960,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n10",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/Resultados proyectados.md",
+   "x": 420,
+   "y": 960,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n11",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/Evaluación económica.md",
+   "x": 840,
+   "y": 960,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n12",
+   "type": "file",
+   "file": "Tesis RCM/01 Tesis/Conclusiones y recomendaciones.md",
+   "x": 420,
+   "y": 1280,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n13",
+   "type": "file",
+   "file": "Tesis RCM/05 Defensa/Riesgos de defensa.md",
+   "x": 1300,
+   "y": 160,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n14",
+   "type": "file",
+   "file": "Tesis RCM/05 Defensa/Banco de preguntas.md",
+   "x": 1300,
+   "y": 520,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n15",
+   "type": "file",
+   "file": "Tesis RCM/05 Defensa/Fórmulas y cifras clave.md",
+   "x": 1300,
+   "y": 880,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "n16",
+   "type": "file",
+   "file": "Tesis RCM/04 Generadores/Excitación sin escobillas.md",
+   "x": -460,
+   "y": 640,
+   "width": 380,
+   "height": 260
+  },
+  {
+   "id": "t0",
+   "type": "text",
+   "text": "# Mapa de la sustentación\nSigue las flechas: es el orden de la exposición.\nA la derecha: lo que necesitas para las preguntas.",
+   "x": 0,
+   "y": -300,
+   "width": 640,
+   "height": 200,
+   "color": "4"
+  }
+ ],
+ "edges": [
+  {
+   "id": "e0",
+   "fromNode": "n0",
+   "toNode": "n1",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "e1",
+   "fromNode": "n1",
+   "toNode": "n2",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "e2",
+   "fromNode": "n2",
+   "toNode": "n3",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "e3",
+   "fromNode": "n3",
+   "toNode": "n4",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "e4",
+   "fromNode": "n4",
+   "toNode": "n5",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "e5",
+   "fromNode": "n5",
+   "toNode": "n6",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "e6",
+   "fromNode": "n6",
+   "toNode": "n7",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "e7",
+   "fromNode": "n7",
+   "toNode": "n8",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "e8",
+   "fromNode": "n8",
+   "toNode": "n9",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "e9",
+   "fromNode": "n9",
+   "toNode": "n10",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "e10",
+   "fromNode": "n10",
+   "toNode": "n11",
+   "fromSide": "right",
+   "toSide": "left"
+  },
+  {
+   "id": "e11",
+   "fromNode": "n11",
+   "toNode": "n12",
+   "fromSide": "bottom",
+   "toSide": "top"
+  },
+  {
+   "id": "s1",
+   "fromNode": "n10",
+   "toNode": "n13",
+   "color": "1"
+  },
+  {
+   "id": "s2",
+   "fromNode": "n6",
+   "toNode": "n16",
+   "color": "5"
+  }
+ ]
+}

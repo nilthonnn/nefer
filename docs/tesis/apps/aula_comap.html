@@ -1,0 +1,1522 @@
+<title>Aula ComAp</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: panel de control industrial — barra de estado arriba, riel de capítulos a la izquierda, puesto de trabajo a la derecha */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --sunk:#e3e8ee; --ink:#18212b; --muted:#56616e; --line:#c9d1da;
+  --accent:#1f5f8b; --accent-ink:#ffffff; --amber:#b7791f; --amber-bg:#fbf0dc; --red:#b42318; --red-bg:#fde8e6;
+  --green:#2b7a4b; --green-bg:#e2f3e8; --lock:#8a94a0;
+  --f-disp:"Barlow Condensed","Arial Narrow",Arial,sans-serif; --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121820; --panel:#1a222c; --sunk:#222c38; --ink:#e4e9ef; --muted:#9aa6b3; --line:#334050;
+  --accent:#6fb0dc; --accent-ink:#0d1620; --amber:#e3a74a; --amber-bg:#3a2d17; --red:#f08a7e; --red-bg:#3d1f1c;
+  --green:#6cc391; --green-bg:#1b3326; --lock:#6d7884; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121820; --panel:#1a222c; --sunk:#222c38; --ink:#e4e9ef; --muted:#9aa6b3; --line:#334050;
+  --accent:#6fb0dc; --accent-ink:#0d1620; --amber:#e3a74a; --amber-bg:#3a2d17; --red:#f08a7e; --red-bg:#3d1f1c;
+  --green:#6cc391; --green-bg:#1b3326; --lock:#6d7884; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-disp);letter-spacing:.01em;text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:2.1rem;font-weight:700}
+h2{font-size:1.6rem;font-weight:700}
+h3{font-size:1.2rem;font-weight:600}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-size:.86em}
+a{color:var(--accent)}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;padding-bottom:16px;border-bottom:2px solid var(--ink)}
+.status{display:flex;flex-wrap:wrap;gap:8px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:.74rem;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--lock)}
+.dot.on{background:var(--green)} .dot.warn{background:var(--amber)}
+/* Panel de progreso */
+.board{margin-top:20px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+summary.board-head{cursor:pointer;list-style:none}
+summary.board-head::-webkit-details-marker{display:none}
+summary.board-head h2::after{content:" ▾";font-size:.8em;color:var(--muted)}
+details.board:not([open]) summary.board-head h2::after{content:" ▸"}
+details.board:not([open]) summary.board-head{border-bottom:0}
+.board-head{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.meter{display:flex;align-items:center;gap:10px;min-width:220px}
+.meter .bar{flex:1;height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.meter .fill{height:100%;background:var(--accent)}
+.tscroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--f-mono)}
+tr:last-child td{border-bottom:0}
+.st{display:inline-block;font-family:var(--f-mono);font-size:.72rem;padding:2px 8px;border-radius:4px;white-space:nowrap}
+.st.ok{background:var(--green-bg);color:var(--green)} .st.cur{background:var(--amber-bg);color:var(--amber)}
+.st.ret{background:var(--red-bg);color:var(--red)} .st.lock{background:var(--sunk);color:var(--lock)}
+/* Cuerpo */
+.main{display:grid;grid-template-columns:260px minmax(0,1fr);gap:20px;margin-top:20px}
+nav.rail{display:flex;flex-direction:column;gap:6px;align-self:start;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
+.ch{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:center;text-align:left;padding:10px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.ch .n{font-family:var(--f-disp);font-size:1.3rem;font-weight:700;color:var(--muted);text-align:center}
+.ch .t{font-size:.86rem;line-height:1.3}
+.ch .s{display:block;font-family:var(--f-mono);font-size:.68rem;color:var(--muted);margin-top:2px}
+.ch[aria-current="true"]{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.ch[aria-current="true"] .n{color:var(--accent)}
+.ch.locked{opacity:.85}
+.work{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:22px 24px;min-width:0}
+.work-head{display:flex;flex-direction:column;gap:6px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.steps{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.step{padding:6px 12px;border-radius:4px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font-size:.85rem}
+.step[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.sec{margin-top:18px;display:flex;flex-direction:column;gap:14px;max-width:72ch}
+.sec p{margin:0}
+ul.th{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:8px}
+.ref{font-family:var(--f-mono);font-size:.72rem;color:var(--accent);white-space:nowrap}
+.case{border:1px solid var(--line);border-left:4px solid var(--amber);background:var(--amber-bg);padding:14px 16px;border-radius:4px;display:flex;flex-direction:column;gap:8px}
+.case .eyebrow{color:var(--amber)}
+.note{font-size:.84rem;color:var(--muted)}
+.q{border:1px solid var(--line);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.q .lab{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+textarea{width:100%;min-height:110px;resize:vertical;font:inherit;font-size:.92rem;padding:10px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{padding:8px 16px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:500}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.fb{border-radius:4px;padding:12px 14px;background:var(--sunk);font-size:.9rem;display:flex;flex-direction:column;gap:6px}
+.fb b{font-weight:600}
+.fb.pass{background:var(--green-bg)} .fb.fail{background:var(--red-bg)}
+.chat{display:flex;flex-direction:column;gap:8px}
+.msg{padding:9px 12px;border-radius:6px;font-size:.9rem;white-space:pre-wrap}
+.msg.u{background:var(--sunk);align-self:flex-end;max-width:90%}
+.msg.c{background:var(--panel);border:1px solid var(--line);max-width:95%}
+.score{font-family:var(--f-disp);font-size:3rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.lockbox{padding:28px;text-align:left;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+select{font:inherit;padding:5px 8px;border-radius:4px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+details summary{cursor:pointer;color:var(--accent);font-size:.86rem}
+.marco section{display:flex;flex-direction:column;gap:8px}
+.marco section h3{padding-top:6px;border-top:1px solid var(--line)}
+.marco ul,.marco ol{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px}
+.marco .tscroll table{font-size:.86rem;background:var(--panel)}
+.marco td,.marco th{white-space:normal}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{text-align:left;padding:9px 12px;border-radius:4px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;font-size:.92rem;line-height:1.4}
+.opt:hover:not(:disabled){border-color:var(--accent)}
+.opt:disabled{cursor:default}
+.opt.ok{border-color:var(--green);background:var(--green-bg)}
+.opt.bad{border-color:var(--red);background:var(--red-bg)}
+.opt.dim{opacity:.6}
+.opt .ltr{font-family:var(--f-mono);color:var(--muted);margin-right:4px}
+.nextbar{margin-top:20px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
+.nextbtn{flex:1 1 420px;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left;padding:14px 18px;border-radius:6px;border:2px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.nextbtn .eyebrow{color:inherit;opacity:.85}
+.nextbtn .nt{font-family:var(--f-disp);font-size:1.35rem;font-weight:600;line-height:1.2}
+.streak{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tbtn{cursor:pointer;color:var(--ink)}
+.dots{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.dots i{display:block;width:22px;height:6px;border-radius:3px;background:var(--sunk);border:1px solid var(--line)}
+.dots i.done{background:var(--green);border-color:var(--green)} .dots i.now{background:var(--accent);border-color:var(--accent)}
+textarea.short{min-height:70px}
+.mine{white-space:pre-wrap;font-size:.9rem}
+.ch.special .n{color:var(--accent)}
+.formulas{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.fcard{border:1px solid var(--line);border-radius:6px;padding:12px;background:var(--bg);display:flex;flex-direction:column;gap:6px;min-width:0}
+.fcard .lab{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.ff{font-family:var(--f-mono);font-size:.9rem;overflow-wrap:anywhere}
+ul.ideas label{cursor:pointer}
+ul.ideas{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:.88rem}
+.mk{display:inline-block;width:1.2em;font-weight:600}
+.mk-si{color:var(--green)} .mk-parcial{color:var(--amber)} .mk-no{color:var(--red)}
+@media (max-width:600px){ th:nth-child(5),td:nth-child(5),th:nth-child(6),td:nth-child(6),th:nth-child(7),td:nth-child(7){display:none} .nextbtn .nt{font-size:1.15rem} th,td{padding:7px 8px} td:first-child{white-space:nowrap} .st .lt{display:none} }
+@media (max-width:820px){
+  .main{grid-template-columns:minmax(0,1fr)}
+  nav.rail{position:static;flex-direction:row;overflow-x:auto;padding-bottom:4px}
+  .ch{min-width:170px}
+  .work{padding:16px}
+}
+@media (prefers-reduced-motion:no-preference){.fill{transition:width .4s ease}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Método del caso · diálogo socrático · dominio ≥ 80 %</div>
+      <h1>Aula ComAp</h1>
+      <div class="note">Controladores de grupos electrógenos: potencia, sincronismo, alarmas y diagnóstico. Fuentes: Datasheet IC-NT 2013 (DS), InteliCompact NT 1.4 Reference Guide (IC), InteliLite NT AMF y MRS 1.5 (AMF, MRS).</div>
+    </div>
+    <div class="status">
+      <span class="pill" id="pSave"><span class="dot" id="dSave"></span><span id="tSave">Progreso: este navegador</span></span>
+      <span class="pill" id="pClaude"><span class="dot" id="dClaude"></span><span id="tClaude">Tutor Claude: conectando…</span></span>
+    </div>
+  </header>
+
+  <section class="nextbar" id="next" aria-label="Siguiente paso"></section>
+
+  <details class="board" id="boardBox" open>
+    <summary class="board-head">
+      <h2 id="hBoard">Panel de progreso</h2>
+      <div class="meter"><span class="mono" id="mText">0 de 8 aprobados</span><div class="bar"><div class="fill" id="mFill" style="width:0%"></div></div></div>
+    </summary>
+    <div class="tscroll"><table>
+      <thead><tr><th>Cap.</th><th>Título</th><th>Estado</th><th>Dominio</th><th>Marcar</th><th>Fortalezas</th><th>Pendientes</th></tr></thead>
+      <tbody id="board"></tbody>
+    </table></div>
+  </details>
+
+  <div class="main">
+    <nav class="rail" id="rail" aria-label="Capítulos"></nav>
+    <main class="work" id="work"></main>
+  </div>
+</div>
+
+<script>
+const DIAG = [
+  {q:"Concepto. Un grupo pasa de operar en isla a operar en paralelo con la red. ¿Quién fija la frecuencia en cada caso? Ya en paralelo, si el controlador sube la señal al gobernador, ¿qué cambia: frecuencia, kW o factor de potencia? ¿Por qué?",
+   clave:"En isla la frecuencia la fija el gobernador del propio grupo; en paralelo la fija la red (barra infinita). En paralelo, subir el gobernador aumenta los kW entregados, no la frecuencia; el fp depende de la excitación (AVR)."},
+  {q:"Caso. Alarma roja: el GCB abre de inmediato, el motor sigue girando unos minutos y luego para. ¿Qué hizo el controlador y por qué no apagó el motor al instante? ¿Qué harías antes de pulsar Fault reset?",
+   clave:"Alarma BOC (Breaker Open & Cool-down): abre el GCB y enfría el motor antes de parar; típica de fallas eléctricas (sobrecarga, sobrecorriente). Antes del reset: anotar Alarmlist, descargar historial, verificar causa; ojo que en AUT el grupo puede arrancar solo tras reconocer."},
+  {q:"Experiencia. ¿Has operado o configurado un controlador ComAp (panel, LiteEdit, InteliConfig)? ¿Qué modelo y qué hiciste? Del 1 al 5, ¿cuánto dominas hoy potencia, sincronismo, alarmas y diagnóstico?",
+   clave:"Autodiagnóstico: no tiene respuesta correcta."}
+];
+
+const CH = [
+{n:1, t:"Arquitectura y familias ComAp", lect:"DS p. 1, 2, 6 · IC p. 10–13, 26, 39",
+ teoria:[
+  ["<b>InteliCompact NT SPtM</b>: un grupo en paralelo con la red; incluye función AMF.", "IC p. 12"],
+  ["<b>InteliCompact NT MINT</b>: varios grupos en paralelo, reparto de carga isócrono por CAN2, hasta 32 grupos y <i>power management</i>. En paralelo con red necesita MainsCompact NT.", "DS p. 1 · IC p. 12"],
+  ["<b>InteliLite NT AMF</b>: un grupo de emergencia. Mide la red, maneja MCB y GCB, transfiere con corte. No sincroniza.", "AMF p. 1, 22–23"],
+  ["<b>InteliLite NT MRS</b>: un grupo con arranque manual o remoto, sin medición de red. Lee la ECU por J1939.", "MRS p. 4, 67"],
+  ["<b>Salidas de regulación</b>: al gobernador (SRO, voltaje o PWM) y al AVR (VRO, módulo IG-AVRi). Sin ellas no hay control de kW ni de fp.", "IC p. 26, 39"],
+  ["<b>Buses</b>: CAN1 para módulos de extensión y ECU; CAN2 entre controladores.", "DS p. 6"],
+  ["<b>Software</b>: LiteEdit configura y descarga historial; InteliMonitor y WinScope monitorean. El InteliGen 200 de tu grupo usa InteliConfig.", "IC p. 10–11"]],
+ caso:{t:"Respaldo y horas punta en Moquegua",
+  x:"Una planta en Moquegua tiene un grupo Rivera Diesel de 500 kW como respaldo. La concesionaria corta la red varias veces al año. Gerencia quiere además usar el grupo en horas punta (18:00–23:00) para bajar la factura, y evalúa comprar un segundo grupo dentro de dos años. El proveedor cotiza tres opciones: InteliLite NT AMF (la más barata, el personal ya la conoce), InteliCompact NT SPtM o InteliCompact NT MINT con MainsCompact NT.",
+  d:"¿Qué controlador compras hoy, sabiendo que cambiarlo después cuesta parada, cableado y capacitación?"},
+ socr:[
+  {q:"¿Por qué un InteliLite NT AMF no puede hacer peak shaving sin corte? ¿Qué le falta en hardware y en software?", h:"No sincroniza: sin lazos de frecuencia/ángulo ni control de kW en paralelo; transfiere abriendo uno y cerrando otro."},
+  {q:"Si eliges SPtM hoy y en dos años llega el segundo grupo, ¿qué ganas y qué pierdes frente a elegir MINT desde el inicio?", h:"SPtM es más simple y barato para un grupo; MINT exige MainsCompact para el paralelo con red pero escala a varios grupos con reparto de carga."},
+  {q:"¿Qué evidencia pedirías antes de decidir: datos de placa, permisos, condiciones del AVR y del gobernador?", h:"Entrada remota del AVR y del gobernador, interruptores motorizados con retroalimentación, permiso de la concesionaria para paralelo, protecciones de interconexión."}],
+ eval:[
+  {tipo:"Conceptualización", q:"Define SPtM, MINT, AMF y MRS. Indica cuáles sincronizan y qué interruptores controla cada uno.", clave:"SPtM: 1 grupo en paralelo con red, controla GCB y MCB, incluye AMF. MINT: varios grupos, reparto de carga isócrono por CAN2, controla su GCB; el MCB lo maneja MainsCompact. AMF: stand-by, mide red, maneja MCB y GCB, transferencia con corte, no sincroniza. MRS: 1 grupo, arranque manual/remoto, sin red. Solo InteliCompact NT sincroniza."},
+  {tipo:"Análisis crítico", q:"Compara manejar la transferencia desde el controlador del grupo (AMF con contactores o ATS) frente a un ATS independiente con su propio controlador. ¿Qué ganas y qué arriesgas en cada caso?", clave:"Controlador del grupo: integración, un solo historial, menos equipos; setpoint MCB Logic CLOSE-ON/CLOSE-OFF según ATS de 2 o 3 posiciones (AMF p. 22–23); punto único de falla. ATS independiente: redundancia funcional y mantenimiento separado, pero más equipos, coordinación de tiempos y diagnóstico repartido. Ambos transfieren con corte."},
+  {tipo:"Decisión en caso", q:"Recomienda el controlador para el caso de Moquegua. Justifica y nombra dos condiciones técnicas que deben cumplirse para que tu recomendación funcione.", clave:"SPtM si se queda un grupo y se quiere peak shaving (requiere IC-NT-CT-BIO7 para medir corriente de red, IC p. 96); MINT + MainsCompact si la ampliación es firme. Condiciones: AVR y gobernador con entrada remota, interruptores motorizados con retroalimentación, permiso de paralelo de la concesionaria, protecciones de interconexión (vector shift, potencia inversa)."},
+  {tipo:"Aplicación práctica", q:"Lista las señales y conexiones mínimas que necesita un InteliCompact NT para controlar kW y fp en paralelo con la red.", clave:"Voltajes del generador y de la red/barra, CT de corriente del generador, salida al gobernador (con Speed Gov Char y Bias ajustados), salida al AVR (IG-AVRi), mando y retroalimentación de GCB y MCB, medición de velocidad (pickup o frecuencia), alimentación 8–36 V; ECU por CAN1 si el motor es electrónico."},
+  {tipo:"Síntesis", q:"En el AMEF de tu tesis, ¿qué papel cumple el controlador? Da un ejemplo de modo de falla del propio controlador y un ejemplo de cómo el controlador sirve de detección para otro modo de falla.", clave:"Es equipo de protección y fuente de detección (factor D del NPR). Modo de falla propio: batería RTC agotada que deja el controlador en INIT, configuración corrupta, falla de comunicación CAN. Detección: alarma de baja presión de aceite o de temperatura detecta falla del motor; historial aporta datos para MTBF/MTTR."}]},
+
+{n:2, t:"Secuencia de operación", lect:"IC p. 87–94, 104–105 · AMF p. 67–69, 89",
+ teoria:[
+  ["<b>Modos</b>: OFF (no arranca), MAN (botones), AUT (arranque y transferencia automáticos), TEST (prueba con o sin carga).", "IC p. 87–88"],
+  ["<b>Arranque diésel</b>: prestart, cranking, pausa entre intentos, velocidad de arranque, ralentí. La protección de baja velocidad se evalúa 5 s después del arranque.", "IC p. 89, 93"],
+  ["<b>ProtectHoldOff</b>: retardo tras el arranque para las protecciones «solo con motor en marcha», como la presión de aceite.", "IC p. 93, 106"],
+  ["<b>Min Stab Time</b>: mientras corre no se puede cerrar el GCB. <b>Max Stab Time</b>: si al terminar V o f siguen fuera de límites, dispara la protección y el grupo se enfría y para. Min &lt; Max.", "IC p. 93"],
+  ["<b>Conexión</b>: barra muerta → cierra sin sincronizar (MINT exige barra &lt; 2 % de Vn); barra viva → sincroniza. Con varios grupos arrancando, solo uno cierra en barra muerta.", "IC p. 94"],
+  ["<b>Estados</b>: Init, Not ready, Prestart, Cranking, Pause, Starting, Running, Loaded, Cooling, Ready. Red: MainsOper, MainsFlt, IslOper, MainsRet, Trans Del.", "AMF p. 89"],
+  ["<b>Tiempos AMF</b>: EmergStart Del (falla de red → arranque), MainsReturnDel (red sana → retorno), Transfer Del (abre GCB → cierra MCB).", "AMF p. 67"],
+  ["<b>Parada</b>: enfriamiento y stop. Se considera parado con &lt; 2 RPM y &lt; 50 V en todas las fases.", "IC p. 104–105"]],
+ caso:{t:"La prueba mensual que siempre falla",
+  x:"En la prueba mensual en modo TEST, el grupo de 500 kW arranca, pero el panel muestra MaxStabTO y el grupo se enfría y para sin tomar carga. Pasa desde hace tres meses. El operador propone subir Max Stab Time de 10 s a 60 s «para que deje de molestar» y cerrar la orden de trabajo.",
+  d:"¿Aceptas el cambio de setpoint o detienes la prueba para diagnosticar? ¿Con qué datos decides?"},
+ socr:[
+  {q:"¿Qué te dice MaxStabTO sobre dónde está el problema: motor, AVR, gobernador o setpoints?", h:"V o f no entraron en los límites de Gener Protect dentro de Max Stab Time: apunta a excitación (AVR), velocidad (gobernador, Speed Gov Bias) o límites mal ajustados."},
+  {q:"¿Qué riesgo introduces al alargar Max Stab Time? ¿Y al acortar Min Stab Time?", h:"Alargar Max deja más tiempo al grupo fuera de límites sin protección de V/f; acortar Min puede cerrar antes de que se estabilice."},
+  {q:"¿Por qué la presión de aceite no se evalúa desde el primer segundo del arranque?", h:"La presión sube con la velocidad; sin ProtectHoldOff habría disparos falsos en cada arranque."}],
+ eval:[
+  {tipo:"Conceptualización", q:"Explica la diferencia entre Min Stab Time y Max Stab Time, y qué ocurre si el voltaje no entra en límites.", clave:"Min Stab Time: GCB bloqueado aunque V y f estén bien. Max Stab Time: el GCB puede cerrarse en cuanto V y f entren en límites; si al vencer no lo están, se activa la protección y el grupo se enfría y para. Min < Max (IC p. 93)."},
+  {tipo:"Análisis crítico", q:"¿Qué ganas y qué pierdes con un ProtectHoldOff largo frente a uno corto?", clave:"Largo: evita disparos falsos mientras sube la presión, pero el motor queda sin protección de aceite más tiempo. Corto: protege antes, pero puede disparar en arranques fríos o lentos. Se ajusta al tiempo real en que sube la presión."},
+  {tipo:"Decisión en caso", q:"En el caso de la prueba mensual, ¿aceptas subir Max Stab Time a 60 s? Describe qué harías y en qué orden.", clave:"No sin diagnóstico. Registrar V y f reales durante el arranque (historial, WinScope), revisar AVR/excitación, gobernador y Speed Gov Bias, y límites de Gener Protect. Cambiar Max Stab Time solo si el grupo tarda legítimamente más; documentar el cambio y la causa."},
+  {tipo:"Aplicación práctica", q:"Falla de red con EmergStart Del = 5 s; el grupo tarda 12 s en arrancar y estabilizarse. ¿Cuánto tiempo aproximado queda la carga sin energía? Luego vuelve la red con MainsReturnDel = 60 s y Transfer Del = 1 s: describe el retorno y cuánto dura el corte.", clave:"Corte de ≈ 17 s más el retardo de detección de falla de red (Mains V Del/Freq Del). Retorno: la red debe quedar sana 60 s, se abre el GCB, a 1 s se cierra el MCB (corte ≈ 1 s), y el grupo se enfría y para."},
+  {tipo:"Síntesis", q:"Relaciona con el capítulo 1: ¿por qué en SPtM se considera que la barra tiene tensión cuando el MCB está cerrado, y qué mide en cambio un MINT?", clave:"En SPtM, con MCB cerrado la barra tiene el voltaje de la red que el controlador mide, entonces sincroniza a la red; con MCB abierto la barra se considera muerta. MINT mide directamente el voltaje de barra y exige < 2 % de Vn para cerrar sin sincronizar (IC p. 94)."}]},
+
+{n:3, t:"Sincronismo", lect:"IC p. 94–95, 98, 117, 187–191",
+ teoria:[
+  ["Orden: <b>igualar voltaje</b> (AVR) dentro de <span class='mono'>Voltage Window</span>; <b>igualar frecuencia</b> (lazo Freq Gain/Int); <b>igualar ángulo</b> (lazo Angle Gain, tipo P).", "IC p. 95, 115"],
+  ["Cierra el GCB cuando el ángulo está dentro de ± <span class='mono'>Phase Window</span> durante <span class='mono'>Dwell Time</span> y el voltaje coincide. Si no lo logra en <span class='mono'>Sync Timeout</span>: alarma Sync Timeout.", "IC p. 94–95"],
+  ["Rangos: Voltage Window 0–100 %; Phase Window 0–90°; Dwell Time 0–25 s; Sync Timeout 1–1 800 s. El manual da rangos, no valores de fábrica.", "IC p. 188–191"],
+  ["<span class='mono'>Phase Window = 0</span> no da orden de cierre: sirve para ajustar los lazos sin conectar.", "IC p. 117, 188"],
+  ["Retorno sin corte: <b>reverse synchronizing</b> cierra el MCB tras MainsReturnDel; si falla, RevSyncTimeout. Con RevSyncDisable: changeover con corte (abre GCB, Transfer Del, cierra MCB).", "IC p. 98"],
+  ["Fallas típicas: Speed Gov Char invertido o salida pegada al límite; fases de V y CT cruzadas (kW y fp erróneos); Bus Measure Error en MINT.", "IC p. 94, 142–143"]],
+ caso:{t:"Sync Timeout en la hora punta",
+  x:"El grupo en SPtM falla tres veces por semana con Sync Timeout al entrar en paralelo a las 18:00. El sincronoscopio muestra que la frecuencia se iguala, pero la aguja sigue girando despacio y nunca se queda quieta en la ventana. El técnico propone abrir Phase Window de 10° a 30° y poner Dwell Time en 0 «para que cierre al toque».",
+  d:"¿Apruebas el cambio? ¿Qué priorizas: que el grupo entre siempre o que entre sin dañarse?"},
+ socr:[
+  {q:"¿Por qué cerrar con una diferencia de ángulo grande es peligroso para el grupo y para la instalación?", h:"Al cerrar fuera de fase circula una corriente transitoria grande y un par brusco en eje, acoplamiento y devanados."},
+  {q:"¿Qué indica que la frecuencia se iguale pero el ángulo siga girando? ¿Qué lazo está fallando?", h:"Queda deslizamiento residual: el lazo de ángulo (Angle Gain) no logra frenar el giro; también puede ser el gobernador o su característica."},
+  {q:"¿Qué evidencia buscarías antes de tocar las ganancias?", h:"Historial y WinScope de frecuencia/SRO durante la sincronización, Speed Gov Char y límites, respuesta del gobernador."}],
+ eval:[
+  {tipo:"Conceptualización", q:"Describe las condiciones que el controlador verifica para cerrar el GCB al sincronizar y el setpoint que fija cada una.", clave:"ΔV dentro de Voltage Window; frecuencia igualada (lazo Freq Gain/Int); ángulo dentro de ± Phase Window durante Dwell Time; todo antes de Sync Timeout. La secuencia de fases debe coincidir."},
+  {tipo:"Análisis crítico", q:"Compara una Phase Window ancha con Dwell Time corto frente a una ventana estrecha con Dwell Time más largo.", clave:"Ancha y corta: cierra rápido pero con mayor ángulo, más corriente y par transitorio. Estrecha y larga: cierres suaves, pero si la regulación oscila aparece Sync Timeout. Se busca el compromiso con buena regulación, no abriendo la ventana."},
+  {tipo:"Decisión en caso", q:"Decide sobre la propuesta del técnico (30° y Dwell 0). ¿Qué harías en su lugar y en qué orden?", clave:"Rechazarla. Verificar Speed Gov Char y límites del gobernador, ajustar Angle Gain y Freq Gain/Int con Phase Window = 0 para no cerrar mientras se prueba, revisar Voltage Window, confirmar en el sincronoscopio y devolver Phase Window a su valor (IC p. 117)."},
+  {tipo:"Aplicación práctica", q:"Red en 60,00 Hz y generador en 60,20 Hz. Con Phase Window ± 10° y Dwell Time 0,5 s, ¿se puede cerrar? Muestra el cálculo.", clave:"Deslizamiento 0,2 Hz → 0,2 × 360 = 72 °/s. La ventana total de 20° se recorre en 20/72 ≈ 0,28 s, menos que 0,5 s: no cierra. Hay que reducir el deslizamiento con el lazo de ángulo."},
+  {tipo:"Síntesis", q:"Une con el capítulo 2: ¿cuándo prefieres reverse synchronizing y cuándo changeover para volver a la red?", clave:"Reverse synchronizing: retorno sin corte, cuando la carga no tolera cortes y la red está estable; requiere que el MCB sea controlable. Changeover (RevSyncDisable): corte breve de Transfer Del, más simple, útil si la red es inestable o no hay permiso de paralelo. Ambos tras MainsReturnDel."}]},
+
+{n:4, t:"Control de potencia y lazos de regulación", lect:"IC p. 95–99, 114–117, 150–152, 190",
+ teoria:[
+  ["En paralelo con la red, la red fija la frecuencia: el gobernador controla <b>kW</b> y el AVR controla <b>kVAr y fp</b>.", "IC p. 95, 114–116"],
+  ["SPtM: rampa <span class='mono'>Load Ramp</span> (s para 0→100 %), carga fija <span class='mono'>Baseload</span>, fp fijo <span class='mono'>Base PF</span> (0,7–1,0).", "IC p. 95, 150, 190"],
+  ["Límite de exportación: <span class='mono'>Export Limit</span> + <span class='mono'>Export kW</span>; valor negativo = límite de importación.", "IC p. 150–151"],
+  ["Peak shaving: arranca sobre PeakLevelStart y para bajo PeakLevelStop con PeakAutS/S Del; necesita IC-NT-CT-BIO7 para medir la corriente de red.", "IC p. 96"],
+  ["Descarga antes de abrir: baja hasta <span class='mono'>GCB Open Level</span> o hasta vencer <span class='mono'>GCB Open Del</span>.", "IC p. 96, 190–191"],
+  ["MINT: #SysLdCtrl PtM = BASELOAD (cada grupo toma parte de #SysBaseLoad) o LDSHARING; en isla reparte kW y kVAr.", "IC p. 97, 151"],
+  ["Lazos: sin carga = valores fijos (Speed Gov Bias, AVRi Bias); sincronizando = frecuencia/ángulo y voltaje; paralelo con red = potencia y fp. Ajuste PI: ganancia 5 %, integral 0 %, subir hasta oscilar y dejar en la mitad.", "IC p. 114–117"]],
+ caso:{t:"Horas punta sin exportar",
+  x:"La planta demanda entre 300 y 650 kW en horas punta. El contrato con la concesionaria prohíbe exportar energía. El jefe de planta quiere fijar Baseload = 500 kW «para aprovechar todo el grupo» y Base PF = 1,0 «para no gastar reactivos».",
+  d:"¿Qué configuración propones para ahorrar sin violar el contrato ni forzar el grupo?"},
+ socr:[
+  {q:"¿Por qué en paralelo con la red, al subir la señal del gobernador, cambian los kW y no la frecuencia?", h:"La red es mucho mayor y fija la frecuencia; más combustible solo empuja más potencia hacia la barra."},
+  {q:"Si el grupo opera con Base PF 1,0, ¿quién entrega los reactivos de la planta? ¿Qué pasa con el fp que ve la concesionaria?", h:"Todos los kVAr los da la red; la red entrega menos kW pero igual kVAr, su fp empeora y puede haber penalidad."},
+  {q:"¿Por qué el lazo de potencia depende de la retroalimentación del MCB?", h:"El controlador reconoce el paralelo con la red por MCB feedback; sin ella no activa los lazos de potencia y fp."}],
+ eval:[
+  {tipo:"Conceptualización", q:"Indica qué lazo regula el gobernador y cuál el AVR en cada estado: sin carga, sincronizando, isla SPtM y paralelo con la red.", clave:"Sin carga: Speed Gov Bias / AVRi Bias fijos. Sincronizando: frecuencia → ángulo / voltaje. Isla SPtM: valor fijo / voltaje (o AVR y gobernador propios). Paralelo con red: potencia (Load Gain/Int) / fp (PF Gain/Int) (IC p. 114–115)."},
+  {tipo:"Análisis crítico", q:"Compara operar con Baseload fijo frente a usar Export Limit con Export kW = 0.", clave:"Baseload fijo es simple, pero si la carga baja por debajo del baseload el grupo exporta (prohibido). Export Limit limita la potencia pedida para no exportar más que Export kW; con 0 no exporta, con negativo garantiza importar un mínimo."},
+  {tipo:"Decisión en caso", q:"Propón los setpoints para el caso (Baseload, Export Limit/Export kW, Base PF, Load Ramp, peak shaving) y justifica cada uno.", clave:"Baseload ≤ ~90 % de 500 kW; Export Limit ENABLED con Export kW 0 o negativo (margen de importación); Base PF ~0,8–0,9 para aportar reactivos sin sobreexcitar; Load Ramp moderado (decenas de segundos); peak shaving con IC-NT-CT-BIO7 y PeakLevelStart/Stop con histéresis y PeakAutS/S Del."},
+  {tipo:"Aplicación práctica", q:"Grupo de 500 kW, Load Ramp = 100 s. ¿Cuánto tarda en subir de 0 a 300 kW? Al parar, GCB Open Level = 10 %: ¿cuánto tarda la descarga desde 300 kW y qué condición debe cumplir GCB Open Del?", clave:"Subida: 300/500 × 100 = 60 s. GCB Open Level 10 % = 50 kW; descarga de 250 kW = 250/500 × 100 = 50 s. GCB Open Del debe ser ≥ 50 s (y por diseño ≥ Load Ramp), o abrirá antes de terminar la descarga."},
+  {tipo:"Síntesis", q:"Une con sincronismo y arquitectura: ¿qué cambia en los lazos justo después de que el GCB cierra, y por qué un AVR sin entrada remota impide controlar el fp?", clave:"Tras la retroalimentación del GCB los lazos pasan de frecuencia/ángulo y voltaje a potencia y fp (o reparto en MINT) (IC p. 95). Sin entrada remota del AVR el controlador no puede mover la excitación: no hay control de kVAr ni fp."}]},
+
+{n:5, t:"Protecciones y gestión de alarmas", lect:"IC p. 105–109, 173–177 · AMF p. 64–69, 86–91",
+ teoria:[
+  ["Amarilla <b>WRN</b>: solo avisa. Rojas: <b>BOC</b> abre GCB y enfría; <b>STP</b> descarga suave, abre y enfría; <b>SD</b> abre y para sin enfriar. <b>FLS</b>: sensor fuera de rango, no afecta la operación.", "IC p. 106–107"],
+  ["Evaluación: siempre / solo con motor en marcha (tras ProtectHoldOff) / solo con generador excitado. Retardo ajustable; fijo 500 ms en entradas binarias.", "IC p. 105–106"],
+  ["Estados: activa, inactiva (no reconocida), confirmada. Con roja activa o sin reconocer no arranca; tras reconocer, en AUT/TEST puede arrancar solo.", "IC p. 106–107"],
+  ["En InteliLite NT todas las protecciones eléctricas son shutdown; en InteliCompact NT son BOC salvo sobrevoltaje (Gen >V Sd).", "AMF p. 64 · IC p. 173–176"],
+  ["IDMT: t = Amps IDMT Del × In / (I − In). Amps IDMT Del es el tiempo a 200 %. Si t > 900 s no actúa.", "AMF p. 65"],
+  ["GCB/MCB Fail: compara orden con retroalimentación; inmediato si cambia sola, 5 s si no responde a la orden.", "AMF p. 88"],
+  ["Sd Override desactiva las paradas por alarma roja (bombas contra incendio).", "IC p. 106"]],
+ caso:{t:"Disparo de madrugada",
+  x:"A las 3:00 el grupo alimenta en isla una chancadora. Aparece Overload BOC, abre el GCB, el motor se enfría y para. El operador pulsa Fault reset de inmediato; como está en AUT y no hay red, el grupo vuelve a arrancar, toma la carga y dispara otra vez. Repite tres veces.",
+  d:"Eres el supervisor de turno: ¿qué haces ahora y qué cambias en el procedimiento?"},
+ socr:[
+  {q:"¿Por qué ComAp distingue BOC, STP y SD? ¿Qué protege cada una?", h:"BOC protege al generador de una falla eléctrica pero cuida el motor enfriándolo; STP evita el golpe de carga; SD es para fallas que dañan el motor si sigue girando."},
+  {q:"¿Cuándo usarías Sd Override y qué riesgo aceptas?", h:"Cuando la continuidad vale más que el equipo (bomba contra incendio); aceptas destruir el grupo."},
+  {q:"¿Por qué el retardo de una alarma por entrada binaria es fijo en 500 ms?", h:"Filtra rebotes y ruido de contactos sin retrasar demasiado una señal real."}],
+ eval:[
+  {tipo:"Conceptualización", q:"Define WRN, BOC, STP, SD y FLS, y los estados activa, inactiva y confirmada.", clave:"WRN avisa; BOC abre GCB y enfría; STP descarga suave, abre y enfría; SD abre y para sin enfriar; FLS falla de sensor sin efecto en la operación. Activa: condición presente y retardo vencido; inactiva: condición desapareció sin reconocer; confirmada: reconocida pero sigue."},
+  {tipo:"Análisis crítico", q:"Compara una protección de sobrecorriente IDMT frente a una de tiempo definido con retardo fijo.", clave:"IDMT: más rápida cuanto mayor la sobrecorriente, tolera arranques de motores y sobrecargas breves, coordina mejor. Tiempo definido: simple y predecible, pero o dispara en transitorios (retardo corto) o tarda en fallas graves (retardo largo)."},
+  {tipo:"Decisión en caso", q:"En el disparo de madrugada, ¿qué haces ahora y qué cambias en el procedimiento?", clave:"Pasar a MAN u OFF, no reconocer sin registrar Alarmlist e historial; revisar kW y corrientes al disparo; reducir o escalonar carga (arranque de la chancadora); verificar Overload BOC frente a capacidad real. Procedimiento: no hacer reset repetido en AUT, porque el grupo arranca solo (IC p. 107)."},
+  {tipo:"Aplicación práctica", q:"Generador de 625 kVA a 400 V (In ≈ 902 A), Amps IDMT Del = 4 s. ¿Tiempo de disparo con 1 353 A (150 %) y con 992 A (110 %)?", clave:"150 %: 4 × 902 / (1 353 − 902) = 4 × 902 / 451 = 8 s. 110 %: 4 × 902 / 90 ≈ 40 s. Ambos < 900 s, actúa."},
+  {tipo:"Síntesis", q:"Conecta con tu RCM: toma dos modos de falla de tu AMEF y di qué alarma ComAp los detecta y cómo eso cambia el valor D del NPR.", clave:"Ej.: falla de lubricación → AI1 Wrn/Sd presión de aceite; sobrecalentamiento → AI2 temperatura; falla de excitación → ExcitationLoss o Gen <V. Una alarma WRN con margen antes del SD da detección temprana: D baja y el NPR baja. WrnMaintenance apoya tareas programadas por horas."}]},
+
+{n:6, t:"Diagnóstico", lect:"IC p. 80–81, 108–111, 141–143 · AMF p. 89–91 · MRS p. 67–68",
+ teoria:[
+  ["Historial: foto del sistema en cada evento importante, FIFO. IC-NT más de 100 registros; IL-NT AMF 117 (varía con los módulos).", "IC p. 109 · AMF p. 91"],
+  ["Cada registro: causa, fecha y hora, modo, RPM, kW, fp, V e I por fase, red o barra, batería, aceite, temperatura, combustible, E/S, salidas SRO y VRO, FC/FMI de la ECU.", "IC p. 110–111"],
+  ["Descarga: LiteEdit → History → Read history. El primer registro tras encender o reprogramar trae valores sin sentido.", "AMF p. 91"],
+  ["ECU Alarmlist: pares SPN/FMI + OC. FMI 0 o 1 → WRN; otro FMI → FLS. Los valores de la ECU no se guardan en el historial, solo los códigos.", "MRS p. 68"],
+  ["Identificar la ECU: PAGE + ENTER, buscar «ESF:xx.y - (zzz)»; Motor ID 1 = Volvo EMS/EMS2.", "MRS p. 67"],
+  ["Solución de problemas: INIT (checksum o batería RTC), Configuration table error, kW y fp erróneos (fases cruzadas), MCB Fail permanente (MCB Logic), CAN sin comunicación (bus no lineal).", "IC p. 141–143"]],
+ caso:{t:"No arrancó cuando más se necesitaba",
+  x:"Cae la red un sábado. El grupo en AUT no arranca. El panel muestra Not ready. En la Alarmlist hay una alarma roja sin reconocer de hace dos días; en la ECU Alarmlist aparece un código con FMI 1. Llega el técnico de turno con la laptop y LiteEdit.",
+  d:"¿Restableces primero la energía o primero el diagnóstico? ¿Qué registras antes de tocar nada?"},
+ socr:[
+  {q:"¿Qué información NO te dará el historial sobre lo que pasó en la ECU?", h:"Los valores medidos por la ECU no se guardan, solo FC/FMI; para tendencias hace falta la herramienta del fabricante (VODIA) o WinScope."},
+  {q:"¿Por qué no conviene reconocer alarmas antes de descargar el historial y anotar la Alarmlist?", h:"Al reconocer, las alarmas inactivas desaparecen y se pierde la evidencia de secuencia; además en AUT el grupo puede arrancar."},
+  {q:"FMI 1 aparece como WRN. ¿Significa que es leve?", h:"No necesariamente: en J1939 FMI 1 indica dato válido pero por debajo del rango normal en nivel más severo; ComAp lo clasifica como aviso, el criterio técnico debe revisarlo."}],
+ eval:[
+  {tipo:"Conceptualización", q:"Explica qué es el historial, qué lo dispara, su capacidad y qué datos guarda cada registro.", clave:"Memoria no volátil que guarda una foto en cada evento importante (alarma, cierre de GCB, etc.), FIFO; IC-NT > 100 registros, IL-NT AMF 117; guarda causa, fecha/hora, modo, RPM, kW, fp, V/I, red, batería, entradas analógicas, E/S, SRO/VRO, FC/FMI."},
+  {tipo:"Análisis crítico", q:"Compara diagnosticar solo desde el panel frente a usar LiteEdit y WinScope.", clave:"Panel: inmediato, sin equipo, pero ves 7 de 16 alarmas y el historial uno por uno. LiteEdit: historial completo, exportable, setpoints. WinScope: tendencias en el tiempo (dinámica de V, f, SRO), versión gratis limitada a 4 canales y 1 controlador."},
+  {tipo:"Decisión en caso", q:"En el caso del sábado, ¿qué haces y en qué orden? Justifica.", clave:"Anotar Alarmlist y ECU Alarmlist, descargar historial con LiteEdit, identificar la alarma roja de hace dos días y la falla ECU; verificar que es segura la condición; reconocer solo después; arrancar en MAN y vigilar; si la causa persiste, no forzar con Sd Override salvo carga crítica. Registrar la falla oculta (el grupo quedó indisponible dos días sin que nadie lo notara)."},
+  {tipo:"Aplicación práctica", q:"Da causa y solución para: (a) kW y fp incorrectos con V e I correctos; (b) el controlador queda en INIT; (c) MCB Fail permanente.", clave:"(a) Fases de voltaje y CT no coinciden: corregir cableado. (b) Checksum de setpoints o batería RTC agotada: revisar y cambiar un setpoint en LiteEdit, Controller → Reset from init state; cambiar batería CR1225. (c) MCB Logic no coincide con el cableado: corregir el setpoint (IC p. 141–143)."},
+  {tipo:"Síntesis", q:"Para tu tesis: ¿cómo usarías el historial del controlador para calcular MTBF y MTTR del grupo, y qué limitación tiene?", clave:"Contar eventos de falla y sus tiempos (alarma → retorno a Ready/Loaded) para MTBF = horas de operación / n.º de fallas y MTTR = tiempo de reparación / n.º de fallas. Limitación: capacidad FIFO (~100–117 registros) borra eventos antiguos; hay que descargarlo periódicamente y complementar con órdenes de trabajo."}]},
+
+{n:7, t:"Síntesis: el controlador dentro de tu RCM", lect:"Capítulos 1–6 · tu tesis",
+ teoria:[
+  ["Una <b>protección</b> detiene el daño cuando la falla ya ocurre; el <b>mantenimiento</b> busca que no ocurra. El controlador hace lo primero y da datos para lo segundo.", "RCM-II"],
+  ["Las alarmas WRN dan un <b>intervalo P-F</b>: tiempo entre la falla potencial detectada y la falla funcional. Base de tareas a condición.", "RCM-II"],
+  ["Las protecciones que nunca actúan son <b>funciones ocultas</b>: requieren tareas de búsqueda de fallas (pruebas periódicas de parada de emergencia, sobrevelocidad, falla de red).", "RCM-II"],
+  ["NPR = S × O × D. La detección D mejora cuando una alarma avisa antes del daño; el umbral de tu tesis fue NPR &gt; 180.", "Tesis"],
+  ["Rigor ante el jurado: distingue lo <b>medido</b> (historial, paradas registradas) de lo <b>proyectado</b> (escenario económico).", "Tesis"]],
+ caso:{t:"La pregunta del jurado",
+  x:"En tu sustentación, un jurado dice: «El controlador ComAp ya protege el grupo contra sobrecarga, baja presión de aceite y sobrevelocidad. ¿Para qué un plan RCM? ¿Cómo sabe que su plan reduce paradas si no lo ha medido?»",
+  d:"¿Cómo respondes en dos minutos sin exagerar tus resultados?"},
+ socr:[
+  {q:"¿Por qué una protección no reemplaza una tarea de mantenimiento?", h:"La protección actúa después: evita la destrucción pero no la parada; el RCM busca evitar la falla o detectarla antes."},
+  {q:"Si la protección de sobrevelocidad nunca ha disparado, ¿cómo sabes que funciona?", h:"No lo sabes: es una función oculta; necesita prueba periódica documentada."},
+  {q:"¿Qué dato del historial del controlador respaldaría tu MTBF, y qué parte de tu tesis sigue siendo proyección?", h:"Eventos de alarma y paradas con fecha/hora; los ahorros y horas recuperadas son escenario proyectado."}],
+ eval:[
+  {tipo:"Conceptualización", q:"Define función oculta, intervalo P-F y detección (D) del NPR, con un ejemplo de cada uno en un grupo con controlador ComAp.", clave:"Función oculta: falla que no se nota en operación normal (protección de sobrevelocidad o parada de emergencia que no actuaría). P-F: desde la WRN de temperatura alta hasta el SD por sobretemperatura. D: capacidad de detectar antes del efecto; una alarma WRN con margen baja D."},
+  {tipo:"Análisis crítico", q:"¿Qué ganas y qué arriesgas confiando en las alarmas del controlador como única detección?", clave:"Ganas detección continua y registro automático. Riesgos: sensores en falla (FLS), alarmas mal ajustadas o deshabilitadas, funciones ocultas no probadas, solo detecta lo que mide; hace falta inspección e instrumentación complementaria."},
+  {tipo:"Decisión en caso", q:"Escribe tu respuesta al jurado en 5–7 líneas.", clave:"El controlador protege, no previene: limita el daño cuando la falla ya ocurrió. El plan RCM prioriza modos de falla por NPR y define tareas a condición (usando alarmas WRN), programadas y de búsqueda de fallas. Los resultados económicos son una proyección con supuestos declarados; se validarán con el historial y las órdenes de trabajo tras implementarlo."},
+  {tipo:"Aplicación práctica", q:"Diseña tres tareas de mantenimiento ligadas al controlador: una a condición, una programada y una de búsqueda de fallas, con su frecuencia.", clave:"A condición: revisar tendencias y alarmas WRN de temperatura/presión (semanal). Programada: WrnMaintenance por horas del motor; cambio de batería RTC cada 5–7 años. Búsqueda de fallas: prueba de parada de emergencia y de transferencia AMF en modo TEST (mensual), verificación de protecciones."},
+  {tipo:"Síntesis", q:"Integra el curso: explica cómo sincronismo, control de potencia, alarmas y diagnóstico se combinan para mejorar la disponibilidad D = MTBF / (MTBF + MTTR) del grupo.", clave:"Sincronismo y control de potencia bien ajustados evitan disparos (sube MTBF); alarmas con margen permiten intervenir antes (sube MTBF); historial y diagnóstico ordenado acortan la reparación (baja MTTR). La disponibilidad sube por ambos lados."}]},
+{n:8, t:"Machine learning para el monitoreo de condición", lect:"Demo Flota Sur ML · IC p. 109 · MRS p. 68",
+ teoria:[
+  ["El machine learning <b>no reemplaza al RCM</b>: el RCM decide qué modos de falla importan y qué tarea corresponde; el ML mejora la detección (D), la ocurrencia (O) y mide el intervalo P-F.", "RCM-II"],
+  ["El historial del controlador no basta: es FIFO de unos 100 registros y no guarda los valores de la ECU, solo los códigos. Hace falta un <b>registro continuo</b> (Modbus cada minuto).", "IC p. 109 · MRS p. 68"],
+  ["Con pocas fallas al año no se entrena un modelo que «aprenda la falla». Se modela lo <b>normal</b>: valor esperado según carga y clima; <b>residuo = real − esperado</b>. Entrenamiento con 30 días sanos.", "Demo"],
+  ["Regla de alerta: residuo mayor que k·σ del entrenamiento durante <b>3 días seguidos</b>. Bajar k avisa antes pero da más falsas alarmas.", "Demo"],
+  ["<b>Isolation Forest</b>: combina varias señales y puntúa qué tan raro es cada día; no necesita ejemplos de fallas. El umbral se fija con datos que el modelo no vio, para no ser optimista.", "Demo"],
+  ["<b>Weibull</b>: β &lt; 1 fallas tempranas, β ≈ 1 aleatorias, β &gt; 1 desgaste (el reemplazo preventivo sí sirve). η = vida característica; B10 = η·(−ln 0,9)^(1/β).", "Demo"],
+  ["Hay fallas <b>sin alarma</b> en el controlador (p. ej. consumo alto por inyectores): solo un modelo las ve.", "Demo"],
+  [`Practica con el demo: <a href="https://claude.ai/artifact/SUKwxFbWcSJX8c1GoRba35" target="_blank" rel="noopener">Flota Sur ML</a> (datos simulados). En la tesis va como <b>trabajo futuro</b>, no como resultado medido.`, "Tesis"]],
+ caso:{t:"La «IA predictiva» por suscripción",
+  x:"La empresa opera 8 grupos de 500 kW en el sur del Perú. Cada grupo tiene unas 6 fallas al año y no existe registro continuo de variables: solo el historial del controlador y las órdenes de trabajo. Un proveedor ofrece una plataforma de «IA predictiva» por suscripción anual que promete «predecir el 95 % de las fallas» desde el primer mes. Gerencia te pide una recomendación en una semana.",
+  d:"¿Compras la plataforma, haces un piloto propio con modelos simples o esperas? ¿Qué evidencia exiges antes de pagar?"},
+ socr:[
+  {q:"¿Por qué con unas 6 fallas al año por grupo no se puede entrenar un modelo que aprenda directamente «esto es una falla»?", h:"Hay muy pocos ejemplos de falla frente a miles de horas normales; el modelo no generaliza. Por eso se modela lo normal y se vigila el residuo."},
+  {q:"Si bajas el umbral de 3 σ a 2,5 σ, ¿qué ganas y qué pierdes en la operación diaria?", h:"Ganas días de adelanto; pierdes por más falsas alarmas: el personal deja de creer en las alertas (fatiga de alarmas)."},
+  {q:"¿Por qué el umbral del Isolation Forest debe calcularse con días que el modelo no usó para entrenar?", h:"Con los mismos datos el modelo parece mejor de lo que es (sobreajuste); en operación aparecen más falsas alarmas."}],
+ eval:[
+  {tipo:"Conceptualización", q:"Explica qué es el residuo de un modelo de condición, qué es el intervalo P-F y cómo el machine learning puede cambiar los factores D y O del NPR.", clave:"Residuo = valor real − valor esperado por un modelo entrenado con operación normal (según carga y clima); si crece de forma sostenida indica degradación. Intervalo P-F: tiempo entre que la falla se puede detectar (P) y la falla funcional (F). El ML baja D porque detecta antes que la alarma (amplía el P-F aprovechable) y permite estimar O con datos (Weibull, frecuencia real) en lugar de una escala a criterio."},
+  {tipo:"Análisis crítico", q:"Compara un umbral de alerta sensible (2,5 σ) con uno conservador (4 σ). ¿Para qué sirve exigir 3 días seguidos sobre el umbral?", clave:"Sensible: avisa antes pero da más falsas alarmas, con costo de inspecciones inútiles y pérdida de confianza. Conservador: menos falsas alarmas pero menos adelanto y riesgo de no detectar a tiempo. La regla de 3 días seguidos filtra picos de ruido aislados sin perder tendencias reales. La elección depende del costo de una falla frente al de una falsa alarma."},
+  {tipo:"Decisión en caso", q:"Recomienda qué hacer con la oferta de «IA predictiva». Justifica y lista al menos tres condiciones o evidencias que exigirías.", clave:"No comprar a ciegas: sin registro continuo ninguna plataforma tiene datos. Primero instalar el registro (Modbus) y un piloto con modelos simples (residuos) en los modos de mayor NPR. Exigir al proveedor: validación con datos propios o piloto, tasa de falsas alarmas, días de adelanto medidos, qué datos necesita, quién y cómo actúa ante una alerta, costo frente a beneficio. «95 %» sin definir falsas alarmas ni horizonte no es evidencia."},
+  {tipo:"Aplicación práctica", q:"Las baterías de la flota tienen β = 2,2 y η = 26 meses. Calcula el B10 (edad a la que falló el 10 %) y la probabilidad de falla en los primeros 12 meses. ¿Tiene sentido el reemplazo preventivo? ¿A qué edad?", clave:"B10 = 26 × (−ln 0,9)^(1/2,2) = 26 × 0,1054^0,4545 ≈ 26 × 0,36 ≈ 9,4 meses. F(12) = 1 − e^(−(12/26)^2,2) ≈ 1 − e^(−0,18) ≈ 17 %. β > 1 indica desgaste: el reemplazo preventivo sí reduce fallas; reemplazar alrededor de los 9 meses mantiene una confiabilidad cercana al 90 %."},
+  {tipo:"Síntesis", q:"Integra con los capítulos 5–7: propone en 4 pasos cómo incorporarías machine learning al plan RCM de tu tesis, qué alarmas del controlador conservas y cómo lo presentarías ante el jurado.", clave:"1) Registro continuo por Modbus del InteliGen 200 y la ECU. 2) Modelos de residuo para los modos con NPR > 180 (enfriamiento, batería) y Weibull con las órdenes de trabajo. 3) Alertas revisadas en la reunión de mantenimiento como tareas a condición; las alarmas WRN y SD del controlador se mantienen como protección y último aviso del P-F. 4) Validar 6–12 meses y actualizar D, O y frecuencias. Ante el jurado: trabajo futuro con datos simulados en el demo, no resultados medidos."}]}
+];
+
+/*CONTENIDO*/
+/* Marco teórico y preguntas para marcar · capítulos 1 a 4
+   Referencias: DS = Datasheet IC-NT 2013 · IC = InteliCompact NT 1.4 Reference Guide · AMF / MRS = InteliLite NT 1.5 Reference Guides
+   [I] = explicación general (no está en los manuales) */
+const MARCO = {}, QUIZ = {};
+
+MARCO[1] = [
+ {h:"1.1 Qué es un controlador de grupo electrógeno", html:`
+  <p>El controlador es el «cerebro» del grupo: arranca y para el motor, mide el generador y la red, maneja los interruptores, protege el equipo con alarmas y guarda un historial de eventos. ComAp agrupa sus controladores por la aplicación que resuelven, no por la potencia del grupo. [I]</p>
+  <p>La primera pregunta al elegir uno es <b>cuántos grupos</b> hay y <b>si deben trabajar en paralelo</b> (con la red o entre ellos). Esa respuesta define la familia.</p>`},
+ {h:"1.2 Familias de los manuales del curso", html:`
+  <div class="tscroll"><table><thead><tr><th>Controlador</th><th>Aplicación</th><th>¿Sincroniza?</th><th>Interruptores</th><th>Fuente</th></tr></thead><tbody>
+  <tr><td><b>InteliCompact NT SPtM</b></td><td>Un grupo en paralelo con la red. Incluye la función AMF.</td><td>Sí</td><td>GCB y MCB</td><td>IC p. 12</td></tr>
+  <tr><td><b>InteliCompact NT MINT</b></td><td>Varios grupos en paralelo entre sí con reparto de carga isócrono; hasta 32 grupos. Para el paralelo con red se agrega un MainsCompact NT.</td><td>Sí</td><td>Solo su GCB (el MCB lo maneja MainsCompact)</td><td>DS p. 1 · IC p. 12</td></tr>
+  <tr><td><b>InteliLite NT AMF</b> (AMF20/25)</td><td>Un grupo de emergencia: detecta falla de red, arranca y transfiere.</td><td>No: transferencia con corte</td><td>GCB y MCB</td><td>AMF p. 1, 22–23</td></tr>
+  <tr><td><b>InteliLite NT MRS</b> (MRS10/11/15/16)</td><td>Un grupo con arranque manual o remoto, sin medición de red.</td><td>No</td><td>GCB</td><td>MRS p. 4</td></tr>
+  </tbody></table></div>
+  <p><b>Regla práctica:</b> sincronismo y control de kW/fp → InteliCompact NT; un grupo solo con alarmas y diagnóstico → InteliLite NT (AMF si hay red, MRS si no). El grupo de tu tesis usa <b>InteliGen 200</b>, de una generación más nueva que se configura con InteliConfig. [I]</p>`},
+ {h:"1.3 Sincronismo y paralelo: por qué importa la familia", html:`
+  <p>Para conectar un grupo a una barra que ya tiene tensión hay que <b>igualar voltaje, frecuencia y ángulo</b> antes de cerrar el interruptor. Solo los controladores de paralelismo tienen los lazos de regulación para hacerlo. Un AMF transfiere abriendo un interruptor y cerrando el otro: siempre hay un corte breve. [I]</p>
+  <p>En paralelo con la red, la red fija la frecuencia: el controlador regula los <b>kW</b> a través del gobernador y el <b>fp</b> a través del AVR. Por eso el controlador necesita salidas hacia ambos. [I]</p>`},
+ {h:"1.4 Interfaces del controlador", html:`
+  <ul>
+   <li><b>Medición:</b> voltajes del generador y de la red o barra (hasta 277/480 V) y corrientes por TC de 5 A, en verdadero valor eficaz (true RMS). <span class="ref">DS p. 2 · IC p. 13</span></li>
+   <li><b>Salida al gobernador (SRO):</b> señal de voltaje o PWM para subir o bajar velocidad/potencia. <span class="ref">IC p. 39</span></li>
+   <li><b>Salida al AVR (VRO):</b> mediante el módulo IG-AVRi, para mover la excitación. <span class="ref">IC p. 26</span></li>
+   <li><b>Interruptores:</b> orden de cierre/apertura y retroalimentación (feedback) del GCB y del MCB. <span class="ref">IC p. 24–25</span></li>
+   <li><b>Alimentación:</b> 8–36 V CC desde la batería del grupo. <span class="ref">DS p. 2</span></li>
+   <li><b>Buses CAN:</b> CAN1 para módulos de extensión y la ECU del motor (J1939); CAN2 para comunicación entre controladores. <span class="ref">DS p. 6</span></li>
+  </ul>`},
+ {h:"1.5 Software y comunicación", html:`
+  <p><b>LiteEdit</b> configura el controlador y descarga el historial; <b>InteliMonitor</b> supervisa varios controladores; <b>WinScope</b> grafica valores en el tiempo; <b>WebSupervisor</b> monitorea flotas por internet. <span class="ref">IC p. 10–11</span></p>
+  <p>Tarjetas como IB-Lite (Ethernet) o IL-NT GPRS permiten acceso remoto. El módulo <b>IC-NT CT-BIO7</b> agrega medición de corriente de red o de falla a tierra. <span class="ref">DS p. 2 · IC p. 53</span></p>`},
+ {h:"1.6 Relación con el RCM", html:`
+  <p>En un AMEF el controlador cumple dos papeles: es un <b>equipo</b> con sus propios modos de falla (batería de respaldo agotada, configuración corrupta, falla de comunicación CAN) y es la principal <b>fuente de detección</b> (factor D) de las fallas del motor y del generador. Su historial aporta datos para MTBF y MTTR. [I]</p>`}
+];
+QUIZ[1] = [
+ {q:"¿Qué controlador de los manuales sirve para poner UN grupo en paralelo con la red?", ops:["InteliCompact NT SPtM","InteliCompact NT MINT","InteliLite NT AMF","InteliLite NT MRS"], ok:0, exp:"SPtM = Single Parallel to Mains: un grupo en paralelo con la red, con función AMF incluida.", ref:"IC p. 12"},
+ {q:"¿Cuántos grupos pueden cooperar como máximo con InteliCompact NT MINT?", ops:["4","8","16","32"], ok:3, exp:"La ficha indica cooperación de hasta 32 grupos con reparto de carga.", ref:"DS p. 1"},
+ {q:"Verdadero o falso: el InteliLite NT AMF puede transferir la carga de la red al grupo sin corte, sincronizando.", ops:["Verdadero","Falso"], ok:1, exp:"El AMF no tiene lazos de sincronización: transfiere abriendo un interruptor y cerrando el otro, con un corte breve.", ref:"AMF p. 22–23"},
+ {q:"¿Qué distingue al InteliLite NT MRS del AMF?", ops:["El MRS sincroniza con la red","El MRS no mide la red: arranque manual o remoto","El MRS maneja hasta 32 grupos","El MRS no tiene alarmas"], ok:1, exp:"MRS = Manual/Remote Start: un solo grupo sin función de red.", ref:"MRS p. 4"},
+ {q:"En una instalación MINT en paralelo con la red, ¿quién controla el interruptor de red (MCB)?", ops:["Cada controlador MINT","El MainsCompact NT","El AVR","Nadie, es manual"], ok:1, exp:"MINT controla solo su GCB; el controlador de red MainsCompact NT maneja el paralelo con la red.", ref:"DS p. 1 · IC p. 98"},
+ {q:"¿Para qué se usa el bus CAN1 del InteliCompact NT?", ops:["Comunicación entre controladores","Módulos de extensión y ECU del motor","Conexión a internet","Medición de voltaje"], ok:1, exp:"CAN1: módulos y ECU (J1939). CAN2: entre controladores.", ref:"DS p. 6"},
+ {q:"¿Qué módulo da al InteliCompact NT la salida para mover la excitación del alternador?", ops:["IB-Lite","IG-AVRi","IL-NT GPRS","IGL-RA15"], ok:1, exp:"El IG-AVRi es la interfaz hacia la entrada remota del AVR.", ref:"IC p. 26"},
+ {q:"Verdadero o falso: el controlador se alimenta de la batería del grupo en el rango de 8 a 36 V CC.", ops:["Verdadero","Falso"], ok:0, exp:"Rango de alimentación indicado en la ficha técnica.", ref:"DS p. 2"},
+ {q:"Caso: una planta tiene un grupo de respaldo y quiere además usarlo en horas punta sin cortar la energía. ¿Qué familia elegirías?", ops:["InteliLite NT MRS","InteliLite NT AMF","InteliCompact NT SPtM","Ninguna, se necesita un ATS"], ok:2, exp:"Para operar en paralelo con la red sin corte hace falta sincronizar y controlar kW: SPtM. Para peak shaving necesita además el CT-BIO7 para medir la red.", ref:"IC p. 12, 96"},
+ {q:"Caso: en el AMEF, el controlador queda en «INIT» porque la batería de respaldo interna se agotó. ¿Cómo clasificas esto?", ops:["Modo de falla del propio controlador","Falla del motor","Falla del alternador","No es una falla"], ok:0, exp:"El controlador es un equipo con sus propios modos de falla; la batería RTC agotada es uno de ellos.", ref:"IC p. 141 · AMF p. 107"}
+];
+
+MARCO[2] = [
+ {h:"2.1 Modos de operación", html:`
+  <div class="tscroll"><table><thead><tr><th>Modo</th><th>Qué hace</th></tr></thead><tbody>
+   <tr><td><b>OFF</b></td><td>El grupo no puede arrancar.</td></tr>
+   <tr><td><b>MAN</b></td><td>El operador arranca, para y cierra interruptores con los botones del panel.</td></tr>
+   <tr><td><b>AUT</b></td><td>El controlador arranca, conecta y para según las señales (falla de red, entrada remota, power management).</td></tr>
+   <tr><td><b>TEST</b></td><td>Prueba periódica: arranca el grupo, con o sin carga según la configuración.</td></tr>
+  </tbody></table></div><p class="ref">IC p. 87–88</p>`},
+ {h:"2.2 Secuencia de arranque de un diésel", html:`
+  <ol><li><b>Prestart:</b> se activa la salida de precalentamiento o prelubricación.</li>
+  <li><b>Cranking:</b> el motor de arranque gira el motor.</li>
+  <li><b>Pause:</b> si no arranca, pausa entre intentos.</li>
+  <li><b>Starting:</b> se alcanzó la velocidad de arranque; corre el tiempo de ralentí (idle).</li>
+  <li><b>Running:</b> velocidad nominal.</li></ol>
+  <p>La protección de <b>baja velocidad</b> se evalúa 5 s después de que el motor arrancó. El retardo <b>ProtectHoldOff</b> retrasa las protecciones «solo con motor en marcha», como la presión de aceite, porque la presión sube con la velocidad y daría disparos falsos en cada arranque. <span class="ref">IC p. 89, 93</span></p>`},
+ {h:"2.3 Estabilización: Min Stab Time y Max Stab Time", html:`
+  <ul><li><b>Min Stab Time:</b> mientras corre, el GCB <b>no puede cerrarse</b> aunque voltaje y frecuencia ya estén bien.</li>
+  <li><b>Max Stab Time:</b> el GCB puede cerrarse en cuanto V y f entren en límites; si al vencer este tiempo siguen fuera, se activa la protección y el grupo se enfría y para (estado <b>MaxStabTO</b>).</li>
+  <li>Siempre <b>Min Stab Time &lt; Max Stab Time</b>.</li></ul>
+  <p>Alargar Max Stab Time para «evitar la alarma» oculta el problema real: excitación (AVR), velocidad (gobernador) o límites mal ajustados. <span class="ref">IC p. 93</span></p>`},
+ {h:"2.4 Conexión a la carga", html:`
+  <ul><li><b>Barra muerta:</b> se cierra el GCB sin sincronizar. En SPtM la barra se considera muerta cuando el MCB está abierto; en MINT además se exige voltaje de barra <b>menor que el 2 %</b> del nominal.</li>
+  <li><b>Varios grupos a la vez sobre barra muerta:</b> solo uno cierra; los demás esperan y se sincronizan a él.</li>
+  <li><b>Barra con tensión:</b> primero sincroniza y luego cierra.</li>
+  <li><b>Bus Measure Error (MINT):</b> si 20 s después de cerrar un interruptor el voltaje de barra sigue fuera de límites, se activa esta alarma; el cierre del GCB propio se bloquea de inmediato.</li></ul>
+  <p class="ref">IC p. 94</p>`},
+ {h:"2.5 Máquina de estados del InteliLite NT AMF", html:`
+  <p><b>Estados del motor:</b> Init, Not ready, Prestart, Cranking, Pause, Starting, Running, Loaded, Cooling, Stop, Shutdown, Ready, EmergMan.</p>
+  <p><b>Estados eléctricos:</b> MainsOper (red presente), MainsFlt (falla de red), IslOper (isla), MainsRet (retorno de red), Brks Off, MinStabTO, MaxStabTO, Trans Del.</p><p class="ref">AMF p. 89</p>`},
+ {h:"2.6 Secuencia AMF y sus tiempos", html:`
+  <div class="tscroll"><table><thead><tr><th>Setpoint</th><th>Qué controla</th><th>Rango</th></tr></thead><tbody>
+   <tr><td>EmergStart Del</td><td>Retardo entre la falla de red y el arranque del grupo</td><td>0–6 000 s</td></tr>
+   <tr><td>MainsReturnDel</td><td>Tiempo que la red debe estar sana antes de volver</td><td>1–3 600 s</td></tr>
+   <tr><td>Transfer Del</td><td>Retardo entre abrir el GCB y cerrar el MCB</td><td>0–600 s</td></tr>
+   <tr><td>MCB Close Del</td><td>Retardo para cerrar el MCB si vuelve la red mientras el grupo aún arranca</td><td>0–60 s</td></tr>
+  </tbody></table></div>
+  <p><b>Ejemplo:</b> falla de red → EmergStart Del → arranque y estabilización → abre MCB → cierra GCB. Vuelve la red → MainsReturnDel → abre GCB → Transfer Del → cierra MCB → el grupo se enfría y para. <span class="ref">AMF p. 67–68</span></p>`},
+ {h:"2.7 Parada y grupo detenido", html:`
+  <p>Al parar, el grupo se enfría (Cooling) y luego se detiene. El controlador lo considera parado cuando la velocidad es <b>menor que 2 RPM</b> y el voltaje del generador es <b>menor que 50 V</b> en todas las fases. <span class="ref">IC p. 104–105</span></p>`}
+];
+QUIZ[2] = [
+ {q:"¿En qué modo el controlador arranca y transfiere solo ante una falla de red?", ops:["OFF","MAN","AUT","TEST"], ok:2, exp:"En AUT el controlador actúa según las señales, entre ellas la falla de red.", ref:"IC p. 87–88"},
+ {q:"¿Para qué sirve ProtectHoldOff?", ops:["Retrasar el cierre del GCB","Retrasar las protecciones «solo con motor en marcha» tras el arranque","Retrasar el arranque tras la falla de red","Retrasar el enfriamiento"], ok:1, exp:"Evita disparos falsos (p. ej. baja presión de aceite) mientras el motor sube de velocidad.", ref:"IC p. 93"},
+ {q:"¿Cuántos segundos después del arranque se empieza a evaluar la protección de baja velocidad?", ops:["1 s","5 s","20 s","60 s"], ok:1, exp:"La protección de baja velocidad se evalúa 5 s después de que el motor arrancó.", ref:"IC p. 93"},
+ {q:"Verdadero o falso: durante Min Stab Time el GCB se puede cerrar si voltaje y frecuencia ya están en límites.", ops:["Verdadero","Falso"], ok:1, exp:"Durante Min Stab Time el GCB está bloqueado aunque V y f estén bien.", ref:"IC p. 93"},
+ {q:"¿Qué ocurre si al vencer Max Stab Time el voltaje sigue fuera de límites?", ops:["Se cierra igual el GCB","Se activa la protección y el grupo se enfría y para","Se reinicia el arranque","Pasa a modo MAN"], ok:1, exp:"Es el estado MaxStabTO: protección, enfriamiento y parada.", ref:"IC p. 93"},
+ {q:"En MINT, ¿qué condición de voltaje de barra permite cerrar el GCB sin sincronizar?", ops:["Menor que 2 % del nominal","Menor que 10 %","Menor que 50 %","Cualquier valor"], ok:0, exp:"Además del MCB abierto, MINT exige barra por debajo del 2 % del voltaje nominal.", ref:"IC p. 94"},
+ {q:"¿Qué setpoint fija cuánto tiempo debe estar sana la red antes de volver a ella?", ops:["EmergStart Del","Transfer Del","MainsReturnDel","MCB Close Del"], ok:2, exp:"MainsReturnDel: 1–3 600 s.", ref:"AMF p. 67"},
+ {q:"Verdadero o falso: el controlador considera el grupo detenido con menos de 2 RPM y menos de 50 V en todas las fases.", ops:["Verdadero","Falso"], ok:0, exp:"Son las dos condiciones de grupo detenido (más la ausencia de otras señales de marcha).", ref:"IC p. 105"},
+ {q:"Caso: en cada prueba mensual aparece MaxStabTO. El operador propone subir Max Stab Time de 10 a 60 s. ¿Qué haces primero?", ops:["Aceptar el cambio","Revisar V y f reales durante el arranque, AVR, gobernador y límites","Poner el grupo en OFF","Bajar Min Stab Time"], ok:1, exp:"MaxStabTO indica que V o f no entran en límites: hay que buscar la causa (excitación, velocidad, ajustes) antes de tocar tiempos.", ref:"IC p. 93"},
+ {q:"Caso: EmergStart Del = 5 s y el grupo tarda 12 s en arrancar y estabilizarse. ¿Cuánto queda la carga sin energía, aproximadamente?", ops:["5 s","12 s","17 s más el retardo de detección de falla de red","Nada, no hay corte"], ok:2, exp:"5 s + 12 s ≈ 17 s, más el retardo con que el controlador confirma la falla de red (Mains V Del / Freq Del).", ref:"AMF p. 67–68"}
+];
+
+MARCO[3] = [
+ {h:"3.1 Qué es sincronizar", html:`
+  <p>Sincronizar es conectar un generador a una barra que ya tiene tensión sin provocar un choque eléctrico ni mecánico. Antes de cerrar el interruptor deben coincidir cuatro condiciones entre generador y barra o red: [I]</p>
+  <div class="tscroll"><table><thead><tr><th>Condición</th><th>Se ajusta con</th></tr></thead><tbody>
+   <tr><td><b>ΔV</b> diferencia de voltaje</td><td>Excitación (AVR)</td></tr>
+   <tr><td><b>Δf</b> diferencia de frecuencia (deslizamiento)</td><td>Velocidad (gobernador)</td></tr>
+   <tr><td><b>Δφ</b> diferencia de ángulo de fase</td><td>Ajuste fino de velocidad</td></tr>
+   <tr><td><b>Secuencia de fases</b></td><td>Cableado; protección ANSI 47</td></tr>
+  </tbody></table></div>
+  <p>Cerrar fuera de fase produce una corriente transitoria grande y un par brusco sobre el eje, el acople y los devanados. [I]</p>`},
+ {h:"3.2 Cómo sincroniza el InteliCompact NT", html:`
+  <ol><li><b>Voltaje:</b> regula el voltaje del generador hasta que la diferencia quede dentro de <b>Voltage Window</b> (lazo Voltage Gain / Voltage Int).</li>
+  <li><b>Frecuencia:</b> el lazo de frecuencia (Freq Gain / Freq Int) lleva el deslizamiento a casi cero.</li>
+  <li><b>Ángulo:</b> el lazo de ángulo (Angle Gain, de tipo P; los demás son PI) reduce Δφ.</li>
+  <li><b>Cierre:</b> cuando el ángulo está dentro de <b>± Phase Window</b> durante <b>Dwell Time</b> y el voltaje coincide, cierra el GCB.</li>
+  <li>Si no lo logra en <b>Sync Timeout</b>, aparece la alarma Sync Timeout.</li></ol>
+  <p>Durante la sincronización la pantalla cambia sola al <b>sincronoscopio</b>. <span class="ref">IC p. 94–95, 115</span></p>`},
+ {h:"3.3 Setpoints del grupo Sync/Load Ctrl", html:`
+  <div class="tscroll"><table><thead><tr><th>Setpoint</th><th>Rango</th><th>Qué es</th></tr></thead><tbody>
+   <tr><td>Voltage Window</td><td>0–100,0 %</td><td>ΔV máxima por fase</td></tr>
+   <tr><td>Phase Window</td><td>0–90 °</td><td>Δφ máxima; <b>en 0 no da orden de cierre</b></td></tr>
+   <tr><td>Dwell Time</td><td>0–25,0 s</td><td>Tiempo que Δφ y ΔV deben quedar en ventana</td></tr>
+   <tr><td>Freq Gain / Freq Int</td><td>0–200 % / 0–100 %</td><td>Lazo de frecuencia</td></tr>
+   <tr><td>Angle Gain</td><td>0–200,0 %</td><td>Lazo de ángulo</td></tr>
+   <tr><td>Sync Timeout</td><td>1–1 800 s</td><td>Tiempo máximo para sincronizar</td></tr>
+  </tbody></table></div>
+  <p>El manual da los <b>rangos</b>, no los valores de fábrica: esos se leen del controlador con LiteEdit. <span class="ref">IC p. 188–191</span></p>`},
+ {h:"3.4 Deslizamiento y ventana: un cálculo clave", html:`
+  <p>Con un deslizamiento de <b>Δf</b> Hz, el ángulo entre generador y red gira <b>Δf × 360 °/s</b>. Si la ventana total es 2 × Phase Window, el tiempo que el ángulo pasa dentro de ella es <b>(2 × Phase Window) / (Δf × 360)</b>. Si ese tiempo es menor que Dwell Time, <b>no cierra</b>. [I]</p>
+  <p><b>Ejemplo:</b> Δf = 0,2 Hz → 72 °/s. Con Phase Window ± 10 ° (20 ° en total): 20 / 72 ≈ 0,28 s. Con Dwell Time 0,5 s no cierra: hay que reducir el deslizamiento con el lazo de ángulo, no abrir la ventana.</p>`},
+ {h:"3.5 Retorno a la red: reverse synchronizing o changeover", html:`
+  <ul><li><b>Reverse synchronizing</b> (sin corte): cuando la red vuelve y queda sana durante MainsReturnDel, el grupo se sincroniza con la red y cierra el <b>MCB</b>. Si falla → alarma <b>RevSyncTimeout</b> y el grupo sigue en isla.</li>
+  <li><b>Changeover</b> (con corte): si la entrada <b>RevSyncDisable</b> está activa, abre el GCB, espera Transfer Del y cierra el MCB.</li></ul><p class="ref">IC p. 98</p>`},
+ {h:"3.6 Ajuste y fallas típicas", html:`
+  <ul><li>Para ajustar los lazos sin conectar: <b>Phase Window = 0</b> (no cierra) y devolverlo a su valor al terminar. <span class="ref">IC p. 117</span></li>
+  <li><b>Salida del gobernador pegada a un límite:</b> Speed Gov Char invertido, cableado o jumper PWM/voltaje equivocado. <span class="ref">IC p. 143</span></li>
+  <li><b>kW y fp erróneos con V e I correctos:</b> fases de voltaje y TC cruzadas. <span class="ref">IC p. 142</span></li>
+  <li><b>Bus Measure Error</b> en MINT: cables de barra desconectados del controlador. <span class="ref">IC p. 94</span></li></ul>`}
+];
+QUIZ[3] = [
+ {q:"¿Con qué equipo se iguala el VOLTAJE del generador al de la red durante la sincronización?", ops:["Gobernador","AVR (excitación)","Interruptor","Pickup magnético"], ok:1, exp:"El voltaje depende de la excitación, que maneja el AVR.", ref:"IC p. 95"},
+ {q:"¿Qué tipo de lazo de regulación es el lazo de ángulo del InteliCompact NT?", ops:["PI","P","PID","Todo o nada"], ok:1, exp:"Todos los lazos son PI excepto el de ángulo, que es P.", ref:"IC p. 115"},
+ {q:"¿Qué condición dispara el cierre del GCB al sincronizar?", ops:["Ángulo dentro de ± Phase Window durante Dwell Time y voltaje igualado","Frecuencia igual a la nominal","Que venza Sync Timeout","Que el operador pulse START"], ok:0, exp:"Ángulo en ventana durante Dwell Time y voltaje dentro de Voltage Window.", ref:"IC p. 95"},
+ {q:"Verdadero o falso: con Phase Window = 0 el controlador sigue sincronizando pero no da orden de cierre.", ops:["Verdadero","Falso"], ok:0, exp:"Se usa para ajustar lazos sin conectar; sincroniza hasta Sync Timeout o hasta un cierre externo.", ref:"IC p. 117, 188"},
+ {q:"¿Qué alarma aparece si la sincronización no termina en el tiempo fijado?", ops:["GCB Fail","Sync Timeout","Bus Measure Error","MaxStabTO"], ok:1, exp:"El tiempo máximo lo fija el setpoint Sync Timeout (1–1 800 s).", ref:"IC p. 94, 191"},
+ {q:"Red en 60,00 Hz y generador en 60,25 Hz. ¿A qué velocidad gira el ángulo entre ambos?", ops:["25 °/s","60 °/s","90 °/s","360 °/s"], ok:2, exp:"Δf × 360 = 0,25 × 360 = 90 °/s.", ref:"Marco 3.4"},
+ {q:"Verdadero o falso: el reverse synchronizing cierra el GCB después de sincronizar el grupo con la red.", ops:["Verdadero","Falso"], ok:1, exp:"En el retorno sin corte se cierra el MCB, no el GCB (el grupo ya está conectado a la carga).", ref:"IC p. 98"},
+ {q:"¿Qué entrada binaria obliga a volver a la red con corte (changeover) en vez de sincronizar?", ops:["Sd Override","RevSyncDisable","Access Lock","Emergency Stop"], ok:1, exp:"Con RevSyncDisable activa: abre GCB, espera Transfer Del y cierra MCB.", ref:"IC p. 98"},
+ {q:"Caso: Sync Timeout repetido; la aguja del sincronoscopio gira lento y nunca se queda en la ventana. El técnico propone Phase Window 30 ° y Dwell Time 0. ¿Qué haces?", ops:["Aprobar el cambio","Rechazarlo y ajustar Angle/Freq Gain con Phase Window = 0, revisando Speed Gov Char","Desactivar la alarma","Cambiar el AVR"], ok:1, exp:"Abrir la ventana permite cierres fuera de fase. El problema es el deslizamiento residual: se corrige con los lazos.", ref:"IC p. 117, 143"},
+ {q:"Caso: kW y fp marcan valores absurdos, pero voltajes y corrientes por fase están bien. ¿Causa más probable?", ops:["AVR dañado","Fases de voltaje y TC cruzadas","Gobernador lento","Batería baja"], ok:1, exp:"Si V e I son correctos pero no corresponden a la misma fase, la potencia calculada sale mal.", ref:"IC p. 142"}
+];
+
+MARCO[4] = [
+ {h:"4.1 Potencia activa y reactiva: quién controla qué", html:`
+  <ul><li><b>kW (potencia activa)</b> depende del combustible que recibe el motor → el controlador actúa sobre el <b>gobernador</b> (salida SRO).</li>
+  <li><b>kVAr y factor de potencia</b> dependen de la excitación del alternador → actúa sobre el <b>AVR</b> (salida VRO, módulo IG-AVRi).</li></ul>
+  <p>En <b>isla con un solo grupo</b> la carga fija los kW; el controlador no regula y V y f los mantienen el AVR y el gobernador. En <b>paralelo con la red</b>, la red fija la frecuencia: subir el gobernador aumenta los kW entregados, no la frecuencia. <span class="ref">IC p. 97, 114–116</span></p>`},
+ {h:"4.2 SPtM: un grupo en paralelo con la red", html:`
+  <div class="tscroll"><table><thead><tr><th>Fase</th><th>Setpoint</th><th>Detalle</th></tr></thead><tbody>
+   <tr><td>Subida de carga</td><td>Load Ramp</td><td>Segundos para ir de 0 a 100 % de la potencia nominal</td></tr>
+   <tr><td>Carga constante</td><td>Baseload</td><td>0 … potencia nominal (kW)</td></tr>
+   <tr><td>fp constante</td><td>Base PF</td><td>0,7 – 1,0</td></tr>
+   <tr><td>Límite de exportación</td><td>Export Limit + Export kW</td><td>Export kW negativo = límite de importación</td></tr>
+   <tr><td>Peak shaving</td><td>PeakLevelStart / PeakLevelStop / PeakAutS/S Del</td><td>Requiere IC-NT-CT-BIO7 para medir la corriente de red</td></tr>
+   <tr><td>Bajada antes de abrir</td><td>GCB Open Level / GCB Open Del</td><td>Abre al llegar al nivel o al vencer el tiempo</td></tr>
+  </tbody></table></div><p class="ref">IC p. 95–96, 150–152, 190–191</p>`},
+ {h:"4.3 La rampa de carga: cálculo", html:`
+  <p>Load Ramp se expresa para un cambio de 0 a 100 %. Para un cambio parcial: <b>tiempo = (ΔP / P nominal) × Load Ramp</b>. <span class="ref">IC p. 190</span></p>
+  <p><b>Ejemplo:</b> grupo de 500 kW, Load Ramp = 100 s. Subir a 300 kW tarda 300/500 × 100 = <b>60 s</b>. Al parar con GCB Open Level = 10 % (50 kW), bajar de 300 a 50 kW tarda 250/500 × 100 = <b>50 s</b>; GCB Open Del debe ser mayor, o el GCB abrirá antes de terminar la descarga.</p>`},
+ {h:"4.4 MINT: varios grupos", html:`
+  <ul><li>En paralelo con la red, <b>#SysLdCtrl PtM</b> elige <b>BASELOAD</b> (cada grupo toma una parte igual de #SysBaseLoad) o <b>LDSHARING</b> (todos al mismo porcentaje de carga).</li>
+  <li>En isla reparten kW (LoadShare Gain/Int) y kVAr (VAr Share Gain/Int).</li>
+  <li>Desde la versión 1.4.1, solo el controlador con <b>menor dirección CAN</b> regula el voltaje; los demás siguen la barra.</li>
+  <li><b>Power management</b> enciende y apaga grupos según la reserva y las prioridades.</li></ul><p class="ref">IC p. 97, 99, 115, 151</p>`},
+ {h:"4.5 Qué lazo está activo en cada estado", html:`
+  <div class="tscroll"><table><thead><tr><th>Estado</th><th>Gobernador</th><th>AVR</th></tr></thead><tbody>
+   <tr><td>Sin carga, GCB abierto</td><td>Valor fijo Speed Gov Bias</td><td>Valor fijo AVRi Bias</td></tr>
+   <tr><td>Sincronizando</td><td>Frecuencia → ángulo</td><td>Voltaje</td></tr>
+   <tr><td>Paralelo con red</td><td>Potencia (Load Gain/Int)</td><td>fp (PF Gain/Int)</td></tr>
+   <tr><td>Isla MINT</td><td>Reparto de carga</td><td>Reparto de VAr</td></tr>
+  </tbody></table></div>
+  <p>El controlador reconoce el paralelo con la red por la <b>retroalimentación del MCB</b>; sin ella no activa los lazos de potencia y fp. <span class="ref">IC p. 114–116</span></p>`},
+ {h:"4.6 Ajuste de un lazo PI y protecciones de potencia", html:`
+  <ol><li>Desactivar temporalmente las alarmas relacionadas y poner Sync Timeout al máximo.</li>
+  <li>Ganancia 5 %, integral 0 %.</li>
+  <li>Modo MAN y llevar el grupo a la fase donde trabaja el lazo.</li>
+  <li>Subir la ganancia hasta que oscile y dejarla en la <b>mitad</b>.</li>
+  <li>Subir la integral hasta una respuesta aceptable: poca integral = lento; mucha = sobreimpulso u oscilación.</li></ol>
+  <p>Tener a mano la parada de emergencia. <span class="ref">IC p. 116–117</span></p>
+  <p><b>Protecciones:</b> sobrecarga (ANSI 32) Overload BOC 100–200 %; potencia inversa (32R) Reverse Pwr BOC 1–50 %; pérdida de excitación (40) ExcitationLoss −32 000 … 0 kVAr. <span class="ref">IC p. 173–177</span></p>`}
+];
+QUIZ[4] = [
+ {q:"En paralelo con la red, si el controlador sube la señal al gobernador, ¿qué cambia?", ops:["La frecuencia de la red","Los kW que entrega el grupo","El factor de potencia","El voltaje"], ok:1, exp:"La red fija la frecuencia; más combustible empuja más potencia activa.", ref:"IC p. 95"},
+ {q:"¿Sobre qué equipo actúa el controlador para regular el factor de potencia?", ops:["Gobernador","AVR","Interruptor de red","Motor de arranque"], ok:1, exp:"El fp depende de la excitación, que maneja el AVR.", ref:"IC p. 95, 115"},
+ {q:"¿Cuál es el rango del setpoint Base PF?", ops:["0,5 – 1,0","0,7 – 1,0","0,8 – 0,95","0 – 1"], ok:1, exp:"Base PF va de 0,7 a 1,0.", ref:"IC p. 150"},
+ {q:"Verdadero o falso: un valor negativo en Export kW funciona como límite de importación.", ops:["Verdadero","Falso"], ok:0, exp:"Negativo = límite de importación; positivo = límite de exportación; cero = sin exportar ni importar.", ref:"IC p. 151"},
+ {q:"Grupo de 500 kW con Load Ramp = 100 s. ¿Cuánto tarda en subir de 0 a 250 kW?", ops:["25 s","50 s","100 s","250 s"], ok:1, exp:"250/500 × 100 = 50 s.", ref:"IC p. 190"},
+ {q:"¿Qué módulo necesita el peak shaving en SPtM para medir la corriente de la red?", ops:["IG-AVRi","IC-NT-CT-BIO7","IB-Lite","IGS-PTM"], ok:1, exp:"El CT-BIO7 mide la corriente de red (Im/EF input = Mains).", ref:"IC p. 96"},
+ {q:"¿Con qué señal reconoce el controlador que está en paralelo con la red?", ops:["Voltaje de barra","Retroalimentación del MCB","Velocidad del motor","Temperatura"], ok:1, exp:"La retroalimentación del MCB activa los lazos de potencia y fp.", ref:"IC p. 116"},
+ {q:"Verdadero o falso: al ajustar un lazo PI se sube la ganancia hasta que oscile y se deja en la mitad de ese valor.", ops:["Verdadero","Falso"], ok:0, exp:"Es la regla del manual: ganancia 5 %, integral 0 %, subir hasta oscilar y dejar la mitad.", ref:"IC p. 116"},
+ {q:"Caso: el contrato prohíbe exportar y la carga de la planta varía entre 300 y 650 kW. ¿Qué configuración evita exportar?", ops:["Baseload fijo de 500 kW","Export Limit ENABLED con Export kW = 0 o negativo","Base PF = 1,0","Load Ramp = 0"], ok:1, exp:"Con Baseload fijo, si la carga baja de 500 kW el grupo exporta. Export Limit limita la potencia pedida.", ref:"IC p. 150–151"},
+ {q:"Caso: al parar desde 300 kW con GCB Open Level 10 % y Load Ramp 100 s (grupo de 500 kW), ¿qué valor mínimo debe tener GCB Open Del?", ops:["10 s","30 s","50 s","100 s"], ok:2, exp:"Bajar de 300 a 50 kW = 250/500 × 100 = 50 s. Con menos tiempo el GCB abre antes de terminar la descarga.", ref:"IC p. 190–191"}
+];
+
+/* Marco teórico y preguntas para marcar · capítulos 5 a 8 */
+MARCO[5] = [
+ {h:"5.1 Dos niveles de alarma", html:`
+  <div class="tscroll"><table><thead><tr><th>Nivel</th><th>Tipo</th><th>Qué hace el controlador</th></tr></thead><tbody>
+   <tr><td>🟡 Amarillo</td><td><b>WRN</b> Warning</td><td>Solo avisa; no actúa sobre el grupo</td></tr>
+   <tr><td>🔴 Rojo</td><td><b>BOC</b> Breaker Open &amp; Cool-down</td><td>Abre el GCB de inmediato, luego enfría y para (fallas eléctricas)</td></tr>
+   <tr><td>🔴 Rojo</td><td><b>STP</b> Slow stop</td><td>Descarga suave, abre el GCB, enfría y para</td></tr>
+   <tr><td>🔴 Rojo</td><td><b>SD</b> Shutdown</td><td>Abre el GCB y para <b>sin enfriar</b></td></tr>
+   <tr><td>—</td><td><b>FLS</b> Sensor fail</td><td>Sensor fuera de rango (muestra ####); no afecta la operación</td></tr>
+   <tr><td>—</td><td><b>MF</b> Mains failure (AMF)</td><td>Abre el MCB; no se escribe en la lista de alarmas</td></tr>
+  </tbody></table></div>
+  <p>La lógica: BOC protege al generador de una falla eléctrica sin dañar el motor (lo deja enfriar); SD es para fallas que dañan el motor si sigue girando (baja presión de aceite, sobrevelocidad). <span class="ref">IC p. 105–107 · AMF p. 86</span></p>
+  <p>En los <b>InteliLite NT</b> todas las protecciones eléctricas del generador son <b>shutdown</b>. En el <b>InteliCompact NT</b> son <b>BOC</b>, salvo el sobrevoltaje (Gen &gt;V Sd). <span class="ref">AMF p. 64 · IC p. 173–176</span></p>`},
+ {h:"5.2 Cuándo y cómo se evalúa una alarma", html:`
+  <ul><li><b>Siempre</b> que el controlador está encendido.</li>
+  <li><b>Solo con motor en marcha:</b> empieza tras ProtectHoldOff (p. ej. presión de aceite).</li>
+  <li><b>Solo con generador excitado:</b> tras Max Stab Time o con el GCB cerrado; aplica a voltaje, frecuencia y desbalance del generador.</li></ul>
+  <p><b>Retardo:</b> ajustable en alarmas integradas y analógicas; <b>fijo en 500 ms</b> para entradas binarias. Si la condición desaparece antes de que venza, la alarma no se activa. Cada entrada analógica admite dos alarmas: una amarilla y una roja. <span class="ref">IC p. 105–106</span></p>`},
+ {h:"5.3 Estados de una alarma y reconocimiento", html:`
+  <ul><li><b>Activa:</b> la condición persiste y el retardo venció.</li>
+  <li><b>Inactiva:</b> la condición desapareció, pero nadie la reconoció.</li>
+  <li><b>Confirmada:</b> fue reconocida, pero la condición sigue.</li></ul>
+  <p>Se reconoce con <b>Fault reset</b>. Con una alarma roja activa o sin reconocer, el grupo <b>no arranca</b>. ⚠️ Tras reconocer, en AUT o TEST <b>puede arrancar solo</b>. La lista de alarmas guarda hasta 16 (se ven 7). <b>Sd Override</b> desactiva las paradas por alarma roja: solo para cargas donde la continuidad vale más que el equipo, como bombas contra incendio. <span class="ref">IC p. 106–108</span></p>`},
+ {h:"5.4 Alarmas integradas (códigos ANSI)", html:`
+  <div class="tscroll"><table><thead><tr><th>ANSI</th><th>Protección</th><th>ANSI</th><th>Protección</th></tr></thead><tbody>
+   <tr><td>12</td><td>Sobrevelocidad</td><td>32R</td><td>Potencia inversa</td></tr>
+   <tr><td>14</td><td>Baja velocidad</td><td>40</td><td>Pérdida de excitación</td></tr>
+   <tr><td>25</td><td>Verificación de sincronismo</td><td>46</td><td>Desbalance de corriente</td></tr>
+   <tr><td>27 / 59</td><td>Bajo / sobre voltaje</td><td>47</td><td>Desbalance de voltaje · secuencia de fases</td></tr>
+   <tr><td>32</td><td>Sobrecarga</td><td>50 / 51</td><td>Cortocircuito / sobrecorriente</td></tr>
+   <tr><td>81H / 81L</td><td>Sobre / baja frecuencia</td><td>78</td><td>Vector shift (pérdida de red)</td></tr>
+  </tbody></table></div><p class="ref">IC p. 109 · DS p. 2</p>`},
+ {h:"5.5 Sobrecorriente de tiempo inverso (IDMT)", html:`
+  <p><b>t = Amps IDMT Del × I nominal / (I gen − I nominal)</b></p>
+  <ul><li>Amps IDMT Del es el tiempo de disparo cuando la corriente es el <b>200 %</b> de la nominal.</li>
+  <li>Cuanto mayor la sobrecorriente, más rápido dispara; tolera sobrecargas breves (arranque de motores).</li>
+  <li>Si el tiempo calculado supera <b>900 s</b> (15 min), la protección no actúa.</li></ul>
+  <p><b>Ejemplo:</b> I nominal = 902 A, Amps IDMT Del = 4 s. A 1 353 A (150 %): 4 × 902 / 451 = <b>8 s</b>. A 992 A (110 %): 4 × 902 / 90 ≈ <b>40 s</b>. <span class="ref">AMF p. 65</span></p>`},
+ {h:"5.6 Falla de interruptor y falla de red", html:`
+  <p><b>GCB/MCB Fail:</b> compara la orden (salida) con la retroalimentación (entrada). Si la retroalimentación cambia sin orden → falla inmediata; si se da la orden y no llega la retroalimentación → falla a los 5 s. Un MCB Fail que no se borra suele ser <b>MCB Logic</b> (CLOSE-ON / CLOSE-OFF) mal ajustado. <span class="ref">AMF p. 69, 88 · IC p. 143</span></p>
+  <p><b>Falla de red (AMF):</b> por sobre/bajo voltaje, sobre/baja frecuencia y desbalance, cada uno con su retardo. El InteliCompact NT agrega <b>vector shift</b> (VectorShiftLim 1–45 °), que actúa <b>sin retardo</b>. <span class="ref">AMF p. 68–69 · IC p. 184</span></p>`}
+];
+QUIZ[5] = [
+ {q:"¿Qué hace una alarma BOC?", ops:["Solo avisa","Abre el GCB de inmediato y luego enfría y para el motor","Para el motor sin enfriar","Descarga suave y luego abre"], ok:1, exp:"BOC = Breaker Open & Cool-down, típica de fallas eléctricas.", ref:"IC p. 106"},
+ {q:"¿Qué alarma para el motor SIN enfriamiento?", ops:["WRN","BOC","STP","SD"], ok:3, exp:"SD (shutdown) abre el GCB y para de inmediato.", ref:"IC p. 107"},
+ {q:"¿Cuánto es el retardo de una alarma configurada en una entrada binaria?", ops:["Ajustable de 0 a 600 s","Fijo en 500 ms","Fijo en 5 s","No tiene retardo"], ok:1, exp:"Las entradas binarias tienen retardo fijo de 500 ms; las integradas y analógicas, ajustable.", ref:"IC p. 106"},
+ {q:"Verdadero o falso: después de pulsar Fault reset, en modo AUT el grupo puede arrancar solo.", ops:["Verdadero","Falso"], ok:0, exp:"Si no queda alarma roja activa y está en AUT o TEST, el grupo puede arrancar por sí mismo.", ref:"IC p. 107"},
+ {q:"Una alarma cuya condición ya desapareció pero que nadie reconoció está…", ops:["Activa","Inactiva","Confirmada","Borrada"], ok:1, exp:"Inactiva: condición desaparecida y sin reconocer.", ref:"IC p. 106"},
+ {q:"¿Qué código ANSI corresponde a potencia inversa?", ops:["32","32R","40","46"], ok:1, exp:"32 = sobrecarga, 32R = potencia inversa, 40 = pérdida de excitación, 46 = desbalance de corriente.", ref:"IC p. 109 · DS p. 2"},
+ {q:"Con Amps IDMT Del = 4 s e I nominal = 902 A, ¿en cuánto dispara con 1 353 A?", ops:["4 s","8 s","40 s","No dispara"], ok:1, exp:"4 × 902 / (1 353 − 902) = 8 s.", ref:"AMF p. 65"},
+ {q:"Verdadero o falso: en los InteliLite NT las protecciones eléctricas del generador son de tipo BOC.", ops:["Verdadero","Falso"], ok:1, exp:"En InteliLite NT todas las protecciones eléctricas resultan en shutdown.", ref:"AMF p. 64"},
+ {q:"Caso: a las 3 am aparece Overload BOC en isla; el operador hace Fault reset tres veces y el grupo vuelve a disparar. ¿Qué debió hacer?", ops:["Seguir reseteando","Activar Sd Override","Pasar a MAN u OFF, registrar Alarmlist e historial y reducir o escalonar la carga","Subir Overload BOC al 200 %"], ok:2, exp:"Resetear en AUT hace que arranque y dispare otra vez. Primero registrar, luego atacar la causa.", ref:"IC p. 107"},
+ {q:"Caso: el MCB Fail aparece todo el tiempo aunque el interruptor funciona bien. ¿Qué revisas primero?", ops:["El AVR","El setpoint MCB Logic","La batería","El pickup"], ok:1, exp:"MCB Logic debe coincidir con el cableado (CLOSE-ON o CLOSE-OFF).", ref:"IC p. 143 · AMF p. 69"}
+];
+
+MARCO[6] = [
+ {h:"6.1 Qué es diagnosticar con el controlador", html:`
+  <p>Diagnosticar es reconstruir <b>qué pasó, en qué orden y por qué</b> antes de reparar. El controlador da cuatro fuentes: el estado del grupo, la lista de alarmas, la lista de alarmas de la ECU y el historial. La regla de oro: <b>registrar todo antes de reconocer alarmas</b>, porque al reconocer, las alarmas inactivas desaparecen. [I]</p>`},
+ {h:"6.2 Estados del grupo", html:`
+  <div class="tscroll"><table><thead><tr><th>Estado</th><th>Significa</th></tr></thead><tbody>
+   <tr><td>Init</td><td>Autotest al encender</td></tr>
+   <tr><td>Not ready</td><td>No puede arrancar (p. ej. alarma roja sin reconocer)</td></tr>
+   <tr><td>Prestart / Cranking / Pause</td><td>Pre-arranque / arrancando / pausa entre intentos</td></tr>
+   <tr><td>Starting / Running / Loaded</td><td>Velocidad de arranque / nominal / con GCB cerrado</td></tr>
+   <tr><td>Cooling / Stop / Shutdown</td><td>Enfriando / detenido / parada por alarma</td></tr>
+   <tr><td>Ready</td><td>Listo para arrancar</td></tr>
+  </tbody></table></div><p class="ref">AMF p. 89</p>`},
+ {h:"6.3 El historial (history log)", html:`
+  <ul><li>Guarda una <b>foto del sistema</b> en cada evento importante (alarma, cierre de interruptor, cambio de modo). Funciona como <b>FIFO</b>: el registro nuevo borra el más antiguo.</li>
+  <li>Capacidad: InteliCompact NT <b>más de 100</b> registros; InteliLite NT AMF <b>117</b> (varía con los módulos configurados).</li>
+  <li>Cada registro incluye: causa, fecha y hora, modo, RPM, kW, fp, V e I por fase, red o barra, batería, presión de aceite, temperatura, combustible, entradas y salidas, salida al gobernador (<b>SRO</b>), salida al AVR (<b>VRO</b>) y los códigos de la ECU (<b>FC/FMI</b>).</li>
+  <li>El primer registro después de encender o reprogramar trae valores de diagnóstico <b>sin sentido</b>: hay que ignorarlo.</li>
+  <li>Descarga: LiteEdit → ventana History → <b>History | Read history</b>.</li></ul>
+  <p class="ref">IC p. 109–111 · AMF p. 91</p>`},
+ {h:"6.4 Diagnóstico de la ECU (J1939)", html:`
+  <ul><li>La <b>ECU Alarmlist</b> muestra cada falla del motor como un par <b>SPN</b> (qué parámetro) / <b>FMI</b> (tipo de falla) más un <b>OC</b> (contador de ocurrencias).</li>
+  <li>Si FMI es 0 o 1 se muestra como <b>WRN</b>; cualquier otro FMI como <b>FLS</b>.</li>
+  <li>Los códigos frecuentes salen en texto; los demás en número y se buscan en la norma SAE J1939 o en la lista del fabricante del motor.</li>
+  <li>Los <b>valores</b> que lee la ECU (velocidad, presión de aceite, temperatura, consumo, sobrealimentación) <b>no se guardan en el historial</b>; solo los códigos de falla.</li>
+  <li>Para saber qué ECU está configurada: PAGE + ENTER en la pantalla principal y buscar «ESF:xx.y - (zzz)»; el Motor ID 1 es Volvo EMS/EMS2.</li></ul>
+  <p class="ref">MRS p. 67–68</p>`},
+ {h:"6.5 Solución de problemas del controlador", html:`
+  <div class="tscroll"><table><thead><tr><th>Síntoma</th><th>Causa / solución</th></tr></thead><tbody>
+   <tr><td>Pantalla apagada, sin LED</td><td>Sin alimentación o boot-jumper puesto</td></tr>
+   <tr><td>«Configuration table error»</td><td>Reprogramar la configuración</td></tr>
+   <tr><td>Queda en INIT</td><td>Checksum de setpoints o batería RTC agotada: corregir un setpoint en LiteEdit → Controller → Reset from init state; cambiar la batería</td></tr>
+   <tr><td>No responde a los botones de modo</td><td>Entrada de modo remoto o Access Lock activa; setpoint protegido con contraseña</td></tr>
+   <tr><td>kW y fp erróneos con V e I correctos</td><td>Fases de voltaje y TC cruzadas</td></tr>
+   <tr><td>Gobernador pegado a un límite</td><td>Speed Gov Char invertido, cableado o jumper PWM</td></tr>
+   <tr><td>Corta el arranque muy pronto</td><td>Starting Oil P muy bajo</td></tr>
+   <tr><td>Sin comunicación CAN</td><td>El bus no es lineal (tiene ramales)</td></tr>
+  </tbody></table></div><p class="ref">IC p. 141–143</p>`},
+ {h:"6.6 Mantenimiento del controlador y uso en RCM", html:`
+  <p>La batería de respaldo (CR1225) se cambia cada <b>5–7 años</b> o cuando aparece <b>Low BackupBatt</b>; después se ajustan fecha y hora y se revisan los setpoints. <span class="ref">AMF p. 107–108</span></p>
+  <p>Para la tesis, el historial permite contar fallas y tiempos de reparación: <b>MTBF = horas de operación / n.º de fallas</b>, <b>MTTR = tiempo total de reparación / n.º de reparaciones</b>. Su límite es la capacidad FIFO: hay que descargarlo periódicamente y complementarlo con las órdenes de trabajo. [I]</p>`}
+];
+QUIZ[6] = [
+ {q:"¿Cómo se comporta el historial cuando se llena?", ops:["Deja de guardar","El registro nuevo borra el más antiguo (FIFO)","Envía un correo","Borra todo"], ok:1, exp:"Funciona como FIFO.", ref:"IC p. 109"},
+ {q:"¿Cuántos registros guarda el historial del InteliLite NT AMF?", ops:["50","100","117","1 000"], ok:2, exp:"117 registros (varía con los módulos configurados).", ref:"AMF p. 91"},
+ {q:"¿Qué representa el SPN en un código de falla J1939?", ops:["El tipo de falla","El parámetro donde ocurre la falla","El número de veces que ocurrió","El modelo de motor"], ok:1, exp:"SPN = parámetro; FMI = modo de falla; OC = contador de ocurrencias.", ref:"MRS p. 68"},
+ {q:"En la ECU Alarmlist, un código con FMI = 1 se muestra como…", ops:["WRN","FLS","SD","BOC"], ok:0, exp:"FMI 0 o 1 → WRN; otros FMI → FLS.", ref:"MRS p. 68"},
+ {q:"Verdadero o falso: el historial guarda la presión de aceite leída por la ECU en cada registro.", ops:["Verdadero","Falso"], ok:1, exp:"Los valores leídos de la ECU no se guardan en el historial; solo los códigos de falla.", ref:"MRS p. 68"},
+ {q:"¿Qué hay que hacer con el primer registro del historial tras encender o reprogramar el controlador?", ops:["Usarlo como referencia","Ignorarlo: trae valores de diagnóstico sin sentido","Borrarlo","Enviarlo al fabricante"], ok:1, exp:"El primer registro contiene valores de diagnóstico, no de operación.", ref:"AMF p. 91"},
+ {q:"El controlador queda en INIT tras actualizar el firmware. ¿Qué haces?", ops:["Cambiar el controlador","Revisar setpoints en LiteEdit, cambiar uno y usar Controller → Reset from init state","Quitar el boot-jumper","Activar Sd Override"], ok:1, exp:"El checksum de setpoints no coincide; hay que recalcularlo.", ref:"IC p. 141"},
+ {q:"Verdadero o falso: para diagnosticar bien conviene reconocer las alarmas antes de descargar el historial.", ops:["Verdadero","Falso"], ok:1, exp:"Primero se registra todo: al reconocer, las alarmas inactivas desaparecen de la lista.", ref:"IC p. 106 · Marco 6.1"},
+ {q:"Caso: cae la red, el grupo en AUT no arranca y muestra «Not ready». En la lista hay una alarma roja sin reconocer de hace dos días. ¿Qué indica esto?", ops:["Falla del AVR","Que una alarma roja pendiente bloquea el arranque: el grupo estuvo indisponible sin que nadie lo notara","Falta de combustible","Que el modo es OFF"], ok:1, exp:"Con alarma roja activa o sin reconocer el grupo no arranca: es una falla oculta de disponibilidad.", ref:"IC p. 107 · AMF p. 89"},
+ {q:"Caso: quieres el MTBF del grupo para tu tesis. ¿Cuál es el principal límite de usar solo el historial?", ops:["No guarda fechas","Su capacidad FIFO borra eventos antiguos","No registra alarmas","Solo guarda la temperatura"], ok:1, exp:"Con ~100–117 registros se pierden eventos: hay que descargarlo seguido y cruzarlo con órdenes de trabajo.", ref:"IC p. 109 · Marco 6.6"}
+];
+
+MARCO[7] = [
+ {h:"7.1 Las preguntas del RCM", html:`
+  <p>El RCM (Mantenimiento Centrado en la Confiabilidad, RCM-II) analiza cada activo con siete preguntas: [I]</p>
+  <ol><li><b>Funciones:</b> ¿qué debe hacer el activo y con qué estándar? (p. ej. entregar 500 kW a 380 V y 60 Hz).</li>
+  <li><b>Fallas funcionales:</b> ¿de qué forma deja de cumplirlas? (no arranca, no entrega la potencia).</li>
+  <li><b>Modos de falla:</b> ¿qué causa cada falla funcional? (batería degradada, radiador obstruido).</li>
+  <li><b>Efectos:</b> ¿qué pasa cuando ocurre?</li>
+  <li><b>Consecuencias:</b> ¿por qué importa? (ocultas, seguridad o ambiente, operacionales, no operacionales).</li>
+  <li><b>Tareas proactivas:</b> ¿qué se puede hacer para predecir o prevenir?</li>
+  <li><b>Acciones por defecto:</b> ¿qué hacer si no hay tarea adecuada? (búsqueda de fallas, rediseño, operar hasta fallar).</li></ol>`},
+ {h:"7.2 AMEF y número de prioridad de riesgo", html:`
+  <p><b>NPR = S × O × D</b>, cada factor de 1 a 10: <b>S</b> severidad del efecto, <b>O</b> ocurrencia (frecuencia), <b>D</b> detección (10 = casi imposible de detectar antes de la falla). En la tesis se priorizan los modos con <b>NPR &gt; 180</b>. [I]</p>
+  <p>El controlador influye sobre todo en <b>D</b>: una alarma WRN con margen antes del shutdown detecta temprano y baja D. [I]</p>`},
+ {h:"7.3 Tipos de tareas", html:`
+  <div class="tscroll"><table><thead><tr><th>Tarea</th><th>Cuándo sirve</th><th>Ejemplo con controlador</th></tr></thead><tbody>
+   <tr><td><b>A condición</b></td><td>Existe una señal detectable antes de la falla</td><td>Revisar tendencias y alarmas WRN de temperatura y presión</td></tr>
+   <tr><td><b>Restauración o sustitución programada</b></td><td>El modo de falla depende de la edad (desgaste)</td><td>WrnMaintenance por horas; cambio de batería de respaldo</td></tr>
+   <tr><td><b>Búsqueda de fallas</b></td><td>Funciones ocultas</td><td>Probar parada de emergencia y transferencia AMF en modo TEST</td></tr>
+   <tr><td><b>Rediseño</b></td><td>No hay tarea eficaz y el riesgo es alto</td><td>Agregar un sensor o una protección</td></tr>
+  </tbody></table></div>`},
+ {h:"7.4 Intervalo P-F y funciones ocultas", html:`
+  <p>El <b>intervalo P-F</b> es el tiempo entre el punto <b>P</b>, donde la falla ya se puede detectar, y el punto <b>F</b>, la falla funcional. La inspección debe hacerse con una frecuencia menor que el intervalo P-F. Una alarma WRN de temperatura alta marca un punto P; el shutdown por sobretemperatura, el punto F. [I]</p>
+  <p>Una <b>función oculta</b> es la que no se nota en operación normal: una protección de sobrevelocidad que nunca disparó podría no funcionar. Requiere pruebas periódicas documentadas. [I]</p>`},
+ {h:"7.5 Indicadores de confiabilidad", html:`
+  <ul><li><b>MTBF</b> = horas de operación / número de fallas.</li>
+  <li><b>MTTR</b> = tiempo total de reparación / número de reparaciones.</li>
+  <li><b>Disponibilidad</b> = MTBF / (MTBF + MTTR). En tu tesis se escribe D; no la confundas con la detección D del NPR.</li>
+  <li><b>Confiabilidad</b> con tasa de falla constante: <b>R(t) = e^(−t/MTBF)</b>.</li></ul>
+  <p>La disponibilidad sube por dos lados: menos fallas (MTBF mayor) y reparaciones más rápidas (MTTR menor). [I]</p>`},
+ {h:"7.6 Rigor ante el jurado", html:`
+  <p>Distingue lo <b>medido</b> (paradas registradas, historial, órdenes de trabajo) de lo <b>proyectado</b> (horas recuperadas, ahorro económico con supuestos). Una protección limita el daño cuando la falla ya ocurrió; el plan RCM busca evitarla o detectarla antes. Esa diferencia responde a la pregunta «¿para qué un RCM si el controlador ya protege?». [I]</p>`}
+];
+QUIZ[7] = [
+ {q:"En RCM, «el grupo no arranca ante una falla de red» es…", ops:["Una función","Una falla funcional","Un modo de falla","Una consecuencia"], ok:1, exp:"Es la forma en que el activo deja de cumplir su función.", ref:"Marco 7.1"},
+ {q:"«Batería de arranque degradada» es, en RCM, un…", ops:["Efecto","Modo de falla","Indicador","Estándar de desempeño"], ok:1, exp:"Es la causa de la falla funcional «no arranca».", ref:"Marco 7.1"},
+ {q:"¿Cómo se calcula el NPR?", ops:["S + O + D","S × O × D","S × O / D","(S + O) × D"], ok:1, exp:"NPR = Severidad × Ocurrencia × Detección.", ref:"Marco 7.2"},
+ {q:"Un modo de falla con S = 8, O = 5 y D = 6, ¿supera el umbral de 180 de la tesis?", ops:["Sí, NPR = 240","No, NPR = 19","No, NPR = 120","Sí, NPR = 480"], ok:0, exp:"8 × 5 × 6 = 240 > 180.", ref:"Marco 7.2"},
+ {q:"¿Qué tipo de tarea corresponde a probar periódicamente la parada de emergencia?", ops:["A condición","Restauración programada","Búsqueda de fallas","Rediseño"], ok:2, exp:"La parada de emergencia es una función oculta: se prueba para descubrir si falló.", ref:"Marco 7.3–7.4"},
+ {q:"Verdadero o falso: el intervalo de inspección debe ser mayor que el intervalo P-F.", ops:["Verdadero","Falso"], ok:1, exp:"Debe ser menor; si no, la falla puede pasar de P a F entre dos inspecciones.", ref:"Marco 7.4"},
+ {q:"MTBF = 500 h y MTTR = 20 h. ¿Cuál es la disponibilidad?", ops:["96,2 %","97,5 %","98,0 %","4 %"], ok:0, exp:"500 / (500 + 20) = 0,9615 → 96,2 %.", ref:"Marco 7.5"},
+ {q:"Con MTBF = 1 000 h, ¿cuál es la confiabilidad R(t) para 100 h de operación?", ops:["≈ 90,5 %","≈ 99 %","≈ 10 %","≈ 50 %"], ok:0, exp:"R = e^(−100/1 000) = e^(−0,1) ≈ 0,905.", ref:"Marco 7.5"},
+ {q:"Verdadero o falso: una alarma WRN con margen antes del shutdown ayuda a bajar el factor D del NPR.", ops:["Verdadero","Falso"], ok:0, exp:"Detecta el problema antes del efecto: mejora la detección.", ref:"Marco 7.2"},
+ {q:"Caso: el jurado pregunta «¿para qué un RCM si el controlador ya protege el grupo?». ¿Cuál es la mejor respuesta?", ops:["El controlador no sirve","La protección limita el daño cuando la falla ocurre; el RCM busca evitarla o detectarla antes con tareas","El RCM reemplaza al controlador","Porque lo pide la norma"], ok:1, exp:"Protección y mantenimiento son complementarios.", ref:"Marco 7.6"}
+];
+
+MARCO[8] = [
+ {h:"8.1 Qué aporta el machine learning al RCM", html:`
+  <p>El machine learning <b>no reemplaza al RCM</b>. El RCM decide qué modos de falla importan y qué tipo de tarea corresponde; el machine learning mejora tres cosas que en el AMEF suelen estimarse a criterio: [I]</p>
+  <ul><li><b>Detección (D):</b> avisa antes que la alarma del controlador.</li>
+  <li><b>Ocurrencia (O):</b> se estima con datos (Weibull) en vez de una escala subjetiva.</li>
+  <li><b>Intervalo P-F:</b> se mide cuántos días hay entre la primera señal y la falla.</li></ul>`},
+ {h:"8.2 Los datos: el punto de partida", html:`
+  <p>El historial del controlador <b>no basta</b>: es FIFO de unos 100 registros y no guarda los valores de la ECU, solo los códigos. Hace falta un <b>registro continuo</b>, por ejemplo por Modbus cada minuto, de kW, temperatura del refrigerante, presión de aceite, consumo, voltaje de batería y temperatura ambiente. Con 30 días de operación normal ya se puede entrenar. <span class="ref">IC p. 109 · MRS p. 68</span></p>`},
+ {h:"8.3 Modelar lo normal: el residuo", html:`
+  <p>Con unas 6 fallas al año no hay ejemplos suficientes para entrenar un modelo que «aprenda la falla». Se modela el <b>comportamiento normal</b>: [I]</p>
+  <ul><li>Un modelo de regresión aprende el <b>valor esperado</b> de una señal según sus causas (p. ej. temperatura esperada = a + b·kW + c·T ambiente).</li>
+  <li><b>Residuo = valor real − valor esperado</b>. Si el equipo está sano, el residuo oscila alrededor de cero.</li>
+  <li>Si el residuo crece de forma sostenida, el equipo se está degradando: es un <b>punto P</b> detectado antes que la alarma.</li></ul>
+  <p><b>Regla de alerta del demo:</b> residuo mayor que <b>k·σ</b> del entrenamiento durante <b>3 días seguidos</b>. Con k más bajo avisa antes pero da más falsas alarmas; con k más alto, al revés. Los 3 días seguidos filtran picos de ruido aislados.</p>`},
+ {h:"8.4 Isolation Forest: anomalías multivariables", html:`
+  <p>Combina varias señales a la vez y puntúa qué tan «raro» es cada día. Construye árboles que separan puntos con cortes al azar: un día anómalo queda aislado con pocos cortes y recibe una puntuación alta. <b>No necesita ejemplos de fallas.</b> [I]</p>
+  <p>El umbral debe fijarse con datos que el modelo <b>no vio</b> al entrenar (validación). Con los mismos datos el modelo parece mejor de lo que es (sobreajuste) y en operación da más falsas alarmas. En el demo se entrena con los días 1–20 y el umbral se fija con los días 21–30.</p>`},
+ {h:"8.5 Weibull: confiabilidad con pocos datos", html:`
+  <p><b>F(t) = 1 − e^(−(t/η)^β)</b>, con:</p>
+  <ul><li><b>β (forma):</b> β &lt; 1 fallas tempranas (reemplazar antes no ayuda); β ≈ 1 fallas aleatorias (usar monitoreo); <b>β &gt; 1 desgaste</b> (el reemplazo preventivo sí reduce fallas).</li>
+  <li><b>η (vida característica):</b> edad a la que ya falló el 63 %.</li>
+  <li><b>B10 = η·(−ln 0,9)^(1/β)</b>: edad a la que falló el 10 %; útil como intervalo de reemplazo.</li>
+  <li><b>MTBF = η·Γ(1 + 1/β)</b>.</li></ul>
+  <p><b>Ejemplo:</b> β = 2,2 y η = 26 meses → B10 ≈ 9,4 meses; probabilidad de falla en 12 meses ≈ 17 %. [I]</p>`},
+ {h:"8.6 Cómo se evalúa y cómo se presenta", html:`
+  <ul><li>Un modelo se juzga por dos números: <b>días de adelanto</b> frente a la alarma y <b>tasa de falsas alarmas</b>. Una promesa como «predice el 95 % de las fallas» sin esos dos datos no es evidencia.</li>
+  <li>Hay fallas <b>sin alarma</b> en el controlador (p. ej. consumo alto por inyectores desgastados): solo un modelo las ve.</li>
+  <li>En la tesis se presenta como <b>trabajo futuro</b> y el demo como <b>datos simulados</b>, no como resultado medido.</li></ul>
+  <p>Demo: <a href="https://claude.ai/artifact/SUKwxFbWcSJX8c1GoRba35" target="_blank" rel="noopener">Flota Sur ML</a>.</p>`}
+];
+QUIZ[8] = [
+ {q:"¿Qué factores del AMEF mejora principalmente el machine learning?", ops:["Solo la severidad (S)","La detección (D) y la ocurrencia (O)","Ninguno","Solo el costo"], ok:1, exp:"Detecta antes (D) y estima la frecuencia con datos (O).", ref:"Marco 8.1"},
+ {q:"¿Por qué el historial del controlador no basta para aplicar machine learning?", ops:["Porque está en inglés","Es FIFO de ~100 registros y no guarda los valores de la ECU","Porque no tiene fechas","Porque solo guarda alarmas WRN"], ok:1, exp:"Hace falta un registro continuo de variables.", ref:"IC p. 109 · MRS p. 68"},
+ {q:"¿Qué es el residuo en un modelo de condición?", ops:["El valor esperado","Valor real − valor esperado","El error del sensor","La alarma del controlador"], ok:1, exp:"Si el equipo está sano, el residuo oscila alrededor de cero.", ref:"Marco 8.3"},
+ {q:"Verdadero o falso: con 6 fallas al año lo recomendable es entrenar un clasificador que aprenda directamente la falla.", ops:["Verdadero","Falso"], ok:1, exp:"Hay muy pocos ejemplos; se modela lo normal y se vigila el residuo.", ref:"Marco 8.3"},
+ {q:"Si bajas el umbral de alerta de 3σ a 2,5σ, ¿qué ocurre?", ops:["Menos falsas alarmas y alertas más tardías","Más falsas alarmas y alertas más tempranas","No cambia nada","Se deja de detectar"], ok:1, exp:"Más sensible: avisa antes pero con más falsas alarmas.", ref:"Marco 8.3"},
+ {q:"¿Para qué sirve exigir 3 días seguidos sobre el umbral?", ops:["Para retrasar el mantenimiento","Para filtrar picos de ruido aislados sin perder tendencias reales","Para cumplir la norma","No sirve"], ok:1, exp:"Una degradación real persiste; el ruido no.", ref:"Marco 8.3"},
+ {q:"Verdadero o falso: el umbral del Isolation Forest debe calcularse con datos que el modelo no usó para entrenar.", ops:["Verdadero","Falso"], ok:0, exp:"Con los mismos datos el umbral es optimista y en operación aparecen más falsas alarmas.", ref:"Marco 8.4"},
+ {q:"Un ajuste Weibull da β = 0,7. ¿Qué indica?", ops:["Desgaste: conviene reemplazo preventivo","Fallas tempranas: reemplazar antes no ayuda","Fallas aleatorias","Que los datos están mal"], ok:1, exp:"β < 1 = mortalidad infantil; revisar instalación y calidad.", ref:"Marco 8.5"},
+ {q:"Con β = 2,2 y η = 26 meses, ¿cuál es aproximadamente el B10?", ops:["2,6 meses","9,4 meses","26 meses","57 meses"], ok:1, exp:"B10 = 26 × (−ln 0,9)^(1/2,2) ≈ 26 × 0,36 ≈ 9,4 meses.", ref:"Marco 8.5"},
+ {q:"Caso: un proveedor promete «predecir el 95 % de las fallas» con su plataforma. ¿Qué dato es imprescindible pedirle?", ops:["El color del panel","La tasa de falsas alarmas y los días de adelanto medidos con datos propios o en un piloto","El precio en dólares","El nombre del algoritmo"], ok:1, exp:"Sin falsas alarmas ni adelanto medido, el «95 %» no es evidencia.", ref:"Marco 8.6"}
+];
+
+/* Capítulos 7 y 8 ampliados con datos reales, matemática y física (reemplazan la versión anterior) */
+const SRC = {
+ inl2005:`<a href="https://nrcoe.inl.gov/publicdocs/SystemStudies/edg-summary-update-2005.pdf" target="_blank" rel="noopener">INL, EDG Reliability Study Update 1997–2005</a>`,
+ inl2020:`<a href="https://nrcoe.inl.gov/publicdocs/CompPerf/edg-2020.pdf" target="_blank" rel="noopener">INL/RPT-22-66601 (2022)</a>`,
+ marq:`<a href="https://www.osti.gov/servlets/purl/1659849" target="_blank" rel="noopener">Marqusee y Jenket, Applied Energy (2020)</a>`,
+ nrel:`<a href="https://docs.nrel.gov/docs/fy20osti/76553.pdf" target="_blank" rel="noopener">NREL/TP-5C00-76553</a>`,
+ sens:`<a href="https://www.sens-usa.com/hubfs/Controlled%20Files/Whitepapers/esga_whitepaper.pdf" target="_blank" rel="noopener">SENS (whitepaper de fabricante)</a>`,
+ bat:`<a href="https://mathscinotes.com/2012/12/lead-acid-battery-life-math/" target="_blank" rel="noopener">resumen de IEEE 1187/450</a>`,
+ ieee484:`<a href="https://arxiv.org/pdf/2410.08425" target="_blank" rel="noopener">revisión que cita IEEE 484-2019</a>`,
+ ps:`<a href="https://www.plantservices.com/articles/2006/010" target="_blank" rel="noopener">Plant Services, «Analyzing premature winding failures»</a>`,
+ wr:`<a href="https://eprints.whiterose.ac.uk/142448" target="_blank" rel="noopener">Energy Conversion and Management (2019)</a>`,
+ mendoza:`<a href="https://papers.phmsociety.org/index.php/ijphm/article/view/4762" target="_blank" rel="noopener">Mendoza et al., IJPHM (2026)</a>`,
+ info:`<a href="https://doi.org/10.3390/info17010016" target="_blank" rel="noopener">Information, MDPI (2026)</a>`,
+ aiot:`<a href="https://www.sciencedirect.com/science/article/abs/pii/S0967066125000267" target="_blank" rel="noopener">Control Engineering Practice (2025)</a>`,
+ bearings:`<a href="https://github.com/VictorBauler/awesome-bearing-dataset" target="_blank" rel="noopener">catálogo de datasets de rodamientos</a>`,
+ sas:`<a href="https://support.sas.com/documentation/cdl/en/qcug/68161/HTML/default/qcug_reliability_gettingstarted06.htm" target="_blank" rel="noopener">ejemplo de rodamientos, SAS</a>`,
+ demo:`<a href="https://claude.ai/artifact/SUKwxFbWcSJX8c1GoRba35" target="_blank" rel="noopener">Flota Sur ML</a>`
+};
+
+MARCO[7] = [
+ {h:"7.1 Las preguntas del RCM", html:`
+  <p>El RCM (RCM-II) analiza cada activo con siete preguntas: [I]</p>
+  <ol><li><b>Funciones:</b> qué debe hacer y con qué estándar (p. ej. 500 kW a 380 V y 60 Hz).</li>
+  <li><b>Fallas funcionales:</b> cómo deja de cumplirlas (no arranca, no sostiene la carga).</li>
+  <li><b>Modos de falla:</b> qué lo causa (batería degradada, radiador obstruido).</li>
+  <li><b>Efectos</b> y 5. <b>Consecuencias:</b> ocultas, seguridad o ambiente, operacionales, no operacionales.</li>
+  <li><b>Tareas proactivas</b> y 7. <b>Acciones por defecto</b> (búsqueda de fallas, rediseño, operar hasta fallar).</li></ol>
+  <p><b>NPR = S × O × D</b> (cada factor de 1 a 10). En la tesis se priorizan los modos con <b>NPR &gt; 180</b>. Ejemplo: S = 8, O = 5, D = 6 → NPR = 240 → prioritario. [I]</p>`},
+ {h:"7.2 Datos reales: con qué probabilidad falla un grupo diésel", html:`
+  <p>Un grupo de respaldo falla de dos maneras distintas, y se modelan distinto:</p>
+  <ul><li><b>Falla al arrancar (FTS):</b> una <b>probabilidad por demanda</b>, p.</li>
+  <li><b>Falla en marcha (FTR):</b> una <b>tasa por hora</b>, λ.</li></ul>
+  <p><b>Datos medidos</b> en los generadores diésel de emergencia de las centrales nucleares de EE. UU. (los mejor mantenidos y probados del mundo):</p>
+  <div class="tscroll"><table><thead><tr><th>Dato</th><th>Valor</th><th>Fuente</th></tr></thead><tbody>
+   <tr><td>Indisponibilidad por falla al arrancar (sin recuperación), 1997–2005</td><td>≈ 1,5 × 10⁻² (1,5 %)</td><td>${SRC.inl2005}</td></tr>
+   <tr><td>No completar una misión de 8 h, 1997–2005</td><td>≈ 2,2 × 10⁻² (2,2 %)</td><td>${SRC.inl2005}</td></tr>
+   <tr><td>Modos usados hoy: falla al arrancar, falla al tomar carga, falla tras 1 h</td><td>probabilidad por demanda y tasa por hora</td><td>${SRC.inl2020}</td></tr>
+   <tr><td>Grupos mal mantenidos</td><td>≈ 50 % de probabilidad de fallar en 48 h de corte</td><td>${SRC.marq}</td></tr>
+  </tbody></table></div>
+  <p>Hallazgo clave de Marqusee y Jenket: el <b>MTBF</b> que publica la literatura IEEE <b>no sirve</b> para estimar si el grupo aguantará un corte, porque los grupos pasan casi toda su vida parados. Hay que usar p y λ por separado. ${SRC.nrel}</p>`},
+ {h:"7.3 Matemática de la misión: ¿aguanta el corte?", html:`
+  <p>Para una misión de t horas, con falla al arrancar p y tasa en marcha λ constante:</p>
+  <p><b>R(t) = (1 − p) · e^(−λ·t)</b></p>
+  <p><b>Paso 1 · despejar λ</b> con los datos del INL (suponiendo que el 2,2 % de 8 h incluye el arranque): (1 − 0,015)·e^(−8λ) = 0,978 → e^(−8λ) = 0,9929 → <b>λ ≈ 8,9 × 10⁻⁴ por hora</b>.</p>
+  <div class="tscroll"><table><thead><tr><th>Duración del corte</th><th>R(t)</th><th>Probabilidad de quedarse sin energía</th></tr></thead><tbody>
+   <tr><td>8 h</td><td>97,8 %</td><td>2,2 %</td></tr><tr><td>24 h</td><td>96,4 %</td><td>3,6 %</td></tr>
+   <tr><td>1 semana (168 h)</td><td>84,8 %</td><td>15,2 %</td></tr><tr><td>2 semanas (336 h)</td><td>73,0 %</td><td>27,0 %</td></tr>
+  </tbody></table></div>
+  <p>⚠️ λ constante es una simplificación: los estudios de flota muestran que la tasa de falla en marcha es <b>mucho mayor en la primera media hora</b> que después de muchas horas, o sea una tasa decreciente (Weibull con β &lt; 1 en marcha). Para cortes largos, el cálculo con λ constante es pesimista. [I]</p>`},
+ {h:"7.4 Redundancia N+1 y causa común", html:`
+  <p>Con dos grupos independientes, cada uno con p = 0,015, la probabilidad de que <b>ninguno</b> arranque es p² = 0,015² = <b>2,25 × 10⁻⁴</b>: la disponibilidad al arranque sube de 98,5 % a 99,98 %. [I]</p>
+  <p>Pero la fórmula supone independencia. Una <b>causa común</b> (el mismo tanque de diésel contaminado, el mismo cargador de baterías, el mismo error de mantenimiento) puede tumbar a los dos a la vez. En el AMEF, la causa común se analiza como modo de falla propio. [I]</p>`},
+ {h:"7.5 Física de las fallas más comunes", html:`
+  <p><b>a) Baterías de arranque: la causa número uno de «no arranca».</b> Los fabricantes reportan entre 43 % y más de 80 % de las fallas al arrancar por baterías (cifras de fabricantes, no de estudios independientes: ${SRC.sens}). La química acelera el envejecimiento con la temperatura (ley de Arrhenius). La regla que usan las normas IEEE para plomo-ácido: <b>la vida se reduce a la mitad por cada ≈ 8 °C sobre 25 °C</b> (${SRC.bat}; ${SRC.ieee484}).</p>
+  <p><b>L(T) = L₂₅ · 2^(−(T − 25)/8)</b>. Ejemplo: una batería de 4 años de vida a 25 °C dentro de una cabina a 33 °C dura <b>2 años</b>; a 35 °C, <b>≈ 1,7 años</b>. En Moquegua, una cabina al sol puede estar varios grados sobre el ambiente: la frecuencia de reemplazo debe ajustarse a la temperatura real.</p>
+  <p><b>b) Aislamiento del alternador: regla de los 10 °C.</b> La vida del aislamiento se duplica por cada 10 °C por debajo del límite de su clase (F = 155 °C, H = 180 °C): <b>L = 20 000 h · 2^((T_clase − T_punto caliente)/10)</b> (${SRC.ps}). Clase H con punto caliente a 140 °C → 20 000·2⁴ = <b>320 000 h</b>; con sobrecarga que lo sube a 160 °C → 20 000·2² = <b>80 000 h</b>. Unos 20 °C de más cuestan 3/4 de la vida: por eso la protección de sobrecarga es también mantenimiento.</p>`},
+ {h:"7.6 Física del enfriamiento: por qué sube la temperatura", html:`
+  <p><b>Balance de energía.</b> En un diésel, cerca de un tercio de la energía del combustible se vuelve trabajo; el resto sale por el escape y el refrigerante. En carga alta, el refrigerante se lleva menos del 30 % de la energía del combustible (${SRC.wr}).</p>
+  <p><b>Ejemplo con el grupo de 500 kW</b> (eficiencias supuestas): eje = 500/0,95 = 526 kW; combustible = 526/0,40 ≈ 1 316 kW; al refrigerante ≈ 28 % ≈ <b>368 kW</b>. Con <b>Q = ṁ·cp·ΔT</b>, cp = 3,6 kJ/(kg·K) (mezcla con glicol) y ΔT = 8 K en el motor: ṁ = 368/(3,6 × 8) ≈ <b>12,8 kg/s</b>. [I]</p>
+  <p><b>Radiador obstruido.</b> Simplificando, Q = UA·(T_ref − T_amb). Si el polvo baja el UA un 15 %, para disipar el mismo Q la diferencia debe subir: 60 K / 0,85 ≈ 70,6 K, o sea <b>+10,6 °C</b>. Un motor que trabajaba a 85 °C con 25 °C de ambiente llegaría a ≈ 95,6 °C, muy cerca de la alarma de 97 °C. Como Q crece con los kW y T_ref con T_amb, el modelo «temperatura esperada = a + b·kW + c·T_amb» del capítulo 8 tiene base física. [I]</p>`},
+ {h:"7.7 Intervalo P-F y tareas con números", html:`
+  <p>El <b>intervalo P-F</b> va del punto P (falla detectable) al punto F (falla funcional). Una regla práctica del RCM es inspeccionar a <b>la mitad del intervalo P-F</b> o más seguido. [I]</p>
+  <p><b>Ejemplo del demo:</b> el modelo detecta el radiador sucio el día 70 (P) y la alarma de temperatura llega el día 112 (F): P-F = 42 días → revisar las tendencias al menos cada <b>21 días</b>. Si solo se mirara la alarma del controlador, el punto P sería el mismo punto F: no habría tiempo de planificar.</p>
+  <div class="tscroll"><table><thead><tr><th>Tarea</th><th>Ejemplo</th></tr></thead><tbody>
+   <tr><td>A condición</td><td>Revisar tendencias de temperatura y presión; alertas del modelo</td></tr>
+   <tr><td>Sustitución programada</td><td>Baterías según la temperatura de la cabina (7.5 a)</td></tr>
+   <tr><td>Búsqueda de fallas</td><td>Prueba mensual con carga: es la única forma de medir p</td></tr>
+   <tr><td>Rediseño</td><td>Segundo grupo (N+1) o cargador con monitoreo de batería</td></tr>
+  </tbody></table></div>
+  <p>Disponibilidad = MTBF/(MTBF + MTTR). Ejemplo: 500 h y 20 h → 96,2 %. En tu tesis se escribe D; no la confundas con la detección D del NPR. Ante el jurado, separa lo medido de lo proyectado. [I]</p>`}
+];
+QUIZ[7] = [
+ {q:"«Batería de arranque degradada» es, en RCM, un…", ops:["Efecto","Modo de falla","Indicador","Estándar de desempeño"], ok:1, exp:"Es la causa de la falla funcional «no arranca».", ref:"Marco 7.1"},
+ {q:"Un modo de falla con S = 8, O = 5 y D = 6, ¿supera el umbral de 180?", ops:["Sí, NPR = 240","No, NPR = 19","No, NPR = 120","Sí, NPR = 480"], ok:0, exp:"8 × 5 × 6 = 240 > 180.", ref:"Marco 7.1"},
+ {q:"¿Cómo se modela la falla AL ARRANCAR de un grupo diésel?", ops:["Como una tasa por hora","Como una probabilidad por demanda","Como el MTBF","Como un costo"], ok:1, exp:"La falla al arrancar es una probabilidad por demanda (p); la falla en marcha, una tasa por hora (λ).", ref:"Marco 7.2"},
+ {q:"Según el estudio del INL (1997–2005), ¿qué tan seguido falló al arrancar un generador diésel de emergencia nuclear?", ops:["≈ 0,01 %","≈ 1,5 %","≈ 15 %","≈ 50 %"], ok:1, exp:"Indisponibilidad por falla al arrancar ≈ 1,5 × 10⁻², sin recuperación.", ref:"Marco 7.2 · INL 2005"},
+ {q:"Verdadero o falso: según Marqusee y Jenket (2020), el MTBF de la literatura IEEE sirve para estimar si un grupo aguantará un corte.", ops:["Verdadero","Falso"], ok:1, exp:"No sirve, porque los grupos pasan casi toda su vida parados; hay que usar p y λ por separado.", ref:"Marco 7.2"},
+ {q:"Con p = 0,015 y λ = 8,9 × 10⁻⁴ por hora, ¿cuál es la confiabilidad para un corte de 24 h?", ops:["≈ 98,5 %","≈ 96,4 %","≈ 84,8 %","≈ 2,1 %"], ok:1, exp:"R = 0,985 × e^(−24 × 0,00089) = 0,985 × 0,979 ≈ 0,964.", ref:"Marco 7.3"},
+ {q:"Dos grupos independientes con p = 0,015 cada uno. ¿Probabilidad de que NINGUNO arranque?", ops:["0,030","0,015","2,25 × 10⁻⁴","0"], ok:2, exp:"p² = 0,015² = 0,000225. Ojo: solo si no hay causa común.", ref:"Marco 7.4"},
+ {q:"Una batería de plomo-ácido con 4 años de vida a 25 °C trabaja a 33 °C. Con la regla de IEEE, ¿cuánto dura?", ops:["4 años","3 años","2 años","1 año"], ok:2, exp:"L = 4 × 2^(−8/8) = 2 años: la vida se reduce a la mitad por cada ≈ 8 °C sobre 25 °C.", ref:"Marco 7.5"},
+ {q:"Aislamiento clase H (180 °C) con punto caliente a 160 °C. Con la regla de los 10 °C, ¿vida estimada?", ops:["20 000 h","40 000 h","80 000 h","320 000 h"], ok:2, exp:"20 000 × 2^((180 − 160)/10) = 20 000 × 4 = 80 000 h.", ref:"Marco 7.5"},
+ {q:"Si el UA del radiador baja 15 % y antes había 60 K entre refrigerante y ambiente, ¿cuánto sube la temperatura del refrigerante para el mismo calor?", ops:["≈ 1,5 °C","≈ 9 °C","≈ 10,6 °C","≈ 60 °C"], ok:2, exp:"Q = UA·ΔT → ΔT nuevo = 60/0,85 = 70,6 K: sube ≈ 10,6 °C.", ref:"Marco 7.6"},
+ {q:"Caso: el modelo detecta una falla el día 70 y la alarma llega el día 112. ¿Cada cuánto deberías revisar las tendencias, como máximo?", ops:["Cada 7 días","Cada 21 días","Cada 42 días","Cada 112 días"], ok:1, exp:"P-F = 42 días; regla práctica: inspeccionar a la mitad del intervalo P-F o más seguido.", ref:"Marco 7.7"},
+ {q:"Caso: el jurado pregunta «¿para qué un RCM si el controlador ya protege?». ¿Mejor respuesta?", ops:["El controlador no sirve","La protección limita el daño cuando la falla ocurre; el RCM busca evitarla o detectarla antes","El RCM reemplaza al controlador","Porque lo pide la norma"], ok:1, exp:"Protección y mantenimiento son complementarios.", ref:"Marco 7.7"}
+];
+
+MARCO[8] = [
+ {h:"8.1 Qué aporta el machine learning al RCM", html:`
+  <p>El machine learning <b>no reemplaza al RCM</b>: el RCM decide qué modos de falla importan; el machine learning mejora la <b>detección (D)</b>, estima la <b>ocurrencia (O)</b> con datos y <b>mide el intervalo P-F</b>. [I]</p>
+  <p>Requisito: un <b>registro continuo</b> (Modbus cada minuto). El historial del controlador es FIFO de unos 100 registros y no guarda los valores de la ECU. <span class="ref">IC p. 109 · MRS p. 68</span></p>`},
+ {h:"8.2 Casos reales publicados", html:`
+  <div class="tscroll"><table><thead><tr><th>Caso</th><th>Método</th><th>Resultado reportado</th><th>Fuente</th></tr></thead><tbody>
+   <tr><td>Generadores diésel auxiliares de un buque escuela de la Armada de Colombia</td><td>Regresión de comportamiento normal + residuo suavizado (EWMA) + límites de control + <b>regla de persistencia</b></td><td>Detección temprana de comportamiento térmico anormal con pocas etiquetas de falla; validado con datos sanos no vistos y fallas simuladas por Monte Carlo</td><td>${SRC.mendoza}</td></tr>
+   <tr><td>Motor diésel turboalimentado de un buque de carga (1,89 MW)</td><td>Autoencoder apilado (anomalías) + SVM (diagnóstico)</td><td>87,6 % de exactitud en anomalías; 99,7 % de exactitud balanceada en diagnóstico</td><td>${SRC.info}</td></tr>
+   <tr><td>Grupos electrógenos industriales de 125 y 250 kW</td><td>Red neuronal CNN-GRU en un sistema AIoT</td><td>Detección de anomalías con datos eléctricos y de vibración</td><td>${SRC.aiot}</td></tr>
+  </tbody></table></div>
+  <p>El primer caso usa <b>el mismo método del demo</b> ${SRC.demo}: modelar lo normal, vigilar el residuo y exigir persistencia. Es el enfoque más usado cuando hay pocas fallas registradas.</p>`},
+ {h:"8.3 Regresión de lo normal (matemática)", html:`
+  <p>Se ajusta <b>ŷ = a + b·kW + c·T_amb</b> por mínimos cuadrados: <b>β = (XᵀX)⁻¹Xᵀy</b>, que minimiza Σ(y − ŷ)². El <b>residuo</b> es r = y − ŷ; sano, oscila alrededor de 0 con desviación σ. La forma lineal tiene base física: el calor al refrigerante crece con la carga y la temperatura del refrigerante sigue a la del ambiente (Marco 7.6). [I]</p>
+  <p><b>Regla de alerta:</b> r &gt; k·σ durante 3 días seguidos. Si los residuos diarios fueran normales e independientes, la probabilidad de superar k·σ un día es p, y tres días seguidos, p³:</p>
+  <div class="tscroll"><table><thead><tr><th>k</th><th>p (un día)</th><th>Falsas alertas/año sin persistencia</th><th>p³ (3 días seguidos)</th></tr></thead><tbody>
+   <tr><td>2,5 σ</td><td>0,0062</td><td>≈ 2,3</td><td>2,4 × 10⁻⁷</td></tr>
+   <tr><td>3 σ</td><td>0,00135</td><td>≈ 0,5</td><td>2,5 × 10⁻⁹</td></tr>
+   <tr><td>4 σ</td><td>0,00003</td><td>≈ 0,01</td><td>3 × 10⁻¹⁴</td></tr>
+  </tbody></table></div>
+  <p>En la práctica los residuos <b>no</b> son independientes (hay deriva y autocorrelación), por eso en el demo igual apareció 1 falsa alerta en 20 grupos sanos. La teoría orienta; la validación con datos decide. [I]</p>`},
+ {h:"8.4 EWMA: detectar cambios pequeños y sostenidos", html:`
+  <p>El promedio móvil exponencial suaviza el residuo: <b>z_t = λ·r_t + (1 − λ)·z_(t−1)</b>, con 0 &lt; λ ≤ 1. Su límite de control en régimen es <b>± L·σ·√(λ/(2 − λ))</b>. [I]</p>
+  <p><b>Ejemplo:</b> λ = 0,2 y L = 3 → límite = 3σ·√(0,2/1,8) = 3σ × 0,333 = <b>1σ</b>. El EWMA puede alarmar con un desplazamiento sostenido de solo 1σ, que un umbral simple de 3σ dejaría pasar. Por eso lo usa el caso de la Armada de Colombia (8.2).</p>`},
+ {h:"8.5 Isolation Forest y validación", html:`
+  <p>Combina varias señales y puntúa qué tan raro es cada día: un punto anómalo queda aislado con pocos cortes aleatorios. Puntuación: <b>s = 2^(−E[h(x)]/c(n))</b>, donde h es la profundidad de aislamiento y c(n) la profundidad media esperada; s cercano a 1 = anómalo. No necesita ejemplos de fallas. [I]</p>
+  <p><b>Validación honesta:</b> el umbral se fija con datos que el modelo no vio (en el demo: entrenar con días 1–20, umbral con días 21–30). Con los mismos datos el modelo parece mejor de lo que es (sobreajuste).</p>`},
+ {h:"8.6 Cómo medir si un modelo sirve", html:`
+  <ul><li><b>Sensibilidad (recall)</b> = fallas detectadas / fallas reales.</li>
+  <li><b>Precisión</b> = alertas correctas / alertas totales.</li>
+  <li><b>Adelanto</b> = días entre la alerta y la falla o alarma (mide el P-F ganado).</li></ul>
+  <p><b>Ejemplo del demo</b> (5 flotas simuladas): 20 fallas inyectadas, 20 detectadas → sensibilidad 100 %; 1 falsa alerta → precisión = 20/21 ≈ <b>95 %</b>; adelanto de 29 a 51 días. Una promesa como «predice el 95 % de las fallas» sin precisión ni adelanto no es evidencia. [I]</p>`},
+ {h:"8.7 Weibull con datos reales y datasets para practicar", html:`
+  <p><b>F(t) = 1 − e^(−(t/η)^β)</b>; B10 = η·(−ln 0,9)^(1/β); MTBF = η·Γ(1 + 1/β). En un ensayo real de rodamientos, el ajuste dio <b>β ≈ 1,24</b> (intervalo 95 %: 0,97–1,59): desgaste leve, cerca de lo aleatorio (${SRC.sas}). Con β = 2,2 y η = 26 meses: B10 ≈ 9,4 meses.</p>
+  <p><b>Datos públicos para practicar</b> (${SRC.bearings}):</p>
+  <ul><li><b>NASA IMS:</b> rodamientos llevados hasta la falla, eje a 2 000 rpm, mediciones cada 5–10 min. Sirve para detección temprana.</li>
+  <li><b>CWRU:</b> fallas sembradas artificialmente en un banco de motor. Sirve para diagnóstico (qué falla es), no para predecir cuándo.</li>
+  <li><b>XJTU-SY:</b> 15 rodamientos hasta la falla en 3 condiciones de carga.</li></ul>
+  <p>En la tesis, todo esto va como <b>trabajo futuro</b>; el demo usa datos simulados.</p>`}
+];
+QUIZ[8] = [
+ {q:"¿Qué factores del AMEF mejora principalmente el machine learning?", ops:["Solo la severidad (S)","La detección (D) y la ocurrencia (O)","Ninguno","Solo el costo"], ok:1, exp:"Detecta antes (D) y estima la frecuencia con datos (O).", ref:"Marco 8.1"},
+ {q:"¿Qué combinación usó el estudio de los generadores del buque de la Armada de Colombia (IJPHM 2026)?", ops:["Clasificador entrenado con miles de fallas","Regresión de lo normal + residuo con EWMA + regla de persistencia","Solo umbrales del fabricante","Reconocimiento de imágenes"], ok:1, exp:"Es el enfoque para cuando hay pocas etiquetas de falla, el mismo del demo.", ref:"Marco 8.2"},
+ {q:"En el estudio del motor de 1,89 MW (Information 2026), ¿qué modelo se usó para detectar anomalías?", ops:["Weibull","Autoencoder apilado","Regresión lineal","Isolation Forest"], ok:1, exp:"Autoencoder apilado (87,6 % de exactitud); el diagnóstico se hizo con SVM.", ref:"Marco 8.2"},
+ {q:"¿Qué minimiza el ajuste por mínimos cuadrados?", ops:["La suma de residuos","La suma de los residuos al cuadrado","El residuo máximo","El número de alarmas"], ok:1, exp:"β = (XᵀX)⁻¹Xᵀy minimiza Σ(y − ŷ)².", ref:"Marco 8.3"},
+ {q:"Si cada día hay p = 0,00135 de superar 3σ por azar y los días son independientes, ¿probabilidad de 3 días seguidos?", ops:["0,00405","0,00135","≈ 2,5 × 10⁻⁹","0,5"], ok:2, exp:"p³ = 0,00135³ ≈ 2,5 × 10⁻⁹.", ref:"Marco 8.3"},
+ {q:"Verdadero o falso: como p³ es casi cero, un modelo real con regla de 3 días nunca da falsas alertas.", ops:["Verdadero","Falso"], ok:1, exp:"Los residuos reales tienen deriva y autocorrelación: el demo dio 1 falsa alerta en 20 grupos sanos.", ref:"Marco 8.3"},
+ {q:"EWMA con λ = 0,2 y L = 3: ¿cuánto vale su límite de control en régimen?", ops:["3σ","2σ","1σ","0,2σ"], ok:2, exp:"3σ·√(0,2/1,8) = 3σ × 0,333 = 1σ.", ref:"Marco 8.4"},
+ {q:"¿Para qué sirve el EWMA frente a un umbral simple?", ops:["Para detectar picos aislados","Para detectar cambios pequeños pero sostenidos","Para borrar el ruido del sensor","Para reemplazar la regresión"], ok:1, exp:"Al acumular la historia, un desplazamiento sostenido de 1σ ya supera su límite.", ref:"Marco 8.4"},
+ {q:"20 fallas reales, 20 detectadas y 1 falsa alerta. ¿Cuál es la precisión?", ops:["100 %","95 %","50 %","5 %"], ok:1, exp:"Precisión = 20/(20 + 1) ≈ 95 %; la sensibilidad es 20/20 = 100 %.", ref:"Marco 8.6"},
+ {q:"¿Qué dataset público sirve para practicar detección temprana porque los rodamientos se llevaron hasta la falla?", ops:["CWRU","NASA IMS","Iris","MNIST"], ok:1, exp:"IMS es «run-to-failure»; CWRU tiene fallas sembradas y sirve para diagnóstico.", ref:"Marco 8.7"},
+ {q:"En el ensayo de rodamientos del ejemplo de SAS, el ajuste Weibull dio β ≈ 1,24. ¿Qué indica?", ops:["Fallas tempranas","Desgaste leve, cercano a fallas aleatorias","Desgaste fuerte","Que los datos están mal"], ok:1, exp:"β apenas mayor que 1: tasa de falla que crece lentamente.", ref:"Marco 8.7"},
+ {q:"Caso: un proveedor promete «predecir el 95 % de las fallas». ¿Qué datos son imprescindibles para creerle?", ops:["El nombre del algoritmo","Precisión (falsas alertas) y días de adelanto medidos con datos propios o en un piloto","El precio","El número de sensores"], ok:1, exp:"Un 95 % de sensibilidad sin precisión ni adelanto no es evidencia.", ref:"Marco 8.6"}
+];
+
+/*FIN CONTENIDO*/
+
+/* ---------- Estado ---------- */
+const blank = () => ({diag:{a:["","",""],fb:null,done:false}, caps:{}, cur:0, step:{}, srs:{}, streak:{count:0, last:null}, day:{date:null, n:0}, recall:{}, mpos:{}, mview:"cards", fcopies:0, fhide:false, thinkFirst:true, sessions:0});
+let S = blank();
+let store = {kind:"local"}, sample = null, saveT = null;
+const cap = n => (S.caps[n] ||= {status:"lock", score:null, best:null, fort:"", pend:"", soc:{}, ev:{a:["","","","",""], r:null}, rt:null});
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function unlocked(n){ if(n===0) return true; if(n===1) return S.diag.done; return (cap(n-1).best ?? 0) >= 80; }
+function statusOf(n){
+  if(n===0) return S.diag.done ? "ok" : "cur";
+  const c = cap(n);
+  if((c.best ?? 0) >= 80) return "ok";
+  if(!unlocked(n)) return "lock";
+  if(c.score !== null && c.score < 80) return "ret";
+  return "cur";
+}
+const ST = {ok:["ok","🟢 Aprobado"], cur:["cur","🟡 En curso"], ret:["ret","🔴 Reintento"], lock:["lock","🔒 Evaluación bloqueada"]};
+
+function save(){
+  clearTimeout(saveT);
+  saveT = setTimeout(async () => {
+    try{
+      if(store.kind === "db"){ await store.ref.set({estado: JSON.stringify(S), actualizado: new Date().toISOString()}); }
+      else localStorage.setItem("aula-comap", JSON.stringify(S));
+    }catch(e){ try{ localStorage.setItem("aula-comap", JSON.stringify(S)); }catch(_){} }
+  }, 600);
+}
+
+/* ---------- Render ---------- */
+function renderBoard(){
+  const rows = [`<tr><td class="num">Diag.</td><td>Diagnóstico inicial</td><td><span class="st ${ST[statusOf(0)][0]}">${S.diag.done?'🟢<span class="lt"> Completado</span>':'🟡<span class="lt"> En curso</span>'}</span></td><td class="num">${S.diag.fb?.total!=null? S.diag.fb.total+" %" : "—"}</td><td class="num">—</td><td>${esc(S.diag.fb?.nivel ? "Nivel " + S.diag.fb.nivel : "—")}</td><td>${S.diag.done?"—":(S.diag.fb?.valida===false?"Reescribir la respuesta no interpretable":"Responder 3 preguntas")}</td></tr>`];
+  let ok = 0;
+  CH.forEach(c => {
+    const st = statusOf(c.n), k = cap(c.n); if(st==="ok") ok++;
+    rows.push(`<tr><td class="num">Cap. ${c.n}</td><td>${esc(c.t)}</td><td><span class="st ${ST[st][0]}">${ST[st][1].replace(" ",'<span class="lt"> ')+"</span>"}</span></td><td class="num">${k.best!==null? k.best+" %" : "— %"}</td><td class="num">${k.quiz?.best!=null? k.quiz.best+" %" : "—"}</td><td>${esc(k.fort||"—")}</td><td>${esc(k.pend||"—")}</td></tr>`);
+  });
+  document.getElementById("board").innerHTML = rows.join("");
+  document.getElementById("mText").textContent = `${ok} de ${CH.length} aprobados`;
+  document.getElementById("mFill").style.width = (ok/CH.length*100) + "%";
+}
+function renderRail(){
+  const items = [{n:0,t:"Diagnóstico inicial"}, ...CH];
+  const due = dueCards().length, nSrs = Object.keys(S.srs).length;
+  const special = `<button class="ch special" data-go="${REPASO}" aria-current="${S.cur===REPASO}"><span class="n">↻</span><span><span class="t">Repaso de hoy</span><span class="s">${due ? "🔔 " + due + " tarjeta" + (due>1?"s":"") + " pendiente" + (due>1?"s":"") : nSrs ? "✓ al día · " + nSrs + " en el mazo" : "mazo vacío"}</span></span></button>
+    <button class="ch special" data-go="${FORMULAS}" aria-current="${S.cur===FORMULAS}"><span class="n">ƒ</span><span><span class="t">Hoja de fórmulas</span><span class="s">copias a mano: ${S.fcopies||0}/3</span></span></button>`;
+  document.getElementById("rail").innerHTML = special + items.map(c => {
+    const st = statusOf(c.n);
+    return `<button class="ch ${st==="lock"?"locked":""}" data-go="${c.n}" aria-current="${S.cur===c.n}"><span class="n">${c.n===0?"D":c.n}</span><span><span class="t">${esc(c.t)}</span><span class="s">${c.n===0&&st==="ok"?"🟢 Completado":st==="lock"?"📖 Marco y preguntas abiertos":ST[st][1]}${cap(c.n).best!==null&&c.n?" · "+cap(c.n).best+" %":""}</span></span></button>`;
+  }).join("");
+}
+function render(){ renderBoard(); renderNext(); renderRail(); renderWork(); }
+
+function renderWork(){
+  const w = document.getElementById("work");
+  if(S.cur === 0) return renderDiag(w);
+  if(S.cur === REPASO) return renderReview(w);
+  if(S.cur === FORMULAS) return renderFormulas(w);
+  const c = CH[S.cur-1];
+  const open = unlocked(c.n), FREE = ["marco","quiz"];
+  let step = S.step[c.n] || "marco";
+  if(!open && !FREE.includes(step)) step = "locked";
+  const k = cap(c.n);
+  const tabs = [["marco","1 · Marco teórico"],["quiz","2 · Preguntas para marcar"],["teo","3 · Resumen y caso"],["soc","4 · Discusión"],["eva","5 · Evaluación"]].map(([id,l]) => [id, !open && !FREE.includes(id) ? "🔒 " + l : l]);
+  if(k.score !== null && k.score < 80 && (k.best??0) < 80) tabs.push(["ret","6 · Reintento"]);
+  let body = "";
+  if(step==="marco") body = viewMarco(c);
+  if(step==="quiz") body = viewQuiz(c);
+  if(step==="teo") body = viewTeo(c);
+  if(step==="soc") body = viewSoc(c);
+  if(step==="eva") body = viewEva(c);
+  if(step==="ret") body = viewRet(c);
+  if(step==="locked") body = `<div class="lockbox"><p><b>Caso, discusión y evaluación se abren</b> cuando ${c.n===1?"completes el diagnóstico inicial":"apruebes el capítulo "+(c.n-1)+" con 80 % o más"}. El marco teórico y las preguntas para marcar ya están abiertos.</p><div class="row"><button class="btn" data-step="marco">Leer el marco teórico</button><button class="btn ghost" data-go="${c.n===1?0:c.n-1}">${c.n===1?"Ir al diagnóstico":"Ir al capítulo "+(c.n-1)}</button></div></div>`;
+  const lockNote = !open ? `<div class="fb"><b>Modo estudio libre.</b> Puedes leer el marco y practicar con las preguntas para marcar. La evaluación de este capítulo se abre cuando ${c.n===1?"completes el diagnóstico":"apruebes el capítulo "+(c.n-1)}.</div>` : "";
+  w.innerHTML = `<div class="work-head"><div class="eyebrow">Capítulo ${c.n} de ${CH.length} · lectura: ${esc(c.lect)}</div><h2>${esc(c.t)}</h2>
+    <div class="steps" role="tablist">${tabs.map(([id,l])=>`<button class="step" role="tab" data-step="${id}" aria-selected="${step===id}">${l}</button>`).join("")}</div>${lockNote}</div>${body}`;
+}
+
+function shuffle(n){ const a = [...Array(n).keys()]; for(let i=n-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; }
+function quizState(c){
+  const k = cap(c.n), qs = QUIZ[c.n] || [];
+  if(!k.quiz || !k.quiz.order || k.quiz.order.length !== qs.length) k.quiz = {order: qs.map(q => q.ops.length > 2 ? shuffle(q.ops.length) : q.ops.map((_,i)=>i)), ans:{}, best: k.quiz?.best ?? null};
+  return k.quiz;
+}
+function viewQuiz(c){
+  const qs = QUIZ[c.n] || [], st = quizState(c);
+  const n = Object.keys(st.ans).length, good = qs.filter((q,i)=>st.ans[i] === q.ok).length;
+  const L = "abcd";
+  const items = qs.map((q,i)=>{
+    const a = st.ans[i], done = a !== undefined, hidden = S.thinkFirst && !done && !(st.shown||{})[i];
+    const ops = st.order[i].map((oi, pos)=>{
+      const cls = !done ? "" : oi === q.ok ? " ok" : oi === a ? " bad" : " dim";
+      return `<button class="opt${cls}" data-quiz="${i}:${oi}" ${done?"disabled":""}><span class="ltr">${q.ops.length>2?L[pos]+")":""}</span> ${esc(q.ops[oi])}</button>`; }).join("");
+    const fb = done ? `<div class="fb ${a===q.ok?"pass":"fail"}"><b>${a===q.ok?"✓ Correcto":"✗ Incorrecto · la respuesta es: "+esc(q.ops[q.ok])}</b><div>${esc(q.exp)} <span class="ref">${esc(q.ref)}</span></div></div>` : "";
+    const body = hidden ? `<div class="row"><span class="note">Piensa tu respuesta (o escríbela en tu cuaderno) antes de ver las alternativas.</span><button class="btn ghost" data-qshow="${i}">Ya lo pensé → ver alternativas</button></div>` : `<div class="opts">${ops}</div>${fb}`;
+    return `<div class="q"><div class="lab">Pregunta ${i+1} de ${qs.length}${q.ops.length===2?" · verdadero o falso":q.q.startsWith("Caso")?" · caso":""}</div><div>${esc(q.q)}</div>${body}</div>`;
+  }).join("");
+  const fin = n === qs.length ? `<div class="fb ${good*10>=80?"pass":"fail"}"><div class="eyebrow">Resultado</div><div class="score">${Math.round(good/qs.length*100)} %</div>
+      <div>${good} de ${qs.length} correctas. ${good/qs.length>=0.8?"Buen dominio: pasa al caso y a la evaluación.":"Relee las secciones del marco que citan las preguntas que fallaste y repite."}</div>
+      <div class="row"><button class="btn ghost" data-quizreset="1">Repetir con otro orden</button><button class="btn" data-step="teo">Ir al resumen y caso</button></div></div>` : "";
+  return `<div class="sec"><div class="row" style="justify-content:space-between"><p>Marca una alternativa: se corrige al instante. Cada pregunta entra a tu <b>Repaso de hoy</b> y vuelve según aciertes o falles. <label class="note"><input type="checkbox" id="think" ${S.thinkFirst?"checked":""}> Pensar antes de ver alternativas</label></p><span class="pill">${n}/${qs.length} respondidas · ${good} correctas${st.best!=null?` · mejor ${st.best} %`:""}</span></div>${items}${fin}</div>`;
+}
+function answerQuiz(i, oi){
+  const c = CH[S.cur-1], qs = QUIZ[c.n], st = quizState(c);
+  if(st.ans[i] !== undefined) return;
+  st.ans[i] = oi;
+  srsUpdate(c.n, i, oi === qs[i].ok); countActivity();
+  if(Object.keys(st.ans).length === qs.length){ const sc = Math.round(qs.filter((q,j)=>st.ans[j]===q.ok).length/qs.length*100); st.last = sc; st.best = Math.max(st.best ?? 0, sc); }
+  save(); render();
+  const el = document.querySelector(`[data-quiz^="${i}:"]`)?.closest(".q"); if(el && el.scrollIntoView) el.scrollIntoView({block:"nearest"});
+}
+
+function viewTeo(c){
+  return `<div class="sec"><h3>Resumen: principios clave</h3><ul class="th">${c.teoria.map(([t,r])=>`<li>${t} <span class="ref">${esc(r)}</span></li>`).join("")}</ul>
+  <div class="case"><div class="eyebrow">Caso · ${esc(c.caso.t)}</div><p>${esc(c.caso.x)}</p><p><b>Dilema:</b> ${esc(c.caso.d)}</p></div>
+  <p class="note">Los manuales son de 2009–2013; tu grupo usa InteliGen 200. Los principios se mantienen, los nombres y rangos de setpoints pueden cambiar.</p>
+  <div class="row"><button class="btn" data-step="soc">Ir a la discusión</button></div></div>`;
+}
+
+function viewSoc(c){
+  const k = cap(c.n);
+  return `<div class="sec"><p>Responde cada pregunta con tu razonamiento. El tutor te repregunta: pide definiciones, evidencia (página del manual) y revisa tus supuestos. No cuenta para la nota.</p>
+  ${c.socr.map((s,i)=>{ const th = k.soc[i] || []; return `<div class="q"><div class="lab">Pregunta ${i+1} de ${c.socr.length}</div><div>${esc(s.q)}</div>
+    <div class="chat" id="chat-${c.n}-${i}">${th.map(m=>`<div class="msg ${m.role==="user"?"u":"c"}">${esc(m.content)}</div>`).join("")}</div>
+    <textarea id="soc-${c.n}-${i}" placeholder="Tu respuesta o réplica…"></textarea>
+    <div class="row"><button class="btn" data-soc="${i}">Enviar al tutor</button>${sample?"":`<details><summary>Ver pista</summary><p class="note">${esc(s.h)}</p></details>`}</div></div>`;}).join("")}
+  <div class="row"><button class="btn" data-step="eva">Ir a la evaluación</button></div></div>`;
+}
+
+const MARK = {si:"✓", parcial:"½", no:"✗"};
+function fbItems(r, qs, ctx){
+  return r.items.map((it,i)=>{
+    const ideas = (it.ideas||[]).map(d=>`<li><span class="mk mk-${esc(d.estado)}">${MARK[d.estado]||"·"}</span> ${esc(d.idea)}</li>`).join("");
+    const calc = it.ideas?.length ? `<div class="note">${it.ininteligible?"Respuesta no interpretable: 0 %.":`Ideas cumplidas: ${String(it.cumplidas).replace(".",",")} de ${it.ideas.length}${it.ajuste?` · ajuste ${it.ajuste>0?"+":""}${it.ajuste}`:""}`}</div>` : "";
+    const appeal = sample && ctx && !it.apelado && it.puntaje < 100 ? `<details><summary>¿No estás de acuerdo con esta nota? Pedir revisión</summary>
+      <div class="sec" style="margin-top:8px"><textarea id="ap-${ctx}-${i}" placeholder="Explica qué parte de tu respuesta ya cumplía la idea que te marcaron como faltante."></textarea>
+      <div class="row"><button class="btn ghost" data-appeal="${ctx}:${i}">Enviar revisión</button><span class="note" id="apm-${ctx}-${i}"></span></div></div></details>` : "";
+    return `<div class="fb ${it.puntaje>=80?"pass":it.puntaje<50?"fail":""}"><b>P${i+1} · ${esc(qs[i]?.tipo||"")} — ${it.puntaje} %${it.apelado?" (revisada)":""}</b>
+    ${ideas?`<ul class="ideas">${ideas}</ul>`:""}${calc}
+    ${it.revision?`<div><b>Revisión pedida:</b> ${esc(it.revision)}</div>`:""}
+    ${it.fortalezas?`<div><b>Fortalezas:</b> ${esc(it.fortalezas)}</div>`:""}${it.vacios?`<div><b>Vacíos:</b> ${esc(it.vacios)}</div>`:""}${it.correccion?`<div><b>Qué estudiar:</b> ${esc(it.correccion)}</div>`:""}${appeal}</div>`;
+  }).join("");
+}
+
+function viewEva(c){
+  const k = cap(c.n), r = k.ev.r;
+  const qs = c.eval.map((e,i)=>`<div class="q"><div class="lab">P${i+1} · ${esc(e.tipo)}</div><div>${esc(e.q)}</div>
+    <textarea id="ev-${c.n}-${i}">${esc(k.ev.a[i])}</textarea>
+    ${!sample && !r ? `<details><summary>Autoevaluación: ver criterios</summary><p class="note">${esc(e.clave)}</p><label class="note">Tu puntaje honesto: <select id="self-${c.n}-${i}">${[0,25,50,75,100].map(v=>`<option value="${v}">${v} %</option>`).join("")}</select></label></details>`:""}</div>`).join("");
+  const res = r ? `<div class="fb ${r.total>=80?"pass":"fail"}"><div class="eyebrow">Resultado</div><div class="score">${r.total} %</div>
+      <div>${r.total>=80?`Aprobado. Capítulo ${c.n+1<=CH.length?c.n+1+" desbloqueado":"final completado"}.`:"Por debajo de 80 %. Revisa la retroalimentación y haz la prueba de reintento."}</div></div>${fbItems(r, c.eval, "ev")}
+      <div class="row">${r.total>=80 && c.n<CH.length?`<button class="btn" data-go="${c.n+1}">Ir al capítulo ${c.n+1}</button>`:""}${r.total<80?`<button class="btn" data-step="ret">Ir al reintento</button>`:""}<button class="btn ghost" data-reeval="1">Volver a responder</button></div>` : "";
+  return `<div class="sec"><p>Cinco preguntas. Cada una vale 20 % de la nota. ${sample?"El tutor Claude califica de 0 a 100 % por pregunta con los criterios del manual.":"Sin conexión con Claude: califícate con los criterios de cada pregunta."}</p>
+    ${r? res : qs + `<div class="row"><button class="btn" id="btnEval" data-eval="1">${sample?"Enviar para calificar":"Calcular mi nota"}</button><span class="note" id="evMsg"></span></div>`}</div>`;
+}
+
+function viewRet(c){
+  const k = cap(c.n), rt = k.rt;
+  if(!rt || !rt.qs) return `<div class="sec"><p>Repaso dirigido a tus vacíos de la evaluación y una prueba de 3 preguntas. Necesitas 80 % o más para aprobar el capítulo.</p>
+    ${k.ev.r?`<div class="fb"><b>Para repasar:</b> ${esc(k.pend||"")}</div>`:""}
+    <div class="row"><button class="btn" data-mkret="1">${sample?"Generar repaso y prueba":"Abrir prueba de reintento"}</button><span class="note" id="rtMsg"></span></div></div>`;
+  if(rt.r) return `<div class="sec"><div class="fb ${rt.r.total>=80?"pass":"fail"}"><div class="eyebrow">Reintento</div><div class="score">${rt.r.total} %</div><div>${rt.r.total>=80?"Aprobado en el reintento.":"Aún por debajo de 80 %. Repasa y genera otra prueba."}</div></div>${fbItems(rt.r, rt.qs.map(()=>({tipo:"Reintento"})), "rt")}
+    <div class="row">${rt.r.total>=80&&c.n<CH.length?`<button class="btn" data-go="${c.n+1}">Ir al capítulo ${c.n+1}</button>`:""}${rt.r.total<80?`<button class="btn" data-newret="1">Nueva prueba</button>`:""}</div></div>`;
+  return `<div class="sec">${rt.repaso?`<div class="case"><div class="eyebrow">Repaso dirigido</div><p>${esc(rt.repaso)}</p></div>`:""}
+    ${rt.qs.map((q,i)=>`<div class="q"><div class="lab">Reintento · P${i+1}</div><div>${esc(q.q)}</div><textarea id="rt-${c.n}-${i}"></textarea>
+    ${!sample?`<details><summary>Ver criterios</summary><p class="note">${esc(q.clave)}</p><label class="note">Tu puntaje: <select id="rself-${c.n}-${i}">${[0,25,50,75,100].map(v=>`<option value="${v}">${v} %</option>`).join("")}</select></label></details>`:""}</div>`).join("")}
+    <div class="row"><button class="btn" data-gradeRet="1">${sample?"Enviar para calificar":"Calcular mi nota"}</button><span class="note" id="rtMsg"></span></div></div>`;
+}
+
+function renderDiag(w){
+  const d = S.diag, fb = d.fb;
+  w.innerHTML = `<div class="work-head"><div class="eyebrow">Fase 1 · antes del capítulo 1</div><h2>Diagnóstico inicial</h2>
+    <div class="fb pass"><b>Novedades:</b> cada capítulo tiene ahora <b>Marco teórico</b> y <b>Preguntas para marcar</b>, abiertos desde ya. Toca un capítulo en el menú para estudiarlo; la evaluación de cada uno sigue la regla del 80 %.</div>
+    <p class="note">Responde con tus palabras, sin mirar los manuales. Si no sabes, escribe «no sé»: es una respuesta válida y no te bloquea. La nota solo sirve para calibrar tu nivel.</p></div>
+    <div class="sec">${DIAG.map((q,i)=>`<div class="q"><div class="lab">Pregunta ${i+1} de 3</div><div>${esc(q.q)}</div><textarea id="dg-${i}">${esc(d.a[i])}</textarea></div>`).join("")}
+    ${fb?`<div class="fb ${fb.valida===false?"fail":"pass"}"><div class="eyebrow">Resultado del diagnóstico</div>
+      ${fb.total!=null?`<div class="score">${fb.total} %</div>`:""}
+      ${fb.valida===false?`<div><b>No se pudo interpretar</b> la respuesta marcada abajo. Escríbela con tus palabras (o pon «no sé») y vuelve a enviar.</div>`:""}
+      ${fb.nivel?`<div><b>Nivel estimado:</b> ${esc(fb.nivel)}</div>`:""}</div>
+      ${fb.items?fbItems(fb, [{tipo:"Concepto"},{tipo:"Caso"}], "dg"):""}
+      <div class="fb"><b>P3 · Experiencia (no se califica)</b><div>${esc(d.a[2]||"—")}</div></div>
+      ${fb.pendiente?`<div class="fb"><b>Para empezar el capítulo 1:</b> ${esc(fb.pendiente)}</div>`:""}`:""}
+    <div class="row"><button class="btn" data-diag="1">${d.done?"Volver a enviar":"Enviar diagnóstico"}</button>${d.done?`<button class="btn ghost" data-go="1">Ir al capítulo 1</button>`:""}<span class="note" id="dgMsg"></span></div></div>`;
+}
+
+async function socSend(i){
+  const c = CH[S.cur-1], k = cap(c.n), ta = document.getElementById(`soc-${c.n}-${i}`), txt = ta.value.trim();
+  if(!txt) return;
+  const th = (k.soc[i] ||= []); th.push({role:"user", content:txt}); ta.value = ""; save(); renderWork();
+  if(!sample){ th.push({role:"assistant", content:"Pista: " + c.socr[i].h}); save(); renderWork(); return; }
+  const box = document.getElementById(`chat-${c.n}-${i}`); const out = document.createElement("div"); out.className = "msg c"; out.textContent = "Pensando…"; box.appendChild(out);
+  const intro = `${BASE}\n\nCapítulo ${c.n}: ${c.t}. Caso: ${c.caso.x} Dilema: ${c.caso.d}\nPregunta socrática: ${c.socr[i].q}\nIdea que el estudiante debería alcanzar (no la reveles de golpe): ${c.socr[i].h}\n\nResponde a la última intervención del estudiante en máximo 6 líneas: reconoce lo correcto, señala un supuesto o una definición imprecisa, y termina con UNA repregunta que lo acerque a la idea. Si ya llegó a la idea, confírmalo y pídele la evidencia (página del manual).`;
+  const turns = [{role:"user", content: intro + "\n\nEstudiante: " + th[0].content}, ...th.slice(1)];
+  try{ const r = await sample(turns, {cache:false, onText:({text})=>{ out.textContent = text; }}); th.push({role:"assistant", content:r.text}); save(); renderWork(); }
+  catch(e){ out.textContent = errText(e); th.pop(); save(); }
+}
+
+/* ---------- Claude ---------- */
+const errText = e => ({not_granted:"No diste permiso para usar Claude. Puedes seguir con autoevaluación.", rate_limited:"Demasiadas consultas seguidas. Espera un minuto e inténtalo otra vez."}[e?.code] || "No se pudo consultar al tutor. Inténtalo de nuevo en un momento.");
+const BASE = "Eres un tutor universitario justo y riguroso (método del caso de Harvard y diálogo socrático) que enseña controladores ComAp de grupos electrógenos a un bachiller de Ingeniería Eléctrica en Perú. Responde en español claro y sencillo. Usa solo los criterios y datos que se te dan; si algo no está en ellos, dilo y no inventes valores de setpoints.";
+
+/* Filtro local: solo frena texto al azar; «no sé» y respuestas breves pasan */
+function gibberish(t){
+  t = (t||"").trim();
+  if(/^no\s+s[eé](?![a-zñ])/i.test(t) || /\d/.test(t)) return false;
+  const ws = t.match(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]{2,}|\d+(?:[.,]\d+)?/g) || [];
+  const real = ws.filter(w => /\d/.test(w) || /[aeiouáéíóúü]/i.test(w));
+  return t.length < 8 || real.length < 3;
+}
+const METODO = `Califica por ideas clave para que la nota sea justa y verificable:
+1. De cada criterio extrae de 2 a 4 ideas clave: solo las que responden lo que la pregunta pide. No conviertas en idea clave un número de página, un detalle secundario ni algo que la pregunta no pidió.
+2. Marca cada idea: "si" si la respuesta la expresa (con otras palabras también cuenta), "parcial" si está incompleta o con un error menor, "no" si falta o es incorrecta.
+3. "ininteligible": true SOLO si la respuesta es texto al azar o no tiene relación con la pregunta. «No sé» o una respuesta equivocada NO es ininteligible.
+4. "ajuste" entero de -10 a +10: positivo por justificación, cálculo o ejemplo correcto adicional (incluye ideas correctas que van más allá del criterio); negativo solo por un error técnico que contradice el criterio.
+5. No penalices ortografía, respuestas breves pero correctas, términos en inglés ni la falta de páginas del manual.
+6. "vacios": qué idea falta, sin dictar la respuesta completa. "correccion": qué estudiar y dónde (página si está en el criterio).`;
+
+function scoreItem(it){
+  const ideas = Array.isArray(it.ideas) ? it.ideas.filter(d=>d && d.idea) : [];
+  ideas.forEach(d => { d.estado = ({"sí":"si", "si":"si", "parcial":"parcial", "no":"no"})[String(d.estado||"").toLowerCase()] || "no"; });
+  const aj = Math.max(-10, Math.min(10, Math.round(+it.ajuste||0)));
+  const cumplidas = ideas.reduce((s,d)=>s + (d.estado==="si"?1:d.estado==="parcial"?0.5:0), 0);
+  let p;
+  if(it.ininteligible === true) p = 0;
+  else if(ideas.length) p = 100 * cumplidas / ideas.length + aj;
+  else p = +it.puntaje || 0;
+  return {...it, ideas, ajuste: aj, cumplidas, puntaje: Math.max(0, Math.min(100, Math.round(p)))};
+}
+const totalOf = items => Math.round(items.reduce((s,it)=>s+it.puntaje,0)/items.length);
+const ITEM_JSON = `{"ideas":[{"idea":"…","estado":"si|parcial|no"}],"ininteligible":false,"ajuste":0,"fortalezas":"…","vacios":"…","correccion":"…"}`;
+
+async function grade(qs, answers, label){
+  const prompt = `${BASE}\n\nTarea: califica ${label}.\n${METODO}\nLuego resume en una frase la fortaleza principal y en una frase el pendiente principal.\n\n${qs.map((q,i)=>`P${i+1} (${q.tipo||"reintento"}): ${q.q}\nCriterio: ${q.clave}\nRespuesta: ${answers[i]||"(vacía)"}`).join("\n\n")}\n\nDevuelve solo JSON: {"items":[${ITEM_JSON}],"fortaleza":"…","pendiente":"…"} con exactamente ${qs.length} items en orden.`;
+  const r = await sample.json(prompt, {cache:false, modelTier:"default"});
+  r.items = (r.items||[]).slice(0, qs.length).map(scoreItem);
+  while(r.items.length < qs.length) r.items.push({puntaje:0, ideas:[], vacios:"Sin calificación."});
+  r.total = totalOf(r.items);
+  return r;
+}
+async function appeal(ctx, i){
+  const c = CH[S.cur-1], k = S.cur ? cap(S.cur) : null;
+  const src = ctx==="dg" ? {q:DIAG[i], a:S.diag.a[i], r:S.diag.fb}
+            : ctx==="ev" ? {q:c.eval[i], a:k.ev.a[i], r:k.ev.r}
+            : {q:k.rt.qs[i], a:k.rt.a[i], r:k.rt.r};
+  const ta = document.getElementById(`ap-${ctx}-${i}`), msg = document.getElementById(`apm-${ctx}-${i}`);
+  const arg = (ta?.value||"").trim();
+  if(arg.length < 10){ msg.textContent = "Explica en una o dos frases por qué crees que la nota debe cambiar."; return; }
+  msg.textContent = "Revisando…";
+  const prev = src.r.items[i];
+  const prompt = `${BASE}\n\nTarea: el estudiante pide revisión de UNA pregunta. Vuelve a calificarla desde cero con el mismo método.\n${METODO}\nReglas de la revisión: solo cuenta lo que está escrito en la RESPUESTA ORIGINAL; el argumento sirve para señalar dónde está una idea, no para agregar contenido nuevo. Si el argumento muestra que una idea sí estaba, o que una idea clave exigía algo que la pregunta no pedía, corrígelo. Si la calificación anterior era correcta, mantenla y explica por qué. No subas la nota por insistencia.\n\nPregunta: ${src.q.q}\nCriterio: ${src.q.clave}\nRespuesta original: ${src.a}\nCalificación anterior: ${JSON.stringify((prev.ideas||[]).map(d=>d.idea+" = "+d.estado))} (${prev.puntaje} %)\nArgumento del estudiante: ${arg}\n\nDevuelve solo JSON: ${ITEM_JSON.slice(0,-1)},"explicacion":"…"}`;
+  try{
+    const j = await sample.json(prompt, {cache:false, modelTier:"default"});
+    const it = scoreItem(j); it.apelado = true; it.revision = (it.puntaje===prev.puntaje ? "Se mantiene. " : `Cambia de ${prev.puntaje} % a ${it.puntaje} %. `) + (j.explicacion||"");
+    src.r.items[i] = it; src.r.total = totalOf(src.r.items);
+    if(ctx==="dg") finishDiag(src.r); else { k.score = src.r.total; k.best = Math.max(k.best??0, src.r.total); }
+    save(); render();
+  }catch(e){ msg.textContent = errText(e); }
+}
+
+function finishDiag(fb){
+  fb.v = 3;
+  fb.valida = !fb.items.some(it=>it.ininteligible===true);
+  fb.nivel = fb.total < 40 ? "básico" : fb.total < 75 ? "intermedio" : "avanzado";
+  S.diag.fb = fb; S.diag.done = fb.valida;
+}
+async function gradeDiag(){
+  const a = DIAG.map((_,i)=>document.getElementById("dg-"+i).value.trim());
+  S.diag.a = a; save();
+  const msg = document.getElementById("dgMsg");
+  const bad = a.map((t,i)=>gibberish(t) ? i+1 : 0).filter(Boolean);
+  if(bad.length){ msg.textContent = `No se entiende la respuesta ${bad.join(" y ")}. Escríbela con tus palabras; si no sabes, pon «no sé».`; return; }
+  if(!sample){ S.diag.fb = {v:3, items:DIAG.slice(0,2).map(q=>({puntaje:0, ideas:[], correccion:"Criterio: "+q.clave})), total:null, nivel:"", valida:true, pendiente:"Compara tus respuestas con los criterios."}; S.diag.done = true; save(); render(); return; }
+  const btn = document.querySelector("[data-diag]"); btn.disabled = true;
+  msg.textContent = "El tutor está leyendo tus respuestas…";
+  try{ const r = await grade(DIAG.slice(0,2).map((q,i)=>({...q, tipo:["Concepto","Caso"][i]})), a.slice(0,2), "un diagnóstico inicial (sirve para calibrar el nivel; califica con el mismo método)"); finishDiag(r); save(); render(); }
+  catch(e){ msg.textContent = errText(e); btn.disabled = false; }
+}
+function selfGrade(qs, pref){
+  const items = qs.map((q,i)=>({puntaje:+(document.getElementById(`${pref}-${i}`)?.value||0), correccion:"Criterio: "+q.clave}));
+  return {items, total: totalOf(items), fortaleza:"Autoevaluación", pendiente:"Revisa los criterios donde te diste menos de 75 %"};
+}
+function applyResult(k, r){
+  k.score = r.total; k.best = Math.max(k.best ?? 0, r.total);
+  k.fort = r.fortaleza || ""; k.pend = r.pendiente || "";
+}
+
+async function doEval(){
+  const c = CH[S.cur-1], k = cap(c.n);
+  k.ev.a = c.eval.map((_,i)=>document.getElementById(`ev-${c.n}-${i}`).value.trim()); save();
+  const msg = document.getElementById("evMsg"), btn = document.getElementById("btnEval");
+  const badE = k.ev.a.map((t,i)=>gibberish(t)?i+1:0).filter(Boolean);
+  if(badE.length){ msg.textContent = `No se entiende P${badE.join(", P")}. Escribe tu respuesta con tus palabras (o «no sé»).`; return; }
+  let r;
+  if(!sample) r = selfGrade(c.eval, `self-${c.n}`);
+  else { btn.disabled = true; msg.textContent = "Calificando… puede tardar hasta un minuto."; try{ r = await grade(c.eval, k.ev.a, `la evaluación del capítulo ${c.n} (${c.t})`); } catch(e){ msg.textContent = errText(e); btn.disabled = false; return; } }
+  k.ev.r = r; applyResult(k, r); if(r.total < 80) k.rt = null; save(); render();
+}
+
+async function mkRet(){
+  const c = CH[S.cur-1], k = cap(c.n), msg = document.getElementById("rtMsg");
+  if(!sample){
+    const weak = (k.ev.r?.items||[]).map((it,i)=>[it.puntaje,i]).sort((a,b)=>a[0]-b[0]).slice(0,3).map(x=>x[1]);
+    k.rt = {repaso:"Relee las páginas indicadas en la teoría para estas preguntas y vuelve a responderlas.", qs: weak.map(i=>({q:c.eval[i].q, clave:c.eval[i].clave}))}; save(); renderWork(); return;
+  }
+  msg.textContent = "Preparando tu repaso…";
+  const r = k.ev.r;
+  const prompt = `${BASE}\n\nEl estudiante sacó ${r.total} % en el capítulo ${c.n} (${c.t}). Teoría del capítulo: ${c.teoria.map(t=>t[0].replace(/<[^>]+>/g,"")+" ("+t[1]+")").join(" | ")}\nVacíos detectados: ${r.items.map((it,i)=>`P${i+1}: ${it.vacios}`).join(" | ")}\n\nEscribe un repaso dirigido de máximo 8 líneas sobre esos vacíos, citando las páginas de la teoría. Luego crea 3 preguntas nuevas (distintas a las de la evaluación) que comprueben si superó los vacíos: una conceptual, una de caso y una práctica o de cálculo, cada una con su criterio de corrección basado solo en la teoría dada.\n\nDevuelve solo JSON: {"repaso":"…","preguntas":[{"q":"…","clave":"…"},{"q":"…","clave":"…"},{"q":"…","clave":"…"}]}`;
+  try{ const j = await sample.json(prompt, {cache:false}); k.rt = {repaso:j.repaso||"", qs:(j.preguntas||[]).slice(0,3)}; if(k.rt.qs.length<3) throw {code:"bad"}; save(); renderWork(); }
+  catch(e){ msg.textContent = errText(e); }
+}
+async function gradeRet(){
+  const c = CH[S.cur-1], k = cap(c.n), rt = k.rt, msg = document.getElementById("rtMsg");
+  const a = rt.qs.map((_,i)=>document.getElementById(`rt-${c.n}-${i}`).value.trim());
+  const badR = a.map((t,i)=>gibberish(t)?i+1:0).filter(Boolean);
+  if(badR.length){ msg.textContent = `No se entiende P${badR.join(", P")}. Escríbela con tus palabras (o «no sé»).`; return; }
+  rt.a = a; let r;
+  if(!sample) r = selfGrade(rt.qs, `rself-${c.n}`);
+  else { msg.textContent = "Calificando…"; try{ r = await grade(rt.qs, a, `la prueba de reintento del capítulo ${c.n}`); } catch(e){ msg.textContent = errText(e); return; } }
+  rt.r = r; applyResult(k, r); save(); render();
+}
+
+/* ---------- Estudio con repetición (repaso espaciado, escribir de memoria, tarjetas, fórmulas, sesión, racha) ---------- */
+const REPASO = 100, FORMULAS = 101, GOAL = 10, INT = [1, 3, 7, 14, 30];
+const pad2 = x => String(x).padStart(2, "0");
+function today(){ const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+function addDays(s, n){ const [y,m,d] = s.split("-").map(Number); const t = new Date(y, m-1, d + n); return `${t.getFullYear()}-${pad2(t.getMonth()+1)}-${pad2(t.getDate())}`; }
+const cardQ = key => { const [n, i] = key.split("-").map(Number); return {n, i, q: QUIZ[n]?.[i]}; };
+
+function srsUpdate(n, i, ok){
+  const key = `${n}-${i}`, c = S.srs[key] || {box:0, reps:0, lapses:0};
+  if(ok){ c.box = Math.min(c.box + 1, INT.length); c.due = addDays(today(), INT[c.box-1]); }
+  else { c.box = 0; c.lapses++; c.due = addDays(today(), 1); }
+  c.reps++; S.srs[key] = c;
+}
+function dueCards(){
+  const t = today();
+  return Object.entries(S.srs).filter(([k, c]) => c.due <= t && cardQ(k).q).sort((a, b) => a[1].due.localeCompare(b[1].due) || b[1].lapses - a[1].lapses).map(([k]) => k);
+}
+function streakNow(){ const s = S.streak; return s.last === today() || s.last === addDays(today(), -1) ? s.count : 0; }
+function countActivity(){
+  const t = today();
+  if(S.day.date !== t) S.day = {date:t, n:0};
+  S.day.n++;
+  if(S.day.n >= GOAL || (dueCards().length === 0 && R.active)) bumpStreak();
+}
+function bumpStreak(){ const t = today(); if(S.streak.last === t) return; S.streak.count = S.streak.last === addDays(t, -1) ? S.streak.count + 1 : 1; S.streak.last = t; }
+function dayN(){ return S.day.date === today() ? S.day.n : 0; }
+
+/* ----- Repaso de hoy ----- */
+const R = {active:false, queue:[], idx:0, phase:"think", order:null, ok:0, extra:false};
+function startReview(extra){
+  let q = dueCards();
+  if(extra){ const seen = Object.keys(S.srs).filter(k => cardQ(k).q); q = shuffle(seen.length).map(i => seen[i]).slice(0, GOAL); }
+  Object.assign(R, {active:true, queue:q, idx:0, phase:"think", order:null, ok:0, extra:!!extra});
+}
+function renderReview(w){
+  const seen = Object.keys(S.srs).length;
+  if(!R.active || R.queue.length === 0){
+    const due = dueCards().length;
+    if(due > 0) startReview(false);
+    else {
+      w.innerHTML = `<div class="work-head"><div class="eyebrow">Repetición espaciada</div><h2>Repaso de hoy</h2></div>
+        <div class="sec">${seen === 0
+          ? `<p>Tu mazo está vacío. Cada pregunta que respondas en <b>Preguntas para marcar</b> entra aquí y vuelve en 1, 3, 7, 14 y 30 días si aciertas, o mañana si fallas.</p><div class="row"><button class="btn" data-next="1">Ir a las preguntas del capítulo 1</button></div>`
+          : `<div class="fb pass"><b>✓ No te toca nada más hoy.</b> Tienes ${seen} tarjetas en el mazo. Mañana vuelve lo que corresponda.</div>
+             <p class="note">Hoy llevas ${dayN()} de ${GOAL} de la meta diaria. Racha: ${streakNow()} día(s).</p>
+             <div class="row"><button class="btn ghost" data-revextra="1">Repaso extra: 10 tarjetas al azar</button></div>`}
+        ${boxTable()}</div>`;
+      return;
+    }
+  }
+  if(R.idx >= R.queue.length){
+    const n = R.queue.length;
+    w.innerHTML = `<div class="work-head"><div class="eyebrow">Repetición espaciada</div><h2>Repaso terminado</h2></div>
+      <div class="sec"><div class="fb pass"><div class="score">${R.ok}/${n}</div><div>aciertos. Las que fallaste vuelven mañana; las que acertaste, más adelante.</div>
+      <div>🔥 Racha: <b>${streakNow()} día(s)</b> · hoy ${dayN()}/${GOAL}</div></div>
+      <div class="row"><button class="btn" data-revend="1">Volver</button></div>${boxTable()}</div>`;
+    return;
+  }
+  const key = R.queue[R.idx], {n, i, q} = cardQ(key), L = "abcd";
+  if(!R.order) R.order = q.ops.length > 2 ? shuffle(q.ops.length) : q.ops.map((_, j) => j);
+  const head = `<div class="work-head"><div class="eyebrow">${R.extra ? "Repaso extra" : "Repaso de hoy"} · tarjeta ${R.idx+1} de ${R.queue.length} · Cap. ${n}</div>
+    <div class="dots">${R.queue.map((_, j) => `<i class="${j < R.idx ? "done" : j === R.idx ? "now" : ""}"></i>`).join("")}</div></div>`;
+  let body;
+  if(R.phase === "think") body = `<div class="q"><div>${esc(q.q)}</div>
+      <label class="note" for="revthink">Piensa o escribe tu respuesta antes de ver las alternativas (opcional):</label>
+      <textarea id="revthink" class="short"></textarea>
+      <div class="row"><button class="btn" data-revshow="1">Ver alternativas</button></div></div>`;
+  else {
+    const a = R.ans, done = R.phase === "fb";
+    const ops = R.order.map((oi, pos) => { const cls = !done ? "" : oi === q.ok ? " ok" : oi === a ? " bad" : " dim";
+      return `<button class="opt${cls}" data-revans="${oi}" ${done ? "disabled" : ""}><span class="ltr">${q.ops.length > 2 ? L[pos] + ")" : ""}</span> ${esc(q.ops[oi])}</button>`; }).join("");
+    const fb = done ? `<div class="fb ${a === q.ok ? "pass" : "fail"}"><b>${a === q.ok ? "✓ Correcto · vuelve en " + INT[S.srs[key].box-1] + " día(s)" : "✗ Incorrecto · la respuesta es: " + esc(q.ops[q.ok]) + " · vuelve mañana"}</b><div>${esc(q.exp)} <span class="ref">${esc(q.ref)}</span></div></div>
+      <div class="row"><button class="btn" data-revnext="1">Siguiente</button></div>` : "";
+    body = `<div class="q"><div>${esc(q.q)}</div><div class="opts">${ops}</div>${fb}</div>`;
+  }
+  w.innerHTML = head + `<div class="sec">${body}</div>`;
+}
+function boxTable(){
+  const cnt = [0,0,0,0,0,0]; Object.values(S.srs).forEach(c => cnt[c.box]++);
+  if(!Object.keys(S.srs).length) return "";
+  return `<div class="tscroll"><table><thead><tr><th>Caja</th>${["Nuevas o falladas","1 día","3 días","7 días","14 días","30 días"].map(t => `<th>${t}</th>`).join("")}</tr></thead>
+    <tbody><tr><td>Tarjetas</td>${cnt.map(x => `<td class="num">${x}</td>`).join("")}</tr></tbody></table></div>`;
+}
+
+/* ----- Marco en tarjetas + escribir de memoria ----- */
+const MPH = {};
+const IDEAS = {
+ "1-0":["El controlador arranca, para, mide, maneja interruptores, protege y guarda historial","Se elige por cuántos grupos hay","Se elige por si deben trabajar en paralelo"],
+ "1-5":["El controlador tiene sus propios modos de falla","Es la principal fuente de detección (D)","Su historial da datos para MTBF y MTTR"],
+ "2-4":["Estados del motor: Init, Not ready, Prestart, Cranking, Running, Loaded, Cooling, Ready","Estados eléctricos: MainsOper, MainsFlt, IslOper, MainsRet","MinStabTO / MaxStabTO / Trans Del"],
+ "2-6":["Enfría (Cooling) y luego para","Parado: menos de 2 RPM","Parado: menos de 50 V en todas las fases"],
+ "3-0":["Igualar ΔV con el AVR","Igualar Δf con el gobernador","Igualar Δφ","Secuencia de fases (ANSI 47)","Cerrar fuera de fase da corriente y par bruscos"],
+ "4-5":["Ganancia 5 %, integral 0 %","Subir la ganancia hasta que oscile y dejar la mitad","Subir la integral hasta respuesta aceptable","Sobrecarga 32 · potencia inversa 32R · pérdida de excitación 40"],
+ "6-0":["Diagnosticar = qué pasó, en qué orden y por qué","Fuentes: estado, Alarmlist, ECU Alarmlist, historial","Registrar todo antes de reconocer alarmas"],
+ "8-4":["Isolation Forest combina varias señales","Un punto raro se aísla con pocos cortes","No necesita ejemplos de fallas","El umbral se fija con datos que el modelo no vio"]
+};
+const ideasOf = (n, i) => IDEAS[`${n}-${i}`] || keyIdeas((MARCO[n] || [])[i]?.html || "");
+function keyIdeas(html){
+  const out = [], seen = new Set();
+  for(const m of html.matchAll(/<b>([\s\S]*?)<\/b>/g)){
+    const t = m[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim().replace(/[:·]$/, "").trim();
+    const k = t.toLowerCase();
+    if(/^(ejemplo|ejemplos|paso \d|regla práctica|bottom line|nota)$/i.test(t) || /^paso \d/i.test(t)) continue;
+    if(t.length >= 2 && t.length <= 70 && !seen.has(k) && !/^\d+\.?$/.test(t)){ seen.add(k); out.push(t); }
+  }
+  if(out.length < 3) for(const m of html.matchAll(/<tr>\s*<td>([\s\S]*?)<\/td>/g)){
+    const t = m[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(), k = t.toLowerCase();
+    if(t.length >= 2 && t.length <= 70 && !seen.has(k)){ seen.add(k); out.push(t); }
+  }
+  if(out.length < 2){ const h = html.replace(/<[^>]+>/g, " ").split(/(?<=[.:])\s+/).map(x => x.trim()).filter(x => x.length > 15 && x.length < 120); out.push(...h.slice(0, 3 - out.length)); }
+  return out.slice(0, 7);
+}
+function viewMarco(c){
+  const secs = MARCO[c.n] || [], n = c.n;
+  if(S.mview === "all") return `<div class="sec marco"><div class="row" style="justify-content:space-between"><p class="note"><b>[I]</b> = explicación general; en azul, páginas de los manuales.</p><button class="btn ghost" data-mview="cards">Ver en tarjetas</button></div>
+    ${secs.map(x => `<section><h3>${x.h}</h3>${x.html}</section>`).join("")}
+    <div class="row"><button class="btn" data-step="quiz">Ir a las preguntas para marcar</button></div></div>`;
+  const i = Math.min(S.mpos[n] || 0, secs.length), ph = MPH[n] || "read";
+  const dots = `<div class="dots">${secs.map((_, j) => `<i class="${j < i ? "done" : j === i ? "now" : ""}"></i>`).join("")}</div>`;
+  const top = `<div class="row" style="justify-content:space-between"><span class="note">Lee una sección, escríbela de memoria y compárala. Cada tarjeta toma 3–5 minutos.</span><button class="btn ghost" data-mview="all">Ver todo seguido</button></div>${dots}`;
+  if(i >= secs.length){
+    let got = 0, tot = 0; secs.forEach((x, j) => { const r = S.recall[`${n}-${j}`]; const ids = ideasOf(n, j); tot += ids.length; got += r?.got?.length || 0; });
+    return `<div class="sec marco">${top}<div class="fb pass"><div class="eyebrow">Marco terminado</div><div class="score">${got}/${tot}</div><div>ideas clave recordadas al escribir de memoria. No es nota: es tu punto de partida para repetir.</div></div>
+      <div class="row"><button class="btn" data-step="quiz">Ir a las preguntas para marcar</button><button class="btn ghost" data-mgo="0">Repetir desde la sección 1</button></div></div>`;
+  }
+  const x = secs[i], ideas = ideasOf(n, i), rkey = `${n}-${i}`, rec = S.recall[rkey] || {t:"", got:[]};
+  const nav = `<div class="row">${i > 0 ? `<button class="btn ghost" data-mgo="${i-1}">← Anterior</button>` : ""}<span class="note">Sección ${i+1} de ${secs.length}</span></div>`;
+  if(ph === "write") return `<div class="sec marco">${top}<section><h3>${x.h}</h3>
+      <div class="fb"><b>Sin mirar:</b> escribe con tus palabras todo lo que recuerdes de esta sección. No hay nota.</div>
+      <textarea id="rc-${n}-${i}">${esc(rec.t)}</textarea>
+      <div class="row"><button class="btn" data-mph="compare">Comparar con el marco</button><button class="btn ghost" data-mph="read">Volver a leer</button></div></section>${nav}</div>`;
+  if(ph === "compare") return `<div class="sec marco">${top}<section><h3>${x.h}</h3>
+      ${rec.t ? `<div class="fb"><b>Lo que escribiste:</b><div class="mine">${esc(rec.t)}</div></div>` : ""}
+      <div class="fb"><b>Ideas clave de esta sección: marca las que escribiste.</b>
+        <ul class="ideas">${ideas.map((t, j) => `<li><label><input type="checkbox" data-got="${j}" ${rec.got.includes(j) ? "checked" : ""}> ${esc(t)}</label></li>`).join("")}</ul>
+        <div class="note">${rec.got.length} de ${ideas.length} · si faltaron, relee esa parte abajo y vuelve a escribirla en tu cuaderno.</div></div>
+      ${x.html}
+      <div class="row"><button class="btn" data-mgo="${i+1}">Siguiente sección →</button><button class="btn ghost" data-mph="write">Escribir otra vez</button></div></section>${nav}</div>`;
+  return `<div class="sec marco">${top}<section><h3>${x.h}</h3>${x.html}
+    <div class="row"><button class="btn" data-mph="write">Ya leí → escribir de memoria</button><button class="btn ghost" data-mgo="${i+1}">Saltar</button></div></section>${nav}</div>`;
+}
+
+/* ----- Hoja de fórmulas ----- */
+const FORM = [
+ {t:"Giro del ángulo al sincronizar", f:"ω = Δf × 360 °/s · t en ventana = 2·PW / (Δf × 360)", e:"Δf = 0,2 Hz → 72 °/s; PW ± 10° → 0,28 s", c:3},
+ {t:"Rampa de carga", f:"t = (ΔP / P nominal) × Load Ramp", e:"300/500 × 100 s = 60 s", c:4},
+ {t:"Corriente nominal trifásica", f:"In = S / (√3 · V)", e:"625 kVA / (1,732 × 400 V) ≈ 902 A", c:5},
+ {t:"Sobrecorriente IDMT", f:"t = Amps IDMT Del × In / (I − In)", e:"4 × 902 / (1 353 − 902) = 8 s", c:5},
+ {t:"MTBF y MTTR", f:"MTBF = horas de operación / n.º de fallas · MTTR = tiempo de reparación / n.º de reparaciones", e:"5 000 h / 10 fallas = 500 h", c:6},
+ {t:"Número de prioridad de riesgo", f:"NPR = S × O × D", e:"8 × 5 × 6 = 240 > 180 → prioritario", c:7},
+ {t:"Disponibilidad", f:"A = MTBF / (MTBF + MTTR)", e:"500 / (500 + 20) = 96,2 %", c:7},
+ {t:"Confiabilidad con tasa constante", f:"R(t) = e^(−t / MTBF)", e:"e^(−100/1 000) = 90,5 %", c:7},
+ {t:"Misión de un grupo de respaldo", f:"R(t) = (1 − p) · e^(−λ·t)", e:"0,985 × e^(−24 × 0,00089) ≈ 96,4 %", c:7},
+ {t:"Redundancia N+1", f:"P(ninguno arranca) = p²", e:"0,015² = 2,25 × 10⁻⁴", c:7},
+ {t:"Vida de batería plomo-ácido", f:"L(T) = L₂₅ · 2^(−(T − 25)/8)", e:"4 años a 33 °C → 2 años", c:7},
+ {t:"Vida del aislamiento (regla de 10 °C)", f:"L = 20 000 h · 2^((T clase − T punto caliente)/10)", e:"Clase H a 160 °C → 80 000 h", c:7},
+ {t:"Calor y enfriamiento", f:"Q = ṁ · cp · ΔT · Q = UA · (T ref − T amb)", e:"UA −15 %: 60 K / 0,85 = 70,6 K → +10,6 °C", c:7},
+ {t:"Residuo y alerta", f:"r = y − ŷ · alerta si r > k·σ 3 días seguidos", e:"k = 3: p³ ≈ 2,5 × 10⁻⁹ por azar", c:8},
+ {t:"EWMA", f:"z = λ·r + (1 − λ)·z₋₁ · límite = L·σ·√(λ/(2 − λ))", e:"λ = 0,2, L = 3 → límite = 1σ", c:8},
+ {t:"Weibull", f:"F(t) = 1 − e^(−(t/η)^β) · B10 = η·(−ln 0,9)^(1/β)", e:"β = 2,2, η = 26 meses → B10 ≈ 9,4 meses", c:8},
+ {t:"Precisión y sensibilidad", f:"Precisión = VP / (VP + FP) · Sensibilidad = VP / (VP + FN)", e:"20 / (20 + 1) ≈ 95 %", c:8}
+];
+function renderFormulas(w){
+  const hide = !!S.fhide, shown = FH;
+  const copies = S.fcopies || 0;
+  w.innerHTML = `<div class="work-head"><div class="eyebrow">Para repetir a mano</div><h2>Hoja de fórmulas</h2>
+    <p class="note">Cópiala a mano 3 veces en la semana. La tercera, de memoria: activa «Modo memoria», escribe cada fórmula en tu cuaderno y luego tócala para comprobar.</p></div>
+    <div class="sec" style="max-width:none">
+    <div class="row"><label class="note"><input type="checkbox" id="fhide" ${hide ? "checked" : ""}> Modo memoria (ocultar fórmulas)</label>
+      <span class="pill">Copias a mano: ${copies}/3${copies >= 3 ? " ✓" : ""}</span><button class="btn ghost" data-fcopy="1">Marqué una copia</button>${copies ? `<button class="btn ghost" data-fcopy="-1">Deshacer</button>` : ""}</div>
+    <div class="formulas">${FORM.map((x, j) => `<div class="fcard"><div class="lab">Cap. ${x.c} · ${esc(x.t)}</div>
+      ${hide && !shown.has(j) ? `<button class="btn ghost" data-fshow="${j}">Mostrar</button>` : `<div class="ff">${esc(x.f)}</div><div class="note">Ejemplo: ${esc(x.e)}</div>`}</div>`).join("")}</div></div>`;
+}
+const FH = new Set();
+
+/* ----- Siguiente paso ----- */
+function nextStep(){
+  const due = dueCards().length;
+  if(due > 0) return {t:`Repaso de hoy: ${due} tarjeta${due > 1 ? "s" : ""} · unos ${Math.max(1, Math.round(due * 0.7))} min`, go:REPASO};
+  if(!S.diag.done) return {t:"Diagnóstico inicial: 3 preguntas · unos 10 min", go:0};
+  for(const c of CH){
+    const k = cap(c.n); if((k.best ?? 0) >= 80) continue;
+    if(!unlocked(c.n)) break;
+    const pos = S.mpos[c.n] || 0, len = (MARCO[c.n] || []).length;
+    if(pos < len) return {t:`Cap. ${c.n} · Marco teórico: sección ${pos+1} de ${len} · unos 5 min`, go:c.n, step:"marco"};
+    if(k.quiz?.best == null) return {t:`Cap. ${c.n} · Preguntas para marcar · unos 10 min`, go:c.n, step:"quiz"};
+    if(k.score != null && k.score < 80) return {t:`Cap. ${c.n} · Reintento de la evaluación`, go:c.n, step:"ret"};
+    return {t:`Cap. ${c.n} · Evaluación (5 preguntas) · unos 20 min`, go:c.n, step:"eva"};
+  }
+  return {t:"Curso completo · mantén el repaso diario para no olvidar", go:REPASO};
+}
+function renderNext(){
+  const s = nextStep(), el = document.getElementById("next");
+  el.innerHTML = `<button class="nextbtn" data-next="1" data-ngo="${s.go}" data-nstep="${s.step || ""}"><span class="eyebrow">Sigue aquí</span><span class="nt">${esc(s.t)} →</span></button>
+    <div class="streak"><span class="pill">🔥 Racha: ${streakNow()} día${streakNow() === 1 ? "" : "s"}</span><span class="pill">Hoy: ${Math.min(dayN(), GOAL)}/${GOAL}${dayN() >= GOAL ? " ✓" : ""}</span>
+    <button class="pill tbtn" id="timer" data-timer="1">${timerText()}</button></div>`;
+}
+
+/* ----- Sesión de 15 minutos ----- */
+const T = {mode:"idle", end:0, id:null};
+const mmss = ms => { const s = Math.max(0, Math.round(ms/1000)); return `${Math.floor(s/60)}:${pad2(s%60)}`; };
+function timerText(){
+  if(T.mode === "focus") return `⏱ Enfoque ${mmss(T.end - Date.now())} · detener`;
+  if(T.mode === "break") return `☕ Pausa ${mmss(T.end - Date.now())} · levántate`;
+  if(T.mode === "done") return "✓ Sesión completa · otra de 15 min";
+  return "⏱ Empezar sesión de 15 min";
+}
+function timerClick(){
+  if(T.mode === "focus" || T.mode === "break"){ clearInterval(T.id); T.mode = "idle"; renderNext(); return; }
+  T.mode = "focus"; T.end = Date.now() + 15*60*1000; clearInterval(T.id);
+  T.id = setInterval(() => {
+    if(Date.now() >= T.end){
+      if(T.mode === "focus"){ T.mode = "break"; T.end = Date.now() + 5*60*1000; S.sessions = (S.sessions || 0) + 1; save(); }
+      else { T.mode = "done"; clearInterval(T.id); }
+    }
+    const b = document.getElementById("timer"); if(b) b.textContent = timerText();
+  }, 1000);
+  renderNext();
+}
+
+/* ---------- Eventos ---------- */
+document.addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  if(b.dataset.go !== undefined){ S.cur = +b.dataset.go; save(); render(); window.scrollTo({top: document.querySelector(".main").offsetTop - 10, behavior:"smooth"}); return; }
+  if(b.dataset.step){ S.step[S.cur] = b.dataset.step; save(); renderWork(); return; }
+  if(b.dataset.next){ const g = b.dataset.ngo; if(g === undefined){ S.cur = 1; S.step[1] = "quiz"; } else { S.cur = +g; if(b.dataset.nstep) S.step[S.cur] = b.dataset.nstep; } if(S.cur === REPASO) R.active = false; save(); render(); window.scrollTo({top: document.querySelector(".main").offsetTop - 10, behavior:"smooth"}); return; }
+  if(b.dataset.timer) return timerClick();
+  if(b.dataset.revshow){ R.phase = "opts"; return renderWork(); }
+  if(b.dataset.revans !== undefined){ const key = R.queue[R.idx], q = cardQ(key).q, oi = +b.dataset.revans; R.ans = oi; R.phase = "fb"; if(oi === q.ok) R.ok++; srsUpdate(cardQ(key).n, cardQ(key).i, oi === q.ok); countActivity(); save(); renderNext(); renderRail(); return renderWork(); }
+  if(b.dataset.revnext){ R.idx++; R.phase = "think"; R.order = null; R.ans = undefined; return renderWork(); }
+  if(b.dataset.revend){ R.active = false; R.queue = []; render(); return; }
+  if(b.dataset.revextra){ startReview(true); return renderWork(); }
+  if(b.dataset.mph){ const n = S.cur, ph = b.dataset.mph; if(ph === "compare"){ const ta = document.getElementById(`rc-${n}-${S.mpos[n]||0}`); const key = `${n}-${S.mpos[n]||0}`; S.recall[key] = {t: ta ? ta.value : "", got: S.recall[key]?.got || []}; save(); } MPH[n] = ph; renderWork(); return; }
+  if(b.dataset.mgo !== undefined){ const n = S.cur; S.mpos[n] = +b.dataset.mgo; MPH[n] = "read"; save(); render(); document.querySelector("#work")?.scrollIntoView?.({block:"start"}); return; }
+  if(b.dataset.mview){ S.mview = b.dataset.mview; save(); return renderWork(); }
+  if(b.dataset.fcopy){ S.fcopies = Math.max(0, (S.fcopies||0) + (+b.dataset.fcopy)); save(); renderRail(); return renderWork(); }
+  if(b.dataset.fshow !== undefined){ FH.add(+b.dataset.fshow); return renderWork(); }
+  if(b.dataset.qshow !== undefined){ const st = quizState(CH[S.cur-1]); st.shown = st.shown || {}; st.shown[+b.dataset.qshow] = true; save(); return renderWork(); }
+  if(b.dataset.quiz){ const [i,oi] = b.dataset.quiz.split(":").map(Number); return answerQuiz(i, oi); }
+  if(b.dataset.quizreset){ const k = cap(S.cur); k.quiz = {best: k.quiz?.best ?? null}; save(); renderWork(); return; }
+  if(b.dataset.appeal){ const [ctx,i] = b.dataset.appeal.split(":"); return appeal(ctx, +i); }
+  if(b.dataset.diag) return gradeDiag();
+  if(b.dataset.soc !== undefined) return socSend(+b.dataset.soc);
+  if(b.dataset.eval) return doEval();
+  if(b.dataset.reeval){ const k = cap(S.cur); k.ev.r = null; save(); renderWork(); return; }
+  if(b.dataset.mkret) return mkRet();
+  if(b.dataset.newret){ cap(S.cur).rt = null; save(); renderWork(); return; }
+  if(b.dataset.graderet !== undefined || b.dataset.gradeRet !== undefined) return gradeRet();
+});
+document.addEventListener("input", e => {
+  const id = e.target.id || ""; let m;
+  if((m = id.match(/^ev-(\d+)-(\d+)$/))){ cap(+m[1]).ev.a[+m[2]] = e.target.value; save(); }
+  else if((m = id.match(/^dg-(\d+)$/))){ S.diag.a[+m[1]] = e.target.value; save(); }
+  else if((m = id.match(/^rc-(\d+)-(\d+)$/))){ const key = `${m[1]}-${m[2]}`; S.recall[key] = {t: e.target.value, got: S.recall[key]?.got || []}; save(); }
+});
+document.addEventListener("change", e => {
+  const t = e.target;
+  if(t.dataset && t.dataset.got !== undefined){ const n = S.cur, key = `${n}-${S.mpos[n]||0}`, rec = S.recall[key] || (S.recall[key] = {t:"", got:[]}), j = +t.dataset.got;
+    rec.got = t.checked ? [...new Set([...rec.got, j])] : rec.got.filter(x => x !== j); save(); renderWork(); return; }
+  if(t.id === "fhide"){ S.fhide = t.checked; FH.clear(); save(); return renderWork(); }
+  if(t.id === "think"){ S.thinkFirst = t.checked; save(); return renderWork(); }
+});
+
+/* ---------- Arranque ---------- */
+function seedSrs(){ for(const [n, k] of Object.entries(S.caps||{})){ const st = k?.quiz; if(!st?.ans || !QUIZ[n]) continue; for(const [i, oi] of Object.entries(st.ans)){ const key = `${n}-${i}`; if(!S.srs[key] && QUIZ[n][i]) S.srs[key] = {box: oi === QUIZ[n][i].ok ? 1 : 0, reps:1, lapses: oi === QUIZ[n][i].ok ? 0 : 1, due: today()}; } } }
+function migrate(){ S.srs = S.srs || {}; seedSrs(); if(S.diag.fb && S.diag.fb.v !== 3){ const avanzo = Object.values(S.caps||{}).some(c=>c && c.best!=null); S.diag.fb = null; if(!avanzo) S.diag.done = false; } }
+try{ if(innerWidth < 700) document.getElementById("boardBox").open = false; }catch(_){}
+try{ const raw = localStorage.getItem("aula-comap"); if(raw){ S = Object.assign(blank(), JSON.parse(raw)); migrate(); } }catch(_){}
+render();
+(async () => {
+  const cl = window.claude;
+  if(!cl?.use){ setPill("Claude", false, "Tutor Claude: no disponible · autoevaluación"); return; }
+  const [db, user, sm] = await Promise.all([cl.use("db"), cl.use("user"), cl.use("sample")]);
+  sample = sm;
+  setPill("Claude", !!sm, sm ? "Tutor Claude: listo" : "Tutor Claude: no disponible · autoevaluación");
+  const id = user ? await user.id() : null;
+  if(db && id){
+    try{
+      const ref = db.collection("data/users/" + id).doc("aula-comap");
+      const snap = await ref.get();
+      if(snap.exists){ const d = snap.data(); S = Object.assign(blank(), JSON.parse(d.estado)); migrate(); }
+      else save();
+      store = {kind:"db", ref};
+      setPill("Save", true, "Progreso: guardado en tu cuenta");
+    }catch(_){ setPill("Save", false, "Progreso: este navegador"); }
+  }
+  render();
+})();
+function setPill(which, on, text){
+  document.getElementById("d"+which).className = "dot " + (on ? "on" : "warn");
+  document.getElementById("t"+which).textContent = text;
+}
+</script>
