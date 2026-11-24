@@ -137,6 +137,11 @@ table.t th{color:var(--ink2);font-weight:600;font-size:.8rem;text-transform:uppe
 .res li.ok{background:var(--good2)}
 .res li.ko{background:var(--bad2)}
 .res .why{display:block;font-family:var(--mono);font-size:.8rem;color:var(--bad);margin-top:.15rem}
+.calidad{margin-top:.7rem;border:1px solid var(--line);border-radius:10px;padding:.55rem .8rem;background:var(--canvas)}
+.calidad h4{margin:0 0 .3rem;font-size:.95rem}
+.calidad ul{margin:.2rem 0;padding-left:1.1rem;font-size:.88rem}
+.calidad li{margin:.35rem 0}
+.calidad p{margin:.2rem 0;font-size:.88rem}
 .guia{margin-top:.8rem;border:1px solid var(--line);border-radius:12px;padding:.7rem .9rem;background:var(--canvas)}
 .guia h4{margin:0 0 .4rem;font-size:1rem}
 .guia details{margin:.3rem 0 .6rem}
@@ -747,6 +752,74 @@ const ESTRATEGIA_GENERAL = `<ol>
   <li><b>Prueba a mano</b> en el simulador antes de Comprobar, y lee el paso que falla.</li>
 </ol>`;
 
+/* ===================== revisión de calidad del programa =====================
+   Las verificaciones de la skill plc-code-analysis (Czarnak/totally-integrated-claude,
+   MIT) que se pueden comprobar sobre un programa LAD sin hardware: lentes de
+   «Compiler Critic» y de las Top 20 Secure PLC Coding Practices. Son
+   observaciones de un revisor, no del corrector: un programa puede pasar el
+   reto y tener algo que mejorar. */
+const SEVERIDAD = { ALTA: 0, MEDIA: 1, BAJA: 2, INFO: 3 };
+function revisarCalidad(prog, tags) {
+  tags = tags || [];
+  const en = new Engine([], tags), k = x => en.sym(x), hall = [];
+  const literal = x => { const t = String(x == null ? "" : x).trim(); return !t || /^[+-]?\d+$/.test(t) || /^T(IME)?#/i.test(t) || /^(true|false)$/i.test(t); };
+  const esc_ = x => nombreOp(x, tags);
+  const escrituras = {}, lecturas = {}, instancias = {}, flancos = {};
+  const anota = (mapa, x, i, tipo) => { if (literal(x)) return; const a = k(x); (mapa[a] = mapa[a] || []).push({ seg: i + 1, tipo }); };
+  prog.forEach((sg, i) => walkEls([sg], e => {
+    if (["COIL", "NCOIL", "SET", "RESET"].includes(e.k)) anota(escrituras, e.op, i, e.k);
+    if (["NO", "NC", "P", "N"].includes(e.k)) anota(lecturas, e.op, i, e.k);
+    if (e.k === "P" || e.k === "N") { anota(escrituras, e.mem, i, "FLANCO"); const m = k(e.mem); (flancos[m] = flancos[m] || []).push(i + 1); }
+    if (e.k === "CMP") { anota(lecturas, e.a, i, "CMP"); anota(lecturas, e.b, i, "CMP"); }
+    if (e.k === "MOVE") { anota(lecturas, e.in, i, "MOVE"); anota(escrituras, e.out, i, "MOVE"); }
+    if (["ADD", "SUB", "MUL", "DIV"].includes(e.k)) { anota(lecturas, e.in1, i, e.k); anota(lecturas, e.in2, i, e.k); anota(escrituras, e.out, i, e.k); }
+    if (e.k === "CTU") anota(lecturas, e.r, i, "R"); if (e.k === "CTD") anota(lecturas, e.ld, i, "LD");
+    if (KINDS[e.k] && KINDS[e.k].box && e.name) { const n = k(e.name); (instancias[n] = instancias[n] || []).push({ seg: i + 1, k: e.k }); }
+  }));
+  const add = (sev, titulo, donde, detalle, ref) => hall.push({ sev, titulo, donde, detalle, ref });
+  const segs = l => "segmento" + (l.length > 1 ? "s " : " ") + [...new Set(l)].join(", ");
+
+  for (const a in escrituras) {
+    const w = escrituras[a], tipos = new Set(w.map(x => x.tipo));
+    if (/^%I/.test(a)) add("ALTA", "Se escribe en una entrada", segs(w.map(x => x.seg)), `${esc_(a)} es una entrada: su valor lo pone el campo en cada ciclo y lo que escriba el programa se pierde.`, "IEC 61131‑3 · Compiler Critic");
+    const bobinas = w.filter(x => x.tipo === "COIL" || x.tipo === "NCOIL");
+    if (new Set(bobinas.map(x => x.seg)).size > 1) add("ALTA", "Doble asignación de una bobina", segs(bobinas.map(x => x.seg)), `${esc_(a)} se escribe con bobina en más de un segmento: solo vale el último, y los anteriores no hacen nada.`, "Compiler Critic · buena práctica TIA Portal");
+    if (bobinas.length && (tipos.has("SET") || tipos.has("RESET"))) add("MEDIA", "Bobina y Set/Reset sobre la misma señal", segs(w.map(x => x.seg)), `${esc_(a)} se escribe con bobina y también con Set/Reset: la bobina pisa al Set en cada ciclo.`, "Compiler Critic");
+    if (tipos.has("SET") && !tipos.has("RESET") && !bobinas.length) add("MEDIA", "Set sin Reset", segs(w.filter(x => x.tipo === "SET").map(x => x.seg)), `${esc_(a)} se pone a 1 con Set y ningún segmento la vuelve a 0: queda memorizada hasta reiniciar el PLC.`, "Top 20 #2 (modos y estados)");
+    if (/^%M/.test(a) && !lecturas[a] && !w.every(x => x.tipo === "FLANCO")) add("BAJA", "Marca que se escribe y nadie lee", segs(w.map(x => x.seg)), `${esc_(a)} se escribe pero ningún contacto ni caja la usa.`, "Top 20 #1 (código ordenado)");
+  }
+  for (const m in flancos) {
+    if (flancos[m].length > 1) add("ALTA", "Bit de flanco compartido", segs(flancos[m]), `${esc_(m)} es la marca de flanco de más de un contacto P/N: los flancos se pisan y se pierden pulsos.`, "Compiler Critic");
+    const otros = (escrituras[m] || []).filter(x => x.tipo !== "FLANCO");
+    if (otros.length) add("ALTA", "Bit de flanco escrito por el programa", segs(otros.map(x => x.seg)), `${esc_(m)} guarda el estado anterior de un flanco y además lo escribe otro segmento: el flanco deja de funcionar.`, "Compiler Critic");
+  }
+  for (const n in instancias) if (instancias[n].length > 1) add("ALTA", "Instancia de temporizador o contador reutilizada", segs(instancias[n].map(x => x.seg)), `«${n}» se usa en más de una caja: comparten el mismo DB de instancia y se pisan entre sí.`, "Compiler Critic · IEC 61131‑3");
+  const entradas = new Set(tags.filter(t => /^%I/i.test(t.addr)).map(t => t.addr.toUpperCase()));
+  for (const a in lecturas) {
+    if (/^%[QM]/.test(a) && !escrituras[a]) add("MEDIA", "Se lee una señal que nada escribe", segs(lecturas[a].map(x => x.seg)), `${esc_(a)} se usa como condición pero ningún segmento la escribe: vale siempre 0.`, "Compiler Critic");
+    const d = a.lastIndexOf(".");
+    if (a[0] !== "%" && d > 0 && !instancias[a.slice(0, d)]) add("MEDIA", "Se lee una instancia que no existe", segs(lecturas[a].map(x => x.seg)), `${esc_(a)} pertenece a «${a.slice(0, d)}», que no aparece en ninguna caja: ¿error de tipeo?`, "Compiler Critic");
+    if (tags.length && a[0] === "%" && !tags.some(t => t.addr.toUpperCase() === a)) add("BAJA", "Dirección sin nombre en la tabla de variables", segs(lecturas[a].map(x => x.seg)), `${a} no tiene nombre simbólico: en TIA Portal conviene declararla.`, "Buena práctica TIA Portal");
+  }
+  /* Top 20 #11: integridad de las señales de campo. Una analógica 4‑20 mA con rotura de
+     hilo lee > 27648: si el programa la usa sin vigilar el rango, decide con un valor falso. */
+  /* Solo la señal en bruto (0…27648). Si la etiqueta trae unidad (kW, Hz…), el valor ya llega
+     convertido de un analizador o de otro equipo y el rango se vigila allí. */
+  tags.filter(t => t.type === "analog" && /^%IW/i.test(t.addr) && !t.unit).forEach(t => {
+    const a = t.addr.toUpperCase(), usos = lecturas[a]; if (!usos) return;
+    let vigilada = false;
+    walkEls(prog, e => { if (e.k === "CMP" && (k(e.a) === a || k(e.b) === a) && [e.a, e.b].some(v => /^\d+$/.test(String(v).trim()) && +v >= 27648)) vigilada = true; });
+    if (!vigilada) add("INFO", "Entrada analógica sin vigilancia de rango", segs(usos.map(x => x.seg)), `${esc_(a)} se usa sin comprobar si se salió de rango (rotura de hilo o rebase, valor > 27648). En planta, eso debería dar una alarma y llevar el equipo a un estado seguro.`, "Top 20 #11 (integridad de E/S)");
+  });
+  return hall.sort((x, y) => SEVERIDAD[x.sev] - SEVERIDAD[y.sev]);
+}
+function htmlCalidad(h) {
+  const color = { ALTA: "var(--bad)", MEDIA: "#B07800", BAJA: "var(--ink2)", INFO: "var(--acc)" };
+  return `<div class="calidad"><h4>🔍 Revisión de calidad <span class="sub" style="font-weight:400">· reglas de revisión de código PLC</span></h4>` +
+    (h.length ? `<ul>${h.map(x => `<li><b style="color:${color[x.sev]}">${x.sev}</b> · <b>${esc(x.titulo)}</b> <span class="sub">(${esc(x.donde)})</span><br>${x.detalle}<br><span class="sub" style="font-size:.78rem">${esc(x.ref)}</span></li>`).join("")}</ul>`
+      : `<p>Sin observaciones: ni dobles asignaciones, ni Set sin Reset, ni instancias o flancos compartidos, ni señales sin escribir.</p>`) + `</div>`;
+}
+
 /* ===================== edición de la red ===================== */
 function normalize(s) {
   for (let i = 0; i < s.items.length; i++) {
@@ -1163,6 +1236,7 @@ function viewLesson(id) {
     $(".b-chk", rb).onclick = () => {
       let g; try { g = grade(R, sim.prog); if (g.ok) { const g2 = grade(R, sim.prog, { irregular: true }); if (!g2.ok) { g = g2; g.irregular = true; } } } catch (e) { $(".out", rb).innerHTML = `<div class="banner ko">Error al simular: ${esc(e.message)}</div>`; return; }
       $(".out", rb).innerHTML = `<ul class="res">${g.res.map((r, k) => `<li class="${r.pass ? "ok" : "ko"}">${r.pass ? "✓" : "✗"} Paso ${k + 1}: ${esc(r.d)}${r.bad ? `<span class="why">${esc(r.bad)}</span>` : ""}${r.wrong.map(w => `<span class="why">${esc(w.n)}: esperaba ${esc(w.exp)}, el programa da ${w.got}</span>`).join("")}</li>`).join("")}</ul>
+        ${htmlCalidad(revisarCalidad(sim.prog, R.tags))}
         <div class="banner ${g.ok ? "ok" : "ko"}">${g.ok ? "¡Reto superado! Todos los pasos se cumplen." : `Falla en el paso ${g.res.length} de ${g.total}${g.irregular ? " cuando los ciclos de scan no duran siempre lo mismo (como en un PLC real)" : ""}. Revisa tu lógica y vuelve a probar.`}</div>`;
       if (g.ok) { const first = !ST.reto[id]; ST.reto[id] = true; save(); setSt(); actividad(); tabs.forEach(b => { if (b.dataset.t === "reto") b.textContent = "Reto ✓"; }); if (first) toast("Reto superado ✓"); }
     };
@@ -1214,9 +1288,10 @@ function viewLab() {
   const def = [SEG("Escribe aquí tu programa", S(P([NO("%I0.0")], [NO("%Q0.0")]), NC("%I0.1"), COIL("%Q0.0")))];
   $("#main").innerHTML = `<div class="crumbs"><a href="#/">Inicio</a> › Laboratorio</div><h1 style="margin:.2rem 0">Laboratorio libre</h1>
     <p class="lead">Un OB1 en blanco para practicar. Las entradas y salidas aparecen solas al usarlas (los pulsadores nuevos se tratan como NA). Se guarda en este equipo.</p>
-    <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin:.8rem 0"><button class="btn ghost sm b-new">Programa nuevo</button><button class="btn ghost sm b-exp">Exportar .json</button><label class="btn ghost sm" style="cursor:pointer">Importar .json<input type="file" accept=".json,application/json" hidden class="b-imp"></label></div>
-    <div class="simbox"></div>`;
+    <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin:.8rem 0"><button class="btn ghost sm b-new">Programa nuevo</button><button class="btn ghost sm b-cal">🔍 Revisar calidad</button><button class="btn ghost sm b-exp">Exportar .json</button><label class="btn ghost sm" style="cursor:pointer">Importar .json<input type="file" accept=".json,application/json" hidden class="b-imp"></label></div>
+    <div class="calbox"></div><div class="simbox"></div>`;
   const sim = Sim($(".simbox"), { prog: ST.lab ? clone(ST.lab) : def, tags: [], editable: true, edit: true, onChange: p => { ST.lab = p; save(); } });
+  $(".b-cal").onclick = () => { $(".calbox").innerHTML = htmlCalidad(revisarCalidad(sim.prog, [])); };
   $(".b-new").onclick = () => { if (!confirm("¿Empezar un programa vacío?")) return; const p = [SEG("", S())]; ST.lab = p; save(); sim.load(p, []); };
   $(".b-exp").onclick = () => {
     const txt = JSON.stringify({ ladderlab: 1, prog: sim.prog }, null, 1), nombre = "programa-ladder-" + hoy() + ".json";

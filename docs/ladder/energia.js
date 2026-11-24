@@ -217,6 +217,15 @@ desaparecida: así el operador sabe qué pasó y el grupo no rearranca solo con 
 el aire es menos denso: el motor y el alternador entregan menos potencia que la de placa (<i>derrateo</i>, según la
 curva del fabricante) y el enfriamiento es menos eficaz. Los umbrales de carga del programa deben usar la potencia
 <b>derrateada</b>, no la de catálogo.</div>
+<table class="t">
+<tr><th colspan="2">Ejemplo ilustrativo de derrateo por altura (ISO 8528‑1)</th></tr>
+<tr><td>Potencia de placa (prime)</td><td>1 000 kW</td></tr>
+<tr><td>Altura del sitio</td><td>3 500 m</td></tr>
+<tr><td>Regla usual de catálogo: 3 % por cada 300 m sobre 1 000 m</td><td>(3 500 − 1 000) / 300 × 3 % ≈ 25 %</td></tr>
+<tr><td>Potencia disponible en el sitio</td><td><b>≈ 750 kW</b></td></tr>
+</table>
+<p style="font-size:.88rem">Es solo un ejemplo para ver el orden de magnitud: el valor que manda es la <b>curva del fabricante</b> para
+ese motor y esa temperatura ambiente. Y kW no es kVA: un grupo de 1 000 kW a factor de potencia 0,8 es de 1 250 kVA.</p>
 <p>El ejemplo tiene el error clásico: la protección de presión <b>no está inhibida</b>. Arranca el grupo y mira el HMI.</p>`,
   ejemplo: { planta: "grupo", tags: [TAG("%I0.0", "Arrancar", "push"), TAG("%I0.1", "Parar", "pushNC", "NC cableado"), TAG("%I0.2", "Presion_OK", "plant", "pulsa = simular falla", { falla: 1 }), TAG("%Q0.0", "Combustible"), TAG("%Q0.1", "Alarma")],
     prog: [SEG("Disparo por baja presión (¡sin inhibición!)", S(NO("%Q0.0"), NC("%I0.2"), SET("%Q0.1"))),
@@ -273,7 +282,9 @@ no cerrar contra un motor que aún gira desfasado. Los equipos de transferencia 
 <b>IEC 60947‑6‑1</b> (y UL 1008 en Norteamérica).</p>
 <p>Variantes: <b>transición cerrada</b> (sincroniza y hace un paralelo breve, menos de 100 ms, sin corte), y
 retransferencia manual. En sistemas de emergencia, normas como NFPA 110 exigen que el grupo tome carga en un
-tiempo máximo (10 s para la clase más exigente), lo que limita los retardos que puedes programar.</p>
+tiempo máximo (10 s para la clase más exigente, el «Tipo 10»), lo que limita los retardos que puedes programar.
+Haz la cuenta con el reto de esta lección: 3 s de confirmación + 3 s hasta que el grupo da tensión + unos 0,2 s de maniobra
+≈ <b>6,2 s</b>, dentro de los 10 s. Si alargas la confirmación a 5 s y el grupo tarda 6 s, ya no cumples.</p>
 <p>En el ejemplo ya está la detección de falla con confirmación: apaga la red unos instantes y luego más de 3 s. Si devuelves la red al instante, el HMI muestra la <b>tensión residual</b> de la barra decayendo.</p>`,
   ejemplo: { planta: "tta", tags: [TAG("%I0.0", "Red_OK", "switch", "", { def: 1 }), TAG("%I0.1", "Grupo_OK", "plant"), TAG("%I0.2", "52R_Cerrado", "plant"), TAG("%I0.3", "52G_Cerrado", "plant"), TAG("%Q0.0", "Arranque_Grupo"), TAG("%Q0.1", "Cerrar_52R"), TAG("%Q0.2", "Cerrar_52G"), TAG("%M0.0", "Falla_Red_Conf")],
     prog: [SEG("Falla de red confirmada (3 s)", S(NC("%I0.0"), TON("T_FallaRed", "T#3s"), COIL("%M0.0"))),
@@ -323,7 +334,12 @@ las dos tensiones deben ser prácticamente iguales. Hay que igualar <b>cuatro</b
 <p>Las ventanas dependen del tamaño. <b>IEEE 1547‑2018</b> (tabla de límites de sincronización) admite
 Δf 0,3 Hz, ΔV 10 % y Δφ 20° hasta 500 kVA; 0,2 Hz, 5 % y 15° de 500 a 1 500 kVA; y <b>0,1 Hz, 3 % y 10°</b>
 por encima de 1 500 kVA. Para máquinas síncronas grandes, IEEE C50.12/C50.13 piden aún menos deslizamiento
-(≈ 0,067 Hz). Los grupos de una planta minera suelen superar 1 500 kVA: el reto usa la ventana más estricta.</p>
+(≈ 0,067 Hz).</p>
+<p><b>Dos precisiones.</b> IEEE 1547 rige la conexión de generación distribuida <b>con la red</b>; entre grupos en una
+barra aislada se usan las mismas ventanas como <b>buena práctica</b>, junto con los ajustes del relé 25 que indique el
+fabricante. Y las bandas van en <b>kVA</b>: un grupo de 1 000 kW a factor de potencia 0,8 es de 1 250 kVA, en la banda
+de 500 a 1 500 kVA (0,2 Hz, 5 %, 15°). El reto usa la ventana más estricta (0,1 Hz, 3 %, 10°), que es <b>conservadora</b>:
+sirve para cualquier tamaño.</p>
 <h3>Cómo se ve en el sincronoscopio</h3>
 <p>Con Δf ≠ 0 el ángulo entre G2 y la barra <b>gira</b>: una vuelta cada 1/Δf segundos. Si G2 va más rápido, la aguja
 gira hacia “rápido”. Se busca que G2 vaya <b>ligeramente más rápido</b> (deslizamiento positivo): así, al cerrar,
@@ -375,8 +391,10 @@ cierra cuando la aguja esté en la zona verde. Si cierras fuera de fase, el mode
 combustible y acumula hollín (<i>wet stacking</i>). La planta arranca el segundo grupo <b>solo cuando la demanda lo pide</b>
 y lo para cuando sobra, con <b>histéresis</b> y <b>temporizaciones</b> para no arrancar y parar a cada pico:</p>
 <ul>
-  <li><b>Arranque de G2:</b> carga &gt; 80 % de lo que hay en línea, sostenida unos segundos.</li>
-  <li><b>Parada de G2:</b> carga &lt; ~35 % del total en línea, sostenida más tiempo.</li>
+  <li><b>Arranque de G2:</b> carga &gt; 80 % de lo que hay en línea, sostenida unos segundos. El 80 % no es casual: es el
+  límite superior de carga en régimen que se recomienda para un grupo (ISO 8528‑1, potencia derrateada).</li>
+  <li><b>Parada de G2:</b> carga &lt; ~35 % del total en línea, sostenida más tiempo. Por debajo de ~30 % un diésel se
+  ensucia (<i>wet stacking</i>): por eso no se baja más.</li>
   <li>Entre los dos umbrales, <b>se mantiene</b> lo que hay (Set/Reset).</li>
 </ul>
 <h3>Deslastre de cargas</h3>
@@ -389,7 +407,7 @@ desde el analizador o el controlador del grupo.</div>`,
   ejemplo: { planta: "demanda", tags: [TAG("%IW64", "Carga_kW", "analog", "", { min: 0, max: 2000, unit: "kW" }), TAG("%I0.0", "G2_En_Barra", "plant"), TAG("%Q0.0", "Pedir_G2"), TAG("%Q0.1", "Deslastre"), TAG("%Q0.2", "Aviso_80pct")],
     prog: [SEG("Aviso: G1 por encima del 80 %", S(CMP(">", "%IW64", "800"), COIL("%Q0.2"))), SEG("Pedir G2 a mano (complétalo en el reto)", S(CMP(">", "%IW64", "1500"), COIL("%Q0.0")))] },
   reto: { planta: "demanda",
-    enunciado: "G1 (1000 kW) siempre en servicio. La demanda llega en <code>\"Carga_kW\" %IW64</code>. <b>Pedir G2</b> (Set de <code>%Q0.0</code>) cuando la carga sea <b>&gt; 800 kW durante 10 s</b>. <b>Liberar G2</b> (Reset) cuando sea <b>&lt; 700 kW durante 15 s</b>. <b>Deslastre</b> <code>%Q0.1</code> inmediato si la carga es <b>&gt; 1000 kW</b> y G2 aún no está en barra (<code>\"G2_En_Barra\" %I0.0</code>). <i>La planta tarda 4 s en arrancar y sincronizar G2.</i>",
+    enunciado: "G1 (1000 kW <b>ya derrateados</b> para la altura del sitio) siempre en servicio. La demanda llega en <code>\"Carga_kW\" %IW64</code>. <b>Pedir G2</b> (Set de <code>%Q0.0</code>) cuando la carga sea <b>&gt; 800 kW durante 10 s</b>. <b>Liberar G2</b> (Reset) cuando sea <b>&lt; 700 kW durante 15 s</b>. <b>Deslastre</b> <code>%Q0.1</code> inmediato si la carga es <b>&gt; 1000 kW</b> y G2 aún no está en barra (<code>\"G2_En_Barra\" %I0.0</code>). <i>La planta tarda 4 s en arrancar y sincronizar G2.</i>",
     tags: [TAG("%IW64", "Carga_kW", "analog", "", { min: 0, max: 2000, unit: "kW" }), TAG("%I0.0", "G2_En_Barra", "plant"), TAG("%Q0.0", "Pedir_G2"), TAG("%Q0.1", "Deslastre")],
     inicio: [SEG("Pedir G2 por carga alta sostenida", S()), SEG("Liberar G2 por carga baja sostenida", S()), SEG("Deslastre de cargas no esenciales", S())],
     solucion: [SEG("Pedir G2 por carga alta sostenida", S(CMP(">", "%IW64", "800"), TON("T_Alta", "T#10s"), SET("%Q0.0"))),

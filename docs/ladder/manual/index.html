@@ -249,6 +249,18 @@ parada) y, en la ruta minera, las <b>fallas del modelo de planta</b>:</p>
   <li><b>Copiar los pasos vistos a mi programa</b>, para seguir tú con el resto.</li>
 </ul>
 <p>Usar la guía no quita experiencia: lo que no suma XP ni insignia es cargar la solución completa con <i>Ver solución</i>.</p>
+<h3>Revisión de calidad</h3>
+<p>Al pulsar <b>Comprobar</b>, debajo del resultado aparece la <b>🔍 Revisión de calidad</b>: lo que un revisor experto le
+señalaría a tu programa aunque el reto pase. Usa las reglas de la skill de revisión de código PLC
+<i>plc-code-analysis</i> (proyecto abierto <i>totally-integrated-claude</i>) que se pueden comprobar en LAD:</p>
+<table>
+<tr><th>Nivel</th><th>Qué detecta</th></tr>
+<tr><td><b>ALTA</b></td><td>Una bobina escrita en dos segmentos, escribir en una entrada, un temporizador o contador usado en dos cajas, un bit de flanco compartido o escrito por otro segmento</td></tr>
+<tr><td><b>MEDIA</b></td><td>Set sin Reset, bobina y Set/Reset sobre la misma señal, una señal que se lee pero nadie escribe, una instancia que no existe</td></tr>
+<tr><td><b>BAJA</b></td><td>Una marca que se escribe y nadie lee, una dirección sin nombre en la tabla de variables</td></tr>
+<tr><td><b>INFO</b></td><td>Una entrada analógica en bruto usada sin vigilar si se salió de rango (rotura de hilo)</td></tr>
+</table>
+<p>En el <b>Laboratorio</b> está el botón <b>🔍 Revisar calidad</b> para revisar cualquier programa tuyo.</p>
 <figure class="mid"><img src="m17-guia.jpg" alt="Guía del reto de mando manual: dos pasos con su diagrama LAD, la explicación y el porqué"><figcaption>La guía del reto de mando manual, en el paso 2 de 5.</figcaption></figure>
 <p class="warn">Si el modelo de planta registra una falla mientras pruebas a mano (por ejemplo, un cierre fuera de fase), el
 simulador lo avisa en el HMI y en la barra de la CPU. Pulsa <b>Reiniciar</b> para borrarla.</p>

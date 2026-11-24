@@ -135,6 +135,11 @@ table.t th{color:var(--ink2);font-weight:600;font-size:.8rem;text-transform:uppe
 .res li.ok{background:var(--good2)}
 .res li.ko{background:var(--bad2)}
 .res .why{display:block;font-family:var(--mono);font-size:.8rem;color:var(--bad);margin-top:.15rem}
+.calidad{margin-top:.7rem;border:1px solid var(--line);border-radius:10px;padding:.55rem .8rem;background:var(--canvas)}
+.calidad h4{margin:0 0 .3rem;font-size:.95rem}
+.calidad ul{margin:.2rem 0;padding-left:1.1rem;font-size:.88rem}
+.calidad li{margin:.35rem 0}
+.calidad p{margin:.2rem 0;font-size:.88rem}
 .guia{margin-top:.8rem;border:1px solid var(--line);border-radius:12px;padding:.7rem .9rem;background:var(--canvas)}
 .guia h4{margin:0 0 .4rem;font-size:1rem}
 .guia details{margin:.3rem 0 .6rem}
@@ -1198,6 +1203,15 @@ desaparecida: así el operador sabe qué pasó y el grupo no rearranca solo con 
 el aire es menos denso: el motor y el alternador entregan menos potencia que la de placa (<i>derrateo</i>, según la
 curva del fabricante) y el enfriamiento es menos eficaz. Los umbrales de carga del programa deben usar la potencia
 <b>derrateada</b>, no la de catálogo.</div>
+<table class="t">
+<tr><th colspan="2">Ejemplo ilustrativo de derrateo por altura (ISO 8528‑1)</th></tr>
+<tr><td>Potencia de placa (prime)</td><td>1 000 kW</td></tr>
+<tr><td>Altura del sitio</td><td>3 500 m</td></tr>
+<tr><td>Regla usual de catálogo: 3 % por cada 300 m sobre 1 000 m</td><td>(3 500 − 1 000) / 300 × 3 % ≈ 25 %</td></tr>
+<tr><td>Potencia disponible en el sitio</td><td><b>≈ 750 kW</b></td></tr>
+</table>
+<p style="font-size:.88rem">Es solo un ejemplo para ver el orden de magnitud: el valor que manda es la <b>curva del fabricante</b> para
+ese motor y esa temperatura ambiente. Y kW no es kVA: un grupo de 1 000 kW a factor de potencia 0,8 es de 1 250 kVA.</p>
 <p>El ejemplo tiene el error clásico: la protección de presión <b>no está inhibida</b>. Arranca el grupo y mira el HMI.</p>`,
   ejemplo: { planta: "grupo", tags: [TAG("%I0.0", "Arrancar", "push"), TAG("%I0.1", "Parar", "pushNC", "NC cableado"), TAG("%I0.2", "Presion_OK", "plant", "pulsa = simular falla", { falla: 1 }), TAG("%Q0.0", "Combustible"), TAG("%Q0.1", "Alarma")],
     prog: [SEG("Disparo por baja presión (¡sin inhibición!)", S(NO("%Q0.0"), NC("%I0.2"), SET("%Q0.1"))),
@@ -1254,7 +1268,9 @@ no cerrar contra un motor que aún gira desfasado. Los equipos de transferencia 
 <b>IEC 60947‑6‑1</b> (y UL 1008 en Norteamérica).</p>
 <p>Variantes: <b>transición cerrada</b> (sincroniza y hace un paralelo breve, menos de 100 ms, sin corte), y
 retransferencia manual. En sistemas de emergencia, normas como NFPA 110 exigen que el grupo tome carga en un
-tiempo máximo (10 s para la clase más exigente), lo que limita los retardos que puedes programar.</p>
+tiempo máximo (10 s para la clase más exigente, el «Tipo 10»), lo que limita los retardos que puedes programar.
+Haz la cuenta con el reto de esta lección: 3 s de confirmación + 3 s hasta que el grupo da tensión + unos 0,2 s de maniobra
+≈ <b>6,2 s</b>, dentro de los 10 s. Si alargas la confirmación a 5 s y el grupo tarda 6 s, ya no cumples.</p>
 <p>En el ejemplo ya está la detección de falla con confirmación: apaga la red unos instantes y luego más de 3 s. Si devuelves la red al instante, el HMI muestra la <b>tensión residual</b> de la barra decayendo.</p>`,
   ejemplo: { planta: "tta", tags: [TAG("%I0.0", "Red_OK", "switch", "", { def: 1 }), TAG("%I0.1", "Grupo_OK", "plant"), TAG("%I0.2", "52R_Cerrado", "plant"), TAG("%I0.3", "52G_Cerrado", "plant"), TAG("%Q0.0", "Arranque_Grupo"), TAG("%Q0.1", "Cerrar_52R"), TAG("%Q0.2", "Cerrar_52G"), TAG("%M0.0", "Falla_Red_Conf")],
     prog: [SEG("Falla de red confirmada (3 s)", S(NC("%I0.0"), TON("T_FallaRed", "T#3s"), COIL("%M0.0"))),
@@ -1304,7 +1320,12 @@ las dos tensiones deben ser prácticamente iguales. Hay que igualar <b>cuatro</b
 <p>Las ventanas dependen del tamaño. <b>IEEE 1547‑2018</b> (tabla de límites de sincronización) admite
 Δf 0,3 Hz, ΔV 10 % y Δφ 20° hasta 500 kVA; 0,2 Hz, 5 % y 15° de 500 a 1 500 kVA; y <b>0,1 Hz, 3 % y 10°</b>
 por encima de 1 500 kVA. Para máquinas síncronas grandes, IEEE C50.12/C50.13 piden aún menos deslizamiento
-(≈ 0,067 Hz). Los grupos de una planta minera suelen superar 1 500 kVA: el reto usa la ventana más estricta.</p>
+(≈ 0,067 Hz).</p>
+<p><b>Dos precisiones.</b> IEEE 1547 rige la conexión de generación distribuida <b>con la red</b>; entre grupos en una
+barra aislada se usan las mismas ventanas como <b>buena práctica</b>, junto con los ajustes del relé 25 que indique el
+fabricante. Y las bandas van en <b>kVA</b>: un grupo de 1 000 kW a factor de potencia 0,8 es de 1 250 kVA, en la banda
+de 500 a 1 500 kVA (0,2 Hz, 5 %, 15°). El reto usa la ventana más estricta (0,1 Hz, 3 %, 10°), que es <b>conservadora</b>:
+sirve para cualquier tamaño.</p>
 <h3>Cómo se ve en el sincronoscopio</h3>
 <p>Con Δf ≠ 0 el ángulo entre G2 y la barra <b>gira</b>: una vuelta cada 1/Δf segundos. Si G2 va más rápido, la aguja
 gira hacia “rápido”. Se busca que G2 vaya <b>ligeramente más rápido</b> (deslizamiento positivo): así, al cerrar,
@@ -1356,8 +1377,10 @@ cierra cuando la aguja esté en la zona verde. Si cierras fuera de fase, el mode
 combustible y acumula hollín (<i>wet stacking</i>). La planta arranca el segundo grupo <b>solo cuando la demanda lo pide</b>
 y lo para cuando sobra, con <b>histéresis</b> y <b>temporizaciones</b> para no arrancar y parar a cada pico:</p>
 <ul>
-  <li><b>Arranque de G2:</b> carga &gt; 80 % de lo que hay en línea, sostenida unos segundos.</li>
-  <li><b>Parada de G2:</b> carga &lt; ~35 % del total en línea, sostenida más tiempo.</li>
+  <li><b>Arranque de G2:</b> carga &gt; 80 % de lo que hay en línea, sostenida unos segundos. El 80 % no es casual: es el
+  límite superior de carga en régimen que se recomienda para un grupo (ISO 8528‑1, potencia derrateada).</li>
+  <li><b>Parada de G2:</b> carga &lt; ~35 % del total en línea, sostenida más tiempo. Por debajo de ~30 % un diésel se
+  ensucia (<i>wet stacking</i>): por eso no se baja más.</li>
   <li>Entre los dos umbrales, <b>se mantiene</b> lo que hay (Set/Reset).</li>
 </ul>
 <h3>Deslastre de cargas</h3>
@@ -1370,7 +1393,7 @@ desde el analizador o el controlador del grupo.</div>`,
   ejemplo: { planta: "demanda", tags: [TAG("%IW64", "Carga_kW", "analog", "", { min: 0, max: 2000, unit: "kW" }), TAG("%I0.0", "G2_En_Barra", "plant"), TAG("%Q0.0", "Pedir_G2"), TAG("%Q0.1", "Deslastre"), TAG("%Q0.2", "Aviso_80pct")],
     prog: [SEG("Aviso: G1 por encima del 80 %", S(CMP(">", "%IW64", "800"), COIL("%Q0.2"))), SEG("Pedir G2 a mano (complétalo en el reto)", S(CMP(">", "%IW64", "1500"), COIL("%Q0.0")))] },
   reto: { planta: "demanda",
-    enunciado: "G1 (1000 kW) siempre en servicio. La demanda llega en <code>\"Carga_kW\" %IW64</code>. <b>Pedir G2</b> (Set de <code>%Q0.0</code>) cuando la carga sea <b>&gt; 800 kW durante 10 s</b>. <b>Liberar G2</b> (Reset) cuando sea <b>&lt; 700 kW durante 15 s</b>. <b>Deslastre</b> <code>%Q0.1</code> inmediato si la carga es <b>&gt; 1000 kW</b> y G2 aún no está en barra (<code>\"G2_En_Barra\" %I0.0</code>). <i>La planta tarda 4 s en arrancar y sincronizar G2.</i>",
+    enunciado: "G1 (1000 kW <b>ya derrateados</b> para la altura del sitio) siempre en servicio. La demanda llega en <code>\"Carga_kW\" %IW64</code>. <b>Pedir G2</b> (Set de <code>%Q0.0</code>) cuando la carga sea <b>&gt; 800 kW durante 10 s</b>. <b>Liberar G2</b> (Reset) cuando sea <b>&lt; 700 kW durante 15 s</b>. <b>Deslastre</b> <code>%Q0.1</code> inmediato si la carga es <b>&gt; 1000 kW</b> y G2 aún no está en barra (<code>\"G2_En_Barra\" %I0.0</code>). <i>La planta tarda 4 s en arrancar y sincronizar G2.</i>",
     tags: [TAG("%IW64", "Carga_kW", "analog", "", { min: 0, max: 2000, unit: "kW" }), TAG("%I0.0", "G2_En_Barra", "plant"), TAG("%Q0.0", "Pedir_G2"), TAG("%Q0.1", "Deslastre")],
     inicio: [SEG("Pedir G2 por carga alta sostenida", S()), SEG("Liberar G2 por carga baja sostenida", S()), SEG("Deslastre de cargas no esenciales", S())],
     solucion: [SEG("Pedir G2 por carga alta sostenida", S(CMP(">", "%IW64", "800"), TON("T_Alta", "T#10s"), SET("%Q0.0"))),
@@ -2191,7 +2214,7 @@ var GUIAS_BASE = {
   secuencias: { estrategia: "<p>Un solo TON de ciclo que se reinicia solo (NC de su propia Q) y <b>ventanas de tiempo</b> sobre su ET: verde 0–4 s, ámbar 4–5 s, rojo 5–8 s. Cada luz es un segmento con sus comparadores en serie.</p>",
     teoria: "<p>«Entre 4 y 5 s» son dos comparadores en serie: ET ≥ T#4s y ET &lt; T#5s. Las ventanas no se tocan, así que nunca hay dos luces a la vez.</p>" },
   analogicas: { estrategia: "<p>Histéresis con <b>Set/Reset</b>: Set por debajo del umbral bajo, Reset por encima del alto. Entre los dos no se cumple ninguno y la bomba conserva lo que estaba haciendo.</p>",
-    teoria: "<p>La señal llega en bruto (0…27648 = 0…100 %). 20 % = 5530 y 80 % = 22118. Con un solo umbral la bomba arrancaría y pararía sin fin por el ruido del sensor.</p>" }
+    teoria: "<p>La señal llega en bruto (0…27648 = 0…100 %). 20 % = 5530 y 80 % = 22118. Con un solo umbral la bomba arrancaría y pararía sin fin por el ruido del sensor.</p><p><b>La revisión de calidad te dejará una observación INFO</b>, y tiene razón: si el transmisor se corta, la entrada lee más de 27648 y el programa creería que el tanque está lleno. En planta se agrega un segmento con <code>CMP &gt; %IW64 27648</code> que da una alarma de «sensor fuera de rango» y lleva la bomba a un estado seguro. El reto no lo exige para mantenerlo simple.</p>" }
 };
 LECCIONES.forEach(function (L) { if (L.reto && !L.reto.guia && GUIAS_BASE[L.id]) L.reto.guia = GUIAS_BASE[L.id]; });
 
@@ -2869,6 +2892,74 @@ const ESTRATEGIA_GENERAL = `<ol>
   <li><b>Prueba a mano</b> en el simulador antes de Comprobar, y lee el paso que falla.</li>
 </ol>`;
 
+/* ===================== revisión de calidad del programa =====================
+   Las verificaciones de la skill plc-code-analysis (Czarnak/totally-integrated-claude,
+   MIT) que se pueden comprobar sobre un programa LAD sin hardware: lentes de
+   «Compiler Critic» y de las Top 20 Secure PLC Coding Practices. Son
+   observaciones de un revisor, no del corrector: un programa puede pasar el
+   reto y tener algo que mejorar. */
+const SEVERIDAD = { ALTA: 0, MEDIA: 1, BAJA: 2, INFO: 3 };
+function revisarCalidad(prog, tags) {
+  tags = tags || [];
+  const en = new Engine([], tags), k = x => en.sym(x), hall = [];
+  const literal = x => { const t = String(x == null ? "" : x).trim(); return !t || /^[+-]?\d+$/.test(t) || /^T(IME)?#/i.test(t) || /^(true|false)$/i.test(t); };
+  const esc_ = x => nombreOp(x, tags);
+  const escrituras = {}, lecturas = {}, instancias = {}, flancos = {};
+  const anota = (mapa, x, i, tipo) => { if (literal(x)) return; const a = k(x); (mapa[a] = mapa[a] || []).push({ seg: i + 1, tipo }); };
+  prog.forEach((sg, i) => walkEls([sg], e => {
+    if (["COIL", "NCOIL", "SET", "RESET"].includes(e.k)) anota(escrituras, e.op, i, e.k);
+    if (["NO", "NC", "P", "N"].includes(e.k)) anota(lecturas, e.op, i, e.k);
+    if (e.k === "P" || e.k === "N") { anota(escrituras, e.mem, i, "FLANCO"); const m = k(e.mem); (flancos[m] = flancos[m] || []).push(i + 1); }
+    if (e.k === "CMP") { anota(lecturas, e.a, i, "CMP"); anota(lecturas, e.b, i, "CMP"); }
+    if (e.k === "MOVE") { anota(lecturas, e.in, i, "MOVE"); anota(escrituras, e.out, i, "MOVE"); }
+    if (["ADD", "SUB", "MUL", "DIV"].includes(e.k)) { anota(lecturas, e.in1, i, e.k); anota(lecturas, e.in2, i, e.k); anota(escrituras, e.out, i, e.k); }
+    if (e.k === "CTU") anota(lecturas, e.r, i, "R"); if (e.k === "CTD") anota(lecturas, e.ld, i, "LD");
+    if (KINDS[e.k] && KINDS[e.k].box && e.name) { const n = k(e.name); (instancias[n] = instancias[n] || []).push({ seg: i + 1, k: e.k }); }
+  }));
+  const add = (sev, titulo, donde, detalle, ref) => hall.push({ sev, titulo, donde, detalle, ref });
+  const segs = l => "segmento" + (l.length > 1 ? "s " : " ") + [...new Set(l)].join(", ");
+
+  for (const a in escrituras) {
+    const w = escrituras[a], tipos = new Set(w.map(x => x.tipo));
+    if (/^%I/.test(a)) add("ALTA", "Se escribe en una entrada", segs(w.map(x => x.seg)), `${esc_(a)} es una entrada: su valor lo pone el campo en cada ciclo y lo que escriba el programa se pierde.`, "IEC 61131‑3 · Compiler Critic");
+    const bobinas = w.filter(x => x.tipo === "COIL" || x.tipo === "NCOIL");
+    if (new Set(bobinas.map(x => x.seg)).size > 1) add("ALTA", "Doble asignación de una bobina", segs(bobinas.map(x => x.seg)), `${esc_(a)} se escribe con bobina en más de un segmento: solo vale el último, y los anteriores no hacen nada.`, "Compiler Critic · buena práctica TIA Portal");
+    if (bobinas.length && (tipos.has("SET") || tipos.has("RESET"))) add("MEDIA", "Bobina y Set/Reset sobre la misma señal", segs(w.map(x => x.seg)), `${esc_(a)} se escribe con bobina y también con Set/Reset: la bobina pisa al Set en cada ciclo.`, "Compiler Critic");
+    if (tipos.has("SET") && !tipos.has("RESET") && !bobinas.length) add("MEDIA", "Set sin Reset", segs(w.filter(x => x.tipo === "SET").map(x => x.seg)), `${esc_(a)} se pone a 1 con Set y ningún segmento la vuelve a 0: queda memorizada hasta reiniciar el PLC.`, "Top 20 #2 (modos y estados)");
+    if (/^%M/.test(a) && !lecturas[a] && !w.every(x => x.tipo === "FLANCO")) add("BAJA", "Marca que se escribe y nadie lee", segs(w.map(x => x.seg)), `${esc_(a)} se escribe pero ningún contacto ni caja la usa.`, "Top 20 #1 (código ordenado)");
+  }
+  for (const m in flancos) {
+    if (flancos[m].length > 1) add("ALTA", "Bit de flanco compartido", segs(flancos[m]), `${esc_(m)} es la marca de flanco de más de un contacto P/N: los flancos se pisan y se pierden pulsos.`, "Compiler Critic");
+    const otros = (escrituras[m] || []).filter(x => x.tipo !== "FLANCO");
+    if (otros.length) add("ALTA", "Bit de flanco escrito por el programa", segs(otros.map(x => x.seg)), `${esc_(m)} guarda el estado anterior de un flanco y además lo escribe otro segmento: el flanco deja de funcionar.`, "Compiler Critic");
+  }
+  for (const n in instancias) if (instancias[n].length > 1) add("ALTA", "Instancia de temporizador o contador reutilizada", segs(instancias[n].map(x => x.seg)), `«${n}» se usa en más de una caja: comparten el mismo DB de instancia y se pisan entre sí.`, "Compiler Critic · IEC 61131‑3");
+  const entradas = new Set(tags.filter(t => /^%I/i.test(t.addr)).map(t => t.addr.toUpperCase()));
+  for (const a in lecturas) {
+    if (/^%[QM]/.test(a) && !escrituras[a]) add("MEDIA", "Se lee una señal que nada escribe", segs(lecturas[a].map(x => x.seg)), `${esc_(a)} se usa como condición pero ningún segmento la escribe: vale siempre 0.`, "Compiler Critic");
+    const d = a.lastIndexOf(".");
+    if (a[0] !== "%" && d > 0 && !instancias[a.slice(0, d)]) add("MEDIA", "Se lee una instancia que no existe", segs(lecturas[a].map(x => x.seg)), `${esc_(a)} pertenece a «${a.slice(0, d)}», que no aparece en ninguna caja: ¿error de tipeo?`, "Compiler Critic");
+    if (tags.length && a[0] === "%" && !tags.some(t => t.addr.toUpperCase() === a)) add("BAJA", "Dirección sin nombre en la tabla de variables", segs(lecturas[a].map(x => x.seg)), `${a} no tiene nombre simbólico: en TIA Portal conviene declararla.`, "Buena práctica TIA Portal");
+  }
+  /* Top 20 #11: integridad de las señales de campo. Una analógica 4‑20 mA con rotura de
+     hilo lee > 27648: si el programa la usa sin vigilar el rango, decide con un valor falso. */
+  /* Solo la señal en bruto (0…27648). Si la etiqueta trae unidad (kW, Hz…), el valor ya llega
+     convertido de un analizador o de otro equipo y el rango se vigila allí. */
+  tags.filter(t => t.type === "analog" && /^%IW/i.test(t.addr) && !t.unit).forEach(t => {
+    const a = t.addr.toUpperCase(), usos = lecturas[a]; if (!usos) return;
+    let vigilada = false;
+    walkEls(prog, e => { if (e.k === "CMP" && (k(e.a) === a || k(e.b) === a) && [e.a, e.b].some(v => /^\d+$/.test(String(v).trim()) && +v >= 27648)) vigilada = true; });
+    if (!vigilada) add("INFO", "Entrada analógica sin vigilancia de rango", segs(usos.map(x => x.seg)), `${esc_(a)} se usa sin comprobar si se salió de rango (rotura de hilo o rebase, valor > 27648). En planta, eso debería dar una alarma y llevar el equipo a un estado seguro.`, "Top 20 #11 (integridad de E/S)");
+  });
+  return hall.sort((x, y) => SEVERIDAD[x.sev] - SEVERIDAD[y.sev]);
+}
+function htmlCalidad(h) {
+  const color = { ALTA: "var(--bad)", MEDIA: "#B07800", BAJA: "var(--ink2)", INFO: "var(--acc)" };
+  return `<div class="calidad"><h4>🔍 Revisión de calidad <span class="sub" style="font-weight:400">· reglas de revisión de código PLC</span></h4>` +
+    (h.length ? `<ul>${h.map(x => `<li><b style="color:${color[x.sev]}">${x.sev}</b> · <b>${esc(x.titulo)}</b> <span class="sub">(${esc(x.donde)})</span><br>${x.detalle}<br><span class="sub" style="font-size:.78rem">${esc(x.ref)}</span></li>`).join("")}</ul>`
+      : `<p>Sin observaciones: ni dobles asignaciones, ni Set sin Reset, ni instancias o flancos compartidos, ni señales sin escribir.</p>`) + `</div>`;
+}
+
 /* ===================== edición de la red ===================== */
 function normalize(s) {
   for (let i = 0; i < s.items.length; i++) {
@@ -3285,6 +3376,7 @@ function viewLesson(id) {
     $(".b-chk", rb).onclick = () => {
       let g; try { g = grade(R, sim.prog); if (g.ok) { const g2 = grade(R, sim.prog, { irregular: true }); if (!g2.ok) { g = g2; g.irregular = true; } } } catch (e) { $(".out", rb).innerHTML = `<div class="banner ko">Error al simular: ${esc(e.message)}</div>`; return; }
       $(".out", rb).innerHTML = `<ul class="res">${g.res.map((r, k) => `<li class="${r.pass ? "ok" : "ko"}">${r.pass ? "✓" : "✗"} Paso ${k + 1}: ${esc(r.d)}${r.bad ? `<span class="why">${esc(r.bad)}</span>` : ""}${r.wrong.map(w => `<span class="why">${esc(w.n)}: esperaba ${esc(w.exp)}, el programa da ${w.got}</span>`).join("")}</li>`).join("")}</ul>
+        ${htmlCalidad(revisarCalidad(sim.prog, R.tags))}
         <div class="banner ${g.ok ? "ok" : "ko"}">${g.ok ? "¡Reto superado! Todos los pasos se cumplen." : `Falla en el paso ${g.res.length} de ${g.total}${g.irregular ? " cuando los ciclos de scan no duran siempre lo mismo (como en un PLC real)" : ""}. Revisa tu lógica y vuelve a probar.`}</div>`;
       if (g.ok) { const first = !ST.reto[id]; ST.reto[id] = true; save(); setSt(); actividad(); tabs.forEach(b => { if (b.dataset.t === "reto") b.textContent = "Reto ✓"; }); if (first) toast("Reto superado ✓"); }
     };
@@ -3336,9 +3428,10 @@ function viewLab() {
   const def = [SEG("Escribe aquí tu programa", S(P([NO("%I0.0")], [NO("%Q0.0")]), NC("%I0.1"), COIL("%Q0.0")))];
   $("#main").innerHTML = `<div class="crumbs"><a href="#/">Inicio</a> › Laboratorio</div><h1 style="margin:.2rem 0">Laboratorio libre</h1>
     <p class="lead">Un OB1 en blanco para practicar. Las entradas y salidas aparecen solas al usarlas (los pulsadores nuevos se tratan como NA). Se guarda en este equipo.</p>
-    <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin:.8rem 0"><button class="btn ghost sm b-new">Programa nuevo</button><button class="btn ghost sm b-exp">Exportar .json</button><label class="btn ghost sm" style="cursor:pointer">Importar .json<input type="file" accept=".json,application/json" hidden class="b-imp"></label></div>
-    <div class="simbox"></div>`;
+    <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin:.8rem 0"><button class="btn ghost sm b-new">Programa nuevo</button><button class="btn ghost sm b-cal">🔍 Revisar calidad</button><button class="btn ghost sm b-exp">Exportar .json</button><label class="btn ghost sm" style="cursor:pointer">Importar .json<input type="file" accept=".json,application/json" hidden class="b-imp"></label></div>
+    <div class="calbox"></div><div class="simbox"></div>`;
   const sim = Sim($(".simbox"), { prog: ST.lab ? clone(ST.lab) : def, tags: [], editable: true, edit: true, onChange: p => { ST.lab = p; save(); } });
+  $(".b-cal").onclick = () => { $(".calbox").innerHTML = htmlCalidad(revisarCalidad(sim.prog, [])); };
   $(".b-new").onclick = () => { if (!confirm("¿Empezar un programa vacío?")) return; const p = [SEG("", S())]; ST.lab = p; save(); sim.load(p, []); };
   $(".b-exp").onclick = () => {
     const txt = JSON.stringify({ ladderlab: 1, prog: sim.prog }, null, 1), nombre = "programa-ladder-" + hoy() + ".json";
