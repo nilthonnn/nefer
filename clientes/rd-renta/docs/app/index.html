@@ -134,7 +134,7 @@
   @media (min-width:56rem) { .vista { padding:1.5rem 1.1rem 3rem; } }
 
   .tabs { position:fixed; left:0; right:0; bottom:0; z-index:30;
-          display:grid; grid-template-columns:repeat(4,1fr);
+          display:grid; grid-template-columns:repeat(5,1fr);
           background:var(--barra); border-top:1px solid rgba(255,255,255,.09);
           padding-bottom:env(safe-area-inset-bottom); }
   .tabs button { background:none; border:0; color:#8FA3AD; cursor:pointer;
@@ -680,6 +680,48 @@
     .devuelve { grid-column:2; justify-self:end; }
   }
 
+
+  /* ---------- MANTENIMIENTO (formatos UNIMAQ) ----------
+     Pensado para guantes y sol: todo lo que se toca mide 48 px como
+     mínimo, el texto de los campos es más grande que en las actas y los
+     avisos se distinguen por la palabra, no sólo por el color. */
+  #v-mantenimiento button, #v-mantenimiento input, #v-mantenimiento select,
+  #v-mantenimiento textarea { min-height:48px; font-size:1rem; }
+  #v-mantenimiento input[type="text"], #v-mantenimiento input[type="search"],
+  #v-mantenimiento select { width:100%; padding:.55rem .65rem; color:var(--ink);
+    background:var(--card); border:1.5px solid var(--ink-3); border-radius:6px; }
+  #v-mantenimiento [aria-invalid="true"] { border-color:var(--mal); border-width:2px; }
+  #v-mantenimiento .lb { font-size:.72rem; color:var(--ink-2); }
+  .m-nuevo { display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap; }
+  .m-nuevo .campo { flex:1 1 9rem; }
+  .m-lista { display:flex; flex-direction:column; gap:.45rem; }
+  .m-fila { display:flex; flex-direction:column; align-items:flex-start; gap:.1rem;
+            text-align:left; width:100%; padding:.6rem .8rem; background:var(--card);
+            border:1px solid var(--rule); border-radius:7px; box-shadow:var(--lift); }
+  .m-fila .m-tag { font-family:var(--cond); font-size:1.35rem; font-weight:700;
+                   letter-spacing:.02em; color:var(--ink); }
+  .m-fila .m-det { font-size:.85rem; color:var(--ink-2); font-weight:500; }
+  .m-cab { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;
+           margin-bottom:.7rem; }
+  .m-cab .m-tag { font-family:var(--cond); font-size:2rem; font-weight:700; line-height:1; }
+  .m-guardado { font-family:var(--mono); font-size:.72rem; color:var(--ok); }
+  .m-guardado.malo { color:var(--mal); font-weight:700; }
+  .m-grupo { border:1px solid var(--rule); border-radius:7px; background:var(--card);
+             margin:0 0 .7rem; padding:.4rem .8rem .8rem; }
+  .m-grupo legend { font-family:var(--cond); font-size:1.1rem; font-weight:700;
+                    text-transform:uppercase; padding:0 .3rem; }
+  .m-campo-alerta { font-size:.8rem; color:var(--mal); font-weight:600; }
+  .m-campo-alerta:empty { display:none; }
+  .m-alertas { list-style:none; margin:0; padding:0; display:flex;
+               flex-direction:column; gap:.35rem; }
+  .m-alerta { padding:.5rem .7rem; border-radius:6px; font-size:.88rem;
+              border-left:5px solid var(--rule); background:var(--card-2); color:var(--ink); }
+  .m-alerta b { text-transform:uppercase; font-size:.72rem; letter-spacing:.06em;
+                margin-right:.35rem; }
+  .m-alerta.critico { border-left-color:var(--mal); background:var(--mal-soft); }
+  .m-alerta.aviso { border-left-color:var(--obs); background:var(--obs-soft); }
+  .m-borrar { color:var(--mal) !important; }
+
   /* ---------- INICIO y GUÍA ---------- */
   .tarjetas { display:grid; gap:.6rem; grid-template-columns:1fr; margin:1rem 0; }
   @media (min-width:40rem) { .tarjetas { grid-template-columns:1fr 1fr; } }
@@ -1100,6 +1142,54 @@
     </section>
 
     <!-- ================= GUÍA ================= -->
+    <section class="vista" id="v-mantenimiento" role="tabpanel" aria-labelledby="tab-mantenimiento">
+      <div class="encab">
+        <p class="kicker">formatos unimaq</p>
+        <h1>Mantenimiento</h1>
+        <p class="sub">La ficha de cada equipo por su TAG: placas del grupo, motor,
+          alternador, controlador y batería. Las órdenes de trabajo e informes la
+          toman como propuesta, y el técnico la confirma.</p>
+      </div>
+
+      <div id="m-equipos">
+        <form class="panel" id="m-eq-nuevo" autocomplete="off">
+          <h2>Nuevo equipo</h2>
+          <div class="panel-body m-nuevo">
+            <label class="campo" for="m-eq-tag"><span class="lb">TAG del equipo</span>
+              <input type="text" id="m-eq-tag" autocapitalize="characters" placeholder="064"></label>
+            <button type="submit" class="primary">Crear ficha</button>
+          </div>
+          <p class="panel-body m-campo-alerta" id="m-eq-nuevo-aviso" role="status"></p>
+        </form>
+        <div class="seccion">
+          <h2>Equipos <span class="tally" id="m-eq-cuenta"></span></h2>
+          <label class="campo" for="m-eq-buscar" style="margin:.5rem 0">
+            <span class="lb">Buscar por TAG, modelo, serie o ubicación</span>
+            <input type="search" id="m-eq-buscar"></label>
+          <div class="m-lista" id="m-eq-lista"></div>
+        </div>
+      </div>
+
+      <div id="m-ficha" hidden>
+        <div class="m-cab">
+          <button type="button" id="m-f-volver">&larr; Equipos</button>
+          <span class="m-tag" id="m-f-tag"></span>
+          <span class="grow"></span>
+          <span class="m-guardado" id="m-f-guardado" role="status" aria-live="polite"></span>
+        </div>
+        <div class="aviso" id="m-f-aviso" role="status" hidden></div>
+        <details class="panel plegable" id="m-f-revisar" open>
+          <summary>Avisos <span class="tally" id="m-f-cuenta"></span></summary>
+          <div class="panel-body">
+            <p class="lb" style="margin:0 0 .5rem">Avisan, no bloquean: usted decide.</p>
+            <ul class="m-alertas" id="m-f-alertas"></ul>
+          </div>
+        </details>
+        <div id="m-f-campos"></div>
+        <button type="button" class="ghost m-borrar" id="m-f-borrar">Borrar esta ficha</button>
+      </div>
+    </section>
+
     <section class="vista" id="v-guia" role="tabpanel" aria-labelledby="tab-guia">
       <div class="encab">
         <p class="kicker">cómo se usa</p>
@@ -1286,6 +1376,11 @@ rdrenta construir acta.json -o ACTA.xlsx --pdf</textarea>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-.7 4.2"/><path d="M20 5v6h-6"/></svg>
       Recepción
     </button>
+    <button type="button" id="tab-mantenimiento" role="tab" aria-selected="false"
+            aria-controls="v-mantenimiento" data-ir="mantenimiento">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6.5a4 4 0 0 0-5.3 5.3L4 17l3 3 5.2-5.2a4 4 0 0 0 5.3-5.3l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>
+      Mant.
+    </button>
     <button type="button" id="tab-guia" role="tab" aria-selected="false"
             aria-controls="v-guia" data-ir="guia">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h9a3 3 0 0 1 3 3V20a2.5 2.5 0 0 0-2.5-2.5H5z"/><path d="M17 7.5h2v12h-3.5"/></svg>
@@ -1304,7 +1399,7 @@ var RDRENTA = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-11-25 · almacén v2 y modelo UNIMAQ";
+  var VERSION = "2026-11-25 · fichas de equipo UNIMAQ";
 
   "use strict";
 
@@ -1461,6 +1556,7 @@ var RDRENTA = (function () {
     inicio:    ["Actas de campo",  "actas de campo"],
     despacho:  ["Despacho",        "salida de equipo"],
     recepcion: ["Recepción",       "retorno de equipo"],
+    mantenimiento: ["Mantenimiento", "formatos unimaq"],
     guia:      ["Guía rápida",     "cómo se usa"]
   };
   var actual = "inicio";
@@ -3782,6 +3878,455 @@ UNIMAQ.modelo = (function () {
     normalizar: { equipo: nEquipo, ordenTrabajo: nOT, informe: nInforme,
                   checklist: nChecklist, mantenimiento: nMantenimiento },
     aKit: aKit
+  };
+})();
+</script>
+
+<script>
+/* ================================================================
+   UNIMAQ · VALIDACIONES · avisan, no bloquean.
+
+   Cada función devuelve una lista de alertas {nivel, campo, mensaje}.
+   Ninguna impide guardar: el técnico ve el aviso, decide y sigue. Los
+   niveles son los del kit:
+     · critico  algo que casi seguro está mal o es peligroso
+     · aviso    algo que conviene revisar
+     · info     un dato que falta o una rareza sin consecuencias
+   ================================================================ */
+UNIMAQ.validaciones = (function () {
+  "use strict";
+  var M = UNIMAQ.modelo;
+
+  function alerta(nivel, campo, mensaje) { return { nivel: nivel, campo: campo, mensaje: mensaje }; }
+  function vacio(x) { return x === null || x === undefined || String(x).trim() === ""; }
+  function igualSerie(a, b) {
+    return !vacio(a) && !vacio(b) &&
+           String(a).replace(/\s+/g, "").toUpperCase() === String(b).replace(/\s+/g, "").toUpperCase();
+  }
+
+  // Tensiones de placa que se ven en grupos de alquiler. Otra no es un error,
+  // pero suele ser un dígito cambiado.
+  var VOLTAJES = [120, 208, 220, 230, 240, 380, 400, 415, 440, 460, 480, 600];
+
+  /* La ficha del equipo. `anterior` es la ficha tal como estaba al abrirla:
+     sirve para detectar un horómetro que retrocede. */
+  function validarEquipo(e, anterior) {
+    e = M.normalizar.equipo(e);
+    var a = [];
+
+    // Lo que identifica al equipo y se lee de la placa. Si falta, el informe
+    // lo imprimirá como «[ leer en equipo ]»: no se inventa.
+    [["grupo.modelo", e.grupo.modelo, "modelo del grupo"],
+     ["grupo.serie", e.grupo.serie, "N° de serie del grupo"],
+     ["motor.modelo", e.motor.modelo, "modelo del motor"],
+     ["motor.serie", e.motor.serie, "N° de serie del motor"],
+     ["voltajeNominal", e.voltajeNominal, "voltaje nominal"],
+     ["fases", e.fases, "número de fases"],
+     ["frecuenciaHz", e.frecuenciaHz, "frecuencia"]
+    ].forEach(function (c) {
+      if (vacio(c[1])) a.push(alerta("info", c[0], "Falta " + c[2] + ": leer en la placa del equipo"));
+    });
+
+    // Tres placas distintas con la misma serie: casi siempre es la foto de
+    // una placa copiada en otra.
+    var placas = [["grupo", "grupo", e.grupo.serie], ["motor", "motor", e.motor.serie],
+                  ["alternador", "alternador", e.alternador.serie]];
+    for (var i = 0; i < placas.length; i++) {
+      for (var j = i + 1; j < placas.length; j++) {
+        if (igualSerie(placas[i][2], placas[j][2])) {
+          a.push(alerta("aviso", placas[j][0] + ".serie",
+            "La serie del " + placas[j][1] + " es igual a la del " + placas[i][1] +
+            ": ¿se copió la placa equivocada?"));
+        }
+      }
+    }
+
+    if (!vacio(e.alternador.modelo) && vacio(e.alternador.winding)) {
+      a.push(alerta("info", "alternador.winding", "Falta el winding (WDG) de la placa del alternador"));
+    }
+
+    var v = e.voltajeNominal, f = e.fases;
+    if (v !== null && v <= 0) {
+      a.push(alerta("aviso", "voltajeNominal", "Voltaje nominal " + v + " V no es válido"));
+    } else if (v !== null && VOLTAJES.indexOf(v) === -1) {
+      a.push(alerta("info", "voltajeNominal", "Voltaje nominal " + v + " V poco común: revise la placa"));
+    }
+    if (f !== null && f !== 1 && f !== 3) {
+      a.push(alerta("aviso", "fases", "Fases = " + f + ": debería ser 1 o 3"));
+    }
+    if (f === 1 && v !== null && v > 260) {
+      a.push(alerta("aviso", "voltajeNominal",
+        "Monofásico a " + v + " V: ¿es trifásico, o el voltaje es el de línea a neutro?"));
+    }
+    if (f === 3 && v !== null && v > 0 && v < 200) {
+      a.push(alerta("aviso", "voltajeNominal",
+        "Trifásico a " + v + " V: ¿anotó el voltaje fase-neutro en vez del de línea?"));
+    }
+
+    var hz = e.frecuenciaHz;
+    if (hz !== null && hz !== 50 && hz !== 60) {
+      a.push(alerta("aviso", "frecuenciaHz", "Frecuencia " + hz + " Hz: debería ser 50 o 60"));
+    }
+    // Generador síncrono: rpm = 120·f / polos, con polos par.
+    if ((hz === 50 || hz === 60) && e.rpm) {
+      var polos = 120 * hz / e.rpm;
+      if (Math.abs(polos - Math.round(polos)) > 0.02 || Math.round(polos) % 2 !== 0) {
+        a.push(alerta("aviso", "rpm", e.rpm + " RPM no corresponde a " + hz +
+          " Hz (" + (120 * hz / 4) + " RPM con 4 polos)"));
+      }
+    }
+
+    var vb = e.bateria.voltaje;
+    if (vb !== null && vb !== 12 && vb !== 24) {
+      a.push(alerta("info", "bateria.voltaje", "Batería de " + vb + " V: lo usual es 12 o 24 V"));
+    }
+
+    var prev = anterior ? M.numero(anterior.horometro) : null;
+    if (e.horometro !== null && e.horometro < 0) {
+      a.push(alerta("aviso", "horometro", "Horómetro negativo"));
+    } else if (e.horometro !== null && prev !== null && e.horometro < prev) {
+      a.push(alerta("critico", "horometro",
+        "Horómetro " + e.horometro + " menor al registrado antes (" + prev + ")"));
+    }
+    return a;
+  }
+
+  var ORDEN = { critico: 0, aviso: 1, info: 2 };
+  function ordenar(lista) {
+    return lista.slice().sort(function (x, y) { return ORDEN[x.nivel] - ORDEN[y.nivel]; });
+  }
+
+  return { validarEquipo: validarEquipo, ordenar: ordenar, VOLTAJES: VOLTAJES };
+})();
+</script>
+
+<script>
+/* ================================================================
+   UNIMAQ · EQUIPOS · la ficha de cada equipo por TAG.
+
+   Lo que dicen las placas —grupo, motor, alternador, controlador,
+   batería— y el último horómetro. Se escribe una vez y sirve para todas
+   las OT del equipo, que la toman como PROPUESTA: el técnico la confirma
+   en cada informe, porque una placa cambiada sin que nadie lo sepa
+   (un alternador de otro grupo, una batería nueva) es justo lo que el
+   informe tiene que recoger.
+
+   Se guarda sola: a los 800 ms de dejar de teclear, y siempre al
+   esconderse la app. El TAG es la clave y no se cambia: renombrar un
+   equipo en el patio es crear otro.
+   ================================================================ */
+UNIMAQ.equipos = (function () {
+  "use strict";
+  var M = UNIMAQ.modelo, V = UNIMAQ.validaciones, R = RDRENTA;
+  var A = R.almacen, esc = R.esc;
+  var raiz = document.getElementById("v-mantenimiento");
+  if (!raiz) return null;
+  var $ = function (s) { return raiz.querySelector(s); };
+  var CLAVE_ABIERTO = "rdrenta.equipo.abierto";
+
+  /* El formulario se arma de esta lista: rótulo, ruta en la ficha y tipo.
+     Los rótulos siguen al informe en papel donde lo hay. Sin textos de
+     ejemplo dentro de los campos: al sol, un ejemplo en gris se lee como un
+     dato, y aquí no se escribe nada que no se haya leído en la placa. */
+  var GRUPOS = [
+    ["Ubicación", [["ubicacion", "Ubicación"]]],
+    ["Grupo electrógeno", [["grupo.marca", "Marca"], ["grupo.modelo", "Modelo"],
+      ["grupo.serie", "N° de serie"], ["grupo.spec", "Spec"]]],
+    ["Motor", [["motor.marca", "Marca"], ["motor.modelo", "Modelo"],
+      ["motor.serie", "N° de serie (ESN)"], ["motor.spec", "Spec"], ["motor.cpl", "CPL"]]],
+    ["Generador (alternador)", [["alternador.marca", "Marca"],
+      ["alternador.modelo", "Modelo / frame"], ["alternador.serie", "N° de serie"],
+      ["alternador.winding", "Winding (WDG)"], ["alternador.spec", "Spec"]]],
+    ["Módulo de control", [["controlador", "Marca"], ["controladorModelo", "Modelo"]]],
+    ["Datos eléctricos", [
+      ["voltajeNominal", "Voltaje nominal L-L (V)", "", "num"],
+      ["fases", "Fases", "", "sel", [["", "—"], ["1", "1 F"], ["3", "3 F"]]],
+      ["frecuenciaHz", "Frecuencia (Hz)", "", "sel", [["", "—"], ["50", "50 Hz"], ["60", "60 Hz"]]],
+      ["kva", "Potencia (kVA)", "", "num"], ["rpm", "Velocidad nominal (RPM)", "", "num"]]],
+    ["Batería", [["bateria.marca", "Marca"], ["bateria.modelo", "Modelo"],
+      ["bateria.cantidad", "Número de baterías", "", "num"],
+      ["bateria.voltaje", "Voltaje (V)", "", "num"], ["bateria.ah", "Capacidad (Ah)", "", "num"],
+      ["bateria.cca", "CCA", "", "num"]]],
+    ["Horómetro", [["horometro", "Último horómetro registrado (h)", "", "num"]]]
+  ];
+  var TIPO = {};
+  GRUPOS.forEach(function (g) { g[1].forEach(function (c) { TIPO[c[0]] = c[3] || "txt"; }); });
+
+  var ficha = null;          // la ficha abierta
+  var anterior = null;       // cómo estaba al abrirla: para el horómetro
+  var ilegibles = {};        // ruta → lo tecleado que no es un número
+  var reloj = null, enVuelo = null, sucia = false;
+
+  function leer(o, ruta) {
+    return ruta.split(".").reduce(function (x, k) { return x == null ? x : x[k]; }, o);
+  }
+  function poner(o, ruta, valor) {
+    var p = ruta.split("."), ult = p.pop();
+    p.reduce(function (x, k) { return x[k]; }, o)[ult] = valor;
+  }
+  function idDe(ruta) { return "m-f-" + ruta.replace(/\./g, "-"); }
+
+  function estado(texto, malo) {
+    var n = $("#m-f-guardado");
+    n.textContent = texto;
+    n.classList.toggle("malo", !!malo);
+  }
+  function hora(ms) {
+    var d = new Date(ms);
+    return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
+  }
+
+  /* ---------- la lista ---------- */
+  function pintarLista() {
+    if (!A.hay()) {
+      $("#m-eq-lista").innerHTML = '<p class="vacia">Este navegador no guarda fichas.</p>';
+      return Promise.resolve();
+    }
+    return A.equipos.listar().then(function (l) {
+      var q = $("#m-eq-buscar").value.trim().toLowerCase();
+      l = l.map(M.normalizar.equipo).sort(function (a, b) { return a.tag < b.tag ? -1 : 1; });
+      var vistos = l.filter(function (e) {
+        if (!q) return true;
+        return [e.tag, e.grupo.modelo, e.grupo.serie, e.ubicacion]
+          .join(" ").toLowerCase().indexOf(q) !== -1;
+      });
+      $("#m-eq-cuenta").textContent = l.length ? (l.length + (l.length === 1 ? " equipo" : " equipos")) : "";
+      if (!vistos.length) {
+        $("#m-eq-lista").innerHTML = '<p class="vacia">' +
+          (l.length ? "Ningún equipo coincide." : "Aún no hay fichas. Cree la primera con su TAG.") + "</p>";
+        return;
+      }
+      $("#m-eq-lista").innerHTML = vistos.map(function (e) {
+        var det = [[e.grupo.marca, e.grupo.modelo].join(" ").trim(),
+                   e.grupo.serie ? "s/n " + e.grupo.serie : "", e.ubicacion]
+          .filter(Boolean).join(" · ");
+        return '<button type="button" class="m-fila" data-tag="' + esc(e.tag) + '">' +
+          '<span class="m-tag">' + esc(e.tag) + "</span>" +
+          '<span class="m-det">' + esc(det || "sin datos de placa") + "</span></button>";
+      }).join("");
+    });
+  }
+
+  /* ---------- crear y abrir ---------- */
+  function avisoNuevo(texto) { $("#m-eq-nuevo-aviso").textContent = texto || ""; }
+
+  function crear(t) {
+    var tag = M.tag(t);
+    if (!tag) { avisoNuevo("Escriba el TAG del equipo."); return Promise.resolve(null); }
+    return A.equipos.leer(tag).then(function (hay) {
+      // Nunca se pisa una ficha: si el TAG ya existe se abre la que hay.
+      if (hay) {
+        return abrir(tag).then(function (e) {
+          aviso("Ya existía la ficha de " + tag + ": se abrió la existente.");
+          return e;
+        });
+      }
+      var e = M.equipo(tag);
+      e.actualizado = Date.now();
+      return A.equipos.guardar(e).then(function () {
+        $("#m-eq-tag").value = "";
+        avisoNuevo("");
+        return abrir(tag);
+      });
+    });
+  }
+
+  function abrir(tag) {
+    return volcar().then(function () { return A.equipos.leer(M.tag(tag)); }).then(function (e) {
+      if (!e) throw new Error("no existe la ficha de " + tag);
+      ficha = M.normalizar.equipo(e);
+      anterior = M.clon(ficha);
+      ilegibles = {};
+      sucia = false;
+      try { localStorage.setItem(CLAVE_ABIERTO, ficha.tag); } catch (x) { /* da igual */ }
+      pintarFicha();
+      estado(ficha.actualizado ? "guardado " + hora(ficha.actualizado) : "");
+      return ficha;
+    });
+  }
+
+  function cerrar() {
+    return volcar().then(function () {
+      ficha = null; anterior = null;
+      try { localStorage.removeItem(CLAVE_ABIERTO); } catch (x) { /* da igual */ }
+      $("#m-ficha").hidden = true;
+      $("#m-equipos").hidden = false;
+      aviso("");
+      return pintarLista();
+    });
+  }
+
+  function aviso(texto) {
+    var n = $("#m-f-aviso");
+    n.textContent = texto || "";
+    n.hidden = !texto;
+  }
+
+  /* ---------- la ficha ---------- */
+  function campo(c) {
+    var ruta = c[0], id = idDe(ruta), v = leer(ficha, ruta), tipo = c[3] || "txt";
+    var html = '<label class="campo" for="' + id + '"><span class="lb">' + esc(c[1]) + "</span>";
+    if (tipo === "sel") {
+      html += '<select id="' + id + '" data-ruta="' + ruta + '">' + c[4].map(function (o) {
+        return '<option value="' + o[0] + '"' + (String(v == null ? "" : v) === o[0] ? " selected" : "") +
+               ">" + esc(o[1]) + "</option>";
+      }).join("") + "</select>";
+    } else {
+      html += '<input type="text" id="' + id + '" data-ruta="' + ruta + '" autocomplete="off"' +
+        (tipo === "num" ? ' inputmode="decimal"' : ' autocapitalize="characters"') +
+        (c[2] ? ' placeholder="' + esc(c[2]) + '"' : "") +
+        ' value="' + esc(v == null ? "" : v) + '">';
+    }
+    return html + '<span class="m-campo-alerta" id="' + id + '-alerta" aria-live="polite"></span></label>';
+  }
+
+  function pintarFicha() {
+    $("#m-equipos").hidden = true;
+    $("#m-ficha").hidden = false;
+    $("#m-f-tag").textContent = ficha.tag;
+    $("#m-f-campos").innerHTML = GRUPOS.map(function (g) {
+      return '<fieldset class="m-grupo"><legend>' + esc(g[0]) + '</legend><div class="campos">' +
+        g[1].map(campo).join("") + "</div></fieldset>";
+    }).join("");
+    pintarAlertas();
+    window.scrollTo(0, 0);
+  }
+
+  function alertas() {
+    var l = V.validarEquipo(ficha, anterior);
+    Object.keys(ilegibles).forEach(function (ruta) {
+      l.push({ nivel: "aviso", campo: ruta,
+               mensaje: "«" + ilegibles[ruta] + "» no es un número: no se guardó en " + ruta });
+    });
+    return V.ordenar(l);
+  }
+
+  var NOMBRE_NIVEL = { critico: "Crítico", aviso: "Revisar", info: "Dato" };
+
+  function pintarAlertas() {
+    var l = alertas();
+    raiz.querySelectorAll(".m-campo-alerta").forEach(function (n) { n.textContent = ""; });
+    raiz.querySelectorAll("[data-ruta]").forEach(function (n) { n.removeAttribute("aria-invalid"); });
+    l.forEach(function (a) {
+      var n = document.getElementById(idDe(a.campo) + "-alerta");
+      if (n && a.nivel !== "info") {
+        n.textContent = a.mensaje;
+        document.getElementById(idDe(a.campo)).setAttribute("aria-invalid", "true");
+      }
+    });
+    var serias = l.filter(function (a) { return a.nivel !== "info"; }).length;
+    $("#m-f-cuenta").textContent = l.length
+      ? (serias ? serias + " por revisar · " : "") + (l.length - serias) + " datos por completar"
+      : "sin avisos";
+    $("#m-f-alertas").innerHTML = l.map(function (a) {
+      return '<li class="m-alerta ' + a.nivel + '"><b>' + NOMBRE_NIVEL[a.nivel] + "</b> " +
+        esc(a.mensaje) + "</li>";
+    }).join("");
+  }
+
+  function alEscribir(e) {
+    var n = e.target, ruta = n.dataset && n.dataset.ruta;
+    if (!ruta || !ficha) return;
+    var crudo = n.value, v, ilegible = null;
+    if (TIPO[ruta] === "num" || TIPO[ruta] === "sel") {
+      v = M.numero(crudo);
+      if (v === null && crudo.trim()) ilegible = crudo.trim();
+    } else {
+      v = crudo.trim();
+    }
+    // `change` llega también al salir del campo, sin que nada haya cambiado:
+    // eso no deja la ficha «sin guardar».
+    if (v === leer(ficha, ruta) && ilegible === (ilegibles[ruta] || null)) return;
+    if (ilegible) ilegibles[ruta] = ilegible; else delete ilegibles[ruta];
+    poner(ficha, ruta, v);
+    sucia = true;
+    estado("sin guardar");
+    pintarAlertas();
+    programar();
+  }
+
+  /* ---------- guardado ---------- */
+  function programar() {
+    if (reloj) clearTimeout(reloj);
+    reloj = setTimeout(function () { reloj = null; volcar(); }, 800);
+  }
+
+  function volcar() {
+    if (reloj) { clearTimeout(reloj); reloj = null; }
+    if (enVuelo) return enVuelo.then(volcar);
+    if (!ficha || !sucia) return Promise.resolve(null);
+    sucia = false;
+    ficha.actualizado = Date.now();
+    var copia = M.clon(ficha);
+    estado("guardando…");
+    enVuelo = A.equipos.guardar(copia).then(function () {
+      enVuelo = null;
+      if (!sucia) estado("guardado " + hora(copia.actualizado));
+      return copia;
+    }, function (err) {
+      enVuelo = null;
+      sucia = true;
+      // Callarlo dejaría al técnico creyendo que está a salvo.
+      estado("no se pudo guardar: " + ((err && err.message) || "almacén lleno"), true);
+      return null;
+    });
+    return enVuelo;
+  }
+
+  function borrar() {
+    if (!ficha) return Promise.resolve();
+    var tag = ficha.tag;
+    if (!window.confirm("Se borra la ficha de " + tag + ". Las OT e informes ya " +
+                        "guardados conservan su propia copia de la placa.")) return Promise.resolve();
+    if (reloj) { clearTimeout(reloj); reloj = null; }
+    sucia = false;
+    return A.equipos.borrar(tag).then(function () {
+      ficha = null;
+      return cerrar();
+    });
+  }
+
+  /* ---------- conexión ---------- */
+  $("#m-eq-nuevo").addEventListener("submit", function (e) {
+    e.preventDefault();
+    crear($("#m-eq-tag").value);
+  });
+  $("#m-eq-buscar").addEventListener("input", function () { pintarLista(); });
+  // Al entrar a la pestaña la lista se rehace: otra pantalla (una OT, un
+  // proyecto importado) puede haber añadido fichas mientras tanto.
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("[data-ir='mantenimiento']") && !ficha) pintarLista();
+  });
+  $("#m-eq-lista").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-tag]");
+    if (b) abrir(b.dataset.tag);
+  });
+  $("#m-f-volver").addEventListener("click", function () { cerrar(); });
+  $("#m-f-borrar").addEventListener("click", function () { borrar(); });
+  $("#m-f-campos").addEventListener("input", alEscribir);
+  $("#m-f-campos").addEventListener("change", alEscribir);
+
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "hidden") volcar();
+  });
+  window.addEventListener("pagehide", function () { volcar(); });
+
+  // Al volver a la app, la ficha que se estaba llenando sigue abierta.
+  var previa = null;
+  try { previa = localStorage.getItem(CLAVE_ABIERTO); } catch (x) { /* da igual */ }
+  var listo = pintarLista().then(function () {
+    if (previa) return abrir(previa).catch(function () {
+      try { localStorage.removeItem(CLAVE_ABIERTO); } catch (x) { /* da igual */ }
+    });
+  }).catch(function () { /* sin almacén: la lista ya lo dice */ });
+
+  return {
+    crear: crear, abrir: abrir, cerrar: cerrar, volcar: volcar, borrar: borrar,
+    listar: function () { return A.equipos.listar(); },
+    actual: function () { return ficha ? M.clon(ficha) : null; },
+    alertas: function () { return ficha ? alertas() : []; },
+    listo: function () { return listo; },
+    GRUPOS: GRUPOS
   };
 })();
 </script>
