@@ -165,6 +165,7 @@ jobs:
             tests/test_fotos_inspeccion.py \
             tests/test_lector.py \
             tests/test_reconocer.py \
+            tests/test_baterias.py \
             tests/test_build_extract.py \
             tests/test_layout.py \
             tests/test_schema.py \

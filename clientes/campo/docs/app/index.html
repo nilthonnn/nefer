@@ -4521,6 +4521,7 @@ MANT.modelo = (function () {
     var baterias = m.baterias.map(function (c) {
       var k = clon(c);
       k.equipoTag = m.tag;
+      if (k.probador && k.probador.soh === null && m.probador) k.probador = clon(m.probador);
       k.personal = c.personal.map(firmaKit).filter(Boolean);
       k.supervisor = firmaKit(c.supervisor);
       return k;
@@ -4903,6 +4904,24 @@ MANT.validaciones = (function () {
     });
 
     a = a.concat(validarProbador(m.probador, "probador."));
+
+    // Check-list de baterías: tipo, rutina e ítems de su bloque.
+    m.baterias.forEach(function (cb, i) {
+      var base = "baterias." + i + ".";
+      if (!cb.tipo) { a.push(alerta("aviso", base + "tipo", "Check-list de baterías sin tipo (plomo-ácido o libre mantenimiento)")); return; }
+      if (!cb.frecuencia) a.push(alerta("aviso", base + "frecuencia", "Check-list de baterías sin rutina (PM1–PM4)"));
+      else if (c.tipo === "PREVENTIVO" && c.pm && cb.frecuencia !== c.pm) {
+        a.push(alerta("aviso", base + "frecuencia", "El check-list dice " + M.frecuencia(cb.frecuencia).rotulo +
+          " y la orden " + M.frecuencia(c.pm).rotulo));
+      }
+      var sin = M.ITEMS_BATERIA[cb.tipo].filter(function (k) { return !cb.items[k]; });
+      if (sin.length) a.push(alerta("info", base + "items", "Check-list de baterías: ítems sin marcar " + sin.join(", ")));
+      var reemplazo = cb.tipo === "PLOMO_ACIDO" ? 10 : 19, soh = M.numero(m.probador.soh);
+      if (soh !== null && soh < 70 && cb.items[reemplazo] !== "OK") {
+        a.push(alerta("aviso", base + "items." + reemplazo, "SOH " + soh + " %: el ítem " + reemplazo +
+          " (reemplazar baterías) no está marcado OK; registre la decisión"));
+      }
+    });
 
     // Parámetros de operación y prueba (sección 6), columna por columna, y el
     // voltaje que se escribió en Generalidades.
@@ -5928,6 +5947,63 @@ MANT.ordenes = (function () {
       }).join("");
   }
 
+  /* ---------- check-list de baterías ----------
+     El formato en papel: cabecera, características, los ítems del tipo de
+     batería con OK / NO / NA en la columna de la rutina, observaciones,
+     personal y supervisor. El probador es el de la orden (Parámetros). */
+  function pintarBaterias() {
+    var F = M.FORMATO.baterias;
+    if (!m.baterias.length) {
+      return '<p class="m-nota-sn">' + esc(F.intro) + "</p>" +
+        '<button type="button" data-accion="bat-agregar">Llenar el check-list de baterías</button>';
+    }
+    var c = m.baterias[0], b = "baterias.0.", f = ctx.ficha ? M.normalizar.equipo(ctx.ficha).bateria : null;
+    var conFicha = f && (f.marca || f.modelo || f.voltaje || f.cantidad);
+    var html = '<p class="m-nota-sn">N° de OT: <b>' + esc(m.ot.ot || "—") + "</b> · TAG: <b>" + esc(m.tag) + "</b></p>" +
+      campos([[b + "fecha", "Fecha y hora", "dt"]]) +
+      '<div class="m-opciones" role="radiogroup" aria-label="Frecuencia">' + M.FRECUENCIAS.map(function (x) {
+        return '<label><input type="radio" name="m-o-bat-frec" value="' + x.id + '"' + (c.frecuencia === x.id ? " checked" : "") +
+          "><span>" + esc(x.rotulo) + "</span></label>";
+      }).join("") + "</div>" +
+      '<div class="m-opciones" role="radiogroup" aria-label="Tipo de batería">' + M.TIPOS_BATERIA.map(function (t) {
+        return '<label><input type="radio" name="m-o-bat-tipo" value="' + t + '"' + (c.tipo === t ? " checked" : "") +
+          "><span>" + esc(F.bloques[t].replace(/:$/, "")) + "</span></label>";
+      }).join("") + "</div>" +
+      '<p class="m-sub">Características de la batería</p>' +
+      (conFicha ? '<button type="button" data-accion="bat-ficha">Usar los datos de la ficha del equipo</button>' : "") +
+      campos([[b + "bateria.marca", "Marca"], [b + "bateria.modelo", "Modelo"],
+              [b + "bateria.cantidad", "Número de baterías", "num"], [b + "bateria.voltaje", "Voltaje (V)", "num"],
+              [b + "bateria.ah", "Capacidad (Ah)", "num"], [b + "bateria.cca", "CCA", "num"],
+              [b + "caracteristicas", "Otras características", "area"]]);
+    if (c.tipo) {
+      var r = M.ITEMS_BATERIA[c.tipo];
+      html += '<p class="m-sub">' + esc(F.bloques[c.tipo]) + " · " + esc((M.frecuencia(c.frecuencia) || {}).rotulo || "sin rutina") + "</p>" +
+        r.map(function (i) { return triple(b + "items." + i, i + ". " + F.items[i]); }).join("") +
+        '<p class="m-nota-sn">Los ítems del otro tipo de batería quedan en NA, como pide el formato.</p>';
+    } else {
+      html += '<p class="m-nota-sn">Elija el tipo de batería para ver sus ítems.</p>';
+    }
+    var pr = m.probador;
+    html += '<p class="m-nota-sn">Probador: ' + (pr.soh !== null ? "SOH " + esc(pr.soh) + " %" : "sin lectura") +
+      " (se anota en Parámetros de operación).</p>" +
+      campos([[b + "observaciones", "Observaciones", "area"],
+              [b + "personal.0.nombre", "Personal 1 (nombre y apellidos)"], [b + "personal.1.nombre", "Personal 2"],
+              [b + "personal.2.nombre", "Personal 3"], [b + "supervisor.nombre", "Supervisor a cargo"],
+              [b + "notas", "Notas", "area"]]) +
+      '<p class="m-nota-sn">Leyenda: ' + F.leyenda.map(function (l) { return "<b>" + l[0] + "</b> " + esc(l[1]); }).join(" · ") + "</p>";
+    return html;
+  }
+
+  // El otro bloque va en NA. Si se cambia de tipo, el bloque elegido se
+  // limpia sólo si estaba entero en NA (puesto por este mismo cambio).
+  function tipoBateria(c, tipo) {
+    var otro = tipo === "PLOMO_ACIDO" ? "LIBRE_MANTENIMIENTO" : "PLOMO_ACIDO";
+    var propio = M.ITEMS_BATERIA[tipo];
+    if (propio.every(function (i) { return c.items[i] === "NA"; })) propio.forEach(function (i) { c.items[i] = null; });
+    M.ITEMS_BATERIA[otro].forEach(function (i) { c.items[i] = "NA"; });
+    c.tipo = tipo;
+  }
+
   function pintarOperacion(op, i) {
     var b = "ot.operaciones." + i + ".";
     var esp = op.especialidad ? " · " + op.especialidad : "";
@@ -5984,6 +6060,7 @@ MANT.ordenes = (function () {
     html += grupo("Seguridad antes de iniciar", pintarSeguridad());
     html += grupo("Fotos de la inspección", pintarFotos());
     html += grupo("Parámetros de operación y prueba", pintarParametros());
+    html += grupo("Check-list de baterías", pintarBaterias());
 
     html += grupo("Orden de trabajo", campos([
       ["ot.ot", "N° de orden"], ["ot.descripcion", "Descripción orden"], ["ot.aviso", "N° aviso"],
@@ -6108,6 +6185,8 @@ MANT.ordenes = (function () {
       M.clasificar(m, n.value, m.clasificacion.pm);
       tocar(); pintar(); return true;
     }
+    if (n.name === "m-o-bat-tipo") { tipoBateria(m.baterias[0], n.value); tocar(); pintar(); return true; }
+    if (n.name === "m-o-bat-frec") { m.baterias[0].frecuencia = n.value; tocar(); pintar(); return true; }
     if (n.name === "m-o-pm") {
       M.clasificar(m, m.clasificacion.tipo, n.value);
       $("#m-o-clase").textContent = rotuloClase(m.clasificacion);
@@ -6186,6 +6265,19 @@ MANT.ordenes = (function () {
     } else if (acc === "agregar-operacion") {
       var n = (m.ot.operaciones.length + 1) * 10;
       m.ot.operaciones.push(M.operacion(("000" + n).slice(-4))); tocar(); pintar();
+    } else if (acc === "bat-agregar") {
+      var c = M.checklist();
+      c.ot = m.ot.ot;
+      c.frecuencia = m.clasificacion.pm || "";
+      c.fecha = ahoraLocal();
+      m.baterias.push(c); tocar(); pintar();
+    } else if (acc === "bat-ficha") {
+      // Copia a la vista y por decisión del técnico: no se hace sola.
+      var bf = M.normalizar.equipo(ctx.ficha).bateria;
+      ["marca", "modelo", "cantidad", "voltaje", "ah", "cca"].forEach(function (k) {
+        if (bf[k] !== null && bf[k] !== "") m.baterias[0].bateria[k] = bf[k];
+      });
+      tocar(); pintar();
     } else if (acc === "agregar-instrumento") {
       m.seguridad.instrumentos.push(M.instrumento("")); tocar(); pintar();
     } else if (acc === "agregar-demora") {
