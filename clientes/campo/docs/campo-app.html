@@ -743,6 +743,12 @@
   .m-foto.propuesta { border:2px dashed var(--obs); }
   .m-foto img { display:block; width:100%; max-height:220px; object-fit:contain;
                 background:var(--card-2); border-radius:4px; }
+  .m-criterio { margin:.35rem 0; font-size:.86rem; }
+  .m-criterio summary { cursor:pointer; min-height:48px; display:flex; align-items:center;
+                        font-weight:700; color:var(--accent); }
+  .m-criterio p { margin:.2rem 0; color:var(--ink); }
+  .m-sn button[data-estado-foto][aria-pressed="true"][data-valor="OBS"] { background:var(--obs); border-color:var(--obs); }
+  .m-sn button[data-estado-foto][aria-pressed="true"][data-valor="FALLA"] { background:var(--mal); border-color:var(--mal); }
   .m-prop { display:inline-block; margin:.3rem 0; font-family:var(--mono); font-size:.68rem;
             font-weight:700; color:var(--obs); }
   #v-mantenimiento .boton { min-height:48px; font-size:1rem; }
@@ -3936,6 +3942,77 @@ MANT.modelo = (function () {
     ],
     HALLAZGO: "c23",
 
+    /* Qué mirar en cada foto, como lo miraría un especialista en grupos
+       electrógenos: [qué revisar, cuándo es Observado, cuándo es Falla].
+       Es criterio técnico general de mantenimiento, no el estándar de una
+       empresa; los umbrales numéricos son los del kit (SOH, presión de
+       aceite, temperatura) o los de la tolerancia acordada de voltaje. El
+       estado lo decide el técnico: la app sólo le pone el criterio delante. */
+    criterios: {
+      c01: ["TAG legible y el mismo de la orden; carrocería y puertas cerradas.",
+            "Golpes, corrosión o pintura dañada sin afectar la operación.",
+            "TAG ilegible o distinto del de la orden; daño que deja partes expuestas."],
+      c05: ["Placa fijada y legible; modelo y serie iguales a la ficha.",
+            "Placa desgastada pero legible.", "Ilegible, ausente o distinta de la ficha."],
+      c06: ["Horómetro legible y mayor o igual al último registro.",
+            "Lectura dudosa (reflejo, empañado).", "Retrocede respecto al registro, o no funciona."],
+      g01: ["Placa del alternador legible: frame, WDG y serie como en la ficha.",
+            "Desgastada pero legible.", "Ilegible o distinta de la ficha."],
+      c08: ["Tapa con seguro y empaque; nivel anotado; sin fuga por respiradero ni visor.",
+            "Nivel bajo (planificar abastecimiento) o tapa sin seguro.",
+            "Fuga de combustible, tapa ausente o agua/sedimento en el visor."],
+      c09: ["Bandeja limpia y kit antiderrame completo.",
+            "Restos de aceite o agua acumulada en la bandeja.",
+            "Bandeja con derrame activo o kit antiderrame incompleto."],
+      c11: ["Señal de riesgo eléctrico, lista de personal autorizado y puntos de bloqueo visibles.",
+            "Señalética deteriorada pero legible.", "Falta la señalética o los puntos de bloqueo no están identificados."],
+      c12: ["Placa del motor legible; ESN igual a la ficha.", "Desgastada pero legible.", "Ilegible o distinta de la ficha."],
+      c13: ["Motor detenido y nivelado: aceite entre las marcas L y H (ADD/FULL) de la varilla; color y olor normales.",
+            "Cerca de la marca L, o más oscuro de lo esperado para las horas de uso.",
+            "Bajo la marca L, aspecto lechoso (refrigerante), olor a combustible o partículas metálicas."],
+      c14: ["En frío: refrigerante entre MIN y MAX del depósito; color uniforme; tapa con empaque sano; mangueras sin grietas ni abultamientos y abrazaderas firmes.",
+            "Nivel cerca de MIN, mangueras endurecidas o con fisuras superficiales.",
+            "Bajo MIN, contaminado con aceite u óxido, manguera abultada, agrietada o con fuga."],
+      c15: ["Panal del radiador limpio (se ve luz a través), aletas sin aplastar; foto antes y después de limpiar.",
+            "Obstrucción parcial por polvo o insectos, aletas dobladas en zonas pequeñas.",
+            "Panal obstruido, aletas aplastadas en gran parte o fuga en el radiador."],
+      c16: ["Filtros rotulados con horómetro y fecha de cambio; sello sin fuga.",
+            "Rótulo borroso o incompleto.", "Fuga en el sello o filtro vencido según horas."],
+      c17: ["Fajas sin grietas transversales, deshilachado ni brillo; tensión correcta; ventilador sin aspas dañadas; guardas puestas.",
+            "Grietas finas superficiales o tensión al límite.",
+            "Faja cortada, deshilachada, patinando (brillo), aspa rota o guarda ausente."],
+      c18: ["Motor, mangueras y conexiones limpios: sin aceite, refrigerante ni combustible.",
+            "Humedad o rezume sin goteo.", "Goteo activo o charco bajo el equipo."],
+      c19: ["Etiqueta legible: voltaje, Ah, CCA y fecha.", "Etiqueta desgastada.", "Ilegible: no se puede verificar la batería."],
+      c20: ["Bornes sin sulfato, terminales apretados, cables sin daño, carcasa sin hinchazón ni rajaduras.",
+            "Sulfato leve o terminal con ligera holgura.",
+            "Sulfato abundante, terminal suelto, cable dañado o carcasa hinchada o rajada."],
+      c21: ["Lectura del probador legible. SOH ≥ 85 %.", "SOH entre 70 y 85 %, o SOC < 75 % (cargar).",
+            "SOH < 70 %: evaluar reemplazo (ítem 10/19 del check-list)."],
+      c22: ["Candado y tarjeta personales en el punto de bloqueo; interruptor en OFF; batería desconectada.",
+            "Bloqueo aplicado pero tarjeta incompleta.", "Sin bloqueo o sin tarjeta."],
+      c23: ["Qué es, dónde está, qué riesgo tiene y qué se hizo o falta hacer.", "", ""],
+      g03: ["Controlador sin alarmas ni advertencias activas, en el modo que corresponde, con la hora correcta.",
+            "Advertencia activa o reloj desfasado.", "Alarma de parada activa o pantalla sin funcionar."],
+      g04: ["VLL dentro de ±2,5 % del nominal; VLN ≈ VLL/√3; corrientes parejas entre fases.",
+            "VLL fuera de ±2,5 % o corrientes desbalanceadas.", "VLL fuera de ±10 % del nominal."],
+      g05: ["Frecuencia nominal ±0,5 Hz (60 Hz) y velocidad estable (1800 RPM con 4 polos).",
+            "Oscilación visible de Hz o RPM.", "Fuera de rango o inestable."],
+      g06: ["En marcha: presión de aceite normal y temperatura de refrigerante bajo 100 °C.",
+            "Valores cerca del límite.", "Presión de aceite bajo 20 psi o temperatura sobre 100 °C."],
+      g07: ["Sistema de 12 V: ≥ 12,4 V en reposo, 13,5–14,5 V con el motor en marcha (24 V: el doble).",
+            "Bajo en reposo o carga débil.", "Muy bajo, o sin carga del alternador con el motor en marcha."],
+      g08: ["Botón de parada de emergencia sin daño, se rearma y la prueba detiene el grupo.",
+            "Rearme duro o rótulo deteriorado.", "No detiene el grupo, roto o bloqueado."],
+      g09: ["Interruptor principal opera, rotulado, sin decoloración ni olor a quemado.",
+            "Rótulo deteriorado o mecanismo duro.", "Signos de calentamiento, daño o no opera."],
+      g11: ["Conductor de tierra conectado al chasis y a la barra o varilla, apretado y sin corrosión.",
+            "Corrosión leve.", "Desconectado, suelto o cortado."],
+      g12: ["Valores estables en cada nivel de carga y sin alarmas.", "Oscilación o desbalance con carga.",
+            "Disparo, alarma o caída de tensión con carga."]
+    },
+    ESTADOS_FOTO: [["OK", "OK"], ["OBS", "Observado"], ["FALLA", "Falla"]],
+
     /* Seguridad antes de iniciar. Sale del aviso de la orden («condiciones
        y restricciones», «condiciones de seguridad», recursos, herramientas,
        instrumentos y el proceso: matriz de bloqueo, desconexión de batería,
@@ -4272,6 +4349,8 @@ MANT.modelo = (function () {
       informe: informe(),
       baterias: [],
       fotos: [],                  // {casilla, foto (id en `fotos`), texto}
+      // Estado de cada componente según su foto: {casilla: {estado, nota, hora}}.
+      estados: {},
       // Qué clase de orden es. Se elige al crearla y manda en todo lo demás:
       // la casilla 2.x del informe, la rutina del check-list, los avisos.
       clasificacion: { tipo: "", pm: "" },
@@ -4725,6 +4804,28 @@ MANT.validaciones = (function () {
     }
     var sueltas = m.fotos.filter(function (f) { return !f.casilla; }).length;
     if (sueltas) a.push(alerta("aviso", "fotos", sueltas + " foto(s) sin casilla: asígnelas o quítelas"));
+
+    // Estado de cada componente: lo observado necesita su nota, y una falla
+    // pide decidir si se crea aviso y si el equipo sigue apto.
+    var fallas = [];
+    Object.keys(m.estados || {}).forEach(function (idc) {
+      var e = m.estados[idc] || {}, cas = M.casilla(idc), nom = cas ? cas[2] : idc;
+      if ((e.estado === "OBS" || e.estado === "FALLA") && vacio(e.nota)) {
+        a.push(alerta("aviso", "estados." + idc, nom + ": " + (e.estado === "FALLA" ? "falla" : "observado") +
+          " sin describir qué se ve"));
+      }
+      if (e.estado === "FALLA") fallas.push(nom);
+      if (e.estado && !m.fotos.some(function (f) { return f.casilla === idc && f.foto; })) {
+        a.push(alerta("info", "estados." + idc, nom + ": estado marcado sin foto que lo respalde"));
+      }
+    });
+    if (fallas.length && m.ot.crearAviso !== true) {
+      a.push(alerta("aviso", "ot.crearAviso", "Falla en " + fallas.join(", ") + ": ¿crear aviso del pendiente?"));
+    }
+    if (fallas.length && m.informe.operativo === true) {
+      a.push(alerta("aviso", "informe.operativo", "Se declara apto con falla en " + fallas.join(", ") +
+        ": confirme que no impide operar"));
+    }
 
     // Correctivo: qué falló y si el equipo queda apto.
     var op = m.informe.operativo;
@@ -5346,9 +5447,27 @@ MANT.ordenes = (function () {
       html += '<div class="m-casilla" data-casilla="' + c[0] + '"><span class="lb">' + c[0] + " · " +
         esc(c[2]) + (c[3] ? " *" : "") + "</span>" + idxs.map(fichaFoto).join("") +
         (!idxs.length ? entradaFoto(c[0], "Tomar o elegir foto")
-          : c[0] === HALLAZGO ? entradaFoto(c[0], "+ Otro hallazgo") : "") + "</div>";
+          : c[0] === HALLAZGO ? entradaFoto(c[0], "+ Otro hallazgo") : "") +
+        (c[0] === HALLAZGO ? "" : pintarEstado(c[0])) + "</div>";
     });
     return html;
+  }
+
+  /* El criterio del especialista, a la vista, y el estado que decide el
+     técnico. Plegado para no alargar la pantalla; se abre al tocarlo. */
+  function pintarEstado(idc) {
+    var cr = M.FORMATO.criterios[idc], e = (m.estados || {})[idc] || {};
+    var nota = "estados." + idc + ".nota";
+    return (cr ? '<details class="m-criterio"><summary>Qué mirar</summary><p><b>OK:</b> ' + esc(cr[0]) + "</p>" +
+        (cr[1] ? "<p><b>Observado:</b> " + esc(cr[1]) + "</p>" : "") +
+        (cr[2] ? "<p><b>Falla:</b> " + esc(cr[2]) + "</p>" : "") + "</details>" : "") +
+      '<div class="m-sn" role="group" aria-label="Estado de ' + idc + '">' +
+      M.FORMATO.ESTADOS_FOTO.map(function (x) {
+        return '<button type="button" data-estado-foto="' + idc + '" data-valor="' + x[0] + '" aria-pressed="' +
+          (e.estado === x[0]) + '">' + x[1] + "</button>";
+      }).join("") + "</div>" +
+      (e.estado === "OBS" || e.estado === "FALLA" ? campos([[nota, "Qué se ve", "area"]]) : "") +
+      '<span class="m-campo-alerta" id="' + id("estados." + idc) + '-alerta"></span>';
   }
 
   function miniaturas() {
@@ -5643,6 +5762,13 @@ MANT.ordenes = (function () {
       if (b.dataset.sn === "informe.operativo") {
         m.aptitud.fecha = leer(m, "informe.operativo") === null ? "" : new Date().toLocaleString("es-PE");
       }
+      tocar(); pintar(); return;
+    }
+    if (b.dataset.estadoFoto) {
+      var idc = b.dataset.estadoFoto, est = m.estados[idc] || { estado: null, nota: "", hora: "" };
+      est.estado = est.estado === b.dataset.valor ? null : b.dataset.valor;
+      est.hora = est.estado ? new Date().toLocaleString("es-PE") : "";
+      if (est.estado) m.estados[idc] = est; else delete m.estados[idc];
       tocar(); pintar(); return;
     }
     if (b.dataset.estado) {
@@ -10184,7 +10310,10 @@ MANT.reporte = (function () {
     var op = m.informe.operativo;
     if (op === false) return "Inoperativo";
     if (op === null) return "Por confirmar";
-    var obs = m.ot.crearAviso === true ||
+    var marcadas = Object.keys(m.estados || {}).some(function (k) {
+      return m.estados[k] && (m.estados[k].estado === "OBS" || m.estados[k].estado === "FALLA");
+    });
+    var obs = m.ot.crearAviso === true || marcadas ||
       (m.ot.defectoReco && !/sin defecto/i.test(m.ot.defectoReco));
     return obs ? "Operativo con observaciones" : "Operativo";
   }
@@ -10213,6 +10342,16 @@ MANT.reporte = (function () {
     if (c.tipo === "CORRECTIVO" && m.correctivo.falla) obs.push("Falla: " + m.correctivo.falla.trim());
     if (m.ot.defectoReco && !/sin defecto/i.test(m.ot.defectoReco)) obs.push("Defecto: " + m.ot.defectoReco.trim());
     if (m.ot.crearAviso === true && m.ot.textoAviso) obs.push("Aviso: " + m.ot.textoAviso.trim());
+    // Lo que el técnico marcó en las fotos, fallas primero.
+    ["FALLA", "OBS"].forEach(function (nivel) {
+      Object.keys(m.estados || {}).forEach(function (idc) {
+        var e = m.estados[idc];
+        if (!e || e.estado !== nivel) return;
+        var cas = M.casilla(idc);
+        obs.push((nivel === "FALLA" ? "Falla" : "Observado") + " · " + (cas ? cas[2] : idc) +
+                 (e.nota ? ": " + e.nota.trim() : ""));
+      });
+    });
     if (!obs.length) obs.push("Sin observaciones");
 
     return {

@@ -235,3 +235,52 @@ def test_los_botones_principales_se_leen(pw, servidor, fotos):
         c = pg.eval_on_selector(sel, "n => { const s = getComputedStyle(n); return [s.color, s.backgroundColor]; }")
         assert c[0] != c[1], (sel, c)
     nav.close()
+
+
+# --------------------------------------------------------------------------
+# estado de cada componente, con el criterio del especialista a la vista
+# --------------------------------------------------------------------------
+
+def test_cada_casilla_trae_su_criterio(pw, servidor):
+    nav = _lanzar(pw)
+    pg = _contexto(nav).new_page()
+    pg.goto(servidor)
+    pg.wait_for_function("() => window.MANT")
+    r = pg.evaluate("""() => { const F = MANT.modelo.FORMATO;
+      return F.fotos.map(c => [c[0], (F.criterios[c[0]] || []).length]); }""")
+    assert all(n == 3 for _, n in r), r
+    assert "entre las marcas L y H" in pg.evaluate("() => MANT.modelo.FORMATO.criterios.c13[0]")
+    nav.close()
+
+
+def test_falla_en_una_foto_pide_nota_aviso_y_sale_en_el_reporte(pw, servidor, fotos):
+    nav = _lanzar(pw)
+    pg = _contexto(nav, movil=True).new_page()
+    pid = _orden(pg, servidor)
+    pg.set_input_files("#m-o-foto-c17", str(fotos["directa"]))
+    pg.wait_for_selector("[data-casilla=c17] img")
+    pg.click("[data-casilla=c17] summary")
+    assert "grietas transversales" in pg.inner_text("[data-casilla=c17] .m-criterio")
+
+    pg.click("[data-estado-foto=c17][data-valor=FALLA]")
+    assert "sin describir" in pg.inner_text("#m-o-alertas")
+    pg.fill("#m-o-estados-c17-nota", "Faja del alternador con grietas transversales")
+    texto = pg.inner_text("#m-o-alertas")
+    assert "sin describir" not in texto
+    assert "Falla en Fajas y ventilador" in texto and "crear aviso" in texto
+    wa = pg.input_value("#m-o-wa")
+    assert "• Falla · Fajas y ventilador: Faja del alternador con grietas transversales" in wa
+
+    # Un estado sin foto que lo respalde queda anotado como dato.
+    pg.click("[data-estado-foto=c13][data-valor=OK]")
+    assert "Nivel de aceite (varilla): estado marcado sin foto" in pg.inner_text("#m-o-alertas")
+
+    pg.evaluate("() => CAMPO.proyectos.volcar()")
+    e = _datos(pg, pid)["estados"]
+    assert e["c17"]["estado"] == "FALLA" and e["c17"]["hora"]
+    assert e["c13"]["estado"] == "OK"
+    # Tocar otra vez el marcado lo quita.
+    pg.click("[data-estado-foto=c13][data-valor=OK]")
+    pg.evaluate("() => CAMPO.proyectos.volcar()")
+    assert "c13" not in _datos(pg, pid)["estados"]
+    nav.close()
