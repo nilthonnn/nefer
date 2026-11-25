@@ -932,6 +932,13 @@
               <span id="lector-estado">sin comprobar</span></span>
             <button type="button" id="lector-preparar">Dejar listo sin señal</button>
           </div>
+          <div class="bar" style="margin:.5rem 0 0">
+            <span><b>Aprendizaje del lector</b>: <span id="lector-aprendido">—</span></span>
+            <button type="button" id="lector-exportar">Exportar</button>
+            <input type="file" id="lector-importar" class="archivo" accept=".json,application/json"
+                   aria-label="Importar el aprendizaje del lector">
+            <label class="boton" for="lector-importar">Importar</label>
+          </div>
         </div>
       </details>
 
@@ -5715,7 +5722,9 @@ MANT.ordenes = (function () {
       (f.propuesta ? '<span class="m-prop">PROPUESTA POR EL NOMBRE DEL ARCHIVO · ' + esc(f.nombre || "") + "</span>" : "") +
       (f.casilla === HALLAZGO ? campos([["fotos." + i + ".texto", "Descripción del hallazgo", "area"]]) : "") +
       (f.casilla && MANT.lector && (MANT.lector.LEE[f.casilla] || f.casilla === "c01")
-        ? '<button type="button" data-accion="foto-leer" data-i="' + i + '" style="margin:.3rem 0">Leer valores de la foto</button>'
+        ? '<div class="m-sn" style="margin:.3rem 0">' +
+          '<button type="button" class="primary" data-accion="foto-encuadrar" data-i="' + i + '">Encuadrar y leer</button>' +
+          '<button type="button" data-accion="foto-leer" data-i="' + i + '">Leer foto entera</button></div>'
         : "") +
       (lectura && lectura.foto === f.foto ? pintarLectura() : "") +
       '<label class="campo" for="m-o-mover-' + i + '"><span class="lb">Casilla</span>' +
@@ -5793,10 +5802,16 @@ MANT.ordenes = (function () {
         (x.destino === "tag"
           ? '<p class="' + (otro ? "m-lect-mal" : "m-ok") + '">' + esc(x.valor) +
             (otro ? " — la foto es de otro equipo: esta orden es del " + esc(m.tag) : " — coincide con la orden") + "</p>"
-          : '<input type="text" data-valor-prop="' + k + '" value="' + esc(x.valor == null ? "" : x.valor) + '">') + "</div>";
+          : '<input type="text" data-valor-prop="' + k + '" value="' + esc(x.valor == null ? "" : x.valor) + '">' +
+            (x.leido !== undefined ? '<p class="m-nota-sn">Leído «' + esc(x.leido) + "» · corregido " +
+              (x.origen === "aprendido" ? "con lo aprendido en este teléfono" : "según la " + esc(x.origen)) + "</p>" : "")) +
+        "</div>";
     }).join("");
-    return '<div class="m-lectura"><p class="m-sub">Leído de la foto · revise y elija</p>' +
-      (L.propuestas.length ? filas : '<p class="m-nota-sn">No se encontraron valores. Escríbalos a mano.</p>') +
+    return '<div class="m-lectura"><p class="m-sub">Leído de la foto' + (L.recortada ? " (encuadre)" : "") +
+      (L.giro ? " · girada " + L.giro + "°" : "") + " · revise y elija</p>" +
+      (L.propuestas.length ? filas : '<p class="m-nota-sn">No se encontraron valores. Escríbalos a mano. ' +
+        "Para la próxima: foto de frente, que la placa o la pantalla llene el cuadro, sin reflejo " +
+        "(haga sombra con la mano) y use «Encuadrar y leer».</p>") +
       (hayColumna ? '<label class="campo" for="m-o-lect-col"><span class="lb">Columna de la tabla de parámetros</span>' +
         '<select id="m-o-lect-col">' + F.columnas.map(function (c, n) {
           return '<option value="' + n + '"' + (n === L.columna ? " selected" : "") + ">" + esc(c[1]) + "</option>";
@@ -5807,7 +5822,25 @@ MANT.ordenes = (function () {
       '<button type="button" data-accion="lect-cerrar">Cerrar</button></div></div>';
   }
 
-  function leerFoto(i) {
+  /* El encuadre sólo sirve para leer: la foto guardada no cambia. Medido
+     con fotos de campo, encuadrar la placa o la pantalla es lo que más
+     mejora la lectura. */
+  function encuadrarYLeer(i) {
+    var f = m.fotos[i];
+    if (!f) return;
+    A.fotos.leer(f.foto).then(function (r) {
+      if (!r) return;
+      var archivo;
+      try { archivo = new File([r.archivo], r.nombre || "foto.jpg", { type: r.archivo.type || "image/jpeg" }); }
+      catch (e) { archivo = r.archivo; }
+      var ok = R.editor.abrir({ archivo: archivo, rotulo: "Encuadre sólo la placa o la pantalla",
+                                proporcion: "original",
+                                alAceptar: function (recorte) { leerFoto(i, recorte); } });
+      if (!ok) leerFoto(i);
+    });
+  }
+
+  function leerFoto(i, recorte) {
     var f = m.fotos[i];
     if (!f) return Promise.resolve();
     var primeraVacia = 0;
@@ -5819,18 +5852,22 @@ MANT.ordenes = (function () {
     lectura = { foto: f.foto, casilla: f.casilla, estado: "leyendo", texto: "", propuestas: [],
                 columna: primeraVacia, aviso: "preparando el lector (la primera vez tarda un poco)…" };
     pintar();
-    return Promise.all([A.fotos.leer(f.foto), A.equipos.listar()]).then(function (r) {
+    return Promise.all([recorte ? Promise.resolve({ archivo: recorte }) : A.fotos.leer(f.foto), A.equipos.listar()]).then(function (r) {
       if (!r[0]) throw new Error("la foto ya no está guardada");
-      var tags = (r[1] || []).map(function (e) { return e.tag; });
-      return MANT.lector.leer(r[0].archivo, function (estado, avance) {
+      var fichas = r[1] || [], tags = fichas.map(function (e) { return e.tag; });
+      var nominal = m.equipo.voltajeNominal || (ctx.ficha && M.normalizar.equipo(ctx.ficha).voltajeNominal) || null;
+      return MANT.lector.leerFoto(r[0].archivo, f.casilla,
+        { tags: tags, fichas: fichas, tag: m.tag, nominal: nominal }, function (estado, avance) {
         if (!lectura || lectura.foto !== f.foto) return;
         lectura.aviso = (/recogniz/.test(estado) ? "leyendo" : "preparando el lector") + "… " + Math.round(avance * 100) + " %";
         var n = raiz.querySelector(".m-lectura-estado");
         if (n) n.textContent = lectura.aviso;
-      }).then(function (texto) {
+      }).then(function (res) {
         if (!lectura || lectura.foto !== f.foto) return;
-        lectura.texto = texto;
-        lectura.propuestas = MANT.lector.interpretar(texto, f.casilla, { tags: tags });
+        lectura.texto = res.texto;
+        lectura.giro = res.giro;
+        lectura.recortada = !!recorte;
+        lectura.propuestas = res.propuestas;
         lectura.estado = "listo";
         pintar();
       });
@@ -5852,8 +5889,13 @@ MANT.ordenes = (function () {
       var campo = raiz.querySelector('.m-lectura [data-valor-prop="' + k + '"]');
       var crudo = campo ? campo.value.trim() : x.valor;
       var num = typeof x.valor === "number" || x.valor === null;
-      elegidas.push({ destino: x.destino, ruta: x.ruta, rotulo: x.rotulo,
-                      valor: num ? M.numero(crudo) : String(crudo).toUpperCase() });
+      var usado = num ? M.numero(crudo) : String(crudo).toUpperCase();
+      elegidas.push({ destino: x.destino, ruta: x.ruta, rotulo: x.rotulo, valor: usado });
+      // Se aprende sólo de identificadores (modelo, serie, CPL, WDG, módulo):
+      // una medición cambia en cada visita y no hay nada que aprender de ella.
+      if (x.destino === "ficha" && !num) {
+        MANT.lector.aprender(x.ruta, x.leido !== undefined ? x.leido : x.valor, usado);
+      }
     });
     var col = raiz.querySelector("#m-o-lect-col");
     var columna = col ? Number(col.value) : L.columna;
@@ -6428,6 +6470,7 @@ MANT.ordenes = (function () {
       return;
     }
     if (acc === "foto-leer") { leerFoto(Number(b.dataset.i)); return; }
+    if (acc === "foto-encuadrar") { encuadrarYLeer(Number(b.dataset.i)); return; }
     if (acc === "lect-usar") { usarLectura(); return; }
     if (acc === "lect-cerrar") { lectura = null; pintar(); return; }
     if (acc === "foto-confirmar") { m.fotos[Number(b.dataset.i)].propuesta = false; tocar(); pintar(); return; }
@@ -6801,6 +6844,24 @@ MANT.ordenes = (function () {
     }, function (e) { $("#lector-estado").textContent = "no se pudo: " + e.message; });
   });
   $("#ajustes-identidad").addEventListener("toggle", estadoLector);
+  function estadoAprendizaje() {
+    if (!window.MANT || !MANT.lector) return;
+    var n = Object.keys(MANT.lector.aprendizaje().correcciones || {}).length;
+    $("#lector-aprendido").textContent = n ? n + (n === 1 ? " corrección aprendida" : " correcciones aprendidas") : "todavía nada";
+  }
+  $("#ajustes-identidad").addEventListener("toggle", estadoAprendizaje);
+  $("#lector-exportar").addEventListener("click", function () {
+    CAMPO.entregar(MANT.lector.exportarAprendizaje(), "aprendizaje-lector.json", function () {});
+  });
+  $("#lector-importar").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    this.value = "";
+    if (!f) return;
+    f.text().then(function (t) {
+      var n = MANT.lector.importarAprendizaje(t);
+      $("#lector-aprendido").textContent = n + " correcciones nuevas importadas";
+    }).catch(function (e) { $("#lector-aprendido").textContent = "no se pudo: " + e.message; });
+  });
   pintar();
 })();
 </script>
@@ -11202,47 +11263,160 @@ MANT.lector = (function () {
   function primero(re, t) { var m = re.exec(t); return m ? m[1] : null; }
   function numero(x) { return M.numero(x); }
 
-  function placa(t, base, extra) {
-    var p = [];
-    var modelo = primero(/(?:MODEL|MODELO|TYPE|TIPO|FRAME)\s*(?:NO\.?|N[°º])?\s*[:.\-]?\s*([A-Z0-9][A-Z0-9.\-\/]{2,})/, t);
-    var serie = primero(/(?:SERIAL|SERIE|S\/N|ESN|\bSN\b|SER\.)\s*(?:NO\.?|N[°º]|NUMBER)?\s*[:.\-]?\s*([A-Z0-9][A-Z0-9\-]{4,})/, t);
-    if (modelo) p.push({ destino: "ficha", ruta: base + ".modelo", rotulo: "Modelo", valor: modelo });
+  /* Reglas escritas a partir de fotos reales de campo: placas de grupo,
+     motor y alternador (en inglés y en español), pantallas del controlador
+     en los dos idiomas, y el probador. El OCR pega la unidad al número
+     («230Vac», «9248.0hrs», «27.93Vdc») y a veces corta el rótulo: se busca
+     por rótulo y, si no, por la unidad. */
+  var N = "(\\d{1,6}(?:[.,]\\d{1,3})?)";
+  function re(s) { return new RegExp(s); }
+  function buscar(t, lista) {
+    for (var i = 0; i < lista.length; i++) { var m = lista[i].exec(t); if (m) return m[1]; }
+    return null;
+  }
+  function num(t, lista) { var v = buscar(t, lista); return v === null ? null : numero(v); }
+  function limpiaCodigo(v) { return v ? v.replace(/^[*\s]+|[*\s.]+$/g, "") : v; }
+
+  var MODELO = [re("(?:ENGINE\\s*MODEL|MODEL(?:O)?(?:\\s*NUMBER)?|FRAME(?:\\s*\\/\\s*CORE)?|TIPO)\\s*[:.\\-—]?\\s*([A-Z0-9][A-Z0-9.\\-\\/]{1,}(?:[ -]G\\d)?)")];
+  var SERIE = [re("(?:SERIAL(?:\\s*(?:NUMBER|NO\\.?|N[°º]))?|N[°º]\\s*DE\\s*SER[I1]E|SER[I1]E|ENGINE\\s*SR\\.?\\s*NO\\.?|ESN|S\\/N)\\s*[:.\\-]?\\s*(\\*?[A-Z0-9][A-Z0-9\\-]{4,}\\*?)")];
+
+  // Un modelo o una serie tienen al menos un dígito: «SERIAL» o
+  // «MANUFACTURING» son el rótulo de la línea siguiente, no un valor.
+  function codigo(t, lista) {
+    for (var i = 0; i < lista.length; i++) {
+      var g = new RegExp(lista[i].source, "g"), m;
+      while ((m = g.exec(t))) {
+        var v = limpiaCodigo(m[1]);
+        if (v && /\d/.test(v) && /[A-Z0-9]{2,}/.test(v)) return v;
+      }
+    }
+    return null;
+  }
+  function placa(t, base, conElectrico) {
+    var p = [], modelo = codigo(t, MODELO), serie = codigo(t, SERIE);
+    if (modelo) p.push({ destino: "ficha", ruta: base + ".modelo", rotulo: "Modelo", valor: modelo.replace(/\s+/g, "-") });
     if (serie) p.push({ destino: "ficha", ruta: base + ".serie", rotulo: "N° de serie", valor: serie });
-    (extra || []).forEach(function (x) {
-      var v = primero(x[0], t);
-      if (v !== null) p.push({ destino: "ficha", ruta: x[1], rotulo: x[2], valor: x[3] ? numero(v) : v });
-    });
+    if (base === "motor") {
+      var cpl = buscar(t, [/CPL\s*[:.\-]?\s*(\d{3,5})/]);
+      if (cpl) p.push({ destino: "ficha", ruta: "motor.cpl", rotulo: "CPL", valor: cpl });
+    }
+    if (base === "alternador") {
+      var w = buscar(t, [/(?:WDG|WINDING)\s*[:.\-]?\s*(?:WD)?\s*([A-Z]?\d{1,3}(?:\/\d)?)/]);
+      if (w) p.push({ destino: "ficha", ruta: "alternador.winding", rotulo: "Winding (WDG)", valor: w });
+    }
+    if (conElectrico) {
+      [[[re("\\(KVA\\)\\s*[:)]?\\s*" + N), re(N + "\\s*KVA\\b"), re("KVA\\s*[:)]?\\s*" + N)], "kva", "Potencia (kVA)"],
+       [[/RATED\s*VOLTAGE[^\d]{0,8}\b(\d{3})\b/, /VOLTAJE\s*[:.]?\s*\b(\d{3})\b/, /\b(\d{3})\s*\/\s*\d{3}\s*V/], "voltajeNominal", "Voltaje nominal (V)"],
+       [[re("(?:RATED\\s*)?FREQUENC\\w*[^\\d]{0,8}(\\d{2})"), re("FRECUENCIA[^\\d]{0,8}(\\d{2})"), /\b(50|60)\s*HZ/], "frecuenciaHz", "Frecuencia (Hz)"],
+       [[/PHASE\s*[:.]?\s*([13])\b/, /\b([13])\s*(?:PH\b|PHASE|FASE)/], "fases", "Fases"],
+       [[re("R\\.?P\\.?M\\.?\\s*[:.]?\\s*(\\d{4})"), /@\s*(\d{4})/, /(\d{4})\s*RPM/], "rpm", "Velocidad (RPM)"]
+      ].forEach(function (x) {
+        var v = num(t, x[0]);
+        if (v !== null && !(x[1] === "frecuenciaHz" && v !== 50 && v !== 60) &&
+            !(x[1] === "voltajeNominal" && (v < 100 || v > 700))) {
+          p.push({ destino: "ficha", ruta: x[1], rotulo: x[2], valor: v });
+        }
+      });
+      var ctrl = buscar(t, [/(?:CONTROLLER|CONTROLADOR)[^A-Z0-9]{0,14}(?:MODELO\s*:?\s*)?((?:PC|PS|DSE|EMCP)\s*[\d.]+)/]);
+      if (ctrl) p.push({ destino: "ficha", ruta: "controladorModelo", rotulo: "Módulo de control", valor: ctrl.replace(/\s+/g, " ") });
+      var msnm = buscar(t, [/(\d{1,2}[,.]?\d{3})\s*MSNM/, /ALTITUD\w*\s*[:.]?\s*(\d{1,2}[,.]?\d{3})/]);
+      if (msnm) p.push({ destino: "orden", ruta: "informe.generalidades.msnm", rotulo: "Derrateado para (msnm)",
+                         valor: String(msnm).replace(/[,.]/g, "") });
+      // La batería, cuando la placa del grupo la trae.
+      var bv = num(t, [/TENSI\w*\s*V\w*\s*[:.]?\s*(12|24)\s*V/, /(12|24)\s*VCC/]), bah = num(t, [/(\d{2,3})\s*A\.?\s*H\b/]);
+      if (bv !== null) p.push({ destino: "ficha", ruta: "bateria.voltaje", rotulo: "Voltaje de batería (V)", valor: bv });
+      if (bah !== null) p.push({ destino: "ficha", ruta: "bateria.ah", rotulo: "Capacidad de batería (Ah)", valor: bah });
+    }
     return p;
   }
 
+  /* La placa del grupo puede traer, en secciones, la del generador y la del
+     motor («GENERADOR — Modelo …», «MOTOR — Modelo …»): se parte el texto. */
+  function placaGrupo(t) {
+    var ig = t.search(/GENERADOR\s*[—\-–:]/), im = t.search(/\bMOTOR\s*[—\-–:]/), ic = t.search(/CONTROLADOR/);
+    var corte = [ig, im, ic].filter(function (x) { return x > 0; });
+    var cabeza = corte.length ? t.slice(0, Math.min.apply(null, corte)) : t;
+    var p = placa(cabeza, "grupo", true);
+    // Lo eléctrico y la batería pueden estar después de las secciones.
+    placa(t, "grupo", true).forEach(function (x) {
+      if (!/^grupo\./.test(x.ruta) && !p.some(function (y) { return y.ruta === x.ruta; })) p.push(x);
+    });
+    function seccion(desde, base) {
+      if (desde < 0) return;
+      var fin = [ig, im, ic].filter(function (x) { return x > desde; });
+      placa(t.slice(desde, fin.length ? Math.min.apply(null, fin) : t.length), base, false).forEach(function (x) {
+        if (/\.(modelo|serie|winding|cpl)$/.test(x.ruta)) p.push(x);
+      });
+    }
+    seccion(ig, "alternador");
+    seccion(im, "motor");
+    return p;
+  }
+
+  /* Pantallas del controlador: todo lo que se lea, cada valor por su rótulo
+     o por su unidad. El horómetro va a la orden; el resto a la columna de
+     carga que elija el técnico. L-L y L-N se separan por el rótulo y, si se
+     conoce el voltaje nominal de la ficha, por cuál de los dos se parece. */
+  function panel(t, opciones) {
+    var p = [], nominal = opciones && M.numero(opciones.nominal);
+    function col(ruta, rotulo, v) { if (v !== null && v !== undefined) p.push({ destino: "columna", ruta: ruta, rotulo: rotulo, valor: v }); }
+    // Tres cifras o más: un número corto junto a «hours» es de otra línea.
+    var N3 = "(\\d{3,6}(?:[.,]\\d{1,3})?)";
+    var horas = num(t, [re("(?:HRS\\s*MOTOR|ENGINE\\s*HOURS|HOURS|HORAS|HOROMETRO)[^\\d]{0,10}" + N3), re(N3 + "\\s*(?:HRS|HR|H)\\b")]);
+    if (horas !== null && horas >= 10) p.push({ destino: "orden", ruta: "ot.horometroSalida", rotulo: "Horómetro (valor de contador)", valor: horas });
+    var v = num(t, [re("(?:AVG\\s*VOLTAGE|TENSI[OÓ]N\\s*ALT\\w*|L1-L2|VOLTAJE)[^\\d]{0,10}" + N), re("(\\d{3}(?:[.,]\\d)?)\\s*V\\s*AC")]);
+    var vn = num(t, [re("(?:L1-N|L-N|VLN)[^\\d]{0,8}" + N)]);
+    if (v !== null && v >= 100 && v <= 700) {
+      if (nominal && Math.abs(v - nominal / Math.sqrt(3)) < Math.abs(v - nominal)) { if (vn === null) vn = v; v = null; }
+      col("voltajeLL", "Voltaje L-L (V)", v);
+    }
+    if (vn !== null && vn >= 60 && vn <= 400) col("voltajeLN", "Voltaje L-N (V)", vn);
+    col("corrienteA", "Corriente (A)", num(t, [re("(?:AVG\\s*CURRENT|CORRIENTE)[^\\d]{0,10}" + N), re(N + "\\s*AMPS?\\b"),
+                                                re("\\b(?:I[123]|IA|IB|IC)\\s*" + N + "\\s*A\\b")]));
+    col("kw", "Potencia (kW)", num(t, [re("TOTAL\\s*KW[^\\d]{0,6}" + N), re(N + "\\s*KW\\b")]));
+    col("kva", "Potencia (kVA)", num(t, [re("KVA\\s*-?\\s*TOTAL[^\\d]{0,6}" + N), re(N + "\\s*KVA\\b")]));
+    var hz = num(t, [re("(\\d{2}[.,]\\d{1,2})\\s*HZ"), re("(?:FREQUENCY|FREC\\.?\\s*L[IÍ]NEA)[^\\d]{0,8}(\\d{2}(?:[.,]\\d{1,2})?)")]);
+    if (hz !== null && hz >= 40 && hz <= 70) col("hz", "Frecuencia (Hz)", hz);
+    var rpm = num(t, [re("VELOC\\w*\\s*MOTOR[^\\d]{0,8}(\\d{3,4})"), /(\d{3,4})\s*(?:RPM|R\/MIN|RM\b)/]);
+    if (rpm !== null && rpm >= 500 && rpm <= 4000) col("rpm", "Velocidad (RPM)", rpm);
+    var pr = /(?:OIL\s*PRESS\w*|PRES\.?\s*ACEITE)[^\d]{0,10}(\d{1,4}(?:[.,]\d{1,2})?)\s*(PSI|KPA|BAR)?/.exec(t) ||
+             /(\d{1,4}(?:[.,]\d{1,2})?)\s*(PSI|KPA|BAR)\b/.exec(t);
+    if (pr) {
+      var f = { PSI: 1, KPA: 0.1450377, BAR: 14.50377 }[pr[2] || "PSI"];
+      col("presionAceitePsi", "Presión de aceite (PSI)" + (pr[2] && pr[2] !== "PSI" ? ", convertida de " + pr[2] : ""),
+          Math.round(numero(pr[1]) * f * 10) / 10);
+    }
+    var te = /(?:COOLANT(?:\s*TEMP)?|WATER|REFRIGERANTE)[^\d]{0,10}(\d{2,3}(?:[.,]\d)?)\s*°?\s*([FC])?/.exec(t) ||
+             /(\d{2,3}(?:[.,]\d)?)\s*°\s*([FC])\b/.exec(t);
+    if (te) {
+      var c = numero(te[1]);
+      if (te[2] === "F") c = Math.round((c - 32) / 1.8 * 10) / 10;
+      col("tempRefrigeranteC", "T° refrigerante (°C)" + (te[2] === "F" ? ", convertida de °F" : ""), c);
+    }
+    var vb = num(t, [re("(?:BATT\\w*\\s*VOLT\\w*|TENS\\.?\\s*BAT\\w*(?:\\.\\s*PCC)?|BATTERY)[^\\d]{0,12}(\\d{1,2}[.,]\\d{1,2})"),
+                     re("(\\d{1,2}[.,]\\d{1,2})\\s*V\\s*DC")]);
+    if (vb !== null && vb >= 8 && vb <= 32) col("vBateria", "Volt. batería (Vcc)", vb);
+    return p;
+  }
+
+  var PANEL = function (t, o) { return panel(t, o); };
   var LEE = {
-    c06: function (t) {
-      // El horómetro: el número junto a H/HRS/HOURS, o el más largo.
-      var cerca = primero(new RegExp(NUM + "\\s*(?:H\\b|HRS|HOURS|HORAS)"), t) ||
-                  primero(new RegExp("(?:HRS|HOURS|HORAS|HOROMETRO|HOUR METER)\\s*[:.]?\\s*" + NUM), t);
-      // Un número corto junto a la palabra suele ser ruido («12 34» de otra
-      // línea): manda el más largo, y entre iguales el que tiene decimales.
+    c06: function (t, o) {
+      var p = panel(t, o).filter(function (x) { return x.ruta === "ot.horometroSalida"; });
+      if (p.length) return p;
+      // Un horómetro suelto: el número más largo, y entre iguales el que tiene decimales.
       var ns = todos(/\d{2,6}(?:[.,]\d)?/g, t).map(function (m) { return m[0]; });
       ns.sort(function (a, b) {
-        return (b.replace(/\D/g, "").length - a.replace(/\D/g, "").length) ||
-               (/[.,]/.test(b) - /[.,]/.test(a));
+        return (b.replace(/\D/g, "").length - a.replace(/\D/g, "").length) || (/[.,]/.test(b) - /[.,]/.test(a));
       });
-      var v = cerca && cerca.replace(/\D/g, "").length >= 3 ? cerca : (ns[0] || cerca);
-      return v ? [{ destino: "orden", ruta: "ot.horometroSalida", rotulo: "Horómetro (valor de contador)", valor: numero(v) }] : [];
+      return ns[0] ? [{ destino: "orden", ruta: "ot.horometroSalida", rotulo: "Horómetro (valor de contador)", valor: numero(ns[0]) }] : [];
     },
-    c05: function (t) {
-      return placa(t, "grupo", [
-        [new RegExp(NUM + "\\s*KVA"), "kva", "Potencia (kVA)", true],
-        [/(\d{3})\s*(?:\/\s*\d{3})?\s*V(?:OLTS?|AC)?\b/, "voltajeNominal", "Voltaje nominal (V)", true],
-        [/\b(50|60)\s*HZ/, "frecuenciaHz", "Frecuencia (Hz)", true],
-        [/\b([13])\s*(?:PH\b|PHASE|FASE)/, "fases", "Fases", true],
-        [/(\d{4})\s*(?:RPM|R\/MIN|MIN-1)/, "rpm", "Velocidad (RPM)", true]]);
-    },
-    c12: function (t) { return placa(t, "motor", [[/CPL\s*[:.\-]?\s*(\d{3,5})/, "motor.cpl", "CPL", false]]); },
-    g01: function (t) { return placa(t, "alternador", [[/(?:WDG|WINDING)\s*[:.\-]?\s*(\d{2,3})/, "alternador.winding", "Winding (WDG)", false]]); },
+    c05: function (t) { return placaGrupo(t); },
+    c12: function (t) { return placa(t, "motor", false); },
+    g01: function (t) { return placa(t, "alternador", false); },
     c19: function (t) {
-      var p = [], v = primero(/\b(12|24)\s*V\b/, t), ah = primero(/(\d{2,3})\s*AH\b/, t),
-          cca = primero(/(\d{3,4})\s*(?:CCA|A\b|EN\b|SAE\b)/, t);
+      var p = [], v = buscar(t, [/\b(12|24)\s*V\b/]), ah = buscar(t, [/(\d{2,3})\s*AH\b/]),
+          cca = buscar(t, [/(\d{3,4})\s*(?:CCA|A\b|EN\b|SAE\b)/]);
       if (v) p.push({ destino: "ficha", ruta: "bateria.voltaje", rotulo: "Voltaje de batería (V)", valor: numero(v) });
       if (ah) p.push({ destino: "ficha", ruta: "bateria.ah", rotulo: "Capacidad (Ah)", valor: numero(ah) });
       if (cca) p.push({ destino: "ficha", ruta: "bateria.cca", rotulo: "CCA", valor: numero(cca) });
@@ -11250,14 +11424,14 @@ MANT.lector = (function () {
     },
     c21: function (t) {
       var p = [], f = [
-        [/SOH\s*[:=]?\s*(\d{1,3})\s*%?/, "soh", "SOH (%)"], [/SOC\s*[:=]?\s*(\d{1,3})\s*%?/, "soc", "SOC (%)"],
-        [/(\d{1,2}[.,]\d{1,2})\s*V\b/, "voltaje", "Voltaje (V)"], [/(\d{3,4})\s*CCA/, "ccaMedido", "CCA medido"],
-        [new RegExp(NUM + "\\s*M\\s*(?:Ω|OHM|O\\b|Q\\b)"), "resistenciaMOhm", "Resistencia (mΩ)"]];
+        [[/SOH\s*[:=]?\s*(\d{1,3})\s*%?/], "soh", "SOH (%)"], [[/SOC\s*[:=]?\s*(\d{1,3})\s*%?/], "soc", "SOC (%)"],
+        [[/(\d{1,2}[.,]\d{1,2})\s*V\b/], "voltaje", "Voltaje (V)"],
+        [[/(\d{3,4})\s*CCA/, /SOH\s*\d{1,3}\s*%?\s*(\d{3,4})\s*A\b/, /(\d{3,4})\s*A\b/], "ccaMedido", "CCA medido"],
+        [[re(N + "\\s*M\\s*(?:Ω|OHM|O\\b|Q\\b|N\\b)"), re("R\\s*=\\s*" + N)], "resistenciaMOhm", "Resistencia (mΩ)"]];
       f.forEach(function (x) {
-        var v = primero(x[0], t);
+        var v = buscar(t, x[0]);
         if (v !== null) p.push({ destino: "orden", ruta: "probador." + x[1], rotulo: x[2], valor: numero(v) });
       });
-      // El estado que corresponde por SOH, también como propuesta.
       var soh = p.filter(function (x) { return x.ruta === "probador.soh"; })[0];
       if (soh && soh.valor !== null) {
         var e = soh.valor >= 85 ? "OK" : soh.valor >= 70 ? "OBS" : "FALLA";
@@ -11265,47 +11439,105 @@ MANT.lector = (function () {
       }
       return p;
     },
-    g04: function (t) {
-      var p = [], ns = todos(/(\d{2,3}(?:[.,]\d)?)\s*(V|A)\b/g, t);
-      var ll = null, ln = null, amp = null;
-      ns.forEach(function (m) {
-        var v = numero(m[1]);
-        if (m[2] === "V" && v >= 300 && v <= 700 && ll === null) ll = v;
-        else if (m[2] === "V" && v >= 100 && v < 300 && ln === null) ln = v;
-        else if (m[2] === "A" && amp === null) amp = v;
-      });
-      if (ll !== null) p.push({ destino: "columna", ruta: "voltajeLL", rotulo: "Voltaje L-L (V)", valor: ll });
-      if (ln !== null) p.push({ destino: "columna", ruta: "voltajeLN", rotulo: "Voltaje L-N (V)", valor: ln });
-      if (amp !== null) p.push({ destino: "columna", ruta: "corrienteA", rotulo: "Corriente (A)", valor: amp });
-      return p;
-    },
-    g05: function (t) {
-      var p = [], hz = primero(/(\d{2}(?:[.,]\d{1,2})?)\s*HZ/, t), rpm = primero(/(\d{3,4})\s*(?:RPM|R\/MIN)/, t);
-      if (hz) p.push({ destino: "columna", ruta: "hz", rotulo: "Frecuencia (Hz)", valor: numero(hz) });
-      if (rpm) p.push({ destino: "columna", ruta: "rpm", rotulo: "Velocidad (RPM)", valor: numero(rpm) });
-      return p;
-    },
-    g06: function (t) {
-      var p = [], pr = /(\d{1,4}(?:[.,]\d{1,2})?)\s*(PSI|KPA|BAR)/.exec(t), te = /(\d{2,3}(?:[.,]\d)?)\s*°?\s*([CF])\b/.exec(t);
-      if (pr) {
-        var v = numero(pr[1]), f = { PSI: 1, KPA: 0.1450377, BAR: 14.50377 }[pr[2]];
-        p.push({ destino: "columna", ruta: "presionAceitePsi", rotulo: "Presión de aceite (PSI)" +
-                 (pr[2] === "PSI" ? "" : ", convertida de " + pr[2]), valor: Math.round(v * f * 10) / 10 });
-      }
-      if (te) {
-        var c = numero(te[1]);
-        if (te[2] === "F") c = Math.round((c - 32) / 1.8 * 10) / 10;
-        p.push({ destino: "columna", ruta: "tempRefrigeranteC", rotulo: "T° refrigerante (°C)" +
-                 (te[2] === "F" ? ", convertida de °F" : ""), valor: c });
-      }
-      return p;
-    },
-    g07: function (t) {
-      var v = todos(/(\d{1,2}[.,]\d{1,2})\s*V\b/g, t).map(function (m) { return numero(m[1]); })
-        .filter(function (x) { return x >= 8 && x <= 32; })[0];
-      return v !== undefined ? [{ destino: "columna", ruta: "vBateria", rotulo: "Volt. batería (Vcc)", valor: v }] : [];
-    }
+    g03: PANEL, g04: PANEL, g05: PANEL, g06: PANEL, g07: PANEL
   };
+
+  /* ---------- autoaprendizaje, en el teléfono ----------
+     Dos fuentes, y ninguna sale del aparato:
+       1. Las correcciones del técnico. Si leyó «C100D8» y él usó «C100D6»
+          para ese campo, la próxima vez que lea «C100D8» propone «C100D6»
+          («aprendido»).
+       2. Las fichas que ya existen. Un modelo o una serie leídos se comparan
+          con los de todas las fichas teniendo en cuenta las confusiones
+          típicas del OCR (O/0, I/L/1, S/5, B/8, Z/2, G/6); si coinciden, se
+          propone el de la ficha («según la ficha de 064»).
+     Todo sigue siendo propuesta: el técnico confirma. */
+  var CLAVE_APRENDIZAJE = "campo.lector.aprendizaje";
+  function aprendizaje() {
+    try { return JSON.parse(localStorage.getItem(CLAVE_APRENDIZAJE) || "{}") || {}; } catch (e) { return {}; }
+  }
+  function guardarAprendizaje(a) {
+    try { localStorage.setItem(CLAVE_APRENDIZAJE, JSON.stringify(a)); return true; } catch (e) { return false; }
+  }
+  function clave(ruta, leido) { return ruta + "|" + String(leido).toUpperCase(); }
+  // El técnico usó `usado` donde se leyó `leido`.
+  function aprender(ruta, leido, usado) {
+    if (leido === null || leido === undefined || usado === null || usado === undefined) return;
+    if (String(leido).toUpperCase() === String(usado).toUpperCase()) return;
+    var a = aprendizaje(), k = clave(ruta, leido);
+    a.correcciones = a.correcciones || {};
+    var c = a.correcciones[k] || { ruta: ruta, leido: String(leido), usado: usado, veces: 0 };
+    c.usado = usado; c.veces += 1; c.ultima = Date.now();
+    a.correcciones[k] = c;
+    guardarAprendizaje(a);
+  }
+  function confusiones(t) {
+    return String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, "")
+      .replace(/O/g, "0").replace(/[IL|]/g, "1").replace(/S/g, "5").replace(/B/g, "8")
+      .replace(/Z/g, "2").replace(/G/g, "6").replace(/Q/g, "0").replace(/D(?=\d)/g, "D");
+  }
+  function distancia(a, b) {
+    if (Math.abs(a.length - b.length) > 1) return 9;
+    var d = [], i, j;
+    for (i = 0; i <= a.length; i++) { d[i] = [i]; }
+    for (j = 0; j <= b.length; j++) d[0][j] = j;
+    for (i = 1; i <= a.length; i++) for (j = 1; j <= b.length; j++) {
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    return d[a.length][b.length];
+  }
+  /* Ajusta las propuestas con lo aprendido. `fichas`: las del teléfono. */
+  function ajustar(propuestas, fichas, tagActual) {
+    var a = aprendizaje(), corr = a.correcciones || {};
+    var conocidos = [];
+    (fichas || []).forEach(function (f) {
+      ["grupo", "motor", "alternador"].forEach(function (b) {
+        ["modelo", "serie"].forEach(function (c) {
+          var v = f && f[b] && f[b][c];
+          if (v && String(v).length >= 3) conocidos.push({ ruta: b + "." + c, valor: String(v), tag: f.tag });
+        });
+      });
+    });
+    return propuestas.map(function (x) {
+      var c = corr[clave(x.ruta, x.valor)];
+      if (c) return extender(x, { valor: c.usado, leido: x.valor, origen: "aprendido" });
+      if (/\.(modelo|serie)$/.test(x.ruta) && typeof x.valor === "string") {
+        var nx = confusiones(x.valor), cand = null;
+        conocidos.forEach(function (k) {
+          if (k.ruta !== x.ruta || k.valor.toUpperCase() === x.valor.toUpperCase()) return;
+          var nk = confusiones(k.valor), dd = nx === nk ? 0 : distancia(nx, nk);
+          // Contra la ficha del mismo equipo se tolera un carácter; contra
+          // otras, sólo en códigos largos (C100D6 y C150D6 son dos modelos).
+          var tope = (tagActual && k.tag === tagActual && nk.length >= 4) || nk.length >= 8 ? 1 : 0;
+          if (dd <= tope && (!cand || dd < cand.d || (dd === cand.d && k.tag === tagActual))) cand = { d: dd, k: k };
+        });
+        if (cand) return extender(x, { valor: cand.k.valor, leido: x.valor, origen: "ficha " + cand.k.tag });
+      }
+      return x;
+    });
+  }
+  function extender(x, y) {
+    var c = {}, k;
+    for (k in x) if (Object.prototype.hasOwnProperty.call(x, k)) c[k] = x[k];
+    for (k in y) if (Object.prototype.hasOwnProperty.call(y, k)) c[k] = y[k];
+    return c;
+  }
+  function exportarAprendizaje() {
+    return new Blob([JSON.stringify({ formato: "campo-lector-aprendizaje/1", fecha: new Date().toISOString(),
+                                      datos: aprendizaje() }, null, 2)], { type: "application/json" });
+  }
+  function importarAprendizaje(texto) {
+    var j = JSON.parse(texto);
+    if (!j || j.formato !== "campo-lector-aprendizaje/1") throw new Error("no es un archivo de aprendizaje del lector");
+    var a = aprendizaje(), entra = (j.datos && j.datos.correcciones) || {}, n = 0;
+    a.correcciones = a.correcciones || {};
+    Object.keys(entra).forEach(function (k) {
+      var x = entra[k], y = a.correcciones[k];
+      if (!y || (x.ultima || 0) > (y.ultima || 0)) { a.correcciones[k] = x; n++; }
+    });
+    guardarAprendizaje(a);
+    return n;
+  }
 
   /* El equipo de la foto: un TAG conocido escrito en ella (pintado en el
      canopy, en la etiqueta). Es la forma de «reconocer» el equipo sin
@@ -11321,7 +11553,7 @@ MANT.lector = (function () {
 
   function interpretar(texto, idc, opciones) {
     var t = limpiar(texto), lee = LEE[idc];
-    var p = lee ? lee(t) : [];
+    var p = lee ? lee(t, opciones || {}) : [];
     var tag = reconocerTag(texto, opciones && opciones.tags);
     if (tag) p.unshift({ destino: "tag", ruta: "tag", rotulo: "Equipo reconocido en la foto", valor: tag });
     return p;
@@ -11394,7 +11626,101 @@ MANT.lector = (function () {
     })).then(listoSinSenal);
   }
 
-  return { LEE: LEE, interpretar: interpretar, reconocerTag: reconocerTag, disponible: disponible,
+  /* ---------- preparar la foto para leer ----------
+     Medido con fotos reales de campo (placas, pantallas del controlador,
+     probador): leer la foto tal cual daba 3 % de los campos. Lo que más
+     ayuda, en este orden: encuadrar la placa o la pantalla (lo hace el
+     técnico en el editor), ampliarla a ~1500 px de alto, pasarla a grises y
+     binarizarla con un umbral LOCAL —el reflejo del sol y el fondo verde de
+     las pantallas no dejan usar uno solo para toda la imagen— y leerla en
+     dos modos de página (bloque y texto disperso). */
+  function prepararImagen(blob, giro) {
+    return createImageBitmap(blob).then(function (img) {
+      var rot = giro % 180 !== 0, iw = rot ? img.height : img.width, ih = rot ? img.width : img.height;
+      var esc = Math.min(1500 / ih, 3000 / iw);
+      var W = Math.max(1, Math.round(iw * esc)), H = Math.max(1, Math.round(ih * esc));
+      var c = document.createElement("canvas");
+      c.width = W; c.height = H;
+      var g = c.getContext("2d");
+      g.imageSmoothingQuality = "high";
+      g.translate(W / 2, H / 2); g.rotate(giro * Math.PI / 180);
+      var dw = rot ? H : W, dh = rot ? W : H;
+      g.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+      if (img.close) img.close();
+      var d = g.getImageData(0, 0, W, H), p = d.data, y = new Float32Array(W * H), i, j;
+      for (i = 0, j = 0; i < p.length; i += 4, j++) y[j] = p[i] * 0.299 + p[i + 1] * 0.587 + p[i + 2] * 0.114;
+      // Imagen integral: la media de cualquier ventana en tiempo constante.
+      var I = new Float64Array((W + 1) * (H + 1)), r, q;
+      for (r = 1; r <= H; r++) {
+        var suma = 0;
+        for (q = 1; q <= W; q++) { suma += y[(r - 1) * W + q - 1]; I[r * (W + 1) + q] = I[(r - 1) * (W + 1) + q] + suma; }
+      }
+      var R = Math.max(4, Math.round(Math.min(W, H) * 0.12)), K = 0.12;
+      for (r = 0; r < H; r++) {
+        var r0 = Math.max(0, r - R), r1 = Math.min(H, r + R + 1);
+        for (q = 0; q < W; q++) {
+          var q0 = Math.max(0, q - R), q1 = Math.min(W, q + R + 1);
+          var media = (I[r1 * (W + 1) + q1] - I[r0 * (W + 1) + q1] - I[r1 * (W + 1) + q0] + I[r0 * (W + 1) + q0]) /
+                      ((r1 - r0) * (q1 - q0));
+          var o = (r * W + q) * 4, v = y[r * W + q] < media * (1 - K) ? 0 : 255;
+          p[o] = p[o + 1] = p[o + 2] = v;
+        }
+      }
+      g.putImageData(d, 0, 0);
+      return new Promise(function (ok) { c.toBlob(ok, "image/png"); });
+    });
+  }
+
+  function leerPreparada(blob, giro, avance) {
+    return Promise.all([preparar(avance), prepararImagen(blob, giro)]).then(function (r) {
+      var w = r[0], img = r[1], textos = [], confianza = 0;
+      // Dos modos de página: 6 (un bloque) y 11 (texto disperso). Se unen;
+      // la confianza del motor se toma del primero.
+      return [6, 11].reduce(function (cadena, psm) {
+        return cadena.then(function () { return w.setParameters({ tessedit_pageseg_mode: String(psm) }); })
+          .then(function () { return w.recognize(img); })
+          .then(function (res) {
+            textos.push((res && res.data && res.data.text) || "");
+            if (psm === 6) confianza = (res && res.data && res.data.confidence) || 0;
+          });
+      }, Promise.resolve()).then(function () {
+        return w.setParameters({ tessedit_pageseg_mode: "3" }).then(function () {
+          return { texto: textos.join("\n"), confianza: confianza };
+        });
+      });
+    });
+  }
+
+  /* Lee la foto y propone. Si la lectura derecha es pobre (poca confianza
+     o nada que proponer), prueba girada 90° y 270° —placas montadas en
+     vertical— y se queda con la que mejor se lee: la confianza del motor y,
+     a igualdad, la que más valores propone. Contar sólo valores elegía mal:
+     un texto basura también «propone» números sueltos. */
+  function leerFoto(blob, idc, opciones, avance) {
+    var mejor = null;
+    opciones = opciones || {};
+    function intento(giro) {
+      return leerPreparada(blob, giro, avance).then(function (r) {
+        var p = interpretar(r.texto, idc, opciones);
+        var n = p.filter(function (x) { return x.destino !== "tag"; }).length;
+        var nota = r.confianza + n * 8;
+        if (!mejor || nota > mejor.nota) mejor = { texto: r.texto, giro: giro, propuestas: p, n: n, nota: nota, confianza: r.confianza };
+        return r;
+      });
+    }
+    return intento(0).then(function (r) {
+      if (r.confianza >= 60 && mejor.n > 0) return mejor;
+      return intento(90).then(function () { return intento(270); }).then(function () { return mejor; });
+    }).then(function (r) {
+      r.propuestas = ajustar(r.propuestas, opciones.fichas, opciones.tag);
+      return r;
+    });
+  }
+
+  return { LEE: LEE, interpretar: interpretar, reconocerTag: reconocerTag, disponible: disponible, leerFoto: leerFoto,
+           prepararImagen: prepararImagen, aprender: aprender, ajustar: ajustar, aprendizaje: aprendizaje,
+           exportarAprendizaje: exportarAprendizaje, importarAprendizaje: importarAprendizaje,
+           confusiones: confusiones,
            preparar: preparar, leer: leer, listoSinSenal: listoSinSenal, descargar: descargar };
 })();
 </script>

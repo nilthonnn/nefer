@@ -184,3 +184,135 @@ def test_una_foto_de_otro_equipo_se_avisa(pw, servidor, tmp_path):
     pg.wait_for_selector(".m-lectura", timeout=90000)
     assert "la foto es de otro equipo: esta orden es del 064" in pg.inner_text(".m-lectura")
     nav.close()
+
+
+# --------------------------------------------------------------------------
+# formatos reales de campo (series alteradas: los equipos son del cliente)
+# --------------------------------------------------------------------------
+
+def test_pantalla_del_controlador_en_ingles(js):
+    t = ("Genset Data (1/2) Alternator Engine\nAvg Voltage 230Vac Hours 9248.0hrs\n"
+         "Avg Current 74Amps Coolant Temp 183°F\nTotal kW 28kW Oil Pressure 55.1psi\n"
+         "Total PF 0.96PF PCC Batt Volt 27.93Vdc\nFrequency 60.10Hz %Torq/Duty 14%")
+    r = _i(js, t, "g04")
+    assert r == {"ot.horometroSalida": 9248.0, "voltajeLL": 230, "corrienteA": 74, "kw": 28, "hz": 60.1,
+                 "presionAceitePsi": 55.1, "tempRefrigeranteC": 83.9, "vBateria": 27.93}
+
+
+def test_pantalla_del_controlador_en_espanol(js):
+    r = _i(js, "Datos del Alternador (3/3)\nTension Alt 400 Vac\nkVA - Total 2.4 kVA\nFrec. Linea 60.07 Hz", "g04")
+    assert r == {"voltajeLL": 400, "kva": 2.4, "hz": 60.07}
+    r = _i(js, "Temperatura Refrigerante 156°F\nTens.bat. PCC 13.89Vdc\nVeloc motor 1800rpm\nHrs motor 11825.6h", "g06")
+    assert r["ot.horometroSalida"] == 11825.6 and r["vBateria"] == 13.89 and r["rpm"] == 1800
+    assert r["tempRefrigeranteC"] == 68.9
+    assert _i(js, "Datos de Motor (2/2)\nPres. Aceite 65.8 psi", "g06") == {"presionAceitePsi": 65.8}
+
+
+def test_l_l_y_l_n_por_el_voltaje_nominal(js):
+    r = js("t => MANT.lector.interpretar(t, 'g04', {nominal: 380})", "Avg Voltage 221Vac")
+    assert {p["ruta"]: p["valor"] for p in r} == {"voltajeLN": 221}
+    r = js("t => MANT.lector.interpretar(t, 'g04', {nominal: 220})", "Avg Voltage 221Vac")
+    assert {p["ruta"]: p["valor"] for p in r} == {"voltajeLL": 221}
+
+
+def test_placa_del_grupo_con_secciones(js):
+    t = ("Power Generation\nModelo: C300D6 N° de Serie: A18T000001\nN° de Spec: G01 Año: 2018\n"
+         "POTENCIA (KW) 300 270\n(KVA) 375 338\nFRECUENCIA (Hz) 60\nBATERIA — Tensión Vcc 24Vcc\n"
+         "— Capacidad (A.h) 100A.h.\nGENERADOR — Modelo: HC4E\n— Winding: WD311\n— N° de Serie: X17J000002\n"
+         "MOTOR — Modelo: QSL9 G5\n— N° de Serie: 36500003\nCONTROLADOR — Modelo: PC 2.3")
+    r = _i(js, t, "c05")
+    assert r["grupo.modelo"] == "C300D6" and r["grupo.serie"] == "A18T000001"
+    assert r["kva"] == 375 and r["frecuenciaHz"] == 60
+    assert r["alternador.modelo"] == "HC4E" and r["alternador.winding"] == "311" and r["alternador.serie"] == "X17J000002"
+    assert r["motor.modelo"] == "QSL9-G5" and r["motor.serie"] == "36500003"
+    assert r["controladorModelo"] == "PC 2.3"
+    assert r["bateria.voltaje"] == 24 and r["bateria.ah"] == 100
+
+
+def test_placas_en_ingles(js):
+    t = ("Generating Set ISO 8528 G2 SPEC-E\nModel Number C100D6\nSerial Number D19I000004\n"
+         "Controller PC1.2\nRated Power (KVA) 125.0 113.8\nRated Voltage (V) 220 220\nRated Frequency (Hz) 60 60")
+    r = _i(js, t, "c05")
+    assert (r["grupo.modelo"], r["grupo.serie"], r["kva"], r["voltajeNominal"], r["frecuenciaHz"],
+            r["controladorModelo"]) == ("C100D6", "D19I000004", 125, 220, 60, "PC1.2")
+    t = "MODEL DE500SE0\nSERIAL NUMBER CAT00C15CLXJ00005\n625 kVA\nRATED VOLTAGE 240/139 V\nPHASE 3\nRATED R.P.M 1800"
+    r = _i(js, t, "c05")
+    assert (r["grupo.modelo"], r["voltajeNominal"], r["fases"], r["rpm"], r["kva"]) == ("DE500SE0", 240, 3, 1800, 625)
+    assert _i(js, "Fabricante : Caterpillar\nAltitud : 3,600 msnm\nVoltaje : 480 V.", "c05") == {
+        "voltajeNominal": 480, "informe.generalidades.msnm": "3600"}
+    assert _i(js, "ENGINE MODEL C15\nSERIAL NUMBER *FTH00006*\nARRANGEMENT NUMBER 460-7413", "c12") == {
+        "motor.modelo": "C15", "motor.serie": "FTH00006"}
+    assert _i(js, "Engine Model : 6BTA5.9-G6\nRated HP : 177 @1800 RPM\nEngine Sr. No. : 84800007", "c12") == {
+        "motor.modelo": "6BTA5.9-G6", "motor.serie": "84800007"}
+    assert _i(js, "FRAME/CORE: UCI224G1\nWDG: 311\nSERIAL NO: G19J000008", "g01") == {
+        "alternador.modelo": "UCI224G1", "alternador.winding": "311", "alternador.serie": "G19J000008"}
+    assert _i(js, "FRAME WDG SERIAL Nº\nFRAME LC6114F WDG S2/4 SERIAL Nº *F6B00009*", "g01")["alternador.serie"] == "F6B00009"
+
+
+def test_probador_de_baterias(js):
+    r = _i(js, "GOOD BATTERY\nSOH 72% 935A\nSOC100% 13.61V\nR= 3.20mΩ", "c21")
+    assert r == {"probador.soh": 72, "probador.soc": 100, "probador.voltaje": 13.61, "probador.ccaMedido": 935,
+                 "probador.resistenciaMOhm": 3.2, "estados.c21": "OBS"}
+
+
+def test_no_toma_rotulos_ni_numeros_pegados_por_valores(js):
+    r = _i(js, "Model Number\nSerial Number\nManufacturing Order Number\nC20D6\nG18I000010", "c05")
+    assert r.get("grupo.modelo") != "SERIAL" and r.get("grupo.serie") != "MANUFACTURING"
+    assert "voltajeNominal" not in _i(js, "Voltaje :1480 V.", "c05"), "1480 no es un voltaje de placa"
+
+
+# --------------------------------------------------------------------------
+# autoaprendizaje: correcciones del técnico y fichas existentes
+# --------------------------------------------------------------------------
+
+AJUSTAR = "([p, fichas, tag]) => MANT.lector.ajustar(p, fichas, tag)"
+
+
+def test_corrige_con_la_ficha_del_mismo_equipo(js):
+    fichas = [{"tag": "064", "grupo": {"modelo": "C100D6", "serie": "D19I420882"}},
+              {"tag": "071", "grupo": {"modelo": "C150D6", "serie": "D20I111111"}}]
+    p = [{"destino": "ficha", "ruta": "grupo.modelo", "valor": "C100D8"},
+         {"destino": "ficha", "ruta": "grupo.serie", "valor": "D181420882"}]
+    r = js(AJUSTAR, [p, fichas, "064"])
+    assert [(x["valor"], x["leido"], x["origen"]) for x in r] == [
+        ("C100D6", "C100D8", "ficha 064"), ("D19I420882", "D181420882", "ficha 064")]
+    r = js(AJUSTAR, [p[:1], fichas, "999"])
+    assert r[0]["valor"] == "C100D8" and "origen" not in r[0], "contra otra ficha no se adivina un código corto"
+
+
+def test_recuerda_la_correccion_del_tecnico_y_viaja(js):
+    js("() => localStorage.removeItem('campo.lector.aprendizaje')")
+    js("() => MANT.lector.aprender('alternador.modelo', 'HC.IS34E1', 'HCI534E1')")
+    r = js(AJUSTAR, [[{"destino": "ficha", "ruta": "alternador.modelo", "valor": "HC.IS34E1"}], [], None])
+    assert (r[0]["valor"], r[0]["origen"]) == ("HCI534E1", "aprendido")
+    texto = js("() => MANT.lector.exportarAprendizaje().text()")
+    js("() => localStorage.removeItem('campo.lector.aprendizaje')")
+    assert js("t => MANT.lector.importarAprendizaje(t)", texto) == 1
+    r = js(AJUSTAR, [[{"destino": "ficha", "ruta": "alternador.modelo", "valor": "HC.IS34E1"}], [], None])
+    assert r[0]["valor"] == "HCI534E1"
+
+
+def test_encuadrar_y_leer_aprende_lo_que_el_tecnico_corrige(pw, servidor, tmp_path):
+    placa = _imagen(tmp_path / "alt.jpg", ["FRAME HC.IS34E1", "WDG 311"])
+    nav = _lanzar(pw)
+    pg = _contexto(nav).new_page()
+    pg.goto(servidor)
+    pg.wait_for_function("() => window.MANT && MANT.ordenes")
+    pg.evaluate("() => localStorage.removeItem('campo.lector.aprendizaje')")
+    pg.evaluate("e => CAMPO.almacen.equipos.guardar(e)", EQUIPOS["064"])
+    pg.evaluate("() => MANT.ordenes.crear('064', 'INSPECCION', '', '4017303200')")
+    pg.click("#tab-mantenimiento")
+    pg.set_input_files("#m-o-foto-g01", str(placa))
+    pg.click("[data-casilla=g01] [data-accion=foto-encuadrar]")
+    pg.wait_for_selector("#editor:not([hidden])")
+    pg.click("#ed-usar")
+    pg.wait_for_selector(".m-lectura", timeout=90000)
+    assert "(encuadre)" in pg.text_content(".m-lectura")
+    k = pg.evaluate("""() => Array.from(document.querySelectorAll('.m-lectura .m-propuesta'))
+        .findIndex(n => /Modelo/.test(n.textContent))""")
+    pg.fill(f".m-lectura [data-valor-prop='{k}']", "HCI534E1")
+    pg.click("[data-accion=lect-usar]")
+    pg.wait_for_timeout(300)
+    a = pg.evaluate("() => MANT.lector.aprendizaje().correcciones")
+    assert any(c["usado"] == "HCI534E1" for c in a.values()), a
+    nav.close()
