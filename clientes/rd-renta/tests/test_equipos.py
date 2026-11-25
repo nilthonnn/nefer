@@ -128,6 +128,7 @@ def test_ficha_del_064_en_modo_avion_sobrevive_a_cerrar_la_app(pw, servidor):
     ctx.set_offline(True)                        # modo avión desde aquí
 
     pg.click("#tab-mantenimiento")
+    pg.click("#m-seg-equipos")
     pg.fill("#m-eq-tag", " 064 ")
     pg.click("#m-eq-nuevo button[type=submit]")
     pg.wait_for_selector("#m-ficha:not([hidden])")
@@ -161,6 +162,7 @@ def test_ficha_del_064_en_modo_avion_sobrevive_a_cerrar_la_app(pw, servidor):
     pg.wait_for_function("() => window.UNIMAQ && UNIMAQ.equipos")
     pg.evaluate("() => UNIMAQ.equipos.listo()")
     pg.click("#tab-mantenimiento")
+    pg.click("#m-seg-equipos")
     assert pg.is_visible("#m-ficha"), "la ficha que se estaba llenando vuelve abierta"
     assert pg.input_value("#m-f-grupo-serie") == "D19I420882"
     assert pg.input_value("#m-f-horometro") == "6240.3"
@@ -177,6 +179,7 @@ def test_horometro_menor_avisa_pero_se_guarda(pw, servidor):
     pg.evaluate("e => RDRENTA.almacen.equipos.guardar(e)", dict(EQUIPOS["064"], horometro=6240))
     pg.evaluate("() => UNIMAQ.equipos.abrir('064')")
     pg.click("#tab-mantenimiento")
+    pg.click("#m-seg-equipos")
 
     _escribir(pg, "horometro", "6200")
     pg.wait_for_function("() => /guardado/.test(document.querySelector('#m-f-guardado').textContent)")
@@ -193,6 +196,7 @@ def test_un_numero_ilegible_avisa_y_no_se_guarda_como_cero(pw, servidor):
     _abrir(pg, servidor)
     pg.evaluate("() => UNIMAQ.equipos.crear('C20D6')")
     pg.click("#tab-mantenimiento")
+    pg.click("#m-seg-equipos")
     _escribir(pg, "voltajeNominal", "doscientos")
     pg.wait_for_function("() => /guardado/.test(document.querySelector('#m-f-guardado').textContent)")
     assert "no es un número" in pg.inner_text("#m-f-alertas")
@@ -206,6 +210,7 @@ def test_un_tag_repetido_abre_la_ficha_existente_sin_pisarla(pw, servidor):
     _abrir(pg, servidor)
     pg.evaluate("e => RDRENTA.almacen.equipos.guardar(e)", EQUIPOS["AAQ29"])
     pg.click("#tab-mantenimiento")
+    pg.click("#m-seg-equipos")
     pg.evaluate("() => UNIMAQ.equipos.listo()")
     pg.fill("#m-eq-tag", "aaq29")
     pg.click("#m-eq-nuevo button[type=submit]")
@@ -231,6 +236,7 @@ def test_lista_busqueda_y_borrado(pw, servidor):
     for e in EQUIPOS.values():
         pg.evaluate("e => RDRENTA.almacen.equipos.guardar(e)", e)
     pg.click("#tab-mantenimiento")
+    pg.click("#m-seg-equipos")
     pg.fill("#m-eq-buscar", "")
     pg.wait_for_timeout(200)
     tags = pg.eval_on_selector_all("#m-eq-lista .m-tag", "n => n.map(x => x.textContent)")
@@ -253,6 +259,7 @@ def test_todo_lo_que_se_toca_mide_48_px(pw, servidor):
     _abrir(pg, servidor)
     pg.evaluate("e => RDRENTA.almacen.equipos.guardar(e)", EQUIPOS["064"])
     pg.click("#tab-mantenimiento")
+    pg.click("#m-seg-equipos")
     pg.evaluate("() => UNIMAQ.equipos.listo()")
     pg.wait_for_timeout(200)
     medir = """() => Array.from(document.querySelectorAll(
@@ -284,6 +291,7 @@ def test_salir_de_un_campo_sin_cambiarlo_no_lo_deja_sin_guardar(pw, servidor):
     _abrir(pg, servidor)
     pg.evaluate("() => UNIMAQ.equipos.crear('064')")
     pg.click("#tab-mantenimiento")
+    pg.click("#m-seg-equipos")
     _escribir(pg, "grupo.modelo", "C100D6")
     pg.wait_for_function("() => /guardado/.test(document.querySelector('#m-f-guardado').textContent)")
     pg.evaluate("() => document.activeElement.blur()")

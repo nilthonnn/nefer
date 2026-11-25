@@ -731,6 +731,53 @@
   .m-alerta.critico { border-left-color:var(--mal); background:var(--mal-soft); }
   .m-alerta.aviso { border-left-color:var(--obs); background:var(--obs-soft); }
   .m-borrar { color:var(--mal) !important; }
+  .m-seg { display:grid; grid-template-columns:1fr 1fr; gap:0; margin-bottom:.9rem;
+           border:1.5px solid var(--ink-3); border-radius:7px; overflow:hidden; }
+  .m-seg button { border:0; border-radius:0; background:var(--card); font-weight:700; }
+  .m-seg button[aria-selected="true"] { background:var(--ink); color:var(--paper); }
+  .m-opciones { border:0; padding:0; margin:.7rem 0 0; display:grid; gap:.4rem;
+                grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr)); }
+  .m-opciones legend { margin-bottom:.35rem; }
+  .m-opciones label { display:flex; align-items:center; gap:.55rem; min-height:48px;
+                      padding:.45rem .7rem; border:1.5px solid var(--ink-3); border-radius:7px;
+                      background:var(--card); font-weight:600; cursor:pointer; }
+  .m-opciones input { flex:none; width:22px; height:22px; min-height:22px !important; accent-color:var(--accent); }
+  .m-opciones label:has(input:checked) { border-color:var(--accent); background:var(--accent-soft);
+                                         box-shadow:inset 0 0 0 1px var(--accent); }
+  .m-opciones .nota { display:block; font-size:.72rem; font-weight:500; color:var(--ink-2); }
+  .m-sugerido { font-size:.85rem; color:var(--ink-2); margin:.4rem 0 0; }
+  .m-sugerido:empty { display:none; }
+  .m-clase { font-family:var(--mono); font-size:.72rem; font-weight:700; letter-spacing:.05em;
+             padding:.15rem .45rem; border-radius:4px; background:var(--accent-soft);
+             color:var(--ink); border:1px solid var(--accent); }
+  .m-clase:empty { display:none; }
+  .m-sn { display:flex; gap:.4rem; flex-wrap:wrap; }
+  .m-sn button { flex:1 1 5rem; font-weight:700; border:1.5px solid var(--ink-3);
+                 background:var(--card); }
+  .m-sn button[aria-pressed="true"] { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .m-sn button[aria-pressed="true"][data-valor="false"] { background:var(--mal); border-color:var(--mal); }
+  .m-nota-sn { font-size:.8rem; color:var(--ink-2); margin:.3rem 0 0; }
+  .m-op { border:1px solid var(--rule); border-radius:7px; padding:.5rem .7rem .7rem;
+          margin:0 0 .6rem; background:var(--card-2); }
+  .m-op h3 { font-family:var(--cond); font-size:1.05rem; margin:.1rem 0 .4rem; }
+  .m-sub { font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+           text-transform:uppercase; color:var(--ink-2); margin:.6rem 0 .3rem; }
+  .m-placa { width:100%; border-collapse:collapse; font-size:.88rem; margin:.3rem 0 .6rem; }
+  .m-placa th, .m-placa td { text-align:left; padding:.35rem .3rem; border-bottom:1px solid var(--rule-2);
+                             vertical-align:top; }
+  .m-placa th { font-family:var(--mono); font-size:.66rem; font-weight:400; color:var(--ink-2);
+                text-transform:uppercase; letter-spacing:.06em; }
+  .m-placa .difiere { color:var(--mal); font-weight:700; }
+  .m-ok { color:var(--ok); font-weight:700; }
+  .m-alerta .revisado { display:block; font-family:var(--mono); font-size:.7rem;
+                        color:var(--ok); margin-top:.2rem; }
+  .m-alerta button { margin-top:.35rem; }
+  #v-mantenimiento textarea { width:100%; min-height:5.5rem; font-size:1rem; padding:.55rem .65rem;
+    background:var(--card); border:1.5px solid var(--ink-3); border-radius:6px; color:var(--ink); }
+  #v-mantenimiento input[type="datetime-local"], #v-mantenimiento input[type="date"] {
+    width:100%; padding:.5rem .6rem; background:var(--card); color:var(--ink);
+    border:1.5px solid var(--ink-3); border-radius:6px; }
+  .proy-fila .sello.mant { color:var(--accent); border:1px solid var(--accent); background:var(--accent-soft); }
 
   /* ---------- INICIO y GUÍA ---------- */
   .tarjetas { display:grid; gap:.6rem; grid-template-columns:1fr; margin:1rem 0; }
@@ -1156,11 +1203,66 @@
       <div class="encab">
         <p class="kicker">formatos unimaq</p>
         <h1>Mantenimiento</h1>
-        <p class="sub">La ficha de cada equipo por su TAG: placas del grupo, motor,
-          alternador, controlador y batería. Las órdenes de trabajo e informes la
-          toman como propuesta, y el técnico la confirma.</p>
+        <p class="sub">Órdenes de trabajo clasificadas —inspección, preventivo PM1 a
+          PM4, correctivo o visita técnica— sobre la ficha de cada equipo por su
+          TAG. Un informe es de un solo equipo.</p>
       </div>
 
+      <div class="m-seg" role="tablist" aria-label="Mantenimiento">
+        <button type="button" role="tab" id="m-seg-ordenes" aria-selected="true"
+                aria-controls="m-panel-ordenes" data-m-panel="ordenes">Órdenes de trabajo</button>
+        <button type="button" role="tab" id="m-seg-equipos" aria-selected="false"
+                aria-controls="m-panel-equipos" data-m-panel="equipos">Equipos</button>
+      </div>
+
+      <div id="m-panel-ordenes" role="tabpanel" aria-labelledby="m-seg-ordenes">
+        <div id="m-ordenes">
+          <form class="panel" id="m-ot-nueva" autocomplete="off">
+            <h2>Nueva orden</h2>
+            <div class="panel-body">
+              <label class="campo" for="m-ot-tag"><span class="lb">TAG del equipo</span>
+                <input type="text" id="m-ot-tag" list="m-ot-tags" autocapitalize="characters"></label>
+              <datalist id="m-ot-tags"></datalist>
+              <fieldset class="m-opciones" id="m-ot-tipos"><legend class="lb">Tipo de servicio</legend></fieldset>
+              <fieldset class="m-opciones" id="m-ot-pms" hidden><legend class="lb">Rutina preventiva</legend></fieldset>
+              <p class="m-sugerido" id="m-ot-sugerido" role="status"></p>
+              <label class="campo" for="m-ot-numero"><span class="lb">N° de OT</span>
+                <input type="text" id="m-ot-numero" inputmode="numeric"></label>
+              <button type="submit" class="primary" style="margin-top:.6rem;width:100%">Crear orden</button>
+              <p class="m-campo-alerta" id="m-ot-nueva-aviso" role="status"></p>
+            </div>
+          </form>
+          <div class="seccion">
+            <h2>Órdenes <span class="tally" id="m-ot-cuenta"></span></h2>
+            <div class="m-lista" id="m-ot-lista"></div>
+          </div>
+        </div>
+
+        <div id="m-orden" hidden>
+          <div class="m-cab">
+            <button type="button" id="m-o-volver">&larr; Órdenes</button>
+            <span class="m-tag" id="m-o-tag"></span>
+            <span class="m-clase" id="m-o-clase"></span>
+            <span class="grow"></span>
+            <span class="m-guardado" id="m-o-guardado" role="status" aria-live="polite"></span>
+          </div>
+          <div id="m-proy">
+            <label class="campo" for="m-proy-nombre"><span class="lb">Nombre en la lista</span>
+              <input type="text" id="m-proy-nombre"></label>
+          </div>
+          <details class="panel plegable" id="m-o-revisar" open>
+            <summary>Avisos <span class="tally" id="m-o-cuenta"></span></summary>
+            <div class="panel-body">
+              <p class="lb" style="margin:0 0 .5rem">Avisan, no bloquean: usted decide, y
+                puede dejar registrado que lo revisó.</p>
+              <ul class="m-alertas" id="m-o-alertas"></ul>
+            </div>
+          </details>
+          <div id="m-o-cuerpo"></div>
+        </div>
+      </div>
+
+      <div id="m-panel-equipos" role="tabpanel" aria-labelledby="m-seg-equipos" hidden>
       <div id="m-equipos">
         <form class="panel" id="m-eq-nuevo" autocomplete="off">
           <h2>Nuevo equipo</h2>
@@ -1197,6 +1299,7 @@
         </details>
         <div id="m-f-campos"></div>
         <button type="button" class="ghost m-borrar" id="m-f-borrar">Borrar esta ficha</button>
+      </div>
       </div>
     </section>
 
@@ -1409,7 +1512,7 @@ var RDRENTA = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-11-25 · fichas de equipo UNIMAQ";
+  var VERSION = "2026-11-25 · órdenes de trabajo clasificadas";
 
   "use strict";
 
@@ -2410,6 +2513,15 @@ var RDRENTA = (function () {
     }
 
     function nombrePorDefecto(vista, datos) {
+      if (vista === "mantenimiento") {
+        // «OT 4017300492 · 064 · Preventivo PM2»: lo que se busca en la lista.
+        var d = datos || {}, c = d.clasificacion || {};
+        var tipos = { INSPECCION: "Inspección", PREVENTIVO: "Preventivo",
+                      CORRECTIVO: "Correctivo", VISITA: "Visita técnica" };
+        var m = [d.ot && d.ot.ot ? "OT " + d.ot.ot : "Orden", d.tag || "sin TAG"];
+        if (c.tipo) m.push((tipos[c.tipo] || c.tipo) + (c.pm ? " " + c.pm.split("_")[0] : ""));
+        return m.join(" · ");
+      }
       var enc = (datos && datos.campos) || {};
       var equipo = enc[vista === "recepcion" ? "r-codigo_equipo" : "d-equipo"] || "";
       var acta = enc[vista === "recepcion" ? "r-acta" : "d-acta"] || "";
@@ -2503,6 +2615,24 @@ var RDRENTA = (function () {
           avisar();
           return actual;
         });
+      });
+    }
+
+    /* Volver a ser el proyecto en curso sin tocar la pantalla. Lo usa una hoja
+       que ya tiene sus datos a la vista pero dejó de ser la «actual» porque
+       el operario pasó por otra pestaña: restaurar desde el almacén borraría
+       lo que haya tecleado desde el último guardado. */
+    function retomar(id) {
+      if (actual && actual.id === id) return Promise.resolve(actual);
+      return almacen.leer(id).then(function (p) {
+        if (!p) throw new Error("ese proyecto ya no existe");
+        if (p.estado === "anulado") throw new Error(MENSAJE_ANULADA);
+        actual = { id: p.id, nombre: p.nombre, vista: p.vista, estado: p.estado,
+                   creado: p.creado, modificado: p.modificado, historial: p.historial };
+        ultimaVista = p.vista;
+        apuntarSesion(actual);
+        avisar();
+        return actual;
       });
     }
 
@@ -2668,6 +2798,11 @@ var RDRENTA = (function () {
       var porClave = {}, salida = {};
       (lista || []).forEach(function (p) {
         if (!p || p.estado === "anulado" || !p.datos) return;
+        if (p.vista === "mantenimiento") {
+          var nOt = String((p.datos.ot && p.datos.ot.ot) || "").trim();
+          if (nOt) (porClave["ot|" + nOt] = porClave["ot|" + nOt] || []).push(p.id);
+          return;
+        }
         var c = p.datos.campos || {};
         var r = p.vista === "recepcion";
         var equipo = String(c[r ? "r-codigo_equipo" : "d-equipo"] || "").trim().toUpperCase();
@@ -2815,7 +2950,7 @@ var RDRENTA = (function () {
       ESTADOS: ESTADOS,
       nuevo: nuevo, adoptar: adoptar, guardar: guardar, abrir: abrir,
       duplicar: duplicar, marcarExportado: marcarExportado,
-      anular: anular, duplicados: duplicados,
+      anular: anular, duplicados: duplicados, retomar: retomar,
       empaquetar: empaquetar, importar: importar,
       borrar: function (id) { return almacen.borrar(id); },
       listar: function () { return almacen.listar(); },
@@ -3642,6 +3777,14 @@ UNIMAQ.modelo = (function () {
     { id: "PM4_2000", horas: 2000, rotulo: "PM4 · 2000 HRS" }
   ];
   var ESPECIALIDADES = { "0010": "ELECTRICO", "0020": "MECANICO" };
+  /* Clasificación de la orden: los cuatro tipos de la sección 2 del informe.
+     El preventivo lleva además su rutina por horas. */
+  var TIPOS_SERVICIO = [
+    { id: "INSPECCION", codigo: "2.1", rotulo: "Inspección" },
+    { id: "PREVENTIVO", codigo: "2.2", rotulo: "Preventivo" },
+    { id: "VISITA", codigo: "2.3", rotulo: "Supervisión / visita técnica" },
+    { id: "CORRECTIVO", codigo: "2.4", rotulo: "Correctivo" }
+  ];
   var TIPOS_BATERIA = ["PLOMO_ACIDO", "LIBRE_MANTENIMIENTO"];
   var ITEMS_BATERIA = { PLOMO_ACIDO: rango(1, 10), LIBRE_MANTENIMIENTO: rango(11, 19) };
   // Columnas de la tabla de parámetros: la lectura inicial y las cuatro cargas.
@@ -3709,6 +3852,30 @@ UNIMAQ.modelo = (function () {
   }
 
   function estado(x) { return ESTADOS.indexOf(x) !== -1 ? x : null; }
+
+  function tipoServicio(id) {
+    for (var i = 0; i < TIPOS_SERVICIO.length; i++) {
+      if (TIPOS_SERVICIO[i].id === id) return TIPOS_SERVICIO[i];
+    }
+    return null;
+  }
+  function frecuencia(id) {
+    for (var i = 0; i < FRECUENCIAS.length; i++) if (FRECUENCIAS[i].id === id) return FRECUENCIAS[i];
+    return null;
+  }
+
+  /* La rutina que toca por horómetro, con las rutinas anidadas: cada 250 h
+     un PM1, cada 500 un PM2, cada 1000 un PM3 y cada 2000 un PM4, y la mayor
+     incluye a las menores (a las 2000 h toca PM4, no PM1). Se toma el
+     múltiplo de 250 más cercano; `desvio` dice cuánto se adelantó (−) o se
+     pasó (+) el servicio. Sin horómetro no hay sugerencia. */
+  function sugerirPM(horas) {
+    var h = numero(horas);
+    if (h === null || h < 0) return null;
+    var n = Math.max(1, Math.round(h / 250));
+    var pm = n % 8 === 0 ? "PM4_2000" : n % 4 === 0 ? "PM3_1000" : n % 2 === 0 ? "PM2_500" : "PM1_250";
+    return { pm: pm, objetivo: n * 250, desvio: Math.round((h - n * 250) * 10) / 10 };
+  }
 
   function mapa(claves, valor) {
     var o = {};
@@ -3844,8 +4011,26 @@ UNIMAQ.modelo = (function () {
       informe: informe(),
       baterias: [],
       fotos: [],                  // {casilla, foto (id en `fotos`), texto}
+      // Qué clase de orden es. Se elige al crearla y manda en todo lo demás:
+      // la casilla 2.x del informe, la rutina del check-list, los avisos.
+      clasificacion: { tipo: "", pm: "" },
+      // Sólo en un correctivo: qué falló, por qué, qué se hizo y cómo se probó.
+      correctivo: { falla: "", causa: "", accion: "", pruebas: "" },
+      // La aptitud operativa (sección 8, «Grupo operativo») es
+      // `informe.operativo`; aquí queda quién la declaró y cuándo.
+      aptitud: { por: "", fecha: "" },
       decisiones: []              // avisos que el técnico vio y aceptó
     };
+  }
+
+  /* Fija el tipo de servicio y, en un preventivo, la rutina. Marca la casilla
+     2.x que corresponde en el informe y deja las otras en blanco: una orden
+     es de un solo tipo. Devuelve el mismo proyecto. */
+  function clasificar(m, tipo, pm) {
+    var t = tipoServicio(tipo);
+    m.clasificacion = { tipo: t ? t.id : "", pm: t && t.id === "PREVENTIVO" && frecuencia(pm) ? pm : "" };
+    ITEMS_SERVICIO.forEach(function (k) { m.informe.servicio[k] = !!t && t.codigo === k; });
+    return m;
   }
 
   /* ---------- normalizadores: completar lo guardado ---------- */
@@ -3948,7 +4133,9 @@ UNIMAQ.modelo = (function () {
   }
 
   return {
-    FORMATO: FORMATO,
+    FORMATO: FORMATO, TIPOS_SERVICIO: TIPOS_SERVICIO,
+    tipoServicio: tipoServicio, frecuencia: frecuencia, sugerirPM: sugerirPM,
+    clasificar: clasificar,
     ESTADOS: ESTADOS, FRECUENCIAS: FRECUENCIAS, ESPECIALIDADES: ESPECIALIDADES,
     TIPOS_BATERIA: TIPOS_BATERIA, ITEMS_BATERIA: ITEMS_BATERIA, CARGAS: CARGAS,
     ITEMS_MOTOR: ITEMS_MOTOR, ITEMS_GENERADOR: ITEMS_GENERADOR,
@@ -4073,12 +4260,183 @@ UNIMAQ.validaciones = (function () {
     return a;
   }
 
+  /* ---------- la orden de trabajo ----------
+     La del kit, con dos ajustes: las horas-hombre se comparan con la
+     duración por el número de personas (dos técnicos dos horas son 4 HH), y
+     una fecha a medio escribir no da un aviso falso. */
+  function horasEntre(inicio, fin) {
+    var a = Date.parse(inicio), b = Date.parse(fin);
+    return isFinite(a) && isFinite(b) ? (b - a) / 3.6e6 : null;
+  }
+
+  function validarOT(ot, horometroAnterior) {
+    ot = M.normalizar.ordenTrabajo(ot);
+    var a = [];
+    var prev = M.numero(horometroAnterior);
+    if (ot.horometroSalida !== null && prev !== null && ot.horometroSalida < prev) {
+      a.push(alerta("critico", "ot.horometroSalida",
+        "Horómetro " + ot.horometroSalida + " menor al anterior " + prev));
+    }
+    if (ot.crearAviso === true && vacio(ot.textoAviso)) {
+      a.push(alerta("aviso", "ot.textoAviso", "Crear aviso = S pero falta el texto del aviso"));
+    }
+    if (vacio(ot.ot)) a.push(alerta("aviso", "ot.ot", "Falta el N° de OT"));
+    ot.operaciones.forEach(function (op, i) {
+      var base = "ot.operaciones." + i + ".";
+      var h = horasEntre(op.inicio, op.fin);
+      if (h === null) return;
+      if (h <= 0) {
+        a.push(alerta("critico", base + "fin", "Operación " + op.numero + ": la hora fin es anterior al inicio"));
+        return;
+      }
+      var hh = M.numero(op.horasHombre);
+      var personas = M.numero(op.personas) || 1;
+      if (hh === null) {
+        a.push(alerta("info", base + "horasHombre", "Operación " + op.numero + ": falta el trabajo total (HH)"));
+      } else if (Math.abs(h * personas - hh) > 0.25) {
+        a.push(alerta("info", base + "horasHombre", "Operación " + op.numero + ": HH " + hh +
+          " vs duración " + (Math.round(h * 10) / 10) + " h × " + personas +
+          (personas === 1 ? " persona" : " personas")));
+      }
+    });
+    ot.demoras.forEach(function (d, i) {
+      if (vacio(d.tipo)) a.push(alerta("aviso", "ot.demoras." + i + ".tipo", "Desviación sin causa elegida"));
+      else if (M.numero(d.duracion) === null) {
+        a.push(alerta("info", "ot.demoras." + i + ".duracion", "«" + d.tipo + "» sin duración"));
+      }
+    });
+    if (ot.tareaCompleta !== null && vacio(ot.firmas.tecnico.nombre)) {
+      a.push(alerta("aviso", "ot.firmas.tecnico.nombre", "Falta la persona que realizó la tarea"));
+    }
+    if (ot.tareaCompleta === true && ot.crearAviso === null) {
+      a.push(alerta("info", "ot.crearAviso", "Tarea completa: marque si hay que crear aviso (S/N)"));
+    }
+    return a;
+  }
+
+  /* El TAG que nombra un texto de SAP: «INSP. RUTINARIA T9_SALVEANI_AAQ29»
+     termina en el TAG. Sólo se mira si hay guion bajo: es la convención de
+     las descripciones de orden, y sin ella se darían avisos falsos. */
+  function tagEnTexto(t) {
+    var s = String(t || "").trim().toUpperCase();
+    if (s.indexOf("_") === -1) return null;
+    var m = /_([A-Z0-9-]{2,})\s*$/.exec(s);
+    return m ? m[1] : null;
+  }
+
+  /* El proyecto entero. `ctx` trae lo que el proyecto no sabe de sí mismo:
+       ficha  la ficha actual del equipo (tienda `equipos`), o null
+       otros  los demás proyectos guardados, para la duplicidad
+       id     el id de este proyecto */
+  function validarMantenimiento(x, ctx) {
+    ctx = ctx || {};
+    var m = M.normalizar.mantenimiento(x);
+    var a = [];
+    var c = m.clasificacion;
+
+    if (!c.tipo) {
+      a.push(alerta("aviso", "clasificacion.tipo", "Falta clasificar la orden: inspección, preventivo, correctivo o visita"));
+    }
+    var horas = m.ot.horometroSalida !== null ? m.ot.horometroSalida : m.equipo.horometro;
+    if (c.tipo === "PREVENTIVO") {
+      if (!c.pm) {
+        a.push(alerta("aviso", "clasificacion.pm", "Preventivo sin rutina: elija PM1, PM2, PM3 o PM4"));
+      } else {
+        var sug = M.sugerirPM(horas);
+        if (sug && sug.pm !== c.pm) {
+          a.push(alerta("aviso", "clasificacion.pm", "Con " + horas + " h toca " +
+            M.frecuencia(sug.pm).rotulo + " (servicio de las " + sug.objetivo + " h), no " +
+            M.frecuencia(c.pm).rotulo));
+        }
+        if (sug && Math.abs(sug.desvio) > 50) {
+          a.push(alerta("info", "clasificacion.pm", "El servicio de las " + sug.objetivo + " h se hace a " +
+            horas + " h (" + (sug.desvio > 0 ? "+" : "") + sug.desvio + " h)"));
+        }
+      }
+    }
+
+    // La placa: confirmada, y que no haya cambiado la ficha desde entonces.
+    var f = ctx.ficha ? M.normalizar.equipo(ctx.ficha) : null;
+    if (!m.placaConfirmada) {
+      a.push(alerta("aviso", "placaConfirmada", f
+        ? "Confirme los datos de placa de " + m.tag + " antes de cerrar"
+        : "No hay ficha de " + m.tag + ": complete la placa en Equipos y confírmela"));
+    } else if (f) {
+      var difiere = [["grupo", "serie"], ["motor", "serie"], ["alternador", "serie"],
+                     ["grupo", "modelo"], ["motor", "modelo"]].filter(function (k) {
+        return String(f[k[0]][k[1]] || "") !== String(m.equipo[k[0]][k[1]] || "");
+      });
+      if (difiere.length) {
+        a.push(alerta("aviso", "placaConfirmada", "La ficha de " + m.tag +
+          " cambió después de confirmar la placa (" + difiere.map(function (k) {
+            return k.join(" ");
+          }).join(", ") + "): vuelva a confirmarla"));
+      }
+    }
+
+    // Un informe = un TAG: la orden no puede nombrar otro equipo.
+    var textos = [["ot.descripcion", m.ot.descripcion]];
+    m.ot.operaciones.forEach(function (op, i) {
+      textos.push(["ot.operaciones." + i + ".descripcion", op.descripcion]);
+    });
+    textos.forEach(function (t) {
+      var otro = tagEnTexto(t[1]);
+      if (otro && otro !== m.tag) {
+        a.push(alerta("critico", t[0], "La orden nombra el equipo " + otro +
+          " y este informe es del " + m.tag + ": un informe = un TAG"));
+      }
+    });
+
+    // Duplicidad: la misma OT no puede estar en dos proyectos vigentes.
+    var n = String(m.ot.ot || "").trim();
+    if (n) {
+      (ctx.otros || []).forEach(function (p) {
+        if (!p || p.id === ctx.id || p.estado === "anulado" || p.vista !== "mantenimiento") return;
+        var d = p.datos || {};
+        if (String((d.ot && d.ot.ot) || "").trim() !== n) return;
+        var mismo = M.tag(d.tag) === m.tag;
+        a.push(alerta(mismo ? "aviso" : "critico", "ot.ot", "La OT " + n + " ya está en «" +
+          (p.nombre || "otro proyecto") + "»" + (mismo ? "" : " con el equipo " + M.tag(d.tag)) +
+          ": anule el que sobra"));
+      });
+    }
+
+    // Correctivo: qué falló y si el equipo queda apto.
+    var op = m.informe.operativo;
+    if (c.tipo === "CORRECTIVO") {
+      if (vacio(m.correctivo.falla)) a.push(alerta("aviso", "correctivo.falla", "Correctivo sin la falla reportada"));
+      if (op === true && vacio(m.correctivo.accion)) {
+        a.push(alerta("aviso", "correctivo.accion", "Se declara apto sin registrar la acción correctiva"));
+      }
+      var pruebas = m.informe.pruebas.some(function (p) {
+        return M.FORMATO.informe.parametros.some(function (r) { return p[r[0]] !== null; });
+      });
+      if (op === true && !pruebas && vacio(m.correctivo.pruebas)) {
+        a.push(alerta("aviso", "informe.operativo",
+          "Se declara apto sin pruebas registradas: anote los parámetros o la prueba hecha"));
+      }
+      if (m.ot.tareaCompleta === true && op === null) {
+        a.push(alerta("aviso", "informe.operativo", "Tarea completa sin declarar si el equipo queda apto"));
+      }
+    }
+    if (op !== null && vacio(m.aptitud.por)) {
+      a.push(alerta("info", "aptitud.por", "Falta quién declaró la aptitud del equipo"));
+    }
+    if (op === false && m.ot.tareaCompleta === true && m.ot.crearAviso !== true) {
+      a.push(alerta("aviso", "ot.crearAviso", "Equipo no apto con tarea completa: ¿crear aviso del pendiente?"));
+    }
+
+    return a.concat(validarOT(m.ot, f ? f.horometro : null));
+  }
+
   var ORDEN = { critico: 0, aviso: 1, info: 2 };
   function ordenar(lista) {
     return lista.slice().sort(function (x, y) { return ORDEN[x.nivel] - ORDEN[y.nivel]; });
   }
 
-  return { validarEquipo: validarEquipo, ordenar: ordenar, VOLTAJES: VOLTAJES };
+  return { validarEquipo: validarEquipo, validarOT: validarOT,
+           validarMantenimiento: validarMantenimiento, tagEnTexto: tagEnTexto,
+           ordenar: ordenar, VOLTAJES: VOLTAJES };
 })();
 </script>
 
@@ -4222,6 +4580,8 @@ UNIMAQ.equipos = (function () {
       sucia = false;
       try { localStorage.setItem(CLAVE_ABIERTO, ficha.tag); } catch (x) { /* da igual */ }
       pintarFicha();
+      try { localStorage.setItem("rdrenta.mant.panel", "equipos"); } catch (x) { /* da igual */ }
+      raiz.dispatchEvent(new CustomEvent("m-panel", { detail: "equipos" }));
       estado(ficha.actualizado ? "guardado " + hora(ficha.actualizado) : "");
       return ficha;
     });
@@ -4409,6 +4769,573 @@ UNIMAQ.equipos = (function () {
     alertas: function () { return ficha ? alertas() : []; },
     listo: function () { return listo; },
     GRUPOS: GRUPOS
+  };
+})();
+</script>
+
+<script>
+/* ================================================================
+   UNIMAQ · ÓRDENES DE TRABAJO · la ficha de trabajo, clasificada.
+
+   Una orden es un proyecto más —se guarda sola, se recupera si la app se
+   cierra, se anula si se registró por error— y es de UN equipo. Al crearla
+   se clasifica: inspección, preventivo con su rutina (PM1 250 h … PM4
+   2000 h), correctivo o visita técnica; la clasificación marca la casilla
+   2.x del informe y decide qué se pide después.
+
+   La placa no se copia sola de la ficha del equipo: se muestra al lado y el
+   técnico la confirma. Lo que confirma queda en la orden con su nombre y
+   la hora, y si la ficha cambia después la orden lo avisa.
+   ================================================================ */
+UNIMAQ.ordenes = (function () {
+  "use strict";
+  var M = UNIMAQ.modelo, V = UNIMAQ.validaciones, R = RDRENTA, P = R.proyectos;
+  var A = R.almacen, esc = R.esc;
+  var raiz = document.getElementById("v-mantenimiento");
+  if (!raiz) return null;
+  var $ = function (s) { return raiz.querySelector(s); };
+
+  var m = null;              // la orden en pantalla (datos del proyecto)
+  var miId = null;           // su id de proyecto
+  var cambios = 0;           // para que el autoguardado la trate como urgente
+  var ctx = { ficha: null, otros: [], id: null };
+
+  /* ---------- paneles: órdenes y equipos ---------- */
+  var CLAVE_PANEL = "rdrenta.mant.panel";
+  function panel(nombre) {
+    ["ordenes", "equipos"].forEach(function (n) {
+      $("#m-panel-" + n).hidden = n !== nombre;
+      $("#m-seg-" + n).setAttribute("aria-selected", String(n === nombre));
+    });
+    try { localStorage.setItem(CLAVE_PANEL, nombre); } catch (e) { /* da igual */ }
+  }
+  raiz.addEventListener("m-panel", function (e) { panel(e.detail); });
+  $(".m-seg").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-m-panel]");
+    if (b) panel(b.dataset.mPanel);
+  });
+
+  /* ---------- utilidades ---------- */
+  function leer(o, ruta) {
+    return ruta.split(".").reduce(function (x, k) { return x == null ? x : x[k]; }, o);
+  }
+  function poner(o, ruta, valor) {
+    var p = ruta.split("."), ult = p.pop();
+    p.reduce(function (x, k) { return x[k]; }, o)[ult] = valor;
+  }
+  function id(ruta) { return "m-o-" + ruta.replace(/\./g, "-"); }
+  function ahoraLocal() {
+    var d = new Date(), z = function (n) { return ("0" + n).slice(-2); };
+    return d.getFullYear() + "-" + z(d.getMonth() + 1) + "-" + z(d.getDate()) +
+           "T" + z(d.getHours()) + ":" + z(d.getMinutes());
+  }
+  function hora(ms) {
+    var d = new Date(ms);
+    return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
+  }
+  function rotuloClase(c) {
+    var t = M.tipoServicio(c.tipo);
+    if (!t) return "";
+    return t.rotulo.toUpperCase() + (c.pm ? " · " + M.frecuencia(c.pm).rotulo : "");
+  }
+
+  /* ---------- campos ---------- */
+  // [ruta, rótulo, tipo] · tipo: txt | num | area | dt | fecha
+  function campo(c) {
+    var ruta = c[0], tipo = c[2] || "txt", v = leer(m, ruta), i = id(ruta);
+    var val = v == null ? "" : v;
+    var html = '<label class="campo" for="' + i + '"><span class="lb">' + esc(c[1]) + "</span>";
+    if (tipo === "area") {
+      html += '<textarea id="' + i + '" data-ruta="' + ruta + '">' + esc(val) + "</textarea>";
+    } else {
+      var t = tipo === "dt" ? "datetime-local" : tipo === "fecha" ? "date" : "text";
+      html += '<input type="' + t + '" id="' + i + '" data-ruta="' + ruta + '" data-tipo="' + tipo + '"' +
+        (tipo === "num" ? ' inputmode="decimal"' : "") + ' autocomplete="off" value="' + esc(val) + '">';
+    }
+    return html + '<span class="m-campo-alerta" id="' + i + '-alerta"></span></label>';
+  }
+  function campos(lista) { return '<div class="campos">' + lista.map(campo).join("") + "</div>"; }
+
+  // S / N: dos botones grandes; tocar el marcado lo deja sin marcar.
+  function sn(ruta, rotulo, si, no, notas) {
+    var v = leer(m, ruta), i = id(ruta);
+    return '<div class="campo"><span class="lb" id="' + i + '-lb">' + esc(rotulo) + "</span>" +
+      '<div class="m-sn" role="group" aria-labelledby="' + i + '-lb" id="' + i + '">' +
+      '<button type="button" data-sn="' + ruta + '" data-valor="true" aria-pressed="' + (v === true) + '">' + esc(si) + "</button>" +
+      '<button type="button" data-sn="' + ruta + '" data-valor="false" aria-pressed="' + (v === false) + '">' + esc(no) + "</button>" +
+      "</div>" + (notas ? '<p class="m-nota-sn">' + notas + "</p>" : "") +
+      '<span class="m-campo-alerta" id="' + i + '-alerta"></span></div>';
+  }
+
+  function grupo(titulo, cuerpo, extra) {
+    return '<fieldset class="m-grupo"' + (extra || "") + "><legend>" + esc(titulo) + "</legend>" + cuerpo + "</fieldset>";
+  }
+
+  function opcionesTipo(nombre, actual) {
+    return M.TIPOS_SERVICIO.map(function (t) {
+      return '<label><input type="radio" name="' + nombre + '" value="' + t.id + '"' +
+        (actual === t.id ? " checked" : "") + "><span>" + esc(t.rotulo) +
+        '<span class="nota">' + t.codigo + "</span></span></label>";
+    }).join("");
+  }
+  function opcionesPM(nombre, actual, sugerido) {
+    return M.FRECUENCIAS.map(function (f) {
+      return '<label><input type="radio" name="' + nombre + '" value="' + f.id + '"' +
+        (actual === f.id ? " checked" : "") + "><span>" + esc(f.rotulo) +
+        (sugerido === f.id ? '<span class="nota">sugerido por horómetro</span>' : "") +
+        "</span></label>";
+    }).join("");
+  }
+
+  function horasDe() {
+    if (m.ot.horometroSalida !== null) return m.ot.horometroSalida;
+    if (ctx.ficha && ctx.ficha.horometro !== null) return ctx.ficha.horometro;
+    return m.equipo.horometro;
+  }
+
+  /* ---------- la orden en pantalla ---------- */
+  function pintarPlaca() {
+    var f = ctx.ficha ? M.normalizar.equipo(ctx.ficha) : null;
+    if (!f) {
+      return '<p class="m-sugerido">No hay ficha de <b>' + esc(m.tag) + "</b>. Créela en Equipos " +
+        "con lo que dice la placa; la orden no inventa datos de placa.</p>" +
+        '<button type="button" data-accion="crear-ficha">Crear la ficha de ' + esc(m.tag) + "</button>";
+    }
+    var filas = [["Grupo", "grupo"], ["Motor", "motor"], ["Alternador", "alternador"]];
+    var conf = m.placaConfirmada;
+    var t = '<table class="m-placa"><thead><tr><th></th><th>Ficha del equipo</th>' +
+      (conf ? "<th>Confirmado en esta orden</th>" : "") + "</tr></thead><tbody>" +
+      filas.map(function (r) {
+        var a = f[r[1]], b = m.equipo[r[1]];
+        var ta = [a.marca, a.modelo, a.serie ? "s/n " + a.serie : ""].filter(Boolean).join(" · ") || "—";
+        var tb = [b.marca, b.modelo, b.serie ? "s/n " + b.serie : ""].filter(Boolean).join(" · ") || "—";
+        return "<tr><th>" + r[0] + "</th><td>" + esc(ta) + "</td>" +
+          (conf ? '<td class="' + (ta !== tb ? "difiere" : "") + '">' + esc(tb) + "</td>" : "") + "</tr>";
+      }).join("") +
+      "<tr><th>Eléctrico</th><td>" + esc([f.voltajeNominal ? f.voltajeNominal + " V" : "",
+        f.fases ? f.fases + " F" : "", f.frecuenciaHz ? f.frecuenciaHz + " Hz" : ""].filter(Boolean).join(" · ") || "—") +
+      "</td>" + (conf ? "<td></td>" : "") + "</tr></tbody></table>";
+    return t + (conf
+      ? '<p class="m-ok">Placa confirmada por ' + esc(conf.tecnico || "—") + " · " + esc(conf.fecha) + "</p>" +
+        '<button type="button" data-accion="confirmar">Volver a confirmar con la ficha actual</button>'
+      : '<label class="campo" for="m-o-confirma"><span class="lb">Quién confirma</span>' +
+        '<input type="text" id="m-o-confirma" value="' + esc(m.ot.firmas.tecnico.nombre) + '"></label>' +
+        '<button type="button" class="primary" data-accion="confirmar" style="margin-top:.5rem">' +
+        "Confirmo que la placa del equipo coincide</button>");
+  }
+
+  function pintarOperacion(op, i) {
+    var b = "ot.operaciones." + i + ".";
+    var esp = op.especialidad ? " · " + op.especialidad : "";
+    return '<div class="m-op"><h3>Operación ' + esc(op.numero) + esc(esp) + "</h3>" +
+      '<p class="m-sub">Planificado (impreso en la ficha)</p>' +
+      campos([[b + "descripcion", "Descripción"], [b + "puestoTrabajo", "Puesto de trabajo"],
+              [b + "trabajo", "Trabajo (h)", "num"], [b + "duracion", "Duración (h)", "num"],
+              [b + "cantidad", "Cantidad", "num"], [b + "fechaProg", "Fecha programada", "fecha"],
+              [b + "horaProg", "Hora inicio prog."]]) +
+      '<p class="m-sub">Tarea real (resumen HH)</p>' +
+      campos([[b + "inicio", "Inicio", "dt"], [b + "fin", "Fin", "dt"],
+              [b + "personas", "Personas", "num"], [b + "horasHombre", "Trabajo total (HH)", "num"],
+              [b + "empleado", "N° empleado"]]) +
+      '<div class="m-sn" style="margin-top:.4rem">' +
+      '<button type="button" data-accion="ahora" data-ruta="' + b + 'inicio">Inicio = ahora</button>' +
+      '<button type="button" data-accion="ahora" data-ruta="' + b + 'fin">Fin = ahora</button></div></div>';
+  }
+
+  function pintarDemoras() {
+    var grupos = M.FORMATO.ot.desviaciones;
+    return m.ot.demoras.map(function (d, i) {
+      var b = "ot.demoras." + i + ".";
+      var sel = '<label class="campo" for="' + id(b + "tipo") + '"><span class="lb">Causa</span>' +
+        '<select id="' + id(b + "tipo") + '" data-ruta="' + b + 'tipo"><option value="">— elegir —</option>' +
+        grupos.map(function (g) {
+          return '<optgroup label="' + esc(g[0]) + '">' + g[1].map(function (t) {
+            return '<option value="' + esc(t) + '"' + (d.tipo === t ? " selected" : "") + ">" + esc(t) + "</option>";
+          }).join("") + "</optgroup>";
+        }).join("") + '</select><span class="m-campo-alerta" id="' + id(b + "tipo") + '-alerta"></span></label>';
+      return '<div class="m-op">' + sel +
+        campos([[b + "duracion", "Duración (h)", "num"], [b + "descripcion", "Descripción del retraso"]]) +
+        '<button type="button" class="ghost m-borrar" data-accion="quitar-demora" data-i="' + i + '">Quitar</button></div>';
+    }).join("") + '<button type="button" data-accion="agregar-demora">+ Agregar desviación</button>';
+  }
+
+  function pintar() {
+    $("#m-ordenes").hidden = true;
+    $("#m-orden").hidden = false;
+    $("#m-o-tag").textContent = m.tag;
+    $("#m-o-clase").textContent = rotuloClase(m.clasificacion);
+    var c = m.clasificacion, sug = M.sugerirPM(horasDe());
+    var tc = M.FORMATO.ot.tareaCompleta;
+    var html = "";
+
+    html += grupo("Clasificación",
+      '<div class="m-opciones" role="radiogroup" aria-label="Tipo de servicio">' + opcionesTipo("m-o-tipo", c.tipo) + "</div>" +
+      (c.tipo === "PREVENTIVO"
+        ? '<div class="m-opciones" role="radiogroup" aria-label="Rutina">' + opcionesPM("m-o-pm", c.pm, sug && sug.pm) + "</div>" +
+          '<p class="m-sugerido">' + (sug ? "Horómetro " + horasDe() + " h → servicio de las " + sug.objetivo + " h: " +
+            esc(M.frecuencia(sug.pm).rotulo) + "." : "Sin horómetro no hay rutina sugerida.") + "</p>"
+        : ""));
+
+    html += grupo("Placa del equipo", pintarPlaca());
+
+    html += grupo("Orden de trabajo", campos([
+      ["ot.ot", "N° de orden"], ["ot.descripcion", "Descripción orden"], ["ot.aviso", "N° aviso"],
+      ["ot.ubicacionTecnica", "Ubicación técnica"], ["ot.denominacion", "Denominación"],
+      ["ot.denomEquipo", "Denom. equipo"], ["ot.puestoTrabajo", "Puesto trabajo resp."],
+      ["ot.fechaInicioExtrema", "Fecha inicio extrema"], ["ot.fechaRequerida", "Fecha requerida"],
+      ["ot.hojaRuta", "Hoja de ruta"], ["ot.impacto", "Impacto"], ["ot.autorAviso", "Autor del aviso"],
+      ["ot.planValorContador", "N° plan valor contador"]]));
+
+    html += grupo("Operaciones", m.ot.operaciones.map(pintarOperacion).join("") +
+      '<button type="button" data-accion="agregar-operacion">+ Agregar operación</button>');
+
+    html += grupo("Desviaciones", pintarDemoras());
+
+    if (c.tipo === "CORRECTIVO") {
+      html += grupo("Correctivo", campos([
+        ["correctivo.falla", "Falla reportada", "area"], ["correctivo.causa", "Causa encontrada", "area"],
+        ["correctivo.accion", "Acción correctiva", "area"],
+        ["correctivo.pruebas", "Pruebas después de reparar", "area"]]));
+    }
+
+    html += grupo("Cierre",
+      campos([["ot.observaciones", "Observaciones", "area"], ["ot.defectoReco", "Descripción de defecto RECO", "area"],
+              ["ot.serieEntrada", "N° serie entrada"], ["ot.serieSalida", "N° serie salida"],
+              ["ot.horometroSalida", "Valor de contador (horómetro)", "num"],
+              ["ot.fechaHoraContador", "Fecha y hora del contador", "dt"]]) +
+      sn("ot.crearAviso", "Trabajo adicional requerido · Crear aviso", "S", "N") +
+      campos([["ot.textoAviso", "Texto de aviso"]]) +
+      sn("informe.operativo", "Aptitud operativa · Grupo operativo", "SÍ, apto", "NO apto") +
+      campos([["aptitud.por", "Declarado apto / no apto por"]]) +
+      sn("ot.tareaCompleta", "Tarea completa", "SÍ", "NO",
+         "<b>SÍ</b>: " + esc(tc.SI) + ". <b>NO</b>: " + esc(tc.NO) + ".") +
+      '<p class="m-sub">Firmas</p>' +
+      campos([["ot.firmas.tecnico.nombre", "Persona realizando tarea"], ["ot.firmas.tecnico.fecha", "Fecha", "fecha"],
+              ["ot.firmas.supervisor.nombre", "Supervisor (capataz)"], ["ot.firmas.supervisor.fecha", "Fecha", "fecha"]]));
+
+    $("#m-o-cuerpo").innerHTML = html;
+    pintarAlertas();
+  }
+
+  /* ---------- avisos ---------- */
+  var NOMBRE = { critico: "Crítico", aviso: "Revisar", info: "Dato" };
+  function clave(a) { return a.campo + "|" + a.mensaje; }
+  function alertas() { return m ? V.ordenar(V.validarMantenimiento(m, ctx)) : []; }
+
+  function pintarAlertas() {
+    if (!m) return;
+    var l = alertas();
+    var vistas = {};
+    m.decisiones.forEach(function (d) { vistas[d.clave] = d; });
+    raiz.querySelectorAll("#m-orden .m-campo-alerta").forEach(function (n) { n.textContent = ""; });
+    raiz.querySelectorAll("#m-orden [aria-invalid]").forEach(function (n) { n.removeAttribute("aria-invalid"); });
+    l.forEach(function (a) {
+      var n = document.getElementById(id(a.campo) + "-alerta");
+      if (n && a.nivel !== "info") {
+        n.textContent = a.mensaje;
+        var c = document.getElementById(id(a.campo));
+        if (c) c.setAttribute("aria-invalid", "true");
+      }
+    });
+    var serias = l.filter(function (a) { return a.nivel !== "info"; });
+    var pendientes = serias.filter(function (a) { return !vistas[clave(a)]; }).length;
+    $("#m-o-cuenta").textContent = l.length
+      ? (serias.length ? pendientes + " por revisar · " : "") + (l.length - serias.length) + " datos"
+      : "sin avisos";
+    $("#m-o-alertas").innerHTML = l.map(function (a) {
+      var d = vistas[clave(a)];
+      return '<li class="m-alerta ' + a.nivel + '"><b>' + NOMBRE[a.nivel] + "</b> " + esc(a.mensaje) +
+        (a.nivel === "info" ? "" : d
+          ? '<span class="revisado">revisado ' + esc(d.fecha) + (d.por ? " · " + esc(d.por) : "") + "</span>"
+          : '<br><button type="button" data-revisar="' + esc(clave(a)) + '">Lo revisé, sigo</button>') + "</li>";
+    }).join("");
+  }
+
+  /* ---------- cambios ---------- */
+  function tocar() {
+    cambios++;
+    var marcar = function () { P.marcarSucio("mantenimiento"); };
+    var a = P.actual();
+    // Si el operario pasó por otra hoja, esta orden dejó de ser la «actual»:
+    // se retoma sin restaurar, para no perder lo que hay en pantalla.
+    if (miId && (!a || a.id !== miId)) P.retomar(miId).then(marcar, marcar);
+    else marcar();
+    pintarAlertas();
+  }
+
+  function alEscribir(e) {
+    var n = e.target, ruta = n.dataset && n.dataset.ruta;
+    if (!ruta || !m) return;
+    var v = n.value;
+    v = n.dataset.tipo === "num" ? M.numero(v) : n.tagName === "TEXTAREA" ? v : v.trim();
+    if (v === leer(m, ruta)) return;
+    poner(m, ruta, v);
+    if (ruta === "ot.ot") m.informe.ot = v;
+    if (ruta === "ot.horometroSalida" && m.clasificacion.tipo === "PREVENTIVO") {
+      // La rutina sugerida depende del horómetro: se repinta al salir del campo.
+      if (e.type === "change") { tocar(); pintar(); return; }
+    }
+    tocar();
+  }
+
+  function alElegir(e) {
+    var n = e.target;
+    if (n.name === "m-o-tipo") {
+      M.clasificar(m, n.value, m.clasificacion.pm);
+      tocar(); pintar(); return true;
+    }
+    if (n.name === "m-o-pm") {
+      M.clasificar(m, m.clasificacion.tipo, n.value);
+      $("#m-o-clase").textContent = rotuloClase(m.clasificacion);
+      tocar(); return true;
+    }
+    return false;
+  }
+
+  function confirmarPlaca() {
+    var f = ctx.ficha;
+    if (!f) return;
+    var quien = $("#m-o-confirma") ? $("#m-o-confirma").value.trim()
+      : (m.placaConfirmada && m.placaConfirmada.tecnico) || "";
+    var copia = M.normalizar.equipo(M.clon(f));
+    copia.tag = m.tag;
+    m.equipo = copia;
+    m.placaConfirmada = { fecha: new Date().toLocaleString("es-PE"), tecnico: quien };
+    tocar(); pintar();
+  }
+
+  function clic(e) {
+    var b = e.target.closest("button");
+    if (!b || !m) return;
+    if (b.dataset.sn) {
+      var actual = leer(m, b.dataset.sn), nuevo = b.dataset.valor === "true";
+      poner(m, b.dataset.sn, actual === nuevo ? null : nuevo);
+      if (b.dataset.sn === "informe.operativo") {
+        m.aptitud.fecha = leer(m, "informe.operativo") === null ? "" : new Date().toLocaleString("es-PE");
+      }
+      tocar(); pintar(); return;
+    }
+    if (b.dataset.revisar) {
+      var a = alertas().filter(function (x) { return clave(x) === b.dataset.revisar; })[0];
+      if (a) m.decisiones.push({ clave: clave(a), nivel: a.nivel, campo: a.campo, mensaje: a.mensaje,
+                                 fecha: new Date().toLocaleString("es-PE"),
+                                 por: m.ot.firmas.tecnico.nombre || "" });
+      tocar(); return;
+    }
+    var acc = b.dataset.accion;
+    if (acc === "confirmar") confirmarPlaca();
+    else if (acc === "crear-ficha") {
+      UNIMAQ.equipos.crear(m.tag);
+    } else if (acc === "ahora") {
+      poner(m, b.dataset.ruta, ahoraLocal()); tocar(); pintar();
+    } else if (acc === "agregar-operacion") {
+      var n = (m.ot.operaciones.length + 1) * 10;
+      m.ot.operaciones.push(M.operacion(("000" + n).slice(-4))); tocar(); pintar();
+    } else if (acc === "agregar-demora") {
+      m.ot.demoras.push(M.demora()); tocar(); pintar();
+    } else if (acc === "quitar-demora") {
+      m.ot.demoras.splice(Number(b.dataset.i), 1); tocar(); pintar();
+    }
+  }
+
+  /* ---------- contexto: ficha y otros proyectos ---------- */
+  function cargarContexto() {
+    if (!m) return Promise.resolve();
+    var tag = m.tag;
+    return Promise.all([A.equipos.leer(tag), P.listar()]).then(function (r) {
+      if (!m || m.tag !== tag) return;
+      ctx.ficha = r[0] || null;
+      ctx.otros = r[1] || [];
+      ctx.id = miId;
+    }).catch(function () { /* sin almacén: se valida con lo que hay */ });
+  }
+
+  /* ---------- crear y listar ---------- */
+  function pintarNueva() {
+    $("#m-ot-tipos").innerHTML = '<legend class="lb">Tipo de servicio</legend>' + opcionesTipo("m-ot-tipo", "");
+    $("#m-ot-pms").innerHTML = '<legend class="lb">Rutina preventiva</legend>' + opcionesPM("m-ot-pm", "", null);
+  }
+
+  function elegidos() {
+    var t = raiz.querySelector("input[name=m-ot-tipo]:checked");
+    var p = raiz.querySelector("input[name=m-ot-pm]:checked");
+    return { tipo: t ? t.value : "", pm: p ? p.value : "" };
+  }
+
+  function sugerirEnNueva() {
+    var tag = M.tag($("#m-ot-tag").value), e = elegidos();
+    $("#m-ot-pms").hidden = e.tipo !== "PREVENTIVO";
+    $("#m-ot-sugerido").textContent = "";
+    if (e.tipo !== "PREVENTIVO" || !tag) return Promise.resolve();
+    return A.equipos.leer(tag).then(function (f) {
+      var sug = f && M.sugerirPM(f.horometro);
+      $("#m-ot-sugerido").textContent = sug
+        ? "Último horómetro de " + tag + ": " + f.horometro + " h → toca " + M.frecuencia(sug.pm).rotulo +
+          " (servicio de las " + sug.objetivo + " h)."
+        : "Sin horómetro en la ficha de " + tag + ": elija la rutina.";
+      if (sug && !e.pm) {
+        var r = raiz.querySelector("input[name=m-ot-pm][value=" + sug.pm + "]");
+        // Se marca la sugerida, a la vista: el técnico la cambia si no es.
+        if (r) r.checked = true;
+      }
+    });
+  }
+
+  function crear(tag, tipo, pm, numero) {
+    tag = M.tag(tag);
+    numero = String(numero || "").trim();
+    if (!tag) {
+      $("#m-ot-nueva-aviso").textContent = "Escriba el TAG del equipo.";
+      return Promise.resolve(null);
+    }
+    var previo = P.sucio() ? P.volcar() : Promise.resolve();
+    return previo.then(function () { return P.listar(); }).then(function (lista) {
+      // Sin duplicidades: si la OT ya existe, se ofrece abrir la que hay.
+      var ya = numero && lista.filter(function (p) {
+        return p.vista === "mantenimiento" && p.estado !== "anulado" &&
+               p.datos && p.datos.ot && String(p.datos.ot.ot).trim() === numero;
+      })[0];
+      if (ya && window.confirm("La OT " + numero + " ya está en «" + ya.nombre +
+                               "». ¿Abrir esa en vez de crear otra?")) {
+        return abrirProyecto(ya.id);
+      }
+      P.nuevo("mantenimiento");
+      m = M.mantenimiento(tag);
+      M.clasificar(m, tipo, pm);
+      m.ot.ot = numero;
+      m.informe.ot = numero;
+      miId = P.actual().id;
+      $("#m-proy-nombre").value = "";
+      $("#m-ot-nueva-aviso").textContent = "";
+      $("#m-ot-tag").value = ""; $("#m-ot-numero").value = "";
+      pintarNueva(); $("#m-ot-pms").hidden = true; $("#m-ot-sugerido").textContent = "";
+      return cargarContexto().then(function () {
+        cambios++;
+        P.marcarSucio("mantenimiento");
+        pintar();
+        window.scrollTo(0, 0);
+        return P.volcar();
+      }).then(function () { return m; });
+    });
+  }
+
+  function abrirProyecto(pid) {
+    return P.abrir(pid).then(function (p) {
+      R.ir("mantenimiento");
+      panel("ordenes");
+      return m;
+    });
+  }
+
+  function pintarLista() {
+    return P.listar().then(function (l) {
+      var mios = l.filter(function (p) { return p.vista === "mantenimiento"; });
+      $("#m-ot-cuenta").textContent = mios.length ? String(mios.length) : "";
+      $("#m-ot-lista").innerHTML = mios.length ? mios.map(function (p) {
+        var anulada = p.estado === "anulado";
+        return '<div class="proy-fila' + (anulada ? " anulada" : "") + '" data-id="' + esc(p.id) + '">' +
+          '<span class="nom"><b>' + esc(p.nombre || "Orden") + "</b>" +
+          '<span class="meta">' + (anulada ? '<span class="sello anulada">ANULADA</span>' +
+            esc((p.anulacion && p.anulacion.motivo) || "") : esc(p.estado || "borrador")) + "</span></span>" +
+          (anulada ? "" : '<button type="button" class="primary" data-abrir="' + esc(p.id) + '">Continuar</button>' +
+            '<button type="button" data-anular="' + esc(p.id) + '">Anular</button>') + "</div>";
+      }).join("") : '<p class="vacia">Aún no hay órdenes.</p>';
+      return A.equipos.listar();
+    }).then(function (eq) {
+      $("#m-ot-tags").innerHTML = (eq || []).map(function (e) {
+        return '<option value="' + esc(e.tag) + '">';
+      }).join("");
+    }).catch(function () { /* sin almacén */ });
+  }
+
+  function volver() {
+    var p = P.sucio() ? P.volcar() : Promise.resolve();
+    return p.then(function () {
+      m = null; miId = null;
+      P.olvidarSesion();
+      $("#m-orden").hidden = true;
+      $("#m-ordenes").hidden = false;
+      return pintarLista();
+    });
+  }
+
+  /* ---------- el proyecto ---------- */
+  P.registrar("mantenimiento", {
+    firmaFotos: function () { return m ? "c" + cambios : null; },
+    vacia: function () { return !m; },
+    instantanea: function () { return M.clon(m); },
+    limpiar: function () {
+      m = null; miId = null;
+      $("#m-orden").hidden = true;
+      $("#m-ordenes").hidden = false;
+      pintarLista();
+    },
+    restaurar: function (d) {
+      m = M.normalizar.mantenimiento(d);
+      cambios = 0;
+      panel("ordenes");
+      return cargarContexto().then(function () { pintar(); window.scrollTo(0, 0); });
+    }
+  });
+
+  P.alTocar(function (actual, sucio) {
+    if (!actual || actual.vista !== "mantenimiento" || !m) return;
+    miId = actual.id;
+    ctx.id = miId;
+    var n = $("#m-proy-nombre");
+    if (document.activeElement !== n) n.value = actual.nombre || "";
+    $("#m-o-guardado").textContent = sucio ? "sin guardar"
+      : (actual.estado || "borrador") + " · guardado " + hora(actual.modificado || Date.now());
+  });
+
+  /* ---------- conexión ---------- */
+  pintarNueva();
+  $("#m-ot-nueva").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var el = elegidos();
+    crear($("#m-ot-tag").value, el.tipo, el.pm, $("#m-ot-numero").value);
+  });
+  $("#m-ot-nueva").addEventListener("change", function () { sugerirEnNueva(); });
+  $("#m-ot-tag").addEventListener("change", function () { sugerirEnNueva(); });
+  $("#m-ot-lista").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-abrir],[data-anular]");
+    if (!b) return;
+    if (b.dataset.abrir) { abrirProyecto(b.dataset.abrir); return; }
+    var motivo = window.prompt("Motivo de la anulación (queda registrado):", "");
+    if (motivo === null) return;
+    if (!motivo.trim()) return;
+    var por = window.prompt("Quién anula (nombre):", "");
+    if (por === null) return;
+    P.anular(b.dataset.anular, motivo, por).then(pintarLista);
+  });
+  $("#m-o-volver").addEventListener("click", function () { volver(); });
+  $("#m-o-cuerpo").addEventListener("input", alEscribir);
+  $("#m-o-cuerpo").addEventListener("change", function (e) {
+    if (!alElegir(e)) alEscribir(e);
+  });
+  $("#m-orden").addEventListener("click", clic);
+  $("#m-proy-nombre").addEventListener("input", function () { P.renombrar(this.value.trim()); });
+
+  // Al salir de la pestaña se guarda ya: la otra hoja puede quedarse con el
+  // autoguardado, y esta orden no puede esperar a volver.
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-ir]");
+    if (!b) return;
+    if (b.dataset.ir !== "mantenimiento" && m && P.sucio()) P.volcar();
+    if (b.dataset.ir === "mantenimiento" && !m) pintarLista();
+  });
+
+  var inicial = null;
+  try { inicial = localStorage.getItem(CLAVE_PANEL); } catch (e) { /* da igual */ }
+  panel(inicial === "equipos" ? "equipos" : "ordenes");
+  pintarLista();
+
+  return {
+    crear: crear, abrir: abrirProyecto, volver: volver, panel: panel,
+    actual: function () { return m ? M.clon(m) : null; },
+    alertas: alertas,
+    contexto: cargarContexto,
+    confirmarPlaca: confirmarPlaca
   };
 })();
 </script>
@@ -7075,7 +8002,7 @@ RDRENTA.arrancar();
      igual que encuentra lo que había tecleado. Se recupera sola, y se dice
      —con la salida a la vista, porque a veces uno quiere empezar de cero. */
   function bandera(p) {
-    var pre = p.vista === "recepcion" ? "r" : "d";
+    var pre = { recepcion: "r", despacho: "d", mantenimiento: "m" }[p.vista] || "d";
     var barra = $("#" + pre + "-proy");
     if (!barra) return;
 
