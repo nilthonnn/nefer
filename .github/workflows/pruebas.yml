@@ -156,6 +156,7 @@ jobs:
           set -o pipefail
           python -m pytest -q -rs -rf --tb=short \
             tests/test_app_navegador.py \
+            tests/test_modelo_migracion.py \
             tests/test_build_extract.py \
             tests/test_layout.py \
             tests/test_schema.py \

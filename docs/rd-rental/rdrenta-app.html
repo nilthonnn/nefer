@@ -1309,7 +1309,7 @@ var RDRENTA = (function () {
      importante: saber si el telefono que falla esta corriendo la version
      corregida o una copia vieja guardada. Se cambia con cada cambio que
      el operador pueda notar, y `sw.js` lleva la misma fecha. */
-  var VERSION = "2026-10-01 · rodillo y motoniveladora";
+  var VERSION = "2026-11-25 · almacén v2 y modelo UNIMAQ";
 
   "use strict";
 
@@ -2112,50 +2112,167 @@ var RDRENTA = (function () {
      texto, y con un tope de unos 5 MB—, asi que van a IndexedDB, que guarda
      Blobs tal cual y sin limite practico. Es lo unico que la plataforma ofrece
      para esto sin traer una dependencia, y esta app no tiene ninguna. */
+  /* ---------- versiones del almacén y de los proyectos ----------
+     Dos números distintos, porque cambian por motivos distintos:
+
+       · VERSION de la base: qué tiendas existen. La 1 sólo tenía
+         `proyectos`. La 2 añade `equipos` (la ficha de cada TAG) y `fotos`
+         (las fotos de mantenimiento, una por registro, para que guardar un
+         texto no reescriba los megas de todas). Las tiendas se crean en
+         `onupgradeneeded`, paso a paso desde la versión que hubiera: nunca
+         se borra ni se reescribe lo que ya estaba.
+
+       · ESQUEMA de cada proyecto: qué forma tiene `datos`. Un registro sin
+         `esquema` es de antes de que existiera el número, o sea el 1. Se
+         migra al leerlo, en memoria, y se escribe con la forma nueva sólo
+         cuando el operario vuelve a guardar: abrir un acta vieja no la toca.
+
+     Un proyecto con un esquema MAYOR que el de esta app viene de una versión
+     más nueva. Se lista, pero no se abre: guardarlo con una app vieja
+     perdería lo que ésta no conoce. */
+  var ESQUEMA = 2;
+  var MIGRACIONES = {
+    // 1 → 2: despacho y recepción no cambian de forma. El 2 existe para que
+    // `mantenimiento` (formatos UNIMAQ) nazca con número y las próximas
+    // migraciones tengan de dónde partir.
+    1: function (p) { return p; }
+  };
+
+  function migrarProyecto(p) {
+    if (!p || typeof p !== "object") return p;
+    var desde = typeof p.esquema === "number" ? p.esquema : 1;
+    if (desde >= ESQUEMA) return p;
+    var c = {};
+    for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) c[k] = p[k];
+    for (var v = desde; v < ESQUEMA; v++) {
+      if (!MIGRACIONES[v]) throw new Error("no hay migración del esquema " + v);
+      c = MIGRACIONES[v](c);
+      c.esquema = v + 1;
+    }
+    return c;
+  }
+
+  function demasiadoNuevo(p) {
+    return !!p && typeof p.esquema === "number" && p.esquema > ESQUEMA;
+  }
+
   var almacen = (function () {
-    var NOMBRE = "rdrenta", VERSION = 1, TIENDA = "proyectos";
+    var NOMBRE = "rdrenta", VERSION = 2, TIENDA = "proyectos";
     var bd = null;
+
+    // Cada paso deja la base en la versión siguiente. Se ejecutan todos los
+    // que falten, en orden, dentro de la misma transacción de actualización.
+    function actualizar(d, desde) {
+      if (desde < 1 && !d.objectStoreNames.contains(TIENDA)) {
+        var tienda = d.createObjectStore(TIENDA, { keyPath: "id" });
+        tienda.createIndex("modificado", "modificado");
+      }
+      if (desde < 2) {
+        if (!d.objectStoreNames.contains("equipos")) {
+          d.createObjectStore("equipos", { keyPath: "tag" });
+        }
+        if (!d.objectStoreNames.contains("fotos")) {
+          var fotos = d.createObjectStore("fotos", { keyPath: "id" });
+          fotos.createIndex("proyecto", "proyecto");
+        }
+      }
+    }
+
+    // Que el navegador no vacíe el almacén cuando le falte espacio. Sin esto
+    // la plataforma puede llevarse los proyectos sin avisar a nadie; con esto,
+    // sólo los borra quien borra los datos de la app a propósito.
+    var persistencia = null;
+    function pedirPersistencia() {
+      if (persistencia) return persistencia;
+      persistencia = Promise.resolve(false);
+      try {
+        if (navigator.storage && navigator.storage.persist) {
+          persistencia = navigator.storage.persist().catch(function () { return false; });
+        }
+      } catch (e) { /* sin API: queda como estaba */ }
+      return persistencia;
+    }
 
     function abrir() {
       if (bd) return Promise.resolve(bd);
       return new Promise(function (ok, mal) {
         if (!window.indexedDB) { mal(new Error("este navegador no guarda proyectos")); return; }
         var pet = indexedDB.open(NOMBRE, VERSION);
-        pet.onupgradeneeded = function () {
-          var d = pet.result;
-          if (!d.objectStoreNames.contains(TIENDA)) {
-            var tienda = d.createObjectStore(TIENDA, { keyPath: "id" });
-            tienda.createIndex("modificado", "modificado");
-          }
+        pet.onupgradeneeded = function (ev) {
+          actualizar(pet.result, ev.oldVersion || 0);
         };
-        pet.onsuccess = function () { bd = pet.result; ok(bd); };
+        pet.onsuccess = function () {
+          bd = pet.result;
+          // Si otra pestaña trae una versión más nueva, ésta se aparta en vez
+          // de dejarla bloqueada esperando.
+          bd.onversionchange = function () { bd.close(); bd = null; };
+          pedirPersistencia();
+          ok(bd);
+        };
+        pet.onblocked = function () {
+          mal(new Error("hay otra ventana de la app abierta con una versión " +
+                        "anterior: ciérrela para seguir guardando"));
+        };
         pet.onerror = function () { mal(pet.error || new Error("no se pudo abrir el almacen")); };
       });
     }
 
-    function operar(modo, fn) {
+    function operar(modo, fn, nombre) {
       return abrir().then(function (d) {
         return new Promise(function (ok, mal) {
-          var tx = d.transaction(TIENDA, modo);
-          var pet = fn(tx.objectStore(TIENDA));
+          var tx = d.transaction(nombre || TIENDA, modo);
+          var pet = fn(tx.objectStore(nombre || TIENDA));
           tx.onabort = tx.onerror = function () { mal(tx.error || new Error("transaccion fallida")); };
           tx.oncomplete = function () { ok(pet ? pet.result : undefined); };
         });
       });
     }
 
+    // Lo mínimo para una tienda cualquiera: leer, listar, guardar y borrar.
+    function tiendaSimple(nombre) {
+      return {
+        listar: function () {
+          return operar("readonly", function (t) { return t.getAll(); }, nombre)
+            .then(function (l) { return l || []; });
+        },
+        leer: function (clave) {
+          return operar("readonly", function (t) { return t.get(clave); }, nombre);
+        },
+        guardar: function (x) {
+          return operar("readwrite", function (t) { t.put(x); }, nombre)
+            .then(function () { return x; });
+        },
+        borrar: function (clave) {
+          return operar("readwrite", function (t) { t.delete(clave); }, nombre);
+        }
+      };
+    }
+
+    var fotos = tiendaSimple("fotos");
+    fotos.deProyecto = function (idProyecto) {
+      return operar("readonly", function (t) {
+        return t.index("proyecto").getAll(idProyecto);
+      }, "fotos").then(function (l) { return l || []; });
+    };
+
     return {
       hay: function () { return !!window.indexedDB; },
+      VERSION: VERSION,
       listar: function () {
         return operar("readonly", function (t) { return t.getAll(); }).then(function (l) {
-          return (l || []).sort(function (a, b) {
+          return (l || []).map(migrarProyecto).sort(function (a, b) {
             return (b.modificado || 0) - (a.modificado || 0);
           });
         });
       },
-      leer: function (id) { return operar("readonly", function (t) { return t.get(id); }); },
+      leer: function (id) {
+        return operar("readonly", function (t) { return t.get(id); }).then(migrarProyecto);
+      },
       guardar: function (p) { return operar("readwrite", function (t) { t.put(p); }).then(function () { return p; }); },
-      borrar: function (id) { return operar("readwrite", function (t) { t.delete(id); }); }
+      borrar: function (id) { return operar("readwrite", function (t) { t.delete(id); }); },
+      equipos: tiendaSimple("equipos"),
+      fotos: fotos,
+      persistencia: pedirPersistencia
     };
   })();
 
@@ -2164,6 +2281,8 @@ var RDRENTA = (function () {
      guardar es para seguir mañana, exportar es el archivo que se firma. Un
      proyecto guardado no se cierra: se vuelve a abrir tal como estaba. */
   var ESTADOS = ["borrador", "en proceso", "completo", "exportado"];
+  var MENSAJE_NUEVO = "esta acta se guardó con una versión más nueva de la app: " +
+                      "actualícela para abrirla";
 
   var proyectos = (function () {
     var vistas = {};                  // despacho / recepcion: como se copian
@@ -2219,6 +2338,7 @@ var RDRENTA = (function () {
           estado: opciones.estado || actual.estado || "borrador",
           creado: opciones.comoNuevo ? Date.now() : (actual.creado || Date.now()),
           modificado: Date.now(),
+          esquema: ESQUEMA,
           datos: datos
         };
         return almacen.guardar(p).then(function () {
@@ -2260,6 +2380,7 @@ var RDRENTA = (function () {
     function abrir(id) {
       return almacen.leer(id).then(function (p) {
         if (!p) throw new Error("ese proyecto ya no existe");
+        if (demasiadoNuevo(p)) throw new Error(MENSAJE_NUEVO);
         var api = vistas[p.vista];
         if (!api) throw new Error("no se reconoce el tipo de proyecto");
         return Promise.resolve(api.restaurar(p.datos)).then(function () {
@@ -2284,6 +2405,7 @@ var RDRENTA = (function () {
         copia.nombre = (p.nombre || "Proyecto") + " (copia)";
         copia.estado = "borrador";
         copia.creado = copia.modificado = Date.now();
+        copia.esquema = p.esquema;
         copia.datos = p.datos;         // los Blobs se comparten sin copiarse
         return almacen.guardar(copia);
       });
@@ -2312,7 +2434,7 @@ var RDRENTA = (function () {
         if (!p) throw new Error("ese proyecto ya no existe");
         var entradas = [], copia = JSON.parse(JSON.stringify({
           formato: FORMATO, nombre: p.nombre, vista: p.vista, estado: p.estado,
-          creado: p.creado, modificado: p.modificado
+          creado: p.creado, modificado: p.modificado, esquema: p.esquema
         }));
         var datos = p.datos || {};
         var fotos = datos.fotos || [], antes = datos.antes || [];
@@ -2361,6 +2483,8 @@ var RDRENTA = (function () {
         var p;
         try { p = JSON.parse(new TextDecoder().decode(crudo)); }
         catch (e) { throw new Error("el proyecto viene dañado"); }
+        if (demasiadoNuevo(p)) throw new Error(MENSAJE_NUEVO);
+        p = migrarProyecto(p);
         if (!p || !p.datos || !vistas[p.vista]) {
           throw new Error("no se reconoce el tipo de proyecto");
         }
@@ -2383,6 +2507,7 @@ var RDRENTA = (function () {
           estado: p.estado || "borrador",
           creado: p.creado || Date.now(),
           modificado: Date.now(),
+          esquema: p.esquema || ESQUEMA,
           datos: p.datos
         };
         return almacen.guardar(guardado);
@@ -3188,11 +3313,315 @@ var RDRENTA = (function () {
     armarZip: armarZip, leerZip: leerZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
     selloFecha: selloFecha, sellarFecha: sellarFecha, editor: editor,
-    proyectos: proyectos,
+    proyectos: proyectos, almacen: almacen,
+    ESQUEMA: ESQUEMA, migrarProyecto: migrarProyecto, demasiadoNuevo: demasiadoNuevo,
     incrustada: incrustada, CONTEXTO: CONTEXTO,
     RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo, camara: camara,
     archivosArrastrados: archivosArrastrados, imagenesPegadas: imagenesPegadas,
     pesoLegible: pesoLegible, MAX_LADO: MAX_LADO, nombresUnicos: nombresUnicos
+  };
+})();
+</script>
+
+<script>
+/* ================================================================
+   UNIMAQ · MODELO · los datos de los formatos de mantenimiento.
+
+   Es la traducción de `modelos.ts` del kit a este repo, que no tiene
+   TypeScript ni compilador: los tipos quedan como fábricas que devuelven
+   la forma vacía, y normalizadores que completan lo que falte en un
+   registro guardado con una versión anterior. Sin pantallas ni DOM: todo
+   lo de aquí se prueba con datos.
+
+   Tres decisiones que salen de las reglas del formato:
+
+     · Un proyecto de mantenimiento es UN TAG. El TAG vive en la cabecera
+       (`m.tag`) y en ningún otro sitio: la OT, el informe y los check-list
+       no lo llevan, así que no hay forma de que un informe diga un equipo y
+       su check-list otro. `aKit()` lo copia a cada pieza sólo al exportar.
+
+     · Lo que no se leyó vale `null`, no 0. Un horómetro en 0 o un voltaje
+       en 0 son lecturas; vacío es «no se leyó», y el PDF lo imprime en
+       blanco o como «[ leer en equipo ]», nunca como un número inventado.
+
+     · Los datos de placa del proyecto no se rellenan solos desde la ficha:
+       `m.placaConfirmada` queda en null hasta que el técnico confirma.
+   ================================================================ */
+var UNIMAQ = window.UNIMAQ || {};
+UNIMAQ.modelo = (function () {
+  "use strict";
+
+  var ESTADOS = ["OK", "NO", "NA"];
+  var FRECUENCIAS = [
+    { id: "PM1_250", horas: 250, rotulo: "PM1 · 250 h" },
+    { id: "PM2_500", horas: 500, rotulo: "PM2 · 500 h" },
+    { id: "PM3_1000", horas: 1000, rotulo: "PM3 · 1000 h" },
+    { id: "PM4_2000", horas: 2000, rotulo: "PM4 · 2000 h" }
+  ];
+  var ESPECIALIDADES = { "0010": "ELECTRICO", "0020": "MECANICO" };
+  var TIPOS_SERVICIO = ["INSPECCION", "PREVENTIVO", "CORRECTIVO", "VISITA"];
+  var TIPOS_BATERIA = ["PLOMO_ACIDO", "LIBRE_MANTENIMIENTO"];
+  // Ítems del check-list: 1–10 plomo-ácido, 11–19 libre mantenimiento.
+  var ITEMS_BATERIA = { PLOMO_ACIDO: rango(1, 10), LIBRE_MANTENIMIENTO: rango(11, 19) };
+  var CARGAS = [0, 25, 50, 100];
+  var ITEMS_MOTOR = rango(1, 12).map(function (i) { return "3." + i; });
+  var ITEMS_REPUESTOS = rango(1, 14).map(function (i) { return "5." + i; });
+
+  function rango(a, b) { var l = []; for (var i = a; i <= b; i++) l.push(i); return l; }
+
+  function esObjeto(x) {
+    return x !== null && typeof x === "object" && !Array.isArray(x) &&
+           !(typeof Blob !== "undefined" && x instanceof Blob);
+  }
+
+  function clon(x) {
+    if (Array.isArray(x)) return x.map(clon);
+    if (!esObjeto(x)) return x;
+    var c = {};
+    for (var k in x) if (Object.prototype.hasOwnProperty.call(x, k)) c[k] = clon(x[k]);
+    return c;
+  }
+
+  /* Completa `x` con la forma de `def`: lo que falte toma el valor vacío, lo
+     que esté se respeta, y lo que `def` no conoce también se conserva —un
+     registro de una versión más nueva no pierde campos al pasar por aquí—.
+     Un valor de tipo equivocado (texto donde va un objeto) se reemplaza. */
+  function rellenar(def, x) {
+    if (!esObjeto(def)) return x === undefined ? clon(def) : x;
+    if (!esObjeto(x)) return clon(def);
+    var c = {};
+    var k;
+    for (k in x) if (Object.prototype.hasOwnProperty.call(x, k)) c[k] = x[k];
+    for (k in def) {
+      if (!Object.prototype.hasOwnProperty.call(def, k)) continue;
+      if (Array.isArray(def[k])) {
+        c[k] = Array.isArray(x[k]) ? x[k].slice() : clon(def[k]);
+      } else {
+        c[k] = rellenar(def[k], x[k]);
+      }
+    }
+    return c;
+  }
+
+  /* ---------- valores sueltos ---------- */
+
+  // «064» sigue siendo «064»: el TAG es texto, no número.
+  function tag(t) {
+    return String(t == null ? "" : t).trim().replace(/\s+/g, "").toUpperCase();
+  }
+
+  // Lo que teclea el técnico: «380», «380,5», «1.548,7». Vacío o ilegible → null.
+  function numero(x) {
+    if (typeof x === "number") return isFinite(x) ? x : null;
+    if (x === null || x === undefined) return null;
+    var s = String(x).trim().replace(/\s+/g, "");
+    if (!s) return null;
+    if (s.indexOf(",") !== -1) s = s.replace(/\./g, "").replace(",", ".");
+    var n = Number(s);
+    return isFinite(n) ? n : null;
+  }
+
+  function estado(x) { return ESTADOS.indexOf(x) !== -1 ? x : null; }
+
+  /* ---------- fábricas: la forma vacía de cada cosa ---------- */
+
+  function placa() { return { marca: "", modelo: "", serie: "", extra: {} }; }
+
+  function bateriaPlaca() {
+    return { marca: "", modelo: "", voltaje: null, ah: null, cca: null };
+  }
+
+  // La ficha del equipo. Se guarda en la tienda `equipos`, con el TAG de clave.
+  function equipo(t) {
+    var alt = placa(); alt.winding = "";
+    return {
+      tag: tag(t), ubicacion: "",
+      grupo: placa(), motor: placa(), alternador: alt,
+      controlador: "",
+      voltajeNominal: null, fases: null, frecuenciaHz: null, kva: null, rpm: null,
+      bateria: bateriaPlaca(),
+      horometro: null,          // el último registrado
+      actualizado: null         // ms; cuándo se tocó la ficha por última vez
+    };
+  }
+
+  function operacion(n) {
+    n = String(n || "");
+    return {
+      numero: n, especialidad: ESPECIALIDADES[n] || "",
+      inicio: "", fin: "",       // "AAAA-MM-DDTHH:MM", hora local del equipo
+      horasHombre: null, empleado: "",
+      personas: 1                // HH = duración × personas; sólo para el aviso
+    };
+  }
+
+  function demora() { return { tipo: "", inicio: "", fin: "", descripcion: "" }; }
+
+  // `imagen`: identificador del PNG en la tienda `fotos`, no los bytes.
+  function firma() { return { nombre: "", fecha: "", imagen: null }; }
+
+  function ordenTrabajo() {
+    return {
+      ot: "", aviso: "", ubicacionTecnica: "", puestoTrabajo: "", descripcion: "",
+      operaciones: [operacion("0010"), operacion("0020")],
+      demoras: [],
+      observaciones: "",
+      defectoReco: "",
+      horometroSalida: null,
+      crearAviso: null,          // null = sin marcar · true = S · false = N
+      textoAviso: "",
+      tareaCompleta: null,       // true → notificación final + cierre técnico
+      firmas: { tecnico: firma(), supervisor: firma() }
+    };
+  }
+
+  function prueba(carga) {
+    return {
+      carga: carga, voltajeLL: null, voltajeLN: null, corrienteA: null,
+      kw: null, kva: null, hz: null, rpm: null,
+      vBateria: null, presionAceitePsi: null, tempRefrigeranteC: null
+    };
+  }
+
+  function informe() {
+    var motor = {}, repuestos = {};
+    ITEMS_MOTOR.forEach(function (k) { motor[k] = null; });
+    ITEMS_REPUESTOS.forEach(function (k) { repuestos[k] = ""; });
+    return {
+      ot: "", cliente: "", fecha: "",
+      tipoServicio: "",
+      motor: motor,
+      generadorTablero: {},      // "4.x" → estado; los ítems salen del formato en papel
+      repuestos: repuestos,      // "5.x" → cantidad o "—"
+      pruebas: CARGAS.map(prueba),
+      observaciones: "",
+      operativo: null,
+      firmas: { unimaq: firma(), cliente: firma() }
+    };
+  }
+
+  function probador() {
+    return { soh: null, soc: null, voltaje: null, ccaMedido: null,
+             resistenciaMOhm: null, instrumento: "" };
+  }
+
+  function checklist() {
+    var items = {};
+    rango(1, 19).forEach(function (i) { items[i] = null; });
+    return {
+      fecha: "", frecuencia: "", tipo: "",
+      bateria: bateriaPlaca(),
+      items: items,
+      probador: probador(),
+      observaciones: "",
+      personal: [firma()],
+      supervisor: firma()
+    };
+  }
+
+  // El proyecto entero: lo que `datos` guarda para la vista «mantenimiento».
+  function mantenimiento(t) {
+    return {
+      tipo: "mantenimiento",
+      tag: tag(t),
+      equipo: equipo(t),          // copia de la placa usada en ESTE informe
+      placaConfirmada: null,      // {fecha, tecnico} cuando el técnico la confirma
+      ot: ordenTrabajo(),
+      informe: informe(),
+      baterias: [],
+      fotos: [],                  // {casilla, foto (id en `fotos`), texto}
+      decisiones: []              // avisos que el técnico vio y aceptó
+    };
+  }
+
+  /* ---------- normalizadores: completar lo guardado ---------- */
+
+  function nEquipo(x) {
+    var e = rellenar(equipo(x && x.tag), x);
+    e.tag = tag(e.tag);
+    ["voltajeNominal", "fases", "frecuenciaHz", "kva", "rpm", "horometro"]
+      .forEach(function (k) { e[k] = numero(e[k]); });
+    ["voltaje", "ah", "cca"].forEach(function (k) { e.bateria[k] = numero(e.bateria[k]); });
+    return e;
+  }
+
+  function nOT(x) {
+    var o = rellenar(ordenTrabajo(), x);
+    o.operaciones = o.operaciones.map(function (op) {
+      return rellenar(operacion(op && op.numero), op);
+    });
+    o.demoras = o.demoras.map(function (d) { return rellenar(demora(), d); });
+    o.horometroSalida = numero(o.horometroSalida);
+    return o;
+  }
+
+  function nInforme(x) {
+    var inf = rellenar(informe(), x);
+    var porCarga = {};
+    inf.pruebas.forEach(function (p) { if (p) porCarga[p.carga] = p; });
+    // Siempre las cuatro cargas y en orden: el formato tiene las cuatro columnas.
+    inf.pruebas = CARGAS.map(function (c) { return rellenar(prueba(c), porCarga[c]); });
+    return inf;
+  }
+
+  function nChecklist(x) {
+    var c = rellenar(checklist(), x);
+    c.personal = (c.personal.length ? c.personal : [firma()])
+      .map(function (f) { return rellenar(firma(), f); });
+    rango(1, 19).forEach(function (i) { c.items[i] = estado(c.items[i]); });
+    return c;
+  }
+
+  function nMantenimiento(x) {
+    var m = rellenar(mantenimiento(x && x.tag), x);
+    m.tag = tag(m.tag);
+    m.equipo = nEquipo(m.equipo);
+    m.equipo.tag = m.tag;         // la placa del informe es la del TAG del informe
+    m.ot = nOT(m.ot);
+    m.informe = nInforme(m.informe);
+    m.baterias = m.baterias.map(nChecklist);
+    return m;
+  }
+
+  /* ---------- hacia la forma del kit ----------
+     `validaciones.ts` y `reporteWhatsapp.ts` esperan las interfaces de
+     `modelos.ts`, cada pieza con su `equipoTag`. Aquí se arman a partir del
+     proyecto, todas con el mismo TAG. Las firmas sin nombre no cuentan. */
+  function firmaKit(f) { return f && f.nombre ? clon(f) : undefined; }
+
+  function aKit(x) {
+    var m = nMantenimiento(x);
+    var ot = clon(m.ot);
+    ot.equipoTag = m.tag;
+    ot.firmas = { tecnico: firmaKit(m.ot.firmas.tecnico),
+                  supervisor: firmaKit(m.ot.firmas.supervisor) };
+    var inf = clon(m.informe);
+    inf.equipoTag = m.tag;
+    inf.firmas = { unimaq: firmaKit(m.informe.firmas.unimaq),
+                   cliente: firmaKit(m.informe.firmas.cliente) };
+    inf.fotos = m.fotos.map(function (f) { return { casilla: f.casilla, uri: f.foto }; });
+    var baterias = m.baterias.map(function (c) {
+      var k = clon(c);
+      k.equipoTag = m.tag;
+      k.personal = c.personal.map(firmaKit).filter(Boolean);
+      k.supervisor = firmaKit(c.supervisor);
+      return k;
+    });
+    return { equipo: clon(m.equipo), ot: ot, informe: inf, baterias: baterias };
+  }
+
+  return {
+    ESTADOS: ESTADOS, FRECUENCIAS: FRECUENCIAS, ESPECIALIDADES: ESPECIALIDADES,
+    TIPOS_SERVICIO: TIPOS_SERVICIO, TIPOS_BATERIA: TIPOS_BATERIA,
+    ITEMS_BATERIA: ITEMS_BATERIA, CARGAS: CARGAS,
+    ITEMS_MOTOR: ITEMS_MOTOR, ITEMS_REPUESTOS: ITEMS_REPUESTOS,
+    tag: tag, numero: numero, clon: clon, rellenar: rellenar,
+    equipo: equipo, operacion: operacion, demora: demora, firma: firma,
+    ordenTrabajo: ordenTrabajo, prueba: prueba, informe: informe,
+    probador: probador, checklist: checklist, mantenimiento: mantenimiento,
+    normalizar: { equipo: nEquipo, ordenTrabajo: nOT, informe: nInforme,
+                  checklist: nChecklist, mantenimiento: nMantenimiento },
+    aKit: aKit
   };
 })();
 </script>
