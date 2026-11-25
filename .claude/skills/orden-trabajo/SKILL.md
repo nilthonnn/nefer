@@ -19,22 +19,29 @@ Código: `clientes/campo/docs/app/index.html`, bloques `MANT.modelo`,
      sugiere con `MANT.modelo.sugerirPM(horas)`; si se elige otra, avisa.
 3. **Confirmar la placa**: la ficha se muestra al lado y el técnico confirma
    con su nombre. Nunca se copia sola.
-4. **Cabecera SAP**: N° orden, descripción, aviso, ubicación técnica,
+4. **Seguridad antes de iniciar** (lo que exige el aviso de la orden):
+   equipo bloqueado y etiquetado según la matriz de bloqueo, IPERC continuo
+   según PETS, HIRA revisado, batería desconectada; maleta mecánica y
+   dieléctrica; instrumentos (pirómetro, pinza, multímetro, revelador de
+   tensión) con serie y vencimiento de calibración. Cada marca guarda su hora.
+   Registrar inicio de trabajo sin bloqueo confirmado es **crítico**; al
+   cerrar, registrar el desbloqueo antes de energizar.
+5. **Cabecera SAP**: N° orden, descripción, aviso, ubicación técnica,
    puesto de trabajo, fechas. Si la descripción termina en `_TAG` de otro
    equipo, es un error crítico: un informe = un TAG.
-5. **Operaciones** 0010 (eléctrico) y 0020 (mecánico): inicio, fin, personas,
+6. **Operaciones** 0010 (eléctrico) y 0020 (mecánico): inicio, fin, personas,
    HH (trabajo total) y N° de empleado. HH = duración × personas; si no
    cuadra, se avisa, no se corrige solo.
-6. **Desviaciones**: sólo las que ocurrieron, con la causa impresa del
+7. **Desviaciones**: sólo las que ocurrieron, con la causa impresa del
    formato y su duración.
-7. **Cierre**: observaciones, defecto RECO («Sin defecto detectado» o el
+8. **Cierre**: observaciones, defecto RECO («Sin defecto detectado» o el
    concreto), series de entrada/salida, valor de contador, crear aviso S/N
    (con texto si es S), aptitud operativa SÍ/NO con quién la declara, tarea
    completa SÍ (notificación final y cierre técnico) / NO (notificación
    parcial e imprimir otra ficha), firmas.
-8. **Correctivo**: falla, causa, acción y pruebas después de reparar. No se
+9. **Correctivo**: falla, causa, acción y pruebas después de reparar. No se
    declara apto sin acción ni pruebas (aviso).
-9. Revisar los avisos (`MANT.validaciones.validarMantenimiento`). Avisan, no
+10. Revisar los avisos (`MANT.validaciones.validarMantenimiento`). Avisan, no
    bloquean; «Lo revisé, sigo» deja constancia con fecha y técnico.
 
 ## Regularizar registros

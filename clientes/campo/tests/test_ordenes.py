@@ -237,6 +237,11 @@ def test_ot_completa_del_064_en_modo_avion_sobrevive_a_cerrar_la_app(pw, servido
     pg.click("[data-accion=confirmar]")
     assert "Placa confirmada por Técnico eléctrico" in pg.inner_text("#m-o-cuerpo")
 
+    # Lo que exige el aviso antes de tocar el equipo.
+    for ruta in ["seguridad.items.bloqueo", "seguridad.items.iperc", "seguridad.items.hira",
+                 "seguridad.items.bateria", "seguridad.herramientas.mecanica",
+                 "seguridad.herramientas.dielectrica"]:
+        pg.click(f"[data-estado='{ruta}'][data-valor=OK]")
     for ruta, valor in [("ot.descripcion", DESC_064), ("ot.aviso", "17360944"),
                         ("ot.ubicacionTecnica", "40020102.30.10.01"),
                         ("ot.puestoTrabajo", "QI3SS-MANTENIMIENTO EQUIPOS SOPORTE"),
@@ -261,6 +266,7 @@ def test_ot_completa_del_064_en_modo_avion_sobrevive_a_cerrar_la_app(pw, servido
     pg.click("[data-sn='ot.crearAviso'][data-valor=true]")
     pg.click("[data-sn='informe.operativo'][data-valor=true]")
     pg.click("[data-sn='ot.tareaCompleta'][data-valor=true]")
+    pg.click("[data-estado='seguridad.items.desbloqueo'][data-valor=OK]")
     _guardado(pg)
     pg.wait_for_timeout(900)
     _guardado(pg)
@@ -283,7 +289,9 @@ def test_ot_completa_del_064_en_modo_avion_sobrevive_a_cerrar_la_app(pw, servido
     for sn in ["ot.crearAviso", "informe.operativo", "ot.tareaCompleta"]:
         assert pg.get_attribute(f"[data-sn='{sn}'][data-valor=true]", "aria-pressed") == "true", sn
     assert "Placa confirmada" in pg.inner_text("#m-o-cuerpo")
+    assert pg.get_attribute("[data-estado='seguridad.items.bloqueo'][data-valor=OK]", "aria-pressed") == "true"
     guardado = pg.evaluate("id => CAMPO.almacen.leer(id)", pid)
+    assert guardado["datos"]["seguridad"]["horas"]["bloqueo"], "la marca guarda su hora"
     assert guardado["datos"]["equipo"]["grupo"]["serie"] == "D19I420882"
     assert guardado["datos"]["informe"]["servicio"]["2.2"] is True
     assert app.errores == []
@@ -368,3 +376,51 @@ def test_la_orden_se_toca_con_guantes(pw, servidor):
       .filter(x => x[1] < 47.5)""")
     assert chicos == []
     nav.close()
+
+
+# --------------------------------------------------------------------------
+# seguridad antes de iniciar (lo que exige el aviso)
+# --------------------------------------------------------------------------
+
+def _con_inicio(js, **items):
+    m = _m(js, tipo="INSPECCION", pm="")
+    m["ot"]["operaciones"][0]["inicio"] = "2026-11-20T07:00"
+    m["seguridad"]["items"].update(items)
+    return m
+
+
+def test_trabajo_iniciado_sin_bloqueo_es_critico(js):
+    a = _campos(js(VALIDAR, [_con_inicio(js), {}]))
+    assert ("critico", "seguridad.items.bloqueo") in a
+    assert ("aviso", "seguridad.items.iperc") in a
+    assert ("aviso", "seguridad.items.hira") in a
+    assert ("aviso", "seguridad.herramientas.dielectrica") in a, "la 0010 es eléctrica"
+
+
+def test_con_bloqueo_iperc_hira_y_dielectrica_no_hay_avisos_de_seguridad(js):
+    m = _con_inicio(js, bloqueo="OK", iperc="OK", hira="OK")
+    m["seguridad"]["herramientas"]["dielectrica"] = "OK"
+    assert [x for x in _campos(js(VALIDAR, [m, {}])) if x[1].startswith("seguridad")] == []
+
+
+def test_sin_iniciar_no_se_exige_nada_todavia(js):
+    m = _m(js, tipo="INSPECCION", pm="")
+    assert [x for x in _campos(js(VALIDAR, [m, {}])) if x[1].startswith("seguridad")] == []
+
+
+def test_tarea_completa_sin_desbloqueo_y_calibracion_vencida(js):
+    m = _con_inicio(js, bloqueo="OK", iperc="OK", hira="OK")
+    m["seguridad"]["herramientas"]["dielectrica"] = "OK"
+    m["ot"]["tareaCompleta"] = True
+    m["seguridad"]["instrumentos"][2].update(serie="MM-123", calibracion="2020-01-31", estado="OK")
+    a = _campos(js(VALIDAR, [m, {}]))
+    assert ("aviso", "seguridad.items.desbloqueo") in a
+    assert ("aviso", "seguridad.instrumentos.2.calibracion") in a
+    m["seguridad"]["instrumentos"][2]["calibracion"] = "2099-12-31"
+    m["seguridad"]["items"]["desbloqueo"] = "OK"
+    assert [x for x in _campos(js(VALIDAR, [m, {}])) if x[1].startswith("seguridad")] == []
+
+
+def test_los_instrumentos_del_aviso_vienen_en_la_lista(js):
+    r = js("() => MANT.modelo.mantenimiento('064').seguridad.instrumentos.map(i => i.nombre)")
+    assert r == ["Pirómetro", "Pinza amperimétrica", "Multímetro", "Revelador de tensión"]

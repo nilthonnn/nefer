@@ -3840,6 +3840,24 @@ MANT.modelo = (function () {
       },
       leyenda: [["OK", "Realizado"], ["NO", "No se hizo"], ["NA", "No aplica"]]
     },
+    /* Seguridad antes de iniciar. Sale del aviso de la orden («condiciones
+       y restricciones», «condiciones de seguridad», recursos, herramientas,
+       instrumentos y el proceso: matriz de bloqueo, desconexión de batería,
+       desbloqueo antes de energizar). No es un formato en papel: es la
+       constancia de que se cumplió lo que el aviso exige. */
+    seguridad: {
+      previo: [
+        ["bloqueo", "Equipo bloqueado y etiquetado (procedimiento de la matriz de bloqueo)"],
+        ["iperc", "IPERC continuo de acuerdo a PETS"],
+        ["hira", "HIRA revisado antes de iniciar la tarea"],
+        ["bateria", "Batería del grupo electrógeno desconectada"]],
+      cierre: [
+        ["desbloqueo", "Desbloqueo registrado antes de energizar el grupo"]],
+      herramientas: [
+        ["mecanica", "Maleta de herramientas mecánicas"],
+        ["dielectrica", "Maleta de herramientas dieléctricas"]],
+      instrumentos: ["Pirómetro", "Pinza amperimétrica", "Multímetro", "Revelador de tensión"]
+    },
     ot: {
       titulo: "Ficha de trabajo para Mantenimiento",
       // Desviaciones: cada fila es una causa impresa, con su duración y la
@@ -4080,6 +4098,18 @@ MANT.modelo = (function () {
     };
   }
 
+  // Un instrumento de medición llevado a la tarea. `calibracion`: fecha en
+  // que vence (AAAA-MM-DD). `estado`: OK llevado y en uso · NO · NA.
+  function instrumento(nombre) { return { nombre: nombre || "", serie: "", calibracion: "", estado: null }; }
+
+  function seguridad() {
+    var S = FORMATO.seguridad, items = {}, herr = {};
+    S.previo.concat(S.cierre).forEach(function (x) { items[x[0]] = null; });
+    S.herramientas.forEach(function (x) { herr[x[0]] = null; });
+    return { items: items, horas: {}, herramientas: herr,
+             instrumentos: S.instrumentos.map(instrumento) };
+  }
+
   // El probador no tiene casilla en el papel: va al anexo y a observaciones.
   function probador() {
     return { soh: null, soc: null, voltaje: null, ccaMedido: null,
@@ -4114,6 +4144,9 @@ MANT.modelo = (function () {
       // Qué clase de orden es. Se elige al crearla y manda en todo lo demás:
       // la casilla 2.x del informe, la rutina del check-list, los avisos.
       clasificacion: { tipo: "", pm: "" },
+      // Lo que el aviso exige antes, durante y al cerrar: bloqueo, IPERC,
+      // HIRA, herramientas e instrumentos. Cada marca guarda su hora.
+      seguridad: seguridad(),
       // Sólo en un correctivo: qué falló, por qué, qué se hizo y cómo se probó.
       correctivo: { falla: "", causa: "", accion: "", pruebas: "" },
       // La aptitud operativa (sección 8, «Grupo operativo») es
@@ -4202,6 +4235,12 @@ MANT.modelo = (function () {
     m.ot = nOT(m.ot);
     m.informe = nInforme(m.informe);
     m.baterias = m.baterias.map(nChecklist);
+    var sg = m.seguridad;
+    Object.keys(sg.items).forEach(function (k) { sg.items[k] = estado(sg.items[k]); });
+    Object.keys(sg.herramientas).forEach(function (k) { sg.herramientas[k] = estado(sg.herramientas[k]); });
+    sg.instrumentos = sg.instrumentos.map(function (i) {
+      var x = rellenar(instrumento(), i); x.estado = estado(x.estado); return x;
+    });
     return m;
   }
 
@@ -4244,6 +4283,7 @@ MANT.modelo = (function () {
     equipo: equipo, operacion: operacion, demora: demora, firma: firma,
     ordenTrabajo: ordenTrabajo, prueba: prueba, informe: informe,
     probador: probador, checklist: checklist, mantenimiento: mantenimiento,
+    seguridad: seguridad, instrumento: instrumento,
     normalizar: { equipo: nEquipo, ordenTrabajo: nOT, informe: nInforme,
                   checklist: nChecklist, mantenimiento: nMantenimiento },
     aKit: aKit
@@ -4500,6 +4540,40 @@ MANT.validaciones = (function () {
           ": anule el que sobra"));
       });
     }
+
+    // Seguridad: lo que el aviso exige antes de tocar el equipo.
+    var sg = m.seguridad, it = sg.items;
+    var empezo = m.ot.operaciones.some(function (o) { return !vacio(o.inicio); });
+    if (empezo) {
+      if (it.bloqueo !== "OK" && it.bloqueo !== "NA") {
+        a.push(alerta("critico", "seguridad.items.bloqueo",
+          "Se registró el inicio del trabajo sin confirmar el bloqueo y etiquetado"));
+      }
+      if (it.iperc !== "OK") a.push(alerta("aviso", "seguridad.items.iperc", "Falta confirmar el IPERC continuo según PETS"));
+      if (it.hira !== "OK") a.push(alerta("aviso", "seguridad.items.hira", "Falta confirmar el HIRA antes de iniciar"));
+      var electrica = m.ot.operaciones.some(function (o) { return o.numero === "0010" && !vacio(o.inicio); });
+      if (electrica && sg.herramientas.dielectrica !== "OK") {
+        a.push(alerta("aviso", "seguridad.herramientas.dielectrica",
+          "Operación eléctrica sin confirmar la maleta de herramientas dieléctricas"));
+      }
+    }
+    if (it.bateria === "NO") {
+      a.push(alerta("aviso", "seguridad.items.bateria", "La batería del grupo no se desconectó"));
+    }
+    if (m.ot.tareaCompleta === true && it.bloqueo === "OK" && it.desbloqueo !== "OK") {
+      a.push(alerta("aviso", "seguridad.items.desbloqueo", "Tarea completa sin registrar el desbloqueo antes de energizar"));
+    }
+    // Calibración vencida. Buena práctica de metrología, no requisito del
+    // aviso: un instrumento vencido no respalda la medición.
+    var dia = new Date(), hoy = dia.getFullYear() + "-" + ("0" + (dia.getMonth() + 1)).slice(-2) +
+      "-" + ("0" + dia.getDate()).slice(-2);
+    sg.instrumentos.forEach(function (ins, i) {
+      if (ins.estado === "OK" && ins.calibracion && ins.calibracion < hoy) {
+        a.push(alerta("aviso", "seguridad.instrumentos." + i + ".calibracion",
+          (ins.nombre || "Instrumento") + (ins.serie ? " s/n " + ins.serie : "") +
+          ": calibración vencida el " + ins.calibracion));
+      }
+    });
 
     // Correctivo: qué falló y si el equipo queda apto.
     var op = m.informe.operativo;
@@ -5032,6 +5106,36 @@ MANT.ordenes = (function () {
         "Confirmo que la placa del equipo coincide</button>");
   }
 
+  /* OK / NO / NA en tres botones grandes; tocar el marcado lo desmarca. */
+  function triple(ruta, rotulo) {
+    var v = leer(m, ruta), i = id(ruta);
+    var hora = ruta.indexOf("seguridad.items.") === 0 ? m.seguridad.horas[ruta.split(".").pop()] : "";
+    return '<div class="campo"><span class="lb" id="' + i + '-lb">' + esc(rotulo) + "</span>" +
+      '<div class="m-sn" role="group" aria-labelledby="' + i + '-lb" id="' + i + '">' +
+      ["OK", "NO", "NA"].map(function (e) {
+        return '<button type="button" data-estado="' + ruta + '" data-valor="' + e + '" aria-pressed="' +
+          (v === e) + '">' + e + "</button>";
+      }).join("") + "</div>" + (hora ? '<p class="m-nota-sn">marcado ' + esc(hora) + "</p>" : "") +
+      '<span class="m-campo-alerta" id="' + i + '-alerta"></span></div>';
+  }
+
+  function pintarSeguridad() {
+    var S = M.FORMATO.seguridad, sg = m.seguridad;
+    return '<p class="m-sub">Antes de iniciar (según el aviso)</p>' +
+      S.previo.map(function (x) { return triple("seguridad.items." + x[0], x[1]); }).join("") +
+      '<p class="m-sub">Herramientas</p>' +
+      S.herramientas.map(function (x) { return triple("seguridad.herramientas." + x[0], x[1]); }).join("") +
+      '<p class="m-sub">Instrumentos de medición</p>' +
+      sg.instrumentos.map(function (ins, n) {
+        var b = "seguridad.instrumentos." + n + ".";
+        return '<div class="m-op">' + campos([[b + "nombre", "Instrumento"], [b + "serie", "N° de serie"],
+          [b + "calibracion", "Calibración vence", "fecha"]]) + triple(b + "estado", "Llevado y en uso") + "</div>";
+      }).join("") +
+      '<button type="button" data-accion="agregar-instrumento">+ Agregar instrumento</button>' +
+      '<p class="m-sub">Al cerrar</p>' +
+      S.cierre.map(function (x) { return triple("seguridad.items." + x[0], x[1]); }).join("");
+  }
+
   function pintarOperacion(op, i) {
     var b = "ot.operaciones." + i + ".";
     var esp = op.especialidad ? " · " + op.especialidad : "";
@@ -5085,6 +5189,7 @@ MANT.ordenes = (function () {
         : ""));
 
     html += grupo("Placa del equipo", pintarPlaca());
+    html += grupo("Seguridad antes de iniciar", pintarSeguridad());
 
     html += grupo("Orden de trabajo", campos([
       ["ot.ot", "N° de orden"], ["ot.descripcion", "Descripción orden"], ["ot.aviso", "N° aviso"],
@@ -5238,6 +5343,16 @@ MANT.ordenes = (function () {
       }
       tocar(); pintar(); return;
     }
+    if (b.dataset.estado) {
+      var ruta = b.dataset.estado, val = leer(m, ruta) === b.dataset.valor ? null : b.dataset.valor;
+      poner(m, ruta, val);
+      if (ruta.indexOf("seguridad.items.") === 0) {
+        var k = ruta.split(".").pop();
+        if (val) m.seguridad.horas[k] = new Date().toLocaleString("es-PE");
+        else delete m.seguridad.horas[k];
+      }
+      tocar(); pintar(); return;
+    }
     if (b.dataset.revisar) {
       var a = alertas().filter(function (x) { return clave(x) === b.dataset.revisar; })[0];
       if (a) m.decisiones.push({ clave: clave(a), nivel: a.nivel, campo: a.campo, mensaje: a.mensaje,
@@ -5255,6 +5370,8 @@ MANT.ordenes = (function () {
     } else if (acc === "agregar-operacion") {
       var n = (m.ot.operaciones.length + 1) * 10;
       m.ot.operaciones.push(M.operacion(("000" + n).slice(-4))); tocar(); pintar();
+    } else if (acc === "agregar-instrumento") {
+      m.seguridad.instrumentos.push(M.instrumento("")); tocar(); pintar();
     } else if (acc === "agregar-demora") {
       m.ot.demoras.push(M.demora()); tocar(); pintar();
     } else if (acc === "quitar-demora") {
