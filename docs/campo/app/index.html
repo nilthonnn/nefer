@@ -731,6 +731,16 @@
   .m-alerta.critico { border-left-color:var(--mal); background:var(--mal-soft); }
   .m-alerta.aviso { border-left-color:var(--obs); background:var(--obs-soft); }
   .m-borrar { color:var(--mal) !important; }
+  .m-casilla { border-top:1px solid var(--rule-2); padding:.55rem 0 .65rem; }
+  .m-casilla > .lb { display:block; margin-bottom:.35rem; color:var(--ink); font-size:.74rem; }
+  .m-foto { border:1px solid var(--rule); border-radius:7px; padding:.4rem; margin:0 0 .45rem;
+            background:var(--card); }
+  .m-foto.propuesta { border:2px dashed var(--obs); }
+  .m-foto img { display:block; width:100%; max-height:220px; object-fit:contain;
+                background:var(--card-2); border-radius:4px; }
+  .m-prop { display:inline-block; margin:.3rem 0; font-family:var(--mono); font-size:.68rem;
+            font-weight:700; color:var(--obs); }
+  #v-mantenimiento .boton { min-height:48px; font-size:1rem; }
   .m-seg { display:grid; grid-template-columns:1fr 1fr; gap:0; margin-bottom:.9rem;
            border:1.5px solid var(--ink-3); border-radius:7px; overflow:hidden; }
   .m-seg button { border:0; border-radius:0; background:var(--card); font-weight:700; }
@@ -755,6 +765,7 @@
   .m-sn button { flex:1 1 5rem; font-weight:700; border:1.5px solid var(--ink-3);
                  background:var(--card); }
   .m-sn button[aria-pressed="true"] { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .m-sn button.primary { background:var(--accent); color:var(--paper); border-color:var(--accent); }
   .m-sn button[aria-pressed="true"][data-valor="false"] { background:var(--mal); border-color:var(--mal); }
   .m-nota-sn { font-size:.8rem; color:var(--ink-2); margin:.3rem 0 0; }
   .m-op { border:1px solid var(--rule); border-radius:7px; padding:.5rem .7rem .7rem;
@@ -2778,7 +2789,26 @@ var CAMPO = (function () {
         copia.historial = [{ accion: "copia", fecha: copia.creado, de: p.id,
                              estadoDe: p.estado || "borrador" }];
         copia.datos = p.datos;         // los Blobs se comparten sin copiarse
-        return almacen.guardar(copia);
+        if (p.vista !== "mantenimiento" || !p.datos || !p.datos.fotos) return almacen.guardar(copia);
+        // Las fotos de una orden se copian con id propio: quitar una en la
+        // copia no puede borrarla del original.
+        var d = {};
+        for (var k in p.datos) if (Object.prototype.hasOwnProperty.call(p.datos, k)) d[k] = p.datos[k];
+        return Promise.all(p.datos.fotos.map(function (f) {
+          var c = {};
+          for (var k2 in f) if (Object.prototype.hasOwnProperty.call(f, k2)) c[k2] = f[k2];
+          if (!f.foto) return Promise.resolve(c);
+          return almacen.fotos.leer(f.foto).then(function (r) {
+            if (!r) return c;
+            c.foto = "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+            return almacen.fotos.guardar({ id: c.foto, proyecto: copia.id, archivo: r.archivo,
+                                           nombre: r.nombre, fecha: r.fecha }).then(function () { return c; });
+          });
+        })).then(function (lista) {
+          d.fotos = lista;
+          copia.datos = d;
+          return almacen.guardar(copia);
+        });
       });
     }
 
@@ -2800,8 +2830,31 @@ var CAMPO = (function () {
     /* El JSON se queda con la estructura y las fotos salen aparte, como
        archivos: asi el paquete se puede abrir con cualquier descompresor y
        ver que hay dentro. */
+    /* Las fotos de una orden de mantenimiento viven en la tienda `fotos`, una
+       por registro, y el proyecto sólo guarda su id. Para que viajen en el
+       paquete se ponen sus bytes en `archivo`, como en despacho; al abrir el
+       paquete, la orden las vuelve a guardar en la tienda. */
+    function conFotosDeTienda(p) {
+      if (!p || p.vista !== "mantenimiento" || !p.datos || !p.datos.fotos) return Promise.resolve(p);
+      return Promise.all(p.datos.fotos.map(function (f) {
+        if (!f || !f.foto || f.archivo) return Promise.resolve(f);
+        return almacen.fotos.leer(f.foto).then(function (r) {
+          var c = {};
+          for (var k in f) if (Object.prototype.hasOwnProperty.call(f, k)) c[k] = f[k];
+          c.archivo = r ? r.archivo : null;
+          return c;
+        });
+      })).then(function (lista) {
+        var d = {};
+        for (var k in p.datos) if (Object.prototype.hasOwnProperty.call(p.datos, k)) d[k] = p.datos[k];
+        d.fotos = lista;
+        p.datos = d;
+        return p;
+      });
+    }
+
     function empaquetar(id) {
-      return almacen.leer(id).then(function (p) {
+      return almacen.leer(id).then(conFotosDeTienda).then(function (p) {
         if (!p) throw new Error("ese proyecto ya no existe");
         var entradas = [], copia = JSON.parse(JSON.stringify({
           formato: FORMATO, nombre: p.nombre, vista: p.vista, estado: p.estado,
@@ -3081,7 +3134,14 @@ var CAMPO = (function () {
       duplicar: duplicar, marcarExportado: marcarExportado,
       anular: anular, duplicados: duplicados, retomar: retomar,
       empaquetar: empaquetar, importar: importar,
-      borrar: function (id) { return almacen.borrar(id); },
+      // Eliminar un proyecto se lleva sus fotos de la tienda `fotos`.
+      borrar: function (id) {
+        return almacen.borrar(id).then(function () {
+          return almacen.fotos.deProyecto(id);
+        }).then(function (l) {
+          return Promise.all(l.map(function (f) { return almacen.fotos.borrar(f.id); }));
+        });
+      },
       listar: function () { return almacen.listar(); },
       hay: function () { return almacen.hay(); },
       actual: function () { return actual; },
@@ -3835,6 +3895,42 @@ MANT.modelo = (function () {
       },
       leyenda: [["OK", "Realizado"], ["NO", "No se hizo"], ["NA", "No aplica"]]
     },
+    /* Fotos de la inspección: las casillas del momento «I» (inspección /
+       mantenimiento) del grupo electrógeno, en el orden de sus secciones.
+       [id, sección, rótulo, obligatoria, claves del nombre de archivo].
+       La casilla de hallazgos admite varias fotos, cada una con su texto. */
+    fotos: [
+      ["c01", "1. Identificación", "Vista frontal con TAG visible", true, ["frontal", "tag", "frente"]],
+      ["c05", "1. Identificación", "Placa de datos del equipo", true, ["placa"]],
+      ["c06", "1. Identificación", "Horómetro", true, ["horometro", "horas", "hrs"]],
+      ["g01", "1. Identificación", "Placa del alternador (frame / WDG / serie)", true, ["alternador", "wdg"]],
+      ["c08", "2. Estado general", "Tapa y nivel de tanque de combustible", true, ["combustible", "tanque", "diesel"]],
+      ["c09", "2. Estado general", "Bandeja / kit antiderrame", true, ["antiderrame", "bandeja"]],
+      ["c11", "2. Estado general", "Señalética, personal autorizado y puntos de bloqueo", true, ["senaletica", "autorizado"]],
+      ["c12", "3. Motor", "Placa del motor", true, ["placa_motor", "placamotor", "engine"]],
+      ["c13", "3. Motor", "Nivel de aceite (varilla)", true, ["aceite", "varilla"]],
+      ["c14", "3. Motor", "Nivel de refrigerante", true, ["refrigerante", "coolant"]],
+      ["c15", "3. Motor", "Radiador (antes / después de limpieza)", true, ["radiador"]],
+      ["c16", "3. Motor", "Filtros marcados (horómetro y fecha)", false, ["filtro"]],
+      ["c17", "3. Motor", "Fajas y ventilador", true, ["faja", "ventilador"]],
+      ["c18", "3. Motor", "Fugas (aceite, refrigerante, combustible) o zona limpia", true, ["fuga"]],
+      ["c19", "4. Batería", "Etiqueta de batería", true, ["bateria", "etiqueta"]],
+      ["c20", "4. Batería", "Bornes y cables", true, ["borne", "terminal"]],
+      ["c21", "4. Batería", "Lectura del probador (SOH/SOC/V/CCA)", true, ["probador", "tester", "soh"]],
+      ["c22", "5. Seguridad", "Bloqueo y etiquetado aplicado (candado + tarjeta)", true, ["loto", "candado", "tarjeta", "bloqueo"]],
+      ["c23", "6. Hallazgos", "Hallazgo / observación (una por hallazgo)", false, ["hallazgo", "obs", "dano"]],
+      ["g03", "7. Tablero", "Controlador en reposo sin alarmas", true, ["panel", "controlador", "emcp", "powerstart", "dse"]],
+      ["g04", "7. Tablero", "Pantalla VLL / VLN / A (en marcha)", true, ["vll", "voltaje"]],
+      ["g05", "7. Tablero", "Pantalla Hz / RPM", true, ["hz", "rpm", "frecuencia"]],
+      ["g06", "7. Tablero", "Presión de aceite / temperatura refrigerante", true, ["presion", "temp"]],
+      ["g07", "7. Tablero", "Voltaje de batería en panel", true, ["battery_voltage", "vbat"]],
+      ["g08", "7. Tablero", "Parada de emergencia", true, ["emergencia"]],
+      ["g09", "8. Salida de potencia", "Interruptor principal", true, ["interruptor", "breaker"]],
+      ["g11", "8. Salida de potencia", "Puesta a tierra", true, ["tierra"]],
+      ["g12", "9. Prueba", "Parámetros con carga (25 / 50 / 100 %)", false, ["carga_25", "carga_50", "carga_100"]]
+    ],
+    HALLAZGO: "c23",
+
     /* Seguridad antes de iniciar. Sale del aviso de la orden («condiciones
        y restricciones», «condiciones de seguridad», recursos, herramientas,
        instrumentos y el proceso: matriz de bloqueo, desconexión de batería,
@@ -3965,6 +4061,41 @@ MANT.modelo = (function () {
   }
 
   function estado(x) { return ESTADOS.indexOf(x) !== -1 ? x : null; }
+
+  function casilla(idc) {
+    for (var i = 0; i < FORMATO.fotos.length; i++) if (FORMATO.fotos[i][0] === idc) return FORMATO.fotos[i];
+    return null;
+  }
+
+  function plano(t) {
+    return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  /* La casilla que propone el nombre de un archivo. Primero el patrón
+     <TAG>_<familia>_<casilla>_<clave>_<AAAAMMDD-HHMM>.jpg; si no, la clave
+     más larga que aparezca en el nombre. Es sólo una propuesta. */
+  function proponerCasilla(nombre) {
+    var n = plano(nombre).replace(/\.[a-z0-9]+$/, "");
+    var m = /(?:^|[_\-\s])([cg]\d{2})(?=[_\-\s]|$)/.exec(n);
+    if (m && casilla(m[1])) return m[1];
+    var mejor = null, largo = 0;
+    FORMATO.fotos.forEach(function (c) {
+      c[4].forEach(function (k) {
+        if (k.length > largo && n.indexOf(k) !== -1) { mejor = c[0]; largo = k.length; }
+      });
+    });
+    return mejor;
+  }
+
+  // El nombre con que se guarda una foto tomada en su casilla, para que la
+  // colocación automática la reconozca si vuelve a cargarse.
+  function nombreFoto(tag, idc, cuando) {
+    var c = casilla(idc), d = cuando ? new Date(cuando) : new Date();
+    var z = function (x) { return ("0" + x).slice(-2); };
+    return [tag || "equipo", "grupo", idc, c ? c[4][0] : "foto",
+            d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + "-" + z(d.getHours()) + z(d.getMinutes())
+           ].join("_").replace(/[^A-Za-z0-9_.-]+/g, "") + ".jpg";
+  }
 
   function tipoServicio(id) {
     for (var i = 0; i < TIPOS_SERVICIO.length; i++) {
@@ -4279,6 +4410,7 @@ MANT.modelo = (function () {
     ordenTrabajo: ordenTrabajo, prueba: prueba, informe: informe,
     probador: probador, checklist: checklist, mantenimiento: mantenimiento,
     seguridad: seguridad, instrumento: instrumento,
+    casilla: casilla, proponerCasilla: proponerCasilla, nombreFoto: nombreFoto,
     normalizar: { equipo: nEquipo, ordenTrabajo: nOT, informe: nInforme,
                   checklist: nChecklist, mantenimiento: nMantenimiento },
     aKit: aKit
@@ -4569,6 +4701,25 @@ MANT.validaciones = (function () {
           ": calibración vencida el " + ins.calibracion));
       }
     });
+
+    // Fotos de la inspección: las obligatorias que faltan y las propuestas
+    // que el técnico todavía no confirmó. La visita técnica no las exige.
+    if (c.tipo && c.tipo !== "VISITA") {
+      var puestas = {};
+      m.fotos.forEach(function (f) { if (f.casilla && f.foto) puestas[f.casilla] = true; });
+      var faltan = M.FORMATO.fotos.filter(function (x) { return x[3] && !puestas[x[0]]; });
+      if (faltan.length) {
+        a.push(alerta("info", "fotos", "Faltan " + faltan.length + " fotos obligatorias: " +
+          faltan.map(function (x) { return x[2]; }).join(", ")));
+      }
+    }
+    var propuestas = m.fotos.filter(function (f) { return f.propuesta && f.casilla; }).length;
+    if (propuestas) {
+      a.push(alerta("aviso", "fotos", propuestas + (propuestas === 1 ? " foto colocada" : " fotos colocadas") +
+        " por su nombre de archivo sin confirmar: revise que cada una esté en su casilla"));
+    }
+    var sueltas = m.fotos.filter(function (f) { return !f.casilla; }).length;
+    if (sueltas) a.push(alerta("aviso", "fotos", sueltas + " foto(s) sin casilla: asígnelas o quítelas"));
 
     // Correctivo: qué falló y si el equipo queda apto.
     var op = m.informe.operativo;
@@ -5131,6 +5282,155 @@ MANT.ordenes = (function () {
       S.cierre.map(function (x) { return triple("seguridad.items." + x[0], x[1]); }).join("");
   }
 
+  /* ---------- fotos de la inspección ----------
+     Cada foto en su casilla, como en despacho. Los bytes van a la tienda
+     `fotos` en cuanto entran, una por registro: guardar un texto no
+     reescribe los megas de todas. La orden sólo guarda el id. */
+  var urls = {};                 // id de foto → URL en memoria para la miniatura
+  var HALLAZGO = M.FORMATO.HALLAZGO;
+
+  function entradaFoto(idc, rotulo) {
+    var i = "m-o-foto-" + idc;
+    return '<input type="file" class="archivo" id="' + i + '" accept="image/*" data-foto-casilla="' + idc + '">' +
+      '<label class="boton" for="' + i + '">' + esc(rotulo) + "</label>";
+  }
+
+  function opcionesMover(actual) {
+    return '<option value="">— sin casilla —</option>' + M.FORMATO.fotos.map(function (c) {
+      return '<option value="' + c[0] + '"' + (c[0] === actual ? " selected" : "") + ">" +
+        c[0] + " · " + esc(c[2]) + "</option>";
+    }).join("");
+  }
+
+  function fichaFoto(i) {
+    var f = m.fotos[i];
+    return '<div class="m-foto' + (f.propuesta ? " propuesta" : "") + '">' +
+      '<img data-foto="' + esc(f.foto) + '" alt="' + esc(f.nombre || "foto") + '">' +
+      (f.propuesta ? '<span class="m-prop">PROPUESTA POR EL NOMBRE DEL ARCHIVO · ' + esc(f.nombre || "") + "</span>" : "") +
+      (f.casilla === HALLAZGO ? campos([["fotos." + i + ".texto", "Descripción del hallazgo", "area"]]) : "") +
+      '<label class="campo" for="m-o-mover-' + i + '"><span class="lb">Casilla</span>' +
+      '<select id="m-o-mover-' + i + '" data-mover="' + i + '">' + opcionesMover(f.casilla) + "</select></label>" +
+      '<div class="m-sn" style="margin-top:.4rem">' +
+      (f.propuesta ? '<button type="button" class="primary" data-accion="foto-confirmar" data-i="' + i + '">Confirmar</button>' : "") +
+      '<button type="button" class="ghost m-borrar" data-accion="foto-quitar" data-i="' + i + '">Quitar</button>' +
+      "</div></div>";
+  }
+
+  function pintarFotos() {
+    var F = M.FORMATO.fotos, por = {}, sueltas = [];
+    m.fotos.forEach(function (f, i) {
+      if (f.casilla) (por[f.casilla] = por[f.casilla] || []).push(i); else sueltas.push(i);
+    });
+    var oblig = F.filter(function (c) { return c[3]; });
+    var faltan = oblig.filter(function (c) { return !por[c[0]]; }).length;
+    var prop = m.fotos.filter(function (f) { return f.propuesta; }).length;
+    var html = '<p class="m-sub" id="m-o-fotos-cuenta">' + (faltan ? "faltan " + faltan + " de " + oblig.length +
+        " obligatorias" : "obligatorias completas") + " · " + m.fotos.length + " fotos</p>" +
+      '<div class="m-sn"><input type="file" class="archivo" id="m-o-fotos-varias" accept="image/*" multiple ' +
+      'aria-label="Cargar varias fotos de la inspección"><label class="boton" for="m-o-fotos-varias">Cargar fotos…</label>' +
+      (prop ? '<button type="button" data-accion="fotos-confirmar">Confirmar propuestas (' + prop + ")</button>" : "") +
+      '</div><p class="m-nota-sn" id="m-o-fotos-estado" role="status"></p>';
+    if (sueltas.length) {
+      html += '<div class="m-casilla"><span class="lb">Sin casilla: elija dónde va cada una</span>' +
+        sueltas.map(fichaFoto).join("") + "</div>";
+    }
+    var seccion = "";
+    F.forEach(function (c) {
+      if (c[1] !== seccion) { seccion = c[1]; html += '<p class="m-sub">' + esc(seccion) + "</p>"; }
+      var idxs = por[c[0]] || [];
+      html += '<div class="m-casilla" data-casilla="' + c[0] + '"><span class="lb">' + c[0] + " · " +
+        esc(c[2]) + (c[3] ? " *" : "") + "</span>" + idxs.map(fichaFoto).join("") +
+        (!idxs.length ? entradaFoto(c[0], "Tomar o elegir foto")
+          : c[0] === HALLAZGO ? entradaFoto(c[0], "+ Otro hallazgo") : "") + "</div>";
+    });
+    return html;
+  }
+
+  function miniaturas() {
+    raiz.querySelectorAll("#m-o-cuerpo img[data-foto]").forEach(function (img) {
+      var fid = img.getAttribute("data-foto");
+      if (urls[fid]) { img.src = urls[fid]; return; }
+      A.fotos.leer(fid).then(function (r) {
+        if (!r || !r.archivo) return;
+        urls[fid] = urls[fid] || URL.createObjectURL(r.archivo);
+        img.src = urls[fid];
+      });
+    });
+  }
+
+  function nuevoIdFoto() {
+    return "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function quitarFoto(i) {
+    var f = m.fotos[i];
+    if (!f) return Promise.resolve();
+    m.fotos.splice(i, 1);
+    if (urls[f.foto]) { URL.revokeObjectURL(urls[f.foto]); delete urls[f.foto]; }
+    return f.foto ? A.fotos.borrar(f.foto) : Promise.resolve();
+  }
+
+  /* Entran fotos: en una casilla elegida (directo, sin propuesta) o varias a
+     la vez, y entonces cada una se propone por su nombre de archivo. */
+  function agregarFotos(archivos, idc) {
+    if (!m || !miId || !archivos || !archivos.length) return Promise.resolve();
+    var estado = function (t) { var n = $("#m-o-fotos-estado"); if (n) n.textContent = t || ""; };
+    estado("procesando…");
+    return R.admitir(archivos).then(function (r) {
+      var cadena = Promise.resolve();
+      r.aceptadas.forEach(function (x) {
+        cadena = cadena.then(function () {
+          var origen = x.original || x.archivo;
+          var dest = idc || M.proponerCasilla(origen.name);
+          var ocupada = function (c) {
+            for (var k = 0; k < m.fotos.length; k++) if (m.fotos[k].casilla === c) return k;
+            return -1;
+          };
+          var previa = dest && dest !== HALLAZGO ? ocupada(dest) : -1;
+          var antes = Promise.resolve();
+          if (previa !== -1) {
+            if (idc) antes = quitarFoto(previa);  // en su casilla: la nueva reemplaza
+            else dest = null;                     // propuesta a casilla llena: queda suelta
+          }
+          var fid = nuevoIdFoto();
+          var nombre = idc ? M.nombreFoto(m.tag, idc, Date.now()) : (origen.name || "foto.jpg");
+          return antes.then(function () {
+            return A.fotos.guardar({ id: fid, proyecto: miId, archivo: x.archivo, nombre: nombre,
+                                     fecha: origen.lastModified || Date.now() });
+          }).then(function () {
+            if (x.url) urls[fid] = x.url;
+            m.fotos.push({ casilla: dest || null, foto: fid, texto: "", nombre: nombre,
+                           propuesta: !idc && !!dest });
+          });
+        });
+      });
+      return cadena.then(function () {
+        tocar(); pintar();
+        var malas = r.rechazadas.map(function (f) { return (f.name || "archivo") + " (" + R.motivoRechazo(f) + ")"; });
+        estado(r.aceptadas.length + (r.aceptadas.length === 1 ? " foto guardada" : " fotos guardadas") +
+               (malas.length ? ". No entraron: " + malas.join(", ") : ""));
+      });
+    }, function (err) {
+      estado("no se pudieron guardar: " + ((err && err.message) || "error"));
+    });
+  }
+
+  /* Una orden que llega en un paquete .nefer trae los bytes en `archivo`:
+     se pasan a la tienda `fotos` en cuanto se sabe el id del proyecto. */
+  var ingiriendo = false;
+  function ingerirFotosDelPaquete() {
+    if (!m || !miId || ingiriendo) return Promise.resolve();
+    var pendientes = m.fotos.filter(function (f) { return f.archivo && typeof f.archivo !== "string"; });
+    if (!pendientes.length) return Promise.resolve();
+    ingiriendo = true;
+    return Promise.all(pendientes.map(function (f) {
+      var fid = nuevoIdFoto();
+      return A.fotos.guardar({ id: fid, proyecto: miId, archivo: f.archivo, nombre: f.nombre || "foto.jpg",
+                               fecha: Date.now() }).then(function () { f.foto = fid; delete f.archivo; });
+    })).then(function () { ingiriendo = false; tocar(); pintar(); },
+             function () { ingiriendo = false; });
+  }
+
   function pintarOperacion(op, i) {
     var b = "ot.operaciones." + i + ".";
     var esp = op.especialidad ? " · " + op.especialidad : "";
@@ -5185,6 +5485,7 @@ MANT.ordenes = (function () {
 
     html += grupo("Placa del equipo", pintarPlaca());
     html += grupo("Seguridad antes de iniciar", pintarSeguridad());
+    html += grupo("Fotos de la inspección", pintarFotos());
 
     html += grupo("Orden de trabajo", campos([
       ["ot.ot", "N° de orden"], ["ot.descripcion", "Descripción orden"], ["ot.aviso", "N° aviso"],
@@ -5231,6 +5532,7 @@ MANT.ordenes = (function () {
       '<p class="m-nota-sn" id="m-o-wa-estado" role="status"></p>');
 
     $("#m-o-cuerpo").innerHTML = html;
+    miniaturas();
     pintarAlertas();
   }
 
@@ -5357,6 +5659,16 @@ MANT.ordenes = (function () {
     }
     var acc = b.dataset.accion;
     if (acc && acc.indexOf("wa-") === 0) { reporte(acc); return; }
+    if (acc === "foto-quitar") {
+      if (!window.confirm("¿Quitar esta foto de la orden?")) return;
+      quitarFoto(Number(b.dataset.i)).then(function () { tocar(); pintar(); });
+      return;
+    }
+    if (acc === "foto-confirmar") { m.fotos[Number(b.dataset.i)].propuesta = false; tocar(); pintar(); return; }
+    if (acc === "fotos-confirmar") {
+      m.fotos.forEach(function (f) { if (f.casilla) f.propuesta = false; });
+      tocar(); pintar(); return;
+    }
     if (acc === "confirmar") confirmarPlaca();
     else if (acc === "crear-ficha") {
       MANT.equipos.crear(m.tag);
@@ -5522,6 +5834,8 @@ MANT.ordenes = (function () {
     vacia: function () { return !m; },
     instantanea: function () { return M.clon(m); },
     limpiar: function () {
+      Object.keys(urls).forEach(function (k) { URL.revokeObjectURL(urls[k]); });
+      urls = {};
       m = null; miId = null;
       $("#m-orden").hidden = true;
       $("#m-ordenes").hidden = false;
@@ -5539,6 +5853,7 @@ MANT.ordenes = (function () {
     if (!actual || actual.vista !== "mantenimiento" || !m) return;
     miId = actual.id;
     ctx.id = miId;
+    ingerirFotosDelPaquete();
     var n = $("#m-proy-nombre");
     if (document.activeElement !== n) n.value = actual.nombre || "";
     $("#m-o-guardado").textContent = sucio ? "sin guardar"
@@ -5568,6 +5883,23 @@ MANT.ordenes = (function () {
   $("#m-o-volver").addEventListener("click", function () { volver(); });
   $("#m-o-cuerpo").addEventListener("input", alEscribir);
   $("#m-o-cuerpo").addEventListener("change", function (e) {
+    var n = e.target;
+    if (n.type === "file") {
+      var lista = Array.prototype.slice.call(n.files || []);
+      n.value = "";
+      agregarFotos(lista, n.dataset.fotoCasilla || null);
+      return;
+    }
+    if (n.dataset && n.dataset.mover !== undefined) {
+      var i = Number(n.dataset.mover), destino = n.value || null, f = m.fotos[i];
+      if (destino && destino !== HALLAZGO) {
+        // La casilla elegida ya tenía foto: esa pasa a «sin casilla».
+        m.fotos.forEach(function (g, k) { if (k !== i && g.casilla === destino) g.casilla = null; });
+      }
+      f.casilla = destino;
+      f.propuesta = false;              // moverla a mano es decidir
+      tocar(); pintar(); return;
+    }
     if (!alElegir(e)) alEscribir(e);
   });
   $("#m-orden").addEventListener("click", clic);
@@ -5592,7 +5924,8 @@ MANT.ordenes = (function () {
     actual: function () { return m ? M.clon(m) : null; },
     alertas: alertas,
     contexto: cargarContexto,
-    confirmarPlaca: confirmarPlaca
+    confirmarPlaca: confirmarPlaca,
+    agregarFotos: agregarFotos
   };
 })();
 </script>

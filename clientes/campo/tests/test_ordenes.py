@@ -152,7 +152,8 @@ def test_correctivo_apto_necesita_accion_y_pruebas(js):
     m["correctivo"] = {"falla": "No arranca", "causa": "Relé de arranque", "accion": "Cambio de relé",
                        "pruebas": "Arranque y 30 min en vacío"}
     m["aptitud"] = {"por": "Supervisor", "fecha": "hoy"}
-    assert js(VALIDAR, [m, {}]) == []
+    # Sólo queda el dato de las fotos obligatorias, que es otro asunto.
+    assert [x for x in js(VALIDAR, [m, {}]) if x["campo"] != "fotos"] == []
 
 
 def test_no_apto_y_tarea_completa_pide_aviso(js):
@@ -370,7 +371,7 @@ def test_la_orden_se_toca_con_guantes(pw, servidor):
     _crear(pg, "064", "CORRECTIVO", "4017300800")
     pg.click("[data-accion=agregar-demora]")
     chicos = pg.evaluate("""() => Array.from(document.querySelectorAll(
-        '#m-orden button, #m-orden input:not([type=radio]), #m-orden select, #m-orden textarea, #m-orden .m-opciones label'))
+        '#m-orden button, #m-orden input:not([type=radio]):not([type=file]), #m-orden select, #m-orden textarea, #m-orden .m-opciones label, #m-orden label.boton'))
       .filter(n => n.offsetParent !== null)
       .map(n => [n.id || n.textContent.trim().slice(0, 30), n.getBoundingClientRect().height])
       .filter(x => x[1] < 47.5)""")
