@@ -738,6 +738,8 @@
   .m-foto.propuesta { border:2px dashed var(--obs); }
   .m-foto img { display:block; width:100%; max-height:220px; object-fit:contain;
                 background:var(--card-2); border-radius:4px; }
+  .m-columna > summary { cursor:pointer; min-height:48px; display:flex; align-items:center;
+                         font-family:var(--cond); font-size:1.05rem; font-weight:700; }
   .m-criterio { margin:.35rem 0; font-size:.86rem; }
   .m-criterio summary { cursor:pointer; min-height:48px; display:flex; align-items:center;
                         font-weight:700; color:var(--accent); }
@@ -4606,6 +4608,48 @@ MANT.validaciones = (function () {
     return a;
   }
 
+  /* ---------- una columna de la tabla de parámetros ----------
+     La del kit, con la tolerancia acordada: VLL fuera de ±2,5 % del nominal
+     es aviso, fuera de ±10 % es crítico (441 V sobre 380 V lo es; 384 V no
+     avisa). `eq` es la placa confirmada del equipo; `base` el prefijo del
+     campo para señalarlo en pantalla. */
+  var TOL_AVISO = 0.025, TOL_CRITICO = 0.10;
+
+  function validarPrueba(eq, p, base) {
+    eq = M.normalizar.equipo(eq || {});
+    base = base || "";
+    var a = [], n = function (k) { return M.numero(p[k]); };
+    var col = p.carga === "inicial" ? "valor inicial" : p.carga === 0 ? "vacío" : p.carga + " %";
+    var vll = n("voltajeLL"), vln = n("voltajeLN"), hz = n("hz");
+    if (vll !== null && eq.voltajeNominal) {
+      var desv = Math.abs(vll - eq.voltajeNominal) / eq.voltajeNominal;
+      if (desv > TOL_AVISO) {
+        a.push(alerta(desv > TOL_CRITICO ? "critico" : "aviso", base + "voltajeLL",
+          "Voltaje " + vll + " V (" + col + ") fuera de ±" + (desv > TOL_CRITICO ? "10" : "2,5") + " % de " +
+          eq.voltajeNominal + " V (" + (desv * 100).toFixed(1).replace(".", ",") + " %)"));
+      }
+    } else if (vll !== null && !eq.voltajeNominal) {
+      a.push(alerta("info", base + "voltajeLL", "Sin voltaje nominal confirmado: no se puede comparar " + vll + " V"));
+    }
+    if (hz !== null && eq.frecuenciaHz && Math.abs(hz - eq.frecuenciaHz) > 0.5) {
+      a.push(alerta("aviso", base + "hz", "Frecuencia " + hz + " Hz (" + col + ") fuera de " + eq.frecuenciaHz + " ±0,5 Hz"));
+    }
+    if (eq.fases === 3 && vll !== null && vln !== null) {
+      var esperado = vll / Math.sqrt(3);
+      if (Math.abs(vln - esperado) / esperado > 0.02) {
+        a.push(alerta("aviso", base + "voltajeLN", "L-N " + vln + " V no cuadra con L-L/√3 ≈ " +
+          esperado.toFixed(0) + " V (" + col + ")"));
+      }
+    }
+    var pr = n("presionAceitePsi"), t = n("tempRefrigeranteC"), vb = n("vBateria");
+    if (pr !== null && pr < 20) a.push(alerta("critico", base + "presionAceitePsi", "Presión de aceite baja: " + pr + " psi (" + col + ")"));
+    if (t !== null && t > 100) a.push(alerta("critico", base + "tempRefrigeranteC", "Temperatura alta: " + t + " °C (" + col + ")"));
+    if (vb !== null && eq.bateria.voltaje === 12 && vb < 12.4) {
+      a.push(alerta("aviso", base + "vBateria", "Batería con voltaje bajo: " + vb + " V (" + col + ")"));
+    }
+    return a;
+  }
+
   /* ---------- la orden de trabajo ----------
      La del kit, con dos ajustes: las horas-hombre se comparan con la
      duración por el número de personas (dos técnicos dos horas son 4 HH), y
@@ -4781,6 +4825,20 @@ MANT.validaciones = (function () {
       }
     });
 
+    // Parámetros de operación y prueba (sección 6), columna por columna, y el
+    // voltaje que se escribió en Generalidades.
+    m.informe.pruebas.forEach(function (p, i) {
+      a = a.concat(validarPrueba(m.equipo, p, "informe.pruebas." + i + "."));
+    });
+    var gv = M.numero(m.informe.generalidades.voltaje);
+    if (gv !== null && m.equipo.voltajeNominal) {
+      var dg = Math.abs(gv - m.equipo.voltajeNominal) / m.equipo.voltajeNominal;
+      if (dg > TOL_AVISO) {
+        a.push(alerta(dg > TOL_CRITICO ? "critico" : "aviso", "informe.generalidades.voltaje",
+          "Generalidades: voltaje " + gv + " V y la placa dice " + m.equipo.voltajeNominal + " V"));
+      }
+    }
+
     // Fotos de la inspección: las obligatorias que faltan y las propuestas
     // que el técnico todavía no confirmó. La visita técnica no las exige.
     if (c.tipo && c.tipo !== "VISITA") {
@@ -4857,6 +4915,7 @@ MANT.validaciones = (function () {
 
   return { validarEquipo: validarEquipo, validarOT: validarOT,
            validarMantenimiento: validarMantenimiento, tagEnTexto: tagEnTexto,
+           validarPrueba: validarPrueba, TOL_AVISO: TOL_AVISO, TOL_CRITICO: TOL_CRITICO,
            ordenar: ordenar, VOLTAJES: VOLTAJES };
 })();
 </script>
@@ -5550,6 +5609,24 @@ MANT.ordenes = (function () {
              function () { ingiriendo = false; });
   }
 
+  /* La tabla 6 del informe, una columna por bloque: en el teléfono no
+     caben cinco columnas. Se abre la que se está midiendo. */
+  function pintarParametros() {
+    var F = M.FORMATO.informe;
+    return '<p class="m-nota-sn">Lo leído en el panel. Voltaje AC es el de línea (L-L).</p>' +
+      campos([["informe.generalidades.voltaje", "1. Generalidades · voltaje de conexión (V)", "num"],
+              ["informe.generalidades.velocidad", "1. Generalidades · velocidad (RPM)", "num"]]) +
+      m.informe.pruebas.map(function (pr, i) {
+        var b = "informe.pruebas." + i + ".";
+        var lleno = F.parametros.some(function (r) { return pr[r[0]] !== null; });
+        var titulo = F.columnas[i] ? F.columnas[i][1] : String(pr.carga);
+        return '<details class="m-op m-columna"' + (lleno ? " open" : "") + "><summary>" + esc(titulo) +
+          (lleno ? " · con datos" : "") + "</summary>" +
+          campos(F.parametros.map(function (r) { return [b + r[0], r[1], "num"]; })
+                 .concat([[b + "voltajeLN", "Voltaje L-N (V)", "num"]])) + "</details>";
+      }).join("");
+  }
+
   function pintarOperacion(op, i) {
     var b = "ot.operaciones." + i + ".";
     var esp = op.especialidad ? " · " + op.especialidad : "";
@@ -5605,6 +5682,7 @@ MANT.ordenes = (function () {
     html += grupo("Placa del equipo", pintarPlaca());
     html += grupo("Seguridad antes de iniciar", pintarSeguridad());
     html += grupo("Fotos de la inspección", pintarFotos());
+    html += grupo("Parámetros de operación y prueba", pintarParametros());
 
     html += grupo("Orden de trabajo", campos([
       ["ot.ot", "N° de orden"], ["ot.descripcion", "Descripción orden"], ["ot.aviso", "N° aviso"],

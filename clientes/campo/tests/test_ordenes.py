@@ -425,3 +425,55 @@ def test_tarea_completa_sin_desbloqueo_y_calibracion_vencida(js):
 def test_los_instrumentos_del_aviso_vienen_en_la_lista(js):
     r = js("() => MANT.modelo.mantenimiento('064').seguridad.instrumentos.map(i => i.nombre)")
     assert r == ["Pirómetro", "Pinza amperimétrica", "Multímetro", "Revelador de tensión"]
+
+
+# --------------------------------------------------------------------------
+# parámetros de operación y prueba (sección 6) · validarPrueba
+# --------------------------------------------------------------------------
+
+PRUEBA = "([eq, p]) => MANT.validaciones.validarPrueba(eq, p)"
+
+
+def test_441_v_sobre_380_es_critico(js):
+    a = js(PRUEBA, [EQUIPOS["064"], {"carga": 50, "voltajeLL": 441}])
+    assert [(x["nivel"], x["campo"]) for x in a] == [("critico", "voltajeLL")]
+    assert "16,1 %" in a[0]["mensaje"]
+
+
+def test_384_y_222_no_alertan(js):
+    assert js(PRUEBA, [EQUIPOS["064"], {"carga": 50, "voltajeLL": 384, "voltajeLN": 222}]) == []
+
+
+@pytest.mark.parametrize("vll,nivel", [(390, "aviso"), (370, "aviso"), (389, None), (420, "critico")])
+def test_tolerancia_de_voltaje(js, vll, nivel):
+    a = [x["nivel"] for x in js(PRUEBA, [EQUIPOS["064"], {"carga": 25, "voltajeLL": vll}])]
+    assert a == ([nivel] if nivel else [])
+
+
+def test_otros_parametros_del_panel(js):
+    p = {"carga": 100, "voltajeLL": 380, "voltajeLN": 200, "hz": 61, "presionAceitePsi": 15,
+         "tempRefrigeranteC": 104, "vBateria": 12.0}
+    c = {(x["nivel"], x["campo"]) for x in js(PRUEBA, [EQUIPOS["064"], p])}
+    assert c == {("aviso", "voltajeLN"), ("aviso", "hz"), ("critico", "presionAceitePsi"),
+                 ("critico", "tempRefrigeranteC"), ("aviso", "vBateria")}
+
+
+def test_sin_placa_confirmada_no_compara(js):
+    a = js(PRUEBA, [{}, {"carga": 0, "voltajeLL": 441}])
+    assert [x["nivel"] for x in a] == ["info"]
+
+
+def test_la_tabla_en_la_orden_avisa_el_441(pw, servidor):
+    nav, ctx, pg = _pagina(pw, servidor)
+    pg.evaluate("e => CAMPO.almacen.equipos.guardar(e)", EQUIPOS["C450D6"])
+    _crear(pg, "C450D6", "INSPECCION", "4017302000")
+    pg.click("[data-accion=confirmar]")
+    pg.evaluate("() => document.querySelectorAll('.m-columna').forEach(d => d.open = true)")
+    _f(pg, "informe.generalidades.voltaje", "441")
+    _f(pg, "informe.pruebas.1.voltajeLL", "441")
+    _f(pg, "informe.pruebas.1.hz", "60")
+    texto = pg.inner_text("#m-o-alertas")
+    assert "Voltaje 441 V (vacío) fuera de ±10 % de 380 V" in texto
+    assert "Generalidades: voltaje 441 V y la placa dice 380 V" in texto
+    assert pg.get_attribute("#m-o-informe-pruebas-1-voltajeLL", "aria-invalid") == "true"
+    nav.close()
