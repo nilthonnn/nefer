@@ -777,7 +777,7 @@
   #v-mantenimiento input[type="datetime-local"], #v-mantenimiento input[type="date"] {
     width:100%; padding:.5rem .6rem; background:var(--card); color:var(--ink);
     border:1.5px solid var(--ink-3); border-radius:6px; }
-  .proy-fila .sello.mant { color:var(--accent); border:1px solid var(--accent); background:var(--accent-soft); }
+
 
   /* ---------- INICIO y GUÍA ---------- */
   .tarjetas { display:grid; gap:.6rem; grid-template-columns:1fr; margin:1rem 0; }
@@ -927,9 +927,10 @@
             con el formato y el PDF para firmar.</span></li>
       </ol>
       <p class="nota">
-        El teléfono no genera el Excel: eso necesita la herramienta de escritorio.
-        Lo que el teléfono resuelve es lo difícil de hacer después — que cada foto
-        esté bajo su rótulo correcto y que ningún estado quede sin registrar.
+        El teléfono ya arma el PDF y el Excel del acta; la herramienta de
+        escritorio sirve para rehacerlos desde el paquete. Lo que el teléfono
+        resuelve es lo difícil de hacer después — que cada foto esté bajo su
+        rótulo correcto y que ningún estado quede sin registrar.
       </p>
     </section>
 
@@ -3715,7 +3716,7 @@ var CAMPO = (function () {
     armarZip: armarZip, leerZip: leerZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
     editor: editor,
-    proyectos: proyectos, almacen: almacen, identidad: identidad, LEGADO: LEGADO,
+    proyectos: proyectos, almacen: almacen, identidad: identidad,
     ESQUEMA: ESQUEMA, migrarProyecto: migrarProyecto, demasiadoNuevo: demasiadoNuevo,
     incrustada: incrustada, CONTEXTO: CONTEXTO,
     RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo, camara: camara,
@@ -6705,7 +6706,7 @@ MANT.ordenes = (function () {
 
   if (!$("#d-fecha").value) $("#d-fecha").value = CAMPO.hoy();
 
-  /* ---------- puente hacia recepción ---------- */
+  // Las sugerencias de accesorios, para el campo con lista desplegable.
   (function publicarCatalogo() {
     var lista = document.createElement("datalist");
     lista.id = "lista-accesorios";
@@ -6720,6 +6721,7 @@ MANT.ordenes = (function () {
   CAMPO.VISTAS = VISTAS;
   CAMPO.ACCESORIOS = ACCESORIOS;
 
+  /* ---------- puente hacia recepción ---------- */
   CAMPO.puenteDespacho = function () {
     if (!fotos.length) return null;
     var nombres = nombresDelPaquete(), mapa = {};

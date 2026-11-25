@@ -14,8 +14,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-# El contenedor de desarrollo trae el navegador preinstalado aqui.
-CONTENEDOR = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+# El contenedor de desarrollo trae el navegador preinstalado aqui. La version
+# cambia con cada imagen del contenedor: se busca la que haya, la mas nueva,
+# en vez de fijar una carpeta que el siguiente contenedor ya no tiene.
+_PREINSTALADOS = sorted(Path("/opt/pw-browsers").glob("chromium-*/chrome-linux*/chrome"),
+                        key=lambda p: p.parts[-3])
+CONTENEDOR = str(_PREINSTALADOS[-1]) if _PREINSTALADOS else ""
 
 # Como queda un Chromium recien instalado por `playwright install`. Son dos
 # binarios: el completo y el que Playwright usa sin ventana. Los comodines
