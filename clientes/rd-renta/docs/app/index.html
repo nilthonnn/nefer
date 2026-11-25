@@ -365,6 +365,16 @@
   .proy-fila .meta { font-family:var(--mono); font-size:.65rem; letter-spacing:.06em;
                      color:var(--ink-3); display:block; font-weight:400; margin-top:.15rem; }
   .proy-fila button { min-height:38px; padding:.3rem .6rem; font-size:.82rem; }
+  /* Anulada: sigue en la lista para que se vea qué pasó, pero no se confunde
+     con una vigente. La palabra va escrita, no sólo el tachado. */
+  .proy-fila.anulada .nom > b { text-decoration:line-through; color:var(--ink-3); }
+  .proy-fila .sello { font-family:var(--mono); font-size:.65rem; font-weight:700;
+                      letter-spacing:.08em; padding:.05rem .35rem; border-radius:3px;
+                      margin-right:.35rem; }
+  .proy-fila .sello.anulada { color:var(--mal); border:1px solid var(--mal-rule);
+                              background:var(--mal-soft); }
+  .proy-fila .sello.doble { color:var(--obs); border:1px solid var(--obs-rule);
+                            background:var(--obs-soft); }
   .cam-aviso { position:absolute; left:1rem; right:1rem; top:50%; transform:translateY(-50%);
                background:var(--card); color:var(--ink); border:1px solid var(--rule);
                border-radius:7px; padding:.9rem 1rem; font-size:.9rem; }
@@ -2371,7 +2381,9 @@ var RDRENTA = (function () {
      «Guardar» y «Exportar» son cosas distintas y el pliego lo pide explicito:
      guardar es para seguir mañana, exportar es el archivo que se firma. Un
      proyecto guardado no se cierra: se vuelve a abrir tal como estaba. */
-  var ESTADOS = ["borrador", "en proceso", "completo", "exportado"];
+  var ESTADOS = ["borrador", "en proceso", "completo", "exportado", "anulado"];
+  var MENSAJE_ANULADA = "el acta está anulada: no se puede continuar. " +
+                        "Duplíquela si hace falta rehacerla";
   var MENSAJE_NUEVO = "esta acta se guardó con una versión más nueva de la app: " +
                       "actualícela para abrirla";
 
@@ -2421,7 +2433,12 @@ var RDRENTA = (function () {
     function guardar(opciones) {
       opciones = opciones || {};
       if (!actual) return Promise.reject(new Error("no hay proyecto abierto"));
-      return instantanea().then(function (datos) {
+      var previo = opciones.comoNuevo ? Promise.resolve(null) : almacen.leer(actual.id);
+      return previo.then(function (ya) {
+        // Un acta anulada no se reescribe: ni a mano ni el autoguardado.
+        if (ya && ya.estado === "anulado") throw new Error(MENSAJE_ANULADA);
+        return instantanea();
+      }).then(function (datos) {
         var p = {
           id: opciones.comoNuevo ? nuevoId() : actual.id,
           nombre: opciones.nombre || actual.nombre || nombrePorDefecto(actual.vista, datos),
@@ -2432,6 +2449,7 @@ var RDRENTA = (function () {
           esquema: ESQUEMA,
           datos: datos
         };
+        if (!opciones.comoNuevo && actual.historial) p.historial = actual.historial;
         return almacen.guardar(p).then(function () {
           actual = { id: p.id, nombre: p.nombre, vista: p.vista,
                      estado: p.estado, creado: p.creado, modificado: p.modificado };
@@ -2472,11 +2490,12 @@ var RDRENTA = (function () {
       return almacen.leer(id).then(function (p) {
         if (!p) throw new Error("ese proyecto ya no existe");
         if (demasiadoNuevo(p)) throw new Error(MENSAJE_NUEVO);
+        if (p.estado === "anulado") throw new Error(MENSAJE_ANULADA);
         var api = vistas[p.vista];
         if (!api) throw new Error("no se reconoce el tipo de proyecto");
         return Promise.resolve(api.restaurar(p.datos)).then(function () {
           actual = { id: p.id, nombre: p.nombre, vista: p.vista, estado: p.estado,
-                     creado: p.creado, modificado: p.modificado };
+                     creado: p.creado, modificado: p.modificado, historial: p.historial };
           sucio = false;
           ultimaVista = p.vista;
           firmaGuardada = firmaDeFotos();
@@ -2497,6 +2516,8 @@ var RDRENTA = (function () {
         copia.estado = "borrador";
         copia.creado = copia.modificado = Date.now();
         copia.esquema = p.esquema;
+        copia.historial = [{ accion: "copia", fecha: copia.creado, de: p.id,
+                             estadoDe: p.estado || "borrador" }];
         copia.datos = p.datos;         // los Blobs se comparten sin copiarse
         return almacen.guardar(copia);
       });
@@ -2525,7 +2546,8 @@ var RDRENTA = (function () {
         if (!p) throw new Error("ese proyecto ya no existe");
         var entradas = [], copia = JSON.parse(JSON.stringify({
           formato: FORMATO, nombre: p.nombre, vista: p.vista, estado: p.estado,
-          creado: p.creado, modificado: p.modificado, esquema: p.esquema
+          creado: p.creado, modificado: p.modificado, esquema: p.esquema,
+          historial: p.historial, anulacion: p.anulacion
         }));
         var datos = p.datos || {};
         var fotos = datos.fotos || [], antes = datos.antes || [];
@@ -2601,8 +2623,67 @@ var RDRENTA = (function () {
           esquema: p.esquema || ESQUEMA,
           datos: p.datos
         };
+        // La constancia viaja con el acta: una anulada sigue anulada en la PC.
+        if (p.historial) guardado.historial = p.historial;
+        if (p.anulacion) guardado.anulacion = p.anulacion;
         return almacen.guardar(guardado);
       });
+    }
+
+    /* ---------- anular ----------
+       Un acta registrada por error no se borra: se anula. Queda en la lista,
+       con el motivo, la fecha y quién la anuló, y no se puede continuar ni
+       sobrescribir. Borrarla dejaría un hueco en la numeración que nadie
+       sabría explicar; anulada, la explicación viaja con ella. */
+    function anular(id, motivo, por) {
+      motivo = String(motivo == null ? "" : motivo).trim();
+      if (!motivo) return Promise.reject(new Error("la anulación necesita un motivo"));
+      return almacen.leer(id).then(function (p) {
+        if (!p) throw new Error("ese proyecto ya no existe");
+        if (demasiadoNuevo(p)) throw new Error(MENSAJE_NUEVO);
+        if (p.estado === "anulado") throw new Error("el acta ya estaba anulada");
+        var ahora = Date.now();
+        var marca = { accion: "anulado", fecha: ahora, motivo: motivo,
+                      por: String(por == null ? "" : por).trim(),
+                      estadoPrevio: p.estado || "borrador" };
+        p.historial = (p.historial || []).concat([marca]);
+        p.anulacion = { fecha: ahora, motivo: marca.motivo, por: marca.por };
+        p.estado = "anulado";
+        p.modificado = ahora;
+        p.esquema = ESQUEMA;
+        // Si es la que está en pantalla, se suelta: lo que se siga tecleando
+        // ya no le pertenece.
+        if (actual && actual.id === id) {
+          if (reloj) { clearTimeout(reloj); reloj = null; }
+          nuevo(p.vista);
+        }
+        return almacen.guardar(p);
+      });
+    }
+
+    /* Actas que dicen ser la misma: misma hoja, mismo equipo y mismo N° de
+       acta. Las anuladas no cuentan, que para eso se anularon. Devuelve, por
+       cada id repetido, los ids de las otras. */
+    function duplicados(lista) {
+      var porClave = {}, salida = {};
+      (lista || []).forEach(function (p) {
+        if (!p || p.estado === "anulado" || !p.datos) return;
+        var c = p.datos.campos || {};
+        var r = p.vista === "recepcion";
+        var equipo = String(c[r ? "r-codigo_equipo" : "d-equipo"] || "").trim().toUpperCase();
+        var acta = String(c[r ? "r-acta" : "d-acta"] || "").trim().toUpperCase();
+        if (!equipo || !acta) return;
+        var k = p.vista + "|" + equipo + "|" + acta;
+        (porClave[k] = porClave[k] || []).push(p.id);
+      });
+      Object.keys(porClave).forEach(function (k) {
+        var ids = porClave[k];
+        if (ids.length < 2) return;
+        ids.forEach(function (id) {
+          salida[id] = ids.filter(function (x) { return x !== id; });
+        });
+      });
+      return salida;
     }
 
     function marcarExportado() {
@@ -2734,6 +2815,7 @@ var RDRENTA = (function () {
       ESTADOS: ESTADOS,
       nuevo: nuevo, adoptar: adoptar, guardar: guardar, abrir: abrir,
       duplicar: duplicar, marcarExportado: marcarExportado,
+      anular: anular, duplicados: duplicados,
       empaquetar: empaquetar, importar: importar,
       borrar: function (id) { return almacen.borrar(id); },
       listar: function () { return almacen.listar(); },
@@ -6827,19 +6909,40 @@ RDRENTA.arrancar();
       seccion.hidden = false;
       caja.textContent = "";
       $("#proy-vacio").hidden = lista.length > 0;
+      var dobles = P.duplicados(lista);
+      var nombres = {};
+      lista.forEach(function (p) { nombres[p.id] = p.nombre || "Sin nombre"; });
       lista.forEach(function (p) {
         var fila = document.createElement("div");
-        fila.className = "proy-fila";
+        var anulada = p.estado === "anulado";
+        fila.className = "proy-fila" + (anulada ? " anulada" : "");
+        fila.dataset.id = p.id;
         var fotos = (p.datos && p.datos.fotos) ? p.datos.fotos.length : 0;
+        var sellos = "";
+        if (anulada) {
+          var a = p.anulacion || {};
+          sellos += '<span class="meta"><span class="sello anulada">ANULADA</span>' +
+            esc(fecha(a.fecha)) + (a.por ? " · " + esc(a.por) : "") +
+            " · motivo: " + esc(a.motivo || "—") + "</span>";
+        } else if (dobles[p.id]) {
+          sellos += '<span class="meta"><span class="sello doble">POSIBLE DUPLICADO</span>' +
+            "mismo equipo y N° de acta que: " +
+            esc(dobles[p.id].map(function (id) { return nombres[id]; }).join(", ")) + "</span>";
+        }
+        // Anulada: se puede enviar (es su constancia) y duplicar para
+        // rehacerla, pero no continuar, ni volver a anular, ni borrar.
         fila.innerHTML =
-          '<span class="nom">' + esc(p.nombre || "Sin nombre") +
+          '<span class="nom"><b>' + esc(p.nombre || "Sin nombre") + "</b>" +
             '<span class="meta">' + esc(p.vista) + " · " + esc(p.estado || "borrador") +
             " · " + fotos + (fotos === 1 ? " foto" : " fotos") +
-            " · " + fecha(p.modificado) + "</span></span>" +
-          '<button type="button" class="primary" data-abrir="' + esc(p.id) + '">Continuar</button>' +
+            " · " + fecha(p.modificado) + "</span>" + sellos + "</span>" +
+          (anulada ? "" :
+            '<button type="button" class="primary" data-abrir="' + esc(p.id) + '">Continuar</button>') +
           '<button type="button" data-enviar="' + esc(p.id) + '">Enviar</button>' +
           '<button type="button" data-duplicar="' + esc(p.id) + '">Duplicar</button>' +
-          '<button type="button" class="ghost" data-borrar="' + esc(p.id) + '">Eliminar</button>';
+          (anulada ? "" :
+            '<button type="button" data-anular="' + esc(p.id) + '">Anular</button>' +
+            '<button type="button" class="ghost" data-borrar="' + esc(p.id) + '">Eliminar</button>');
         caja.appendChild(fila);
       });
     }, function (err) {
@@ -6893,9 +6996,21 @@ RDRENTA.arrancar();
   });
 
   $("#proy-lista").addEventListener("click", function (e) {
-    var b = e.target.closest("[data-abrir],[data-enviar],[data-duplicar],[data-borrar]");
+    var b = e.target.closest("[data-abrir],[data-enviar],[data-duplicar],[data-anular],[data-borrar]");
     if (!b) return;
     var d = b.dataset;
+    if (d.anular !== undefined) {
+      var motivo = window.prompt("Motivo de la anulación (queda registrado con el acta):", "");
+      if (motivo === null) return;
+      if (!motivo.trim()) { avisar("sin motivo no se anula"); return; }
+      var por = window.prompt("Quién anula (nombre):", "");
+      if (por === null) return;
+      P.anular(d.anular, motivo, por).then(function () {
+        avisar("acta anulada");
+        pintarLista();
+      }, fallo);
+      return;
+    }
     if (d.abrir !== undefined) {
       if (P.sucio() &&
           !window.confirm("Hay cambios sin guardar. ¿Abrir el otro proyecto?")) return;
