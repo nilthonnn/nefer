@@ -8,6 +8,7 @@ Nada sale del aparato: el reconocimiento corre aquí, en WebAssembly.
 | tesseract.min.js, worker.min.js | tesseract.js | 7.0.0 | Apache-2.0 |
 | tesseract-core-simd-lstm.wasm.js | tesseract.js-core | 7.0.0 | Apache-2.0 |
 | eng.traineddata.gz (4.0.0_best_int) | @tesseract.js-data/eng | 1.0.0 | MIT (datos de tessdata, Apache-2.0) |
+| qrcode.js (etiquetas QR de los equipos) | qrcode-generator | 1.4.4 | MIT (la licencia va en la cabecera del archivo) |
 
 Se descargaron del registro de npm. Para actualizar: `npm pack` de esos paquetes y copiar los mismos archivos.
 

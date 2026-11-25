@@ -731,6 +731,12 @@
   .m-alerta.critico { border-left-color:var(--mal); background:var(--mal-soft); }
   .m-alerta.aviso { border-left-color:var(--obs); background:var(--obs-soft); }
   .m-borrar { color:var(--mal) !important; }
+  .m-hist { display:flex; flex-direction:column; gap:.15rem; padding:.55rem .7rem; background:var(--card);
+            border:1px solid var(--rule); border-radius:7px; }
+  .m-hist.anulada { opacity:.75; }
+  .m-hist .m-det { font-size:.84rem; color:var(--ink-2); }
+  .m-hist .apto { font-weight:700; color:var(--ok); }
+  .m-hist .noapto { font-weight:700; color:var(--mal); }
   .m-casilla { border-top:1px solid var(--rule-2); padding:.55rem 0 .65rem; }
   .m-casilla > .lb { display:block; margin-bottom:.35rem; color:var(--ink); font-size:.74rem; }
   .m-foto { border:1px solid var(--rule); border-radius:7px; padding:.4rem; margin:0 0 .45rem;
@@ -1288,6 +1294,10 @@
             <div class="panel-body">
               <label class="campo" for="m-ot-tag"><span class="lb">TAG del equipo</span>
                 <input type="text" id="m-ot-tag" list="m-ot-tags" autocapitalize="characters"></label>
+              <input type="file" id="m-ot-escanear" class="archivo" accept="image/*" capture="environment"
+                     aria-label="Foto de la etiqueta QR o del TAG del equipo">
+              <label class="boton" for="m-ot-escanear" style="margin-top:.4rem">Escanear equipo (QR o TAG)</label>
+              <span class="m-nota-sn" id="m-ot-escaneo" role="status"></span>
               <datalist id="m-ot-tags"></datalist>
               <fieldset class="m-opciones" id="m-ot-tipos"><legend class="lb">Tipo de servicio</legend></fieldset>
               <fieldset class="m-opciones" id="m-ot-pms" hidden><legend class="lb">Rutina preventiva</legend></fieldset>
@@ -1339,6 +1349,12 @@
           </div>
           <p class="panel-body m-campo-alerta" id="m-eq-nuevo-aviso" role="status"></p>
         </form>
+        <div class="bar">
+          <input type="file" id="m-eq-escanear" class="archivo" accept="image/*" capture="environment"
+                 aria-label="Foto de la etiqueta QR o del TAG del equipo">
+          <label class="boton primary" for="m-eq-escanear">Escanear equipo (QR o TAG)</label>
+          <span class="m-nota-sn" id="m-eq-escaneo" role="status"></span>
+        </div>
         <div class="seccion">
           <h2>Equipos <span class="tally" id="m-eq-cuenta"></span></h2>
           <label class="campo" for="m-eq-buscar" style="margin:.5rem 0">
@@ -1368,6 +1384,19 @@
           </div>
         </details>
         <div id="m-f-campos"></div>
+        <details class="panel plegable" id="m-f-etiqueta">
+          <summary>Etiqueta QR del equipo</summary>
+          <div class="panel-body">
+            <p class="m-nota-sn">Imprímala y péguela en el equipo: al escanearla, la app abre esta
+              ficha o pone el TAG en la orden.</p>
+            <div id="m-f-qr" style="max-width:220px;background:#fff"></div>
+            <button type="button" id="m-f-qr-bajar">Descargar etiqueta (SVG)</button>
+          </div>
+        </details>
+        <section class="seccion" id="m-f-historial">
+          <h2>Historial del equipo <span class="tally" id="m-f-hist-cuenta"></span></h2>
+          <div class="m-lista" id="m-f-hist-lista"></div>
+        </section>
         <button type="button" class="ghost m-borrar" id="m-f-borrar">Borrar esta ficha</button>
       </div>
       </div>
@@ -5111,6 +5140,7 @@ MANT.equipos = (function () {
       sucia = false;
       try { localStorage.setItem(CLAVE_ABIERTO, ficha.tag); } catch (x) { /* da igual */ }
       pintarFicha();
+      pintarHistorial();
       try { localStorage.setItem("campo.mant.panel", "equipos"); } catch (x) { /* da igual */ }
       raiz.dispatchEvent(new CustomEvent("m-panel", { detail: "equipos" }));
       estado(ficha.actualizado ? "guardado " + hora(ficha.actualizado) : "");
@@ -5218,6 +5248,81 @@ MANT.equipos = (function () {
     programar();
   }
 
+  /* ---------- historial: la trazabilidad del equipo ----------
+     Todas las órdenes de este TAG, la más reciente primero: cuándo, qué
+     tipo, qué OT, horómetro, si quedó apto, dónde estaba, qué se observó, y
+     las anuladas con su motivo. Sale de los proyectos guardados; no hay
+     otra copia que pueda desincronizarse. */
+  var TIPOS = { INSPECCION: "Inspección", PREVENTIVO: "Preventivo", CORRECTIVO: "Correctivo", VISITA: "Visita técnica" };
+  function fechaCorta(ms) {
+    if (!ms) return "";
+    var d = new Date(ms), z = function (n) { return ("0" + n).slice(-2); };
+    return z(d.getDate()) + "/" + z(d.getMonth() + 1) + "/" + d.getFullYear();
+  }
+  function historial(tag) {
+    return R.proyectos.listar().then(function (l) {
+      return l.filter(function (p) {
+        return p.vista === "mantenimiento" && p.datos && M.tag(p.datos.tag) === M.tag(tag);
+      }).map(function (p) {
+        var d = p.datos, c = d.clasificacion || {}, est = d.estados || {};
+        var fallas = Object.keys(est).filter(function (k) { return est[k] && est[k].estado === "FALLA"; }).length;
+        var obs = Object.keys(est).filter(function (k) { return est[k] && est[k].estado === "OBS"; }).length;
+        return { id: p.id, fecha: p.modificado, estado: p.estado, anulacion: p.anulacion,
+                 tipo: (TIPOS[c.tipo] || "Sin clasificar") + (c.pm ? " " + c.pm.split("_")[0] : ""),
+                 ot: d.ot && d.ot.ot, horometro: d.ot ? d.ot.horometroSalida : null,
+                 operativo: d.informe ? d.informe.operativo : null,
+                 ubicacion: d.equipo && d.equipo.ubicacion, fallas: fallas, observados: obs,
+                 observaciones: d.ot && d.ot.observaciones, aviso: d.ot && d.ot.crearAviso ? d.ot.textoAviso : "" };
+      });
+    });
+  }
+  function pintarHistorial() {
+    if (!ficha) return Promise.resolve();
+    var tag = ficha.tag;
+    return historial(tag).then(function (h) {
+      if (!ficha || ficha.tag !== tag) return;
+      $("#m-f-hist-cuenta").textContent = h.length ? String(h.length) : "";
+      $("#m-f-hist-lista").innerHTML = h.length ? h.map(function (x) {
+        var anulada = x.estado === "anulado";
+        var apto = x.operativo === true ? '<span class="apto">apto</span>'
+          : x.operativo === false ? '<span class="noapto">no apto</span>' : "aptitud sin declarar";
+        return '<div class="m-hist' + (anulada ? " anulada" : "") + '">' +
+          "<b>" + esc(fechaCorta(x.fecha)) + " · " + esc(x.tipo) + (x.ot ? " · OT " + esc(x.ot) : "") + "</b>" +
+          '<span class="m-det">' + (anulada ? "ANULADA: " + esc((x.anulacion && x.anulacion.motivo) || "") + " · " : "") +
+          (x.horometro !== null && x.horometro !== undefined ? esc(x.horometro) + " h · " : "") + apto +
+          (x.ubicacion ? " · " + esc(x.ubicacion) : "") +
+          (x.fallas ? " · " + x.fallas + " falla(s)" : "") + (x.observados ? " · " + x.observados + " observado(s)" : "") +
+          "</span>" +
+          (x.aviso ? '<span class="m-det">Aviso: ' + esc(x.aviso) + "</span>" : "") +
+          (x.observaciones ? '<span class="m-det">' + esc(String(x.observaciones).slice(0, 160)) + "</span>" : "") +
+          (anulada ? "" : '<button type="button" data-hist-abrir="' + esc(x.id) + '">Abrir orden</button>') + "</div>";
+      }).join("") : '<p class="vacia">Sin órdenes todavía.</p>';
+    });
+  }
+
+  /* ---------- etiqueta QR ---------- */
+  var svgEtiqueta = "";
+  function pintarEtiqueta() {
+    if (!ficha) return;
+    MANT.reconocer.etiqueta(ficha.tag, ficha.ubicacion).then(function (svg) {
+      svgEtiqueta = svg;
+      $("#m-f-qr").innerHTML = svg;
+    }, function (e) { $("#m-f-qr").textContent = e.message; });
+  }
+
+  /* ---------- escanear: foto de la etiqueta o del TAG ---------- */
+  function escanear(archivo, aviso) {
+    aviso("leyendo…");
+    return A.equipos.listar().then(function (l) {
+      var tags = l.map(function (e) { return e.tag; });
+      return MANT.reconocer.desdeFoto(archivo, tags).then(function (r) {
+        if (!r) { aviso("No se reconoció el equipo. Escriba el TAG."); return null; }
+        aviso("Equipo " + r.tag + (r.via === "qr" ? " (código QR)" : " (TAG leído en la foto)"));
+        return r;
+      });
+    });
+  }
+
   /* ---------- guardado ---------- */
   function programar() {
     if (reloj) clearTimeout(reloj);
@@ -5275,6 +5380,30 @@ MANT.equipos = (function () {
     if (b) abrir(b.dataset.tag);
   });
   $("#m-f-volver").addEventListener("click", function () { cerrar(); });
+  $("#m-f-etiqueta").addEventListener("toggle", function () { if (this.open) pintarEtiqueta(); });
+  $("#m-f-qr-bajar").addEventListener("click", function () {
+    if (!svgEtiqueta || !ficha) return;
+    R.entregar(new Blob([svgEtiqueta], { type: "image/svg+xml" }), "etiqueta-" + ficha.tag + ".svg",
+               function () {});
+  });
+  $("#m-f-hist-lista").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-hist-abrir]");
+    if (b) volcar().then(function () { return MANT.ordenes.abrir(b.dataset.histAbrir); });
+  });
+  $("#m-eq-escanear").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    this.value = "";
+    if (!f) return;
+    var aviso = function (t) { $("#m-eq-escaneo").textContent = t; };
+    escanear(f, aviso).then(function (r) {
+      if (!r) return;
+      A.equipos.leer(r.tag).then(function (e) {
+        if (e) return abrir(r.tag);
+        $("#m-eq-tag").value = r.tag;
+        aviso("El equipo " + r.tag + " no tiene ficha: toque «Crear ficha».");
+      });
+    });
+  });
   $("#m-f-inspeccion").addEventListener("click", function () {
     if (!ficha) return;
     var tag = ficha.tag;
@@ -5307,6 +5436,7 @@ MANT.equipos = (function () {
     actual: function () { return ficha ? M.clon(ficha) : null; },
     alertas: function () { return ficha ? alertas() : []; },
     listo: function () { return listo; },
+    historial: historial, escanear: escanear,
     GRUPOS: GRUPOS
   };
 })();
@@ -6249,6 +6379,16 @@ MANT.ordenes = (function () {
   });
   $("#m-ot-nueva").addEventListener("change", function () { sugerirEnNueva(); });
   $("#m-ot-tag").addEventListener("change", function () { sugerirEnNueva(); });
+  $("#m-ot-escanear").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    this.value = "";
+    if (!f) return;
+    MANT.equipos.escanear(f, function (t) { $("#m-ot-escaneo").textContent = t; }).then(function (r) {
+      if (!r) return;
+      $("#m-ot-tag").value = r.tag;
+      sugerirEnNueva();
+    });
+  });
   $("#m-ot-lista").addEventListener("click", function (e) {
     var b = e.target.closest("[data-abrir],[data-anular]");
     if (!b) return;
@@ -10986,6 +11126,92 @@ MANT.lector = (function () {
 
   return { LEE: LEE, interpretar: interpretar, reconocerTag: reconocerTag, disponible: disponible,
            preparar: preparar, leer: leer, listoSinSenal: listoSinSenal, descargar: descargar };
+})();
+</script>
+
+<script>
+/* ================================================================
+   MANTENIMIENTO · RECONOCER EL EQUIPO · QR y TAG, para la trazabilidad.
+
+   Cada equipo lleva una etiqueta con un código QR de su TAG. El teléfono
+   la lee con su propio detector (sin internet, sin bibliotecas); si el
+   aparato no tiene detector, se lee el TAG escrito con el lector de fotos
+   y se compara con las fichas existentes. No hay reconocimiento de caras
+   ni de imágenes: el equipo se identifica por lo que lleva escrito.
+   ================================================================ */
+MANT.reconocer = (function () {
+  "use strict";
+  var M = MANT.modelo, PREFIJO = "EQUIPO:";
+
+  function contenido(tag) { return PREFIJO + M.tag(tag); }
+  function tagDe(texto, conocidos) {
+    var t = String(texto || "").trim();
+    if (t.toUpperCase().indexOf(PREFIJO) === 0) return M.tag(t.slice(PREFIJO.length));
+    var plano = M.tag(t);
+    return (conocidos || []).indexOf(plano) !== -1 ? plano : null;
+  }
+
+  function cargar(url) {
+    return new Promise(function (ok, mal) {
+      if (window.qrcode) { ok(); return; }
+      var s = document.createElement("script");
+      s.src = url; s.onload = ok; s.onerror = function () { mal(new Error("no se pudo cargar el generador de QR")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  /* La etiqueta para imprimir y pegar en el equipo: QR + TAG + ubicación. */
+  function etiqueta(tag, ubicacion) {
+    return cargar(new URL("lector/qrcode.js", location.href).href).then(function () {
+      var q = window.qrcode(0, "M");
+      q.addData(contenido(tag));
+      q.make();
+      var n = q.getModuleCount(), lado = 8, margen = 4 * lado, ancho = n * lado + margen * 2;
+      var alto = ancho + 110, d = "";
+      for (var f = 0; f < n; f++) {
+        for (var c = 0; c < n; c++) {
+          if (q.isDark(f, c)) d += "M" + (margen + c * lado) + " " + (margen + f * lado) + "h" + lado + "v" + lado + "h-" + lado + "z";
+        }
+      }
+      var esc = function (t) { return String(t || "").replace(/[<>&"]/g, function (x) {
+        return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[x]; }); };
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="' + ancho + '" height="' + alto +
+        '" viewBox="0 0 ' + ancho + " " + alto + '" role="img" aria-label="Etiqueta del equipo ' + esc(M.tag(tag)) + '">' +
+        '<rect width="100%" height="100%" fill="#fff"/><path d="' + d + '" fill="#000"/>' +
+        '<text x="' + ancho / 2 + '" y="' + (ancho + 50) + '" font-family="Arial,sans-serif" font-size="48" ' +
+        'font-weight="700" text-anchor="middle">' + esc(M.tag(tag)) + "</text>" +
+        '<text x="' + ancho / 2 + '" y="' + (ancho + 90) + '" font-family="Arial,sans-serif" font-size="22" ' +
+        'text-anchor="middle">' + esc(ubicacion || "") + "</text></svg>";
+    });
+  }
+
+  /* De una foto (de la etiqueta o del equipo) al TAG. Devuelve {tag, via}
+     o null. `conocidos`: los TAG que tienen ficha. */
+  function desdeFoto(archivo, conocidos) {
+    var porQr = Promise.resolve(null);
+    if (window.BarcodeDetector && window.createImageBitmap) {
+      porQr = Promise.resolve().then(function () {
+        var det = new window.BarcodeDetector({ formats: ["qr_code"] });
+        return createImageBitmap(archivo).then(function (img) { return det.detect(img); });
+      }).then(function (cods) {
+        for (var i = 0; i < (cods || []).length; i++) {
+          var t = tagDe(cods[i].rawValue, conocidos) || (String(cods[i].rawValue).indexOf(PREFIJO) === 0
+            ? M.tag(String(cods[i].rawValue).slice(PREFIJO.length)) : null);
+          if (t) return { tag: t, via: "qr" };
+        }
+        return null;
+      }, function () { return null; });
+    }
+    return porQr.then(function (r) {
+      if (r || !MANT.lector || MANT.lector.disponible()) return r;
+      return MANT.lector.leer(archivo).then(function (texto) {
+        var t = MANT.lector.reconocerTag(texto, conocidos);
+        return t ? { tag: t, via: "texto" } : null;
+      }, function () { return null; });
+    });
+  }
+
+  return { contenido: contenido, tagDe: tagDe, etiqueta: etiqueta, desdeFoto: desdeFoto };
 })();
 </script>
 
