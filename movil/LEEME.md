@@ -65,7 +65,7 @@ También se puede lanzar a mano desde **Actions → apk del camal → Run workfl
 ### Por qué la publicación no se marca como «latest»
 
 `/releases/latest/download/…` es una sola dirección por repositorio, y aquí ya
-la usa el APK de las actas de RD RENTAL, con su QR impreso en un taller.
+la usa el APK de las actas de campo, con su QR impreso en un taller.
 Marcar esta como «latest» rompería aquella. Por eso cada compilación publica
 con su etiqueta propia —`camal-v12`— y la dirección lleva esa etiqueta.
 

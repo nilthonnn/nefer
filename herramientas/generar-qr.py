@@ -25,8 +25,8 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 TINTA = "#16191B"
 
-# (direccion, archivo, que es). Los codigos del clon de RD RENTAL los hace
-# su propia herramienta: clientes/rd-renta/herramientas/generar-qr.py
+# (direccion, archivo, que es). Los codigos de actas de campo los hace
+# su propia herramienta: clientes/campo/herramientas/generar-qr.py
 CODIGOS = [
     ("https://nilthonnn.github.io/nefer/app/",
      "docs/qr-app.svg",

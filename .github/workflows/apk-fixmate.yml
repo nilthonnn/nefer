@@ -4,7 +4,7 @@ name: apk de la ronda CIL
 # nadie: el SDK de Android son cientos de megas, y una compilación a mano es
 # una compilación que sólo sabe hacer una persona.
 #
-# Va aparte de `apk.yml` —las actas de RD RENTAL— y de `apk-camal.yml` a
+# Va aparte de `apk.yml` —las actas de campo— y de `apk-camal.yml` a
 # propósito: son tres aplicaciones distintas, con su identificador, su llave y
 # su versión, y compartir archivo de flujo sólo serviría para que un cambio en
 # una rompiera las otras.
@@ -219,7 +219,7 @@ jobs:
       # les cuelgue nada después.
       #
       # Sin `--latest` a propósito: esa dirección la usa el .apk de las actas
-      # de RD RENTAL, y su QR está impreso en un taller.
+      # de campo, y su QR está impreso en un taller.
       - name: Publicar para descargar
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:

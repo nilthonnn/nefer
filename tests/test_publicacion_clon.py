@@ -1,7 +1,7 @@
 """Lo publicado del clon tiene que ser lo que el clon dice.
 
-GitHub Pages sirve `docs/` de la raiz y nada mas, asi que la app de RD RENTAL
-se publica como copia en `docs/rd-rental/`. Una copia se queda atras sola: aqui
+GitHub Pages sirve `docs/` de la raiz y nada mas, asi que la app de actas de campo
+se publica como copia en `docs/campo/`. Una copia se queda atras sola: aqui
 se comparan las dos carpetas, archivo por archivo y byte a byte.
 
 Se rehace con `python3 herramientas/publicar-clon.py`.

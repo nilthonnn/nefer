@@ -9,8 +9,8 @@ on:
   push:
     branches: ["**"]
     paths:
-      - "clientes/rd-renta/android/**"
-      - "clientes/rd-renta/docs/app/**"
+      - "clientes/campo/android/**"
+      - "clientes/campo/docs/app/**"
       - ".github/workflows/apk.yml"
   workflow_dispatch:
 
@@ -24,7 +24,7 @@ permissions:
 env:
   # El nombre con el que se descarga. No cambia nunca: la dirección de descarga
   # y el QR impreso dependen de él.
-  ARCHIVO: rd-rental-actas.apk
+  ARCHIVO: actas-campo.apk
 
 jobs:
   apk:
@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 30
     defaults:
       run:
-        working-directory: clientes/rd-renta/android
+        working-directory: clientes/campo/android
 
     steps:
       - uses: actions/checkout@v4
@@ -92,7 +92,7 @@ jobs:
             keytool -genkeypair -v -keystore "$ruta" \
               -alias actas -keyalg RSA -keysize 2048 -validity 10000 \
               -storepass provisional -keypass provisional \
-              -dname "CN=RD RENTAL Actas, OU=Campo, O=RD RENTAL, L=Lima, C=PE"
+              -dname "CN=Actas de campo, OU=Campo, O=Actas de campo, L=Lima, C=PE"
             echo "propia=no" >> "$GITHUB_OUTPUT"
             echo "CLAVE_ALMACEN=provisional" >> "$GITHUB_ENV"
             echo "ALIAS_LLAVE=actas" >> "$GITHUB_ENV"
@@ -167,7 +167,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: rd-rental-actas-apk
+          name: actas-campo-apk
           path: ${{ env.APK }}
           if-no-files-found: error
 
@@ -192,7 +192,7 @@ jobs:
           etiqueta="android-v${{ github.run_number }}"
           notas="$RUNNER_TEMP/notas.md"
           {
-            echo "Aplicación de Android de las actas de campo de RD RENTAL."
+            echo "Aplicación de Android de las actas de campo."
             echo
             echo "- Versión **1.${{ github.run_number }}**"
             echo "- Compilada de \`${{ github.sha }}\`"

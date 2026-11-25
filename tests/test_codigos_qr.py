@@ -24,7 +24,7 @@ SVG = "{http://www.w3.org/2000/svg}"
 # todos, porque todos acaban impresos en la misma pared del taller.
 HERRAMIENTAS = [
     RAIZ / "herramientas" / "generar-qr.py",
-    RAIZ / "clientes" / "rd-renta" / "herramientas" / "generar-qr.py",
+    RAIZ / "clientes" / "campo" / "herramientas" / "generar-qr.py",
 ]
 
 
@@ -60,7 +60,7 @@ def test_el_codigo_qr_es_un_dibujo_valido(direccion, relativa, que_es):
 
 def test_la_pagina_del_clon_ensena_los_codigos_que_existen():
     """Un `<img>` a un archivo que no esta deja el mismo hueco en blanco."""
-    portada = RAIZ / "clientes" / "rd-renta" / "docs" / "index.html"
+    portada = RAIZ / "clientes" / "campo" / "docs" / "index.html"
     texto = portada.read_text(encoding="utf-8")
     for nombre in ("qr-app.svg", "qr-apk.svg"):
         assert f'src="{nombre}"' in texto, f"la portada no ensena {nombre}"
