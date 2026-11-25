@@ -33,7 +33,9 @@ Pruebas que lo vigilan: `clientes/campo/tests/`.
    técnico. Nada de diagnóstico automático.
 7. **Valores leídos de fotos** (horómetro, placas, panel, batería,
    probador): siempre propuesta editable; lo usado queda en `lecturas` con
-   foto, fecha y texto leído.
+   foto, fecha y texto leído. El teléfono aprende de las correcciones a
+   identificadores y de las fichas existentes; nunca de mediciones. Mejorar
+   el lector con fotos de campo: skill `lector-autoaprendizaje`.
 8. **Aptitud operativa** (sí/no) con quién y cuándo; un correctivo no se
    declara apto sin acción ni pruebas.
 
