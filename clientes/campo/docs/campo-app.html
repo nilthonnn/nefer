@@ -5528,11 +5528,26 @@ MANT.ordenes = (function () {
   });
 
   /* ---------- utilidades ---------- */
+  /* Las claves de los ítems del formato llevan puntos («3.1», «4.1.1»,
+     «5.1»): una ruta como «informe.motor.3.1» no se puede partir a ciegas
+     por cada punto. Se avanza tramo a tramo y, si una clave no existe, se
+     prueba uniéndola con la siguiente. */
+  function tramos(o, ruta) {
+    var t = ruta.split("."), salida = [], cur = o, i = 0;
+    while (i < t.length) {
+      var k = t[i], j = i;
+      while (cur && typeof cur === "object" && !(k in cur) && j + 1 < t.length) { j++; k += "." + t[j]; }
+      salida.push(k);
+      cur = cur == null ? cur : cur[k];
+      i = j + 1;
+    }
+    return salida;
+  }
   function leer(o, ruta) {
-    return ruta.split(".").reduce(function (x, k) { return x == null ? x : x[k]; }, o);
+    return tramos(o, ruta).reduce(function (x, k) { return x == null ? x : x[k]; }, o);
   }
   function poner(o, ruta, valor) {
-    var p = ruta.split("."), ult = p.pop();
+    var p = tramos(o, ruta), ult = p.pop();
     p.reduce(function (x, k) { return x[k]; }, o)[ult] = valor;
   }
   function id(ruta) { return "m-o-" + ruta.replace(/\./g, "-"); }
@@ -6038,6 +6053,37 @@ MANT.ordenes = (function () {
   $("#m-firma-cancelar").addEventListener("click", cerrarFirma);
   $("#m-firma-guardar").addEventListener("click", guardarFirma);
 
+  /* ---------- informe técnico: lo que el papel pide y no está en otra parte ----------
+     Cabecera, generalidades, horas del cuadro de equipo, motor 3.1–3.12,
+     generador y tablero 4.1.1–4.2.6, repuestos 5.1–5.14 y observaciones.
+     La sección 2 sale de la clasificación; la 6 de Parámetros; la 8 del
+     cierre (aptitud y firmas). */
+  function pintarInforme() {
+    var F = M.FORMATO.informe, b = "informe.";
+    var motor = F.motor.map(function (x) { return triple(b + "motor." + x[0], x[0] + " " + x[1]); }).join("");
+    var gen = F.generador.map(function (g) {
+      return '<p class="m-sub">' + esc(g[0] + " " + g[1]) + "</p>" +
+        g[2].map(function (x) { return triple(b + "generadorTablero." + x[0], x[1]); }).join("");
+    }).join("");
+    var rep = F.repuestos.map(function (x) { return [b + "repuestos." + x[0], x[0] + " " + x[1]]; });
+    return campos([[b + "cliente", "Cliente"], [b + "direccion", "Dirección"], [b + "fecha", "Fecha", "fecha"]]) +
+      '<p class="m-nota-sn">O/T: <b>' + esc(m.ot.ot || "—") + "</b></p>" +
+      '<p class="m-sub">Cuadro EQUIPO · horas</p>' +
+      campos([[b + "horas.grupo", "Horas · grupo", "num"], [b + "horas.motor", "Horas · motor", "num"],
+              [b + "horas.generador", "Horas · generador", "num"]]) +
+      '<p class="m-sub">1. Generalidades (voltaje y velocidad: en Parámetros)</p>' +
+      campos([[b + "generalidades.fases", "Fases", "num"], [b + "generalidades.frecuencia", "Frecuencia (Hz)", "num"],
+              [b + "generalidades.moduloMarca", "Módulo de control · marca"],
+              [b + "generalidades.moduloModelo", "Módulo de control · modelo"],
+              [b + "generalidades.derrateadoPara", "Derrateado para"], [b + "generalidades.msnm", "msnm"],
+              [b + "generalidades.emisionCC", "Emisión CC"]]) +
+      '<p class="m-sub">3. Inspección del motor</p>' + motor +
+      '<p class="m-sub">4. Inspección de generador y tablero de control</p>' + gen +
+      campos([[b + "otrosGenerador", "Otros"]]) +
+      '<p class="m-sub">5. Repuestos, materiales y utilidades (cantidad o «—»)</p>' + campos(rep) +
+      campos([[b + "guiaRemision", "De guía de remisión"], [b + "observaciones", "7. Observaciones", "area"]]);
+  }
+
   /* ---------- check-list de baterías ----------
      El formato en papel: cabecera, características, los ítems del tipo de
      batería con OK / NO / NA en la columna de la rutina, observaciones,
@@ -6151,6 +6197,7 @@ MANT.ordenes = (function () {
     html += grupo("Placa del equipo", pintarPlaca());
     html += grupo("Seguridad antes de iniciar", pintarSeguridad());
     html += grupo("Fotos de la inspección", pintarFotos());
+    html += grupo("Informe técnico (secciones 1 a 5 y 7)", pintarInforme());
     html += grupo("Parámetros de operación y prueba", pintarParametros());
     html += grupo("Check-list de baterías", pintarBaterias());
 
@@ -6194,6 +6241,15 @@ MANT.ordenes = (function () {
       firmaUI("informe.firmas.cliente.0", "Por el cliente · 1") +
       firmaUI("informe.firmas.cliente.1", "Por el cliente · 2"));
 
+    html += grupo("Documentos PDF (formatos)",
+      '<p class="m-nota-sn">Siguen el papel sección por sección, con firmas y fotos. Lo vacío sale en blanco.</p>' +
+      '<div class="m-sn">' +
+      '<button type="button" data-doc="informe">Informe técnico</button>' +
+      '<button type="button" data-doc="ficha">Ficha de trabajo</button>' +
+      '<button type="button" data-doc="baterias"' + (m.baterias.length ? "" : " disabled") + '>Check-list de baterías</button>' +
+      '<button type="button" data-doc="anexo">Anexo fotográfico</button>' +
+      '<button type="button" class="primary" data-doc="todo">Todo en un PDF</button></div>' +
+      '<p class="m-nota-sn" id="m-o-doc-estado" role="status"></p>');
     html += grupo("Reporte para WhatsApp",
       '<textarea class="salida" id="m-o-wa" readonly aria-label="Reporte para WhatsApp"></textarea>' +
       '<div class="m-sn" style="margin-top:.5rem">' +
@@ -6314,6 +6370,17 @@ MANT.ordenes = (function () {
         m.aptitud.fecha = leer(m, "informe.operativo") === null ? "" : new Date().toLocaleString("es-PE");
       }
       tocar(); pintar(); return;
+    }
+    if (b.dataset.doc) {
+      var cuales = b.dataset.doc === "todo"
+        ? ["informe", "ficha"].concat(m.baterias.length ? ["baterias"] : []).concat(["anexo"]) : [b.dataset.doc];
+      var est = $("#m-o-doc-estado");
+      est.textContent = "armando el PDF…";
+      MANT.documentos.pdf(m, cuales).then(function (blob) {
+        est.textContent = "";
+        R.entregar(blob, MANT.documentos.nombre(m, cuales), function (t) { est.textContent = t || ""; });
+      }, function (e) { est.textContent = "no se pudo armar: " + ((e && e.message) || "error"); });
+      return;
     }
     if (b.dataset.firmar) { abrirFirma(b.dataset.firmar); return; }
     if (b.dataset.firmaQuitar) {
@@ -11408,6 +11475,436 @@ MANT.reconocer = (function () {
   }
 
   return { contenido: contenido, tagDe: tagDe, etiqueta: etiqueta, desdeFoto: desdeFoto };
+})();
+</script>
+
+<script>
+/* ================================================================
+   MANTENIMIENTO · DOCUMENTOS · los formatos en PDF, como el papel.
+
+   Informe técnico de grupo electrógeno (secciones 1 a 8), ficha de trabajo
+   para mantenimiento, check-list de baterías y anexo fotográfico. Siguen
+   el papel sección por sección, con sus textos impresos (FORMATO), las
+   firmas dibujadas y las fotos. Se arman en el teléfono con el mismo
+   escritor de PDF que las actas; nada sale del aparato.
+   Lo vacío sale en blanco, como en el papel: no se inventa nada.
+   ================================================================ */
+MANT.documentos = (function () {
+  "use strict";
+  var M = MANT.modelo, E = ENTREGABLE;
+  var A4 = E.A4, X = E.MARGEN, W = E.ANCHO, GRIS = "0.78 0.78 0.78", CLARO = "0.92 0.92 0.92";
+
+  function v(x) { return x === null || x === undefined ? "" : String(x); }
+  function fecha(t) {
+    if (!t) return "";
+    var m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(t);
+    return m ? m[3] + "/" + m[2] + "/" + m[1] + (m[4] ? " " + m[4] + ":" + m[5] : "") : String(t);
+  }
+
+  /* ---------- dibujo ---------- */
+  function celda(L, x, y, w, h, t, pt, negrita, relleno, centro) {
+    L.caja(x, y, w, h, relleno || null, 0.6);
+    if (t === "" || t == null) return;
+    pt = pt || 8;
+    var lineas = E.envolver(String(t), pt, negrita, w - 6, Math.max(1, Math.floor((h - 2) / (pt + 1.5))));
+    var y0 = y + (h - lineas.length * (pt + 1.5)) / 2 + pt;
+    lineas.forEach(function (l, i) {
+      if (centro) L.centrado(l, x, w, y0 + i * (pt + 1.5), pt, negrita);
+      else L.texto(l, x + 3, y0 + i * (pt + 1.5), pt, negrita);
+    });
+  }
+  function barra(L, y, t) {
+    L.caja(X, y, W, 13, GRIS, 0.4);
+    L.texto(t, X + 4, y + 9.5, 9, true);
+    return y + 25;
+  }
+  // «rótulo ____valor____», como las líneas del papel.
+  function linea(L, x, y, w, rotulo, valor, pt) {
+    pt = pt || 8;
+    L.texto(rotulo, x, y, pt, false);
+    var xr = x + E.ancho(rotulo, pt, false) + 4;
+    L.linea(xr, y + 2, x + w, y + 2, 0.4);
+    if (valor !== "" && valor != null) L.texto(E.recortar(String(valor), pt, true, x + w - xr - 2), xr + 2, y, pt, true);
+  }
+
+  function cabecera(L, titulo, im, pie) {
+    var y = X;
+    L.caja(X, y, W, 40, null, 0.8);
+    var anchoLogo = 130;
+    if (im.__logo__) {
+      var lg = im.__logo__, k = Math.min((anchoLogo - 8) / lg.w, 32 / lg.h);
+      L.imagen(lg.ref, X + 4 + (anchoLogo - 8 - lg.w * k) / 2, y + 4 + (32 - lg.h * k) / 2, lg.w * k, lg.h * k);
+    }
+    L.linea(X + anchoLogo, y, X + anchoLogo, y + 40, 0.6);
+    var lineas = E.envolver(titulo, 12, true, W - anchoLogo - 12, 2);
+    lineas.forEach(function (l, i) {
+      L.centrado(l, X + anchoLogo, W - anchoLogo, y + (lineas.length === 1 ? 24 : 17 + i * 14), 12, true);
+    });
+    if (pie) L.texto(pie, X, A4.h - X + 10, 7, false, "0.4 0.4 0.4");
+    return y + 48;
+  }
+
+  function firma(L, x, y, w, rot, f, im) {
+    f = f || {};
+    L.texto(rot, x, y, 8, true);
+    if (f.imagen && im[f.imagen]) {
+      var g = im[f.imagen], k = Math.min((w - 70) / g.w, 34 / g.h);
+      L.imagen(g.ref, x + 60, y - 28, g.w * k, g.h * k);
+    }
+    L.linea(x + 55, y + 8, x + w, y + 8, 0.4);
+    linea(L, x, y + 22, w, "Nombre:", f.nombre || "");
+    if (f.fecha) L.texto("Fecha: " + fecha(f.fecha), x, y + 34, 7, false);
+  }
+
+  /* ---------- informe técnico (secciones 1 a 8) ---------- */
+  function informe(m, im) {
+    var F = M.FORMATO.informe, inf = m.informe, e = m.equipo, pie = "TAG " + m.tag + " · O/T " + v(m.ot.ot);
+    var L = new E.Lienzo(), y = cabecera(L, F.titulo, im, pie);
+    var mitad = W / 2 - 6;
+    linea(L, X, y, mitad, "CLIENTE:", inf.cliente); linea(L, X + W / 2, y, mitad, "O/T:", m.ot.ot); y += 14;
+    linea(L, X, y, mitad, "DIRECCIÓN:", inf.direccion); linea(L, X + W / 2, y, mitad, "FECHA:", fecha(inf.fecha)); y += 10;
+
+    // Cuadro EQUIPO
+    var cols = [[90, "EQUIPO"], [110, "MARCA"], [W - 90 - 110 - 80 - 70, "MODELO / SERIE"], [80, "SPEC"], [70, "HORAS"]];
+    var cx = X;
+    cols.forEach(function (c) { celda(L, cx, y, c[0], 13, c[1], 7.5, true, CLARO, true); cx += c[0]; });
+    y += 13;
+    [["Grupo Electrog.", e.grupo, inf.horas.grupo, e.grupo.spec],
+     ["Motor", e.motor, inf.horas.motor, e.motor.cpl ? "CPL: " + e.motor.cpl : e.motor.spec],
+     ["Generador", e.alternador, inf.horas.generador, e.alternador.spec]].forEach(function (r) {
+      var vals = [r[0], r[1].marca, [r[1].modelo, r[1].serie].filter(Boolean).join(" / "), r[3], v(r[2])];
+      cx = X;
+      cols.forEach(function (c, i) { celda(L, cx, y, c[0], 14, vals[i], 8, i > 0); cx += c[0]; });
+      y += 14;
+    });
+    y += 6;
+
+    // 1. Generalidades
+    var g = inf.generalidades;
+    y = barra(L, y, "1. Generalidades");
+    var c3 = W / 3 - 6;
+    linea(L, X, y, c3, "1.1. Conexión del generador: Voltaje", v(g.voltaje));
+    linea(L, X + W / 3, y, c3, "Fases", v(g.fases)); linea(L, X + 2 * W / 3, y, c3, "Frecuencia", v(g.frecuencia)); y += 13;
+    linea(L, X, y, c3, "1.2. Motor: Velocidad", v(g.velocidad));
+    linea(L, X + W / 3, y, c3, "Derrateado para", g.derrateadoPara); linea(L, X + 2 * W / 3, y, c3, "msnm", g.msnm); y += 13;
+    linea(L, X, y, c3, "1.3. Módulo de control: Marca", g.moduloMarca);
+    linea(L, X + W / 3, y, c3, "Modelo", g.moduloModelo); linea(L, X + 2 * W / 3, y, c3, "emisión CC", g.emisionCC); y += 10;
+
+    // 2. Tipo de servicio
+    y = barra(L, y, "2. Tipo de servicio de mantenimiento");
+    F.servicio.forEach(function (s, i) {
+      var cx2 = X + (i % 2) * (W / 2), cy = y + Math.floor(i / 2) * 13;
+      linea(L, cx2, cy, W / 2 - 10, s[0] + ". " + s[1], inf.servicio[s[0]] ? "X" : "");
+    });
+    y += 26;
+
+    // 3. Motor, en dos columnas como el papel
+    y = barra(L, y, "3. Inspección del motor");
+    var mitadN = Math.ceil(F.motor.length / 2);
+    F.motor.forEach(function (x, i) {
+      var cx2 = X + (i < mitadN ? 0 : W / 2), cy = y + (i % mitadN) * 12;
+      linea(L, cx2, cy, W / 2 - 10, x[0] + ". " + x[1], v(inf.motor[x[0]]));
+    });
+    y += mitadN * 12 + 2;
+
+    // 4. Generador y tablero
+    y = barra(L, y, "4. Inspección de Generador y Tablero de control");
+    F.generador.forEach(function (grp) {
+      L.texto(grp[0] + ". " + grp[1], X, y, 8, true); y += 11;
+      var mitadG = Math.ceil(grp[2].length / 2);
+      grp[2].forEach(function (x, i) {
+        var cx2 = X + 10 + (i < mitadG ? 0 : W / 2), cy = y + (i % mitadG) * 12;
+        linea(L, cx2, cy, W / 2 - 20, "* " + x[1], v(inf.generadorTablero[x[0]]));
+      });
+      y += mitadG * 12;
+    });
+    linea(L, X, y, W, "Otros:", inf.otrosGenerador); y += 8;
+
+    // 5. Repuestos
+    y = barra(L, y, "5. Repuestos y materiales y utilidades");
+    var mitadR = Math.ceil(F.repuestos.length / 2);
+    F.repuestos.forEach(function (x, i) {
+      var cx2 = X + (i < mitadR ? 0 : W / 2), cy = y + (i % mitadR) * 12;
+      linea(L, cx2, cy, W / 2 - 10, x[0] + ". " + x[1], v(inf.repuestos[x[0]]));
+    });
+    y += mitadR * 12;
+    linea(L, X, y, W, "De Guía de remisión:", inf.guiaRemision);
+
+    // Página 2: 6, 7 y 8
+    var L2 = new E.Lienzo(), y2 = cabecera(L2, F.titulo, im, pie);
+    y2 = barra(L2, y2, "6. Parámetros de operación y prueba");
+    var colP = 150, colV = (W - colP) / 5;
+    celda(L2, X, y2, colP, 26, "PARÁMETROS MEDIDOS", 8, true, CLARO, true);
+    celda(L2, X + colP, y2, colV, 26, "VALOR INICIAL", 7.5, true, CLARO, true);
+    celda(L2, X + colP + colV, y2, colV * 4, 13, "PORCENTAJE DE CARGA APLICADA", 7.5, true, CLARO, true);
+    ["VACIO", "25%", "50%", "100%"].forEach(function (t, i) {
+      celda(L2, X + colP + colV * (i + 1), y2 + 13, colV, 13, t, 7.5, true, CLARO, true);
+    });
+    y2 += 26;
+    F.parametros.forEach(function (r) {
+      celda(L2, X, y2, colP, 14, r[1], 8, false);
+      inf.pruebas.forEach(function (pr, i) { celda(L2, X + colP + colV * i, y2, colV, 14, v(pr[r[0]]), 8, true, null, true); });
+      y2 += 14;
+    });
+    y2 += 8;
+    y2 = barra(L2, y2, "7. Observaciones");
+    var obs = [inf.observaciones || m.ot.observaciones];
+    Object.keys(m.estados || {}).forEach(function (k) {
+      var es = m.estados[k], cas = M.casilla(k);
+      if (es && (es.estado === "FALLA" || es.estado === "OBS")) {
+        obs.push((es.estado === "FALLA" ? "Falla" : "Observado") + " · " + (cas ? cas[2] : k) + (es.nota ? ": " + es.nota : ""));
+      }
+    });
+    if (m.probador.soh !== null) obs.push("Probador de baterías: SOH " + m.probador.soh + " %" +
+      (m.probador.soc !== null ? ", SOC " + m.probador.soc + " %" : ""));
+    var renglones = [];
+    obs.filter(Boolean).forEach(function (t) { renglones = renglones.concat(E.envolver(t, 8.5, false, W - 6, 6)); });
+    for (var r = 0; r < Math.max(10, renglones.length); r++) {
+      L2.linea(X, y2 + r * 14 + 3, X + W, y2 + r * 14 + 3, 0.3);
+      if (renglones[r]) L2.texto(renglones[r], X + 3, y2 + r * 14, 8.5, false);
+    }
+    y2 += Math.max(10, renglones.length) * 14 + 8;
+    y2 = barra(L2, y2, "8. Grupo operativo");
+    L2.texto("SI", X + W / 2 - 120, y2 + 9, 9, true); celda(L2, X + W / 2 - 100, y2, 40, 13, inf.operativo === true ? "X" : "", 9, true, null, true);
+    L2.texto("NO", X + W / 2 + 40, y2 + 9, 9, true); celda(L2, X + W / 2 + 60, y2, 40, 13, inf.operativo === false ? "X" : "", 9, true, null, true);
+    y2 += 30;
+    L2.texto("POR LA EMPRESA:", X, y2, 9, true); L2.texto("CLIENTE:", X + W / 2, y2, 9, true);
+    y2 += 40;
+    [0, 1].forEach(function (i) {
+      firma(L2, X, y2 + i * 62, W / 2 - 20, "Firma:", inf.firmas.empresa[i], im);
+      firma(L2, X + W / 2, y2 + i * 62, W / 2 - 20, "Firma:", inf.firmas.cliente[i], im);
+    });
+    return [L, L2];
+  }
+
+  /* ---------- ficha de trabajo para mantenimiento ---------- */
+  function ficha(m, im) {
+    var F = M.FORMATO.ot, ot = m.ot, pie = "TAG " + m.tag + " · N° Orden " + v(ot.ot);
+    var L = new E.Lienzo(), y = cabecera(L, F.titulo + " · N° Orden " + v(ot.ot), im, pie);
+    var c1 = 110, c2 = W / 2 - c1, filas = [
+      ["Descripción Orden", ot.descripcion, "Fecha Inicio Extrema", fecha(ot.fechaInicioExtrema)],
+      ["N° Aviso", ot.aviso, "Denominación", ot.denominacion],
+      ["Ubicación Técnica", ot.ubicacionTecnica, "Hoja de ruta", ot.hojaRuta],
+      ["Denom. Equipo", ot.denomEquipo, "Impacto", ot.impacto],
+      ["Puesto Trabajo Resp.", ot.puestoTrabajo, "Autor del Aviso", ot.autorAviso],
+      ["Fecha Requerida", fecha(ot.fechaRequerida), "N° Plan Valor Contador", ot.planValorContador]];
+    filas.forEach(function (f) {
+      celda(L, X, y, c1, 15, f[0], 7.5, true, CLARO); celda(L, X + c1, y, c2, 15, f[1], 8);
+      celda(L, X + W / 2, y, c1, 15, f[2], 7.5, true, CLARO); celda(L, X + W / 2 + c1, y, c2, 15, f[3], 8);
+      y += 15;
+    });
+    y += 8;
+    // Operaciones planificadas
+    var cOp = [[34, "N° Opr"], [W - 34 - 70 - 40 - 34 - 40 - 60 - 60 - 50, "Descripción"], [70, "Puesto Trabajo"],
+               [40, "Trabajo"], [34, "Dur."], [40, "Cantidad"], [60, "N° Empleado"], [60, "Fecha prog."], [50, "Hora prog."]];
+    var cx = X;
+    cOp.forEach(function (c) { celda(L, cx, y, c[0], 14, c[1], 7, true, CLARO, true); cx += c[0]; });
+    y += 14;
+    ot.operaciones.forEach(function (op) {
+      var vals = [op.numero, op.descripcion, op.puestoTrabajo, v(op.trabajo), v(op.duracion), v(op.cantidad),
+                  op.empleado, fecha(op.fechaProg), op.horaProg];
+      cx = X;
+      cOp.forEach(function (c, i) { celda(L, cx, y, c[0], 18, vals[i], 7.5, false, null, i !== 1); cx += c[0]; });
+      y += 18;
+    });
+    y += 10;
+    // Tarea real (resumen horas hombre)
+    L.centrado("Tarea Real (Resumen Hrs Hombre)", X, W, y, 9, true, "0.75 0.1 0.1"); y += 5;
+    var cR = [[50, "N° Opr"], [80, "Fecha Inicio"], [70, "Hora Inicio"], [80, "Fecha Fin"], [70, "Hora Fin"],
+              [70, "Trabajo Total"], [W - 420, "N° Empleado"]];
+    cx = X;
+    cR.forEach(function (c) { celda(L, cx, y, c[0], 14, c[1], 7.5, true, CLARO, true); cx += c[0]; });
+    y += 14;
+    ot.operaciones.forEach(function (op) {
+      var fi = fecha(op.inicio).split(" "), ff = fecha(op.fin).split(" ");
+      var vals = [op.numero, fi[0] || "", fi[1] || "", ff[0] || "", ff[1] || "", v(op.horasHombre), op.empleado];
+      cx = X;
+      cR.forEach(function (c, i) { celda(L, cx, y, c[0], 15, vals[i], 8, false, null, true); cx += c[0]; });
+      y += 15;
+    });
+    y += 10;
+    L.texto("Observaciones:", X, y, 8.5, true, "0.75 0.1 0.1");
+    E.envolver(ot.observaciones || "", 8.5, false, W - 6, 4).forEach(function (l, i) {
+      L.linea(X, y + 16 + i * 13, X + W, y + 16 + i * 13, 0.3);
+      L.texto(l, X + 3, y + 13 + i * 13, 8.5, false);
+    });
+    y += 16 + 4 * 13;
+    L.texto("Descripción de Defecto RECO:", X, y, 8.5, true, "0.75 0.1 0.1");
+    L.texto(E.recortar(ot.defectoReco || "", 8.5, false, W - 160), X + 150, y, 8.5, false);
+    y += 14;
+    [["N° serie Entrada", ot.serieEntrada, "N° serie Salida", ot.serieSalida],
+     ["Valor de Contador", v(ot.horometroSalida), "Fecha y Hora", fecha(ot.fechaHoraContador)]].forEach(function (f) {
+      celda(L, X, y, c1, 15, f[0], 8, false); celda(L, X + c1, y, c2, 15, f[1], 8, true);
+      celda(L, X + W / 2, y, c1, 15, f[2], 8, false); celda(L, X + W / 2 + c1, y, c2, 15, f[3], 8, true);
+      y += 15;
+    });
+    celda(L, X, y, W, 14, "Trabajo Adicional Requerido", 8, true, GRIS, true); y += 14;
+    celda(L, X, y, 90, 15, "Crear Aviso (S/N)", 8, true, CLARO); celda(L, X + 90, y, 40, 15,
+      ot.crearAviso === true ? "S" : ot.crearAviso === false ? "N" : "", 9, true, null, true);
+    celda(L, X + 130, y, 80, 15, "Texto de Aviso", 8, true, CLARO); celda(L, X + 210, y, W - 210, 15, ot.textoAviso, 8);
+    y += 15;
+    celda(L, X, y, W, 14, "Firmas", 8, true, GRIS, true); y += 50;
+    firma(L, X, y, W / 2 - 20, "Persona Realizando Tarea:", ot.firmas.tecnico, im);
+    firma(L, X + W / 2, y, W / 2 - 20, "Supervisor (Capataz):", ot.firmas.supervisor, im);
+    y += 50;
+    celda(L, X, y, 110, 30, "Tarea Completa", 9, true, null);
+    celda(L, X + 110, y, 30, 15, "SI", 8, true, ot.tareaCompleta === true ? GRIS : null, true);
+    celda(L, X + 140, y, W - 140, 15, F.tareaCompleta.SI, 8);
+    celda(L, X + 110, y + 15, 30, 15, "NO", 8, true, ot.tareaCompleta === false ? GRIS : null, true);
+    celda(L, X + 140, y + 15, W - 140, 15, F.tareaCompleta.NO, 8);
+
+    // Página 2: desviaciones, todas las causas impresas, con lo registrado
+    var L2 = new E.Lienzo(), y2 = cabecera(L2, F.titulo + " · N° Orden " + v(ot.ot), im, pie);
+    L2.centrado("Desviaciones", X, W, y2 + 4, 11, true); y2 += 12;
+    var reg = {};
+    ot.demoras.forEach(function (d) { if (d.tipo) reg[d.tipo] = d; });
+    F.desviaciones.forEach(function (grp) {
+      celda(L2, X, y2, 230, 13, grp[0], 7.5, true, GRIS); celda(L2, X + 230, y2, 60, 13, "Duración", 7.5, true, GRIS, true);
+      celda(L2, X + 290, y2, W - 290, 13, "Descripción del Retraso", 7.5, true, GRIS);
+      y2 += 13;
+      grp[1].forEach(function (t) {
+        var d = reg[t] || {};
+        celda(L2, X, y2, 230, 12, t, 7.5); celda(L2, X + 230, y2, 60, 12, v(d.duracion), 7.5, true, null, true);
+        celda(L2, X + 290, y2, W - 290, 12, d.descripcion || "", 7.5);
+        y2 += 12;
+      });
+    });
+    return [L, L2];
+  }
+
+  /* ---------- check-list de baterías ---------- */
+  function baterias(m, im) {
+    var F = M.FORMATO.baterias, c = m.baterias[0];
+    if (!c) return [];
+    var L = new E.Lienzo(), y = cabecera(L, F.titulo, im, "TAG " + m.tag + " · OT " + v(m.ot.ot));
+    var c1 = 120, c2 = W / 2 - c1;
+    [["N° de OT", c.ot || m.ot.ot, "TAG del grupo electrógeno", m.tag],
+     ["Modelo del grupo electrógeno", m.equipo.grupo.modelo, "Fecha y hora", fecha(c.fecha)],
+     ["Marca", c.bateria.marca, "Número de baterías", v(c.bateria.cantidad)],
+     ["Modelo", c.bateria.modelo, "V · Ah · CCA", [v(c.bateria.voltaje) && c.bateria.voltaje + " V",
+       v(c.bateria.ah) && c.bateria.ah + " Ah", v(c.bateria.cca) && c.bateria.cca + " CCA"].filter(Boolean).join(" · ")]
+    ].forEach(function (f) {
+      celda(L, X, y, c1, 14, f[0], 7.5, true, CLARO); celda(L, X + c1, y, c2, 14, f[1], 8, true);
+      celda(L, X + W / 2, y, c1, 14, f[2], 7.5, true, CLARO); celda(L, X + W / 2 + c1, y, c2, 14, f[3], 8, true);
+      y += 14;
+    });
+    celda(L, X, y, W, 13, "CARACTERÍSTICAS DE LA BATERÍA", 7.5, true, CLARO, true); y += 13;
+    celda(L, X, y, W, 22, c.caracteristicas, 8); y += 28;
+    celda(L, X, y, W, 13, "RELACIÓN DE ACTIVIDADES", 8, true, CLARO, true); y += 13;
+    var cPM = 42, cItem = 28, cTxt = W - cItem - cPM * 4;
+    celda(L, X, y, cItem + cTxt, 36, F.intro, 7.5);
+    celda(L, X + cItem + cTxt, y, cPM * 4, 13, "FRECUENCIA", 7.5, true, CLARO, true);
+    M.FRECUENCIAS.forEach(function (f, i) {
+      celda(L, X + cItem + cTxt + cPM * i, y + 13, cPM, 23, f.rotulo.replace(" · ", " "), 6.5, true, CLARO, true);
+    });
+    y += 36;
+    ["PLOMO_ACIDO", "LIBRE_MANTENIMIENTO"].forEach(function (tipo) {
+      celda(L, X, y, cItem, 12, "Ítem", 7, true, CLARO, true); celda(L, X + cItem, y, cTxt, 12, F.bloques[tipo], 7.5, true, CLARO);
+      M.FRECUENCIAS.forEach(function (f, i) { celda(L, X + cItem + cTxt + cPM * i, y, cPM, 12, "", 7, false, CLARO); });
+      y += 12;
+      M.ITEMS_BATERIA[tipo].forEach(function (i) {
+        var h = F.items[i].length > 120 ? 22 : 13;
+        celda(L, X, y, cItem, h, String(i), 7.5, false, null, true);
+        celda(L, X + cItem, y, cTxt, h, F.items[i], 7);
+        M.FRECUENCIAS.forEach(function (f, k) {
+          celda(L, X + cItem + cTxt + cPM * k, y, cPM, h, f.id === c.frecuencia ? v(c.items[i]) : "", 8, true, null, true);
+        });
+        y += h;
+      });
+    });
+    y += 6;
+    celda(L, X, y, W, 12, "OBSERVACIONES", 7.5, true, CLARO); y += 12;
+    var obs = [c.observaciones];
+    if (m.probador.soh !== null) obs.push("Probador: SOH " + m.probador.soh + " %" + (m.probador.soc !== null ? " · SOC " + m.probador.soc + " %" : "") +
+      (m.probador.voltaje !== null ? " · " + m.probador.voltaje + " V" : "") + (m.probador.ccaMedido !== null ? " · " + m.probador.ccaMedido + " CCA" : "") +
+      (m.probador.resistenciaMOhm !== null ? " · " + m.probador.resistenciaMOhm + " mΩ" : ""));
+    celda(L, X, y, W, 40, obs.filter(Boolean).join(" — "), 8); y += 54;
+    L.texto("Leyenda: " + F.leyenda.map(function (l) { return l[0] + " " + l[1]; }).join(" · "), X, y, 7.5, false); y += 40;
+    [0, 1, 2].forEach(function (i) { firma(L, X + (i % 2) * (W / 2), y + Math.floor(i / 2) * 58, W / 2 - 20, "Personal:", c.personal[i], im); });
+    firma(L, X + W / 2, y + 58, W / 2 - 20, "Supervisor a cargo:", c.supervisor, im);
+    if (c.notas) L.texto(E.recortar("NOTAS: " + c.notas, 8, false, W), X, y + 110, 8, false);
+    return [L];
+  }
+
+  /* ---------- anexo fotográfico ---------- */
+  function anexo(m, im) {
+    var pie = "TAG " + m.tag + " · OT " + v(m.ot.ot) + " · Anexo fotográfico", paginas = [];
+    var L = null, y = 0, col = 0, celdaW = W / 2 - 6, fotoH = 175, bloque = fotoH + 34;
+    function nueva() { L = new E.Lienzo(); paginas.push(L); y = cabecera(L, "ANEXO FOTOGRÁFICO · " + m.tag, im, pie); col = 0; }
+    nueva();
+    var seccion = "";
+    M.FORMATO.fotos.forEach(function (cas) {
+      var fotos = m.fotos.filter(function (f) { return f.casilla === cas[0] && f.foto && im[f.foto]; });
+      fotos.forEach(function (f) {
+        if (cas[1] !== seccion) {
+          if (col) { col = 0; y += bloque; }
+          if (y + 16 + bloque > A4.h - X) nueva();
+          seccion = cas[1];
+          y = barra(L, y, seccion);
+        }
+        if (col === 0 && y + bloque > A4.h - X) { nueva(); y = barra(L, y, seccion + " (cont.)"); }
+        var x = X + col * (W / 2 + 6), g = im[f.foto], k = Math.min((celdaW - 6) / g.w, (fotoH - 6) / g.h);
+        L.caja(x, y, celdaW, fotoH, null, 0.5);
+        L.imagen(g.ref, x + (celdaW - g.w * k) / 2, y + (fotoH - g.h * k) / 2, g.w * k, g.h * k);
+        var es = (m.estados || {})[cas[0]], leyenda = cas[0] + " · " + cas[2];
+        celda(L, x, y + fotoH, celdaW, 14, leyenda, 7.5, true, CLARO);
+        var nota = cas[0] === M.FORMATO.HALLAZGO ? f.texto :
+          (es && es.estado ? { OK: "OK", OBS: "Observado", FALLA: "Falla" }[es.estado] + (es.nota ? ": " + es.nota : "") : "");
+        if (nota) L.texto(E.recortar(nota, 7.5, false, celdaW - 4), x + 2, y + fotoH + 25, 7.5, false,
+                          es && es.estado === "FALLA" ? "0.65 0.1 0.05" : "0 0 0");
+        col = 1 - col;
+        if (col === 0) y += bloque;
+      });
+    });
+    return paginas;
+  }
+
+  /* ---------- reunir imágenes y armar ---------- */
+  function imagenes(m, cuales) {
+    var ids = {}, add = function (x) { if (x) ids[x] = true; };
+    if (cuales.indexOf("anexo") !== -1) m.fotos.forEach(function (f) { if (f.casilla) add(f.foto); });
+    if (cuales.indexOf("informe") !== -1) m.informe.firmas.empresa.concat(m.informe.firmas.cliente).forEach(function (f) { add(f.imagen); });
+    if (cuales.indexOf("ficha") !== -1) { add(m.ot.firmas.tecnico.imagen); add(m.ot.firmas.supervisor.imagen); }
+    if (cuales.indexOf("baterias") !== -1 && m.baterias[0]) m.baterias[0].personal.concat([m.baterias[0].supervisor])
+      .forEach(function (f) { add(f.imagen); });
+    var im = {}, ref = 1;
+    var lg = E.logo();
+    if (lg) im.__logo__ = { w: lg.w, h: lg.h, bytes: E.logoBytes(), ref: ref++ };
+    return Promise.all(Object.keys(ids).map(function (id) {
+      return CAMPO.almacen.fotos.leer(id).then(function (r) {
+        if (!r || !r.archivo) return null;
+        var url = URL.createObjectURL(r.archivo);
+        return E.aJpeg(url).then(function (j) { URL.revokeObjectURL(url); return [id, j]; },
+                                 function () { URL.revokeObjectURL(url); return null; });
+      });
+    })).then(function (lista) {
+      lista.forEach(function (x) { if (x) { x[1].ref = ref++; im[x[0]] = x[1]; } });
+      return im;
+    });
+  }
+
+  var ARMAR = { informe: informe, ficha: ficha, baterias: baterias, anexo: anexo };
+  var NOMBRES = { informe: "informe-tecnico", ficha: "ficha-de-trabajo", baterias: "check-list-baterias", anexo: "anexo-fotografico" };
+
+  /* `cuales`: lista de documentos, en el orden en que van en el PDF. */
+  function pdf(x, cuales) {
+    var m = M.normalizar.mantenimiento(x);
+    cuales = cuales || ["informe", "ficha", "baterias", "anexo"];
+    return imagenes(m, cuales).then(function (im) {
+      var paginas = [];
+      cuales.forEach(function (c) { paginas = paginas.concat(ARMAR[c](m, im)); });
+      var usadas = {};
+      Object.keys(im).forEach(function (k) { usadas[k] = im[k]; });
+      return E.ensamblarPdf(paginas.length ? paginas : [new E.Lienzo()], usadas);
+    });
+  }
+  function nombre(x, cuales) {
+    var m = M.normalizar.mantenimiento(x);
+    var base = cuales && cuales.length === 1 ? NOMBRES[cuales[0]] : "documentos";
+    return [base, m.tag, m.ot.ot ? "OT" + m.ot.ot : ""].filter(Boolean).join("-").replace(/[^A-Za-z0-9._-]+/g, "-") + ".pdf";
+  }
+
+  return { pdf: pdf, nombre: nombre };
 })();
 </script>
 

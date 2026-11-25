@@ -27,3 +27,7 @@ Textos y estructura: `MANT.modelo.FORMATO.informe`; modelo `MANT.modelo.informe(
 
 Reglas: un informe = un TAG; lo no leído queda vacío o «[ leer en equipo ]»,
 nunca se inventa; las validaciones avisan, no bloquean.
+
+PDF: `MANT.documentos.pdf(m, ["informe"])` (también "ficha", "baterias",
+"anexo", o los cuatro en uno). Sigue el papel sección por sección; lo vacío
+sale en blanco. Pruebas: `clientes/campo/tests/test_documentos.py`.
