@@ -161,6 +161,7 @@ jobs:
             tests/test_anulacion.py \
             tests/test_ordenes.py \
             tests/test_identidad.py \
+            tests/test_reporte.py \
             tests/test_build_extract.py \
             tests/test_layout.py \
             tests/test_schema.py \

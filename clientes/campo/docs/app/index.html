@@ -5115,6 +5115,15 @@ MANT.ordenes = (function () {
       campos([["ot.firmas.tecnico.nombre", "Persona realizando tarea"], ["ot.firmas.tecnico.fecha", "Fecha", "fecha"],
               ["ot.firmas.supervisor.nombre", "Supervisor (capataz)"], ["ot.firmas.supervisor.fecha", "Fecha", "fecha"]]));
 
+    html += grupo("Reporte para WhatsApp",
+      '<textarea class="salida" id="m-o-wa" readonly aria-label="Reporte para WhatsApp"></textarea>' +
+      '<div class="m-sn" style="margin-top:.5rem">' +
+      '<button type="button" class="primary" data-accion="wa-copiar">Copiar</button>' +
+      '<button type="button" data-accion="wa-compartir">Compartir</button>' +
+      '<button type="button" data-accion="wa-pdf">PDF</button>' +
+      '<button type="button" data-accion="wa-excel">Excel</button></div>' +
+      '<p class="m-nota-sn" id="m-o-wa-estado" role="status"></p>');
+
     $("#m-o-cuerpo").innerHTML = html;
     pintarAlertas();
   }
@@ -5124,8 +5133,14 @@ MANT.ordenes = (function () {
   function clave(a) { return a.campo + "|" + a.mensaje; }
   function alertas() { return m ? V.ordenar(V.validarMantenimiento(m, ctx)) : []; }
 
+  function pintarReporte() {
+    var n = $("#m-o-wa");
+    if (n && m && MANT.reporte) n.value = MANT.reporte.texto(m);
+  }
+
   function pintarAlertas() {
     if (!m) return;
+    pintarReporte();
     var l = alertas();
     var vistas = {};
     m.decisiones.forEach(function (d) { vistas[d.clave] = d; });
@@ -5225,6 +5240,7 @@ MANT.ordenes = (function () {
       tocar(); return;
     }
     var acc = b.dataset.accion;
+    if (acc && acc.indexOf("wa-") === 0) { reporte(acc); return; }
     if (acc === "confirmar") confirmarPlaca();
     else if (acc === "crear-ficha") {
       MANT.equipos.crear(m.tag);
@@ -5237,6 +5253,27 @@ MANT.ordenes = (function () {
       m.ot.demoras.push(M.demora()); tocar(); pintar();
     } else if (acc === "quitar-demora") {
       m.ot.demoras.splice(Number(b.dataset.i), 1); tocar(); pintar();
+    }
+  }
+
+  /* ---------- el reporte: copiar, compartir, PDF y Excel ---------- */
+  function reporte(acc) {
+    var R2 = MANT.reporte, txt = R2.texto(m);
+    var aviso = function (t) { $("#m-o-wa-estado").textContent = t || ""; };
+    var copiado = function (r) {
+      aviso(r === "copiado" ? "Copiado: péguelo en el grupo de WhatsApp."
+                            : "Seleccione el texto y cópielo a mano.");
+    };
+    if (acc === "wa-copiar") {
+      R.copiar(txt, copiado, $("#m-o-wa"));
+    } else if (acc === "wa-compartir") {
+      // En el teléfono abre el menú de compartir, donde está WhatsApp.
+      if (navigator.share) navigator.share({ text: txt }).catch(function () { /* cancelado */ });
+      else R.copiar(txt, copiado, $("#m-o-wa"));
+    } else if (acc === "wa-pdf") {
+      R.entregar(R2.pdf(m), R2.nombre(m, "pdf"), aviso);
+    } else if (acc === "wa-excel") {
+      R.entregar(R2.xlsx(m), R2.nombre(m, "xlsx"), aviso);
     }
   }
 
@@ -9088,6 +9125,7 @@ var ENTREGABLE = (function () {
   }
 
   ENTREGABLE.pdf = pdf;
+  ENTREGABLE.ensamblarPdf = ensamblar;
   ENTREGABLE.aJpeg = aJpeg;
 })();
 </script>
@@ -9646,6 +9684,210 @@ var ENTREGABLE = (function () {
   ENTREGABLE.ASPECTO_BLOQUE = ASPECTO_BLOQUE;
   ENTREGABLE.ANCHO_FOTO_PX = ANCHO_FOTO_PX;
   ENTREGABLE.ALTO_FOTO_PX = ALTO_FOTO_PX;
+})();
+</script>
+
+<script>
+/* ================================================================
+   MANTENIMIENTO · REPORTE · el mensaje del grupo de WhatsApp.
+
+   Una sola estructura —`datos(m)`— y tres salidas que dicen lo mismo: el
+   texto para pegar en el grupo (negritas con *asteriscos*), un PDF de una
+   hoja y un Excel de dos columnas. Formato del kit (reporteWhatsapp.ts):
+   TAG · UBICACIÓN · HORÓMETRO · GRUPO · MOTOR · VOLTAJE · O.T. · ACTIVIDAD
+   · OBSERVACIONES · ESTADO DE EQUIPO · Reportado por.
+
+   Nada se inventa: un dato de placa sin confirmar o un horómetro sin leer
+   sale como «[ leer en equipo ]». Y no lleva datos del cliente.
+   ================================================================ */
+MANT.reporte = (function () {
+  "use strict";
+  var M = MANT.modelo;
+  var FALTA = "[ leer en equipo ]";
+
+  var TITULOS = {
+    INSPECCION: "REPORTE DE INSPECCIÓN",
+    PREVENTIVO: "REPORTE DE MANTENIMIENTO PREVENTIVO",
+    CORRECTIVO: "REPORTE DE MANTENIMIENTO CORRECTIVO",
+    VISITA: "REPORTE DE VISITA TÉCNICA"
+  };
+
+  function lineas(t) {
+    return String(t || "").split(/\r?\n|;/).map(function (x) {
+      return x.replace(/^[\s•*-]+/, "").trim();
+    }).filter(Boolean);
+  }
+  function unir(partes, sep) {
+    return partes.filter(function (x) { return x !== null && x !== undefined && String(x).trim() !== ""; })
+                 .join(sep || " ");
+  }
+
+  /* El estado sale de la aptitud declarada (sección 8), no se adivina. */
+  function estado(m) {
+    var op = m.informe.operativo;
+    if (op === false) return "Inoperativo";
+    if (op === null) return "Por confirmar";
+    var obs = m.ot.crearAviso === true ||
+      (m.ot.defectoReco && !/sin defecto/i.test(m.ot.defectoReco));
+    return obs ? "Operativo con observaciones" : "Operativo";
+  }
+
+  function datos(x) {
+    var m = M.normalizar.mantenimiento(x), e = m.equipo, c = m.clasificacion;
+    var titulo = (TITULOS[c.tipo] || "REPORTE DE EQUIPO") +
+      (c.pm ? " " + M.frecuencia(c.pm).rotulo.replace(" · ", " (").replace("HRS", "H)") : "") +
+      " – GRUPO ELECTRÓGENO";
+    var horas = m.ot.horometroSalida !== null ? m.ot.horometroSalida : e.horometro;
+    var grupo = unir([e.grupo.marca, e.grupo.modelo]);
+    var motor = unir([e.motor.marca, e.motor.modelo]);
+    var voltaje = e.voltajeNominal
+      ? unir([e.voltajeNominal + " Vac", e.frecuenciaHz ? e.frecuenciaHz + " Hz" : "",
+              e.kva ? e.kva + " kVA" : ""], " / ")
+      : FALTA;
+
+    var actividades = lineas(m.ot.observaciones);
+    if (c.tipo === "CORRECTIVO") actividades = actividades.concat(lineas(m.correctivo.accion));
+    if (!actividades.length) {
+      actividades = m.ot.operaciones.map(function (op) { return op.descripcion; }).filter(Boolean);
+    }
+    if (!actividades.length) actividades = ["[ sin actividad registrada ]"];
+
+    var obs = [];
+    if (c.tipo === "CORRECTIVO" && m.correctivo.falla) obs.push("Falla: " + m.correctivo.falla.trim());
+    if (m.ot.defectoReco && !/sin defecto/i.test(m.ot.defectoReco)) obs.push("Defecto: " + m.ot.defectoReco.trim());
+    if (m.ot.crearAviso === true && m.ot.textoAviso) obs.push("Aviso: " + m.ot.textoAviso.trim());
+    if (!obs.length) obs.push("Sin observaciones");
+
+    return {
+      titulo: titulo,
+      filas: [
+        ["TAG", m.tag || FALTA],
+        ["UBICACIÓN", e.ubicacion || FALTA],
+        ["HORÓMETRO", horas !== null ? horas + " hrs" : FALTA],
+        ["GRUPO", grupo ? grupo + (e.grupo.serie ? " – Serie " + e.grupo.serie : " – Serie " + FALTA) : FALTA],
+        ["MOTOR", motor || FALTA],
+        ["VOLTAJE", voltaje],
+        ["O.T.", m.ot.ot || FALTA]
+      ],
+      actividades: actividades,
+      observaciones: obs,
+      estado: estado(m),
+      reportadoPor: m.ot.firmas.tecnico.nombre || "[ sin nombre ]",
+      placaConfirmada: !!m.placaConfirmada
+    };
+  }
+
+  function texto(x) {
+    var d = datos(x);
+    return ["*" + d.titulo + "*", ""]
+      .concat(d.filas.map(function (f) { return "*" + f[0] + ":* " + f[1]; }))
+      .concat(["", "*ACTIVIDAD:*"], d.actividades.map(function (a) { return "• " + a; }))
+      .concat(["", "*OBSERVACIONES:*"], d.observaciones.map(function (a) { return "• " + a; }))
+      .concat(["", "*ESTADO DE EQUIPO:* " + d.estado, "", "*Reportado por:* " + d.reportadoPor])
+      .join("\n");
+  }
+
+  function nombre(x, ext) {
+    var m = M.normalizar.mantenimiento(x);
+    var base = ["reporte", m.tag, m.ot.ot ? "OT" + m.ot.ot : ""].filter(Boolean).join("-")
+      .replace(/[^A-Za-z0-9._-]+/g, "-");
+    return base + "." + ext;
+  }
+
+  /* ---------- PDF: una hoja A4 con el mismo contenido ---------- */
+  function pdf(x) {
+    var E = ENTREGABLE, d = datos(x), L = new E.Lienzo();
+    var izq = E.MARGEN, ancho = E.ANCHO, y = E.MARGEN + 14;
+    var id = CAMPO.identidad.leer();
+    if (id.empresa) { L.texto(id.empresa, izq, y, 9, false, "0.35 0.35 0.35"); y += 16; }
+    E.envolver(d.titulo, 13, true, ancho, 3).forEach(function (t) { L.texto(t, izq, y, 13, true); y += 17; });
+    y += 6;
+    L.linea(izq, y, izq + ancho, y, 1); y += 18;
+    d.filas.forEach(function (f) {
+      L.texto(f[0] + ":", izq, y, 10, true);
+      E.envolver(f[1], 10, false, ancho - 95, 3).forEach(function (t, i) {
+        L.texto(t, izq + 95, y + i * 13, 10, false);
+        if (i) y += 13;
+      });
+      y += 17;
+    });
+    function bloque(rotulo, lista) {
+      y += 8;
+      L.texto(rotulo, izq, y, 10, true); y += 16;
+      lista.forEach(function (a) {
+        E.envolver(a, 10, false, ancho - 14, 6).forEach(function (t, i) {
+          if (!i) L.texto("•", izq + 2, y, 10, false);
+          L.texto(t, izq + 14, y, 10, false); y += 13;
+        });
+        y += 3;
+      });
+    }
+    bloque("ACTIVIDAD:", d.actividades);
+    bloque("OBSERVACIONES:", d.observaciones);
+    y += 10;
+    L.texto("ESTADO DE EQUIPO:", izq, y, 11, true);
+    L.texto(d.estado, izq + 130, y, 11, true, d.estado === "Inoperativo" ? "0.6 0.1 0.05" : "0 0 0");
+    y += 24;
+    L.texto("Reportado por: " + d.reportadoPor, izq, y, 10, false);
+    if (!d.placaConfirmada) {
+      y += 20;
+      L.texto("Datos de placa sin confirmar por el técnico.", izq, y, 8, false, "0.45 0.45 0.45");
+    }
+    return E.ensamblarPdf([L], {});
+  }
+
+  /* ---------- Excel: dos columnas, Campo y Valor ---------- */
+  function escXml(t) {
+    return String(t == null ? "" : t).replace(/[<>&"]/g, function (c) {
+      return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c];
+    });
+  }
+  function xlsx(x) {
+    var d = datos(x), filas = [["Campo", "Valor"], ["REPORTE", d.titulo]];
+    d.filas.forEach(function (f) { filas.push(f); });
+    d.actividades.forEach(function (a, i) { filas.push(["ACTIVIDAD " + (i + 1), a]); });
+    d.observaciones.forEach(function (a, i) { filas.push(["OBSERVACIÓN " + (i + 1), a]); });
+    filas.push(["ESTADO DE EQUIPO", d.estado], ["REPORTADO POR", d.reportadoPor]);
+    var hoja = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<cols><col min="1" max="1" width="22" customWidth="1"/><col min="2" max="2" width="80" customWidth="1"/></cols>' +
+      "<sheetData>" + filas.map(function (f, i) {
+        return '<row r="' + (i + 1) + '">' + f.map(function (v, j) {
+          var ref = (j ? "B" : "A") + (i + 1);
+          if (typeof v === "number") return '<c r="' + ref + '"><v>' + v + "</v></c>";
+          return '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + escXml(v) + "</t></is></c>";
+        }).join("") + "</row>";
+      }).join("") + "</sheetData></worksheet>";
+    var cod = new TextEncoder();
+    var piezas = {
+      "[Content_Types].xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+        '<Default Extension="xml" ContentType="application/xml"/>' +
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>' +
+        "</Types>",
+      "_rels/.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+        "</Relationships>",
+      "xl/workbook.xml": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+        '<sheets><sheet name="Reporte" sheetId="1" r:id="rId1"/></sheets></workbook>',
+      "xl/_rels/workbook.xml.rels": '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>' +
+        "</Relationships>",
+      "xl/worksheets/sheet1.xml": hoja
+    };
+    var zip = CAMPO.armarZip(Object.keys(piezas).map(function (n) {
+      return { nombre: n, datos: cod.encode(piezas[n]) };
+    }));
+    return new Blob([zip], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  }
+
+  return { datos: datos, texto: texto, pdf: pdf, xlsx: xlsx, nombre: nombre, estado: estado };
 })();
 </script>
 
