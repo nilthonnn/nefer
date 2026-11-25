@@ -3328,12 +3328,20 @@ var RDRENTA = (function () {
    UNIMAQ · MODELO · los datos de los formatos de mantenimiento.
 
    Es la traducción de `modelos.ts` del kit a este repo, que no tiene
-   TypeScript ni compilador: los tipos quedan como fábricas que devuelven
-   la forma vacía, y normalizadores que completan lo que falte en un
-   registro guardado con una versión anterior. Sin pantallas ni DOM: todo
-   lo de aquí se prueba con datos.
+   TypeScript ni compilador, corregida contra los formatos en papel:
+   «Ficha de trabajo para Mantenimiento» (OT), «Informe técnico de grupo
+   electrógeno» (secciones 1–8) y «Check-list de baterías de grupos
+   electrógenos» (ítems 1–19). Donde el kit y el papel no coinciden manda
+   el papel: la tabla de parámetros tiene la columna VALOR INICIAL, el
+   informe lleva dos firmas por UNIMAQ y dos por el cliente, y las demoras
+   de la OT se anotan por categoría con su duración.
 
-   Tres decisiones que salen de las reglas del formato:
+   Los textos impresos de cada formato viven en FORMATO, una sola vez, y de
+   ahí salen la pantalla y el PDF. Van copiados tal cual del papel, erratas
+   incluidas («exitatriz», «este limpia»): el PDF tiene que coincidir con el
+   formato que el cliente ya conoce.
+
+   Tres decisiones que salen de las reglas:
 
      · Un proyecto de mantenimiento es UN TAG. El TAG vive en la cabecera
        (`m.tag`) y en ningún otro sitio: la OT, el informe y los check-list
@@ -3351,21 +3359,127 @@ var UNIMAQ = window.UNIMAQ || {};
 UNIMAQ.modelo = (function () {
   "use strict";
 
+  /* ---------- lo impreso en cada formato ---------- */
+  var FORMATO = {
+    informe: {
+      titulo: "INFORME TÉCNICO DE GRUPO ELECTRÓGENO",
+      servicio: [
+        ["2.1", "Inspección de G.E."], ["2.2", "Mantenimiento Preventivo"],
+        ["2.3", "Supervisión y/o visita técnica"], ["2.4", "Mantenimiento Correctivo"]],
+      motor: [
+        ["3.1", "Nivel de aceite"], ["3.2", "Nivel de refrigerante correcto"],
+        ["3.3", "Concentración de aditivos en refrig."],
+        ["3.4", "Verificación de carga y nivel de batería"],
+        ["3.5", "Limpieza de sistema y Filtro de aire"],
+        ["3.6", "Inspección de tensión de fajas"], ["3.7", "Fugas de aceite"],
+        ["3.8", "Fugas de refrigerante"], ["3.9", "Fugas de combustible"],
+        ["3.10", "Limpieza de radiador"], ["3.11", "Revisión y ajuste de pernos"],
+        ["3.12", "Revisión de conexiones eléctricas"]],
+      generador: [
+        ["4.1", "Funcionamiento del Módulo y del sistema de control", [
+          ["4.1.1", "Arranque/Parada manual"], ["4.1.2", "Funcionamiento automático"],
+          ["4.1.3", "Limpieza y desoxidado"],
+          ["4.1.4", "Inspección de instrumentos tablero de control"],
+          ["4.1.5", "Inspección de modulo y display"], ["4.1.6", "Parada de Emergencia"]]],
+        ["4.2", "Funcionamiento de Generador", [
+          ["4.2.1", "Limpiezas externas"], ["4.2.2", "Mantenimiento generador principal"],
+          ["4.2.3", "Mantenimiento de exitatriz"], ["4.2.4", "Inspección de diodos"],
+          ["4.2.5", "Inspección de rodaje"], ["4.2.6", "Prueba de aislamiento"]]]],
+      repuestos: [
+        ["5.1", "Filtro de aceite"], ["5.2", "Filtro de combustible"],
+        ["5.3", "Filtro separador"], ["5.4", "Filtro de agua refrigerante"],
+        ["5.5", "Filtro de aire"], ["5.6", "Aceite de motor"],
+        ["5.7", "Refrigerante de radiador"], ["5.8", "Fajas de ventilador/ alternador"],
+        ["5.9", "Empaque tapa balancines"], ["5.10", "Tapa de radiador"],
+        ["5.11", "Batería"], ["5.12", "Instrumento ( Reloj) de tablero"],
+        ["5.13", "Cables y terminales"], ["5.14", "Otros"]],
+      // Filas de la tabla 6, en el orden del papel. «Voltaje AC» es el de
+      // línea: el papel no tiene fila para el de fase-neutro.
+      parametros: [
+        ["voltajeLL", "Voltaje AC (Vac)"], ["corrienteA", "Corriente (Amp)"],
+        ["kw", "Potencia (kW)"], ["kva", "Potencia (kVA)"], ["hz", "Frecuencia (Hz)"],
+        ["vBateria", "Volt. Batería (Vcc)"], ["presionAceitePsi", "Presión de Aceite (PSI)"],
+        ["tempRefrigeranteC", "T° Refrigerante (°C)"], ["rpm", "Velocidad (RPM)"]],
+      columnas: [["inicial", "VALOR INICIAL"], [0, "VACIO"], [25, "25%"],
+                 [50, "50%"], [100, "100%"]]
+    },
+    baterias: {
+      titulo: "CHECK-LIST DE BATERÍAS DE GRUPOS ELECTRÓGENOS",
+      intro: "Se realizara la inspección de las baterías del grupo electrógeno " +
+             "considerando lo siguiente.",
+      bloques: { PLOMO_ACIDO: "Baterías Plomo-Ácido",
+                 LIBRE_MANTENIMIENTO: "Baterías de Libre Mantenimiento:" },
+      items: {
+        1: "Verificar que los cables de batería y terminales se encuentren en buen estado (evitar presencia desulfatación)",
+        2: "verificar que la carcasa esté operativa,que no cuente con daños físicos (bornes flojos o dañados, cubierta sin rajaduras,golpes,hinchazón en la carcasa)",
+        3: "Verificar que la superficie de la batería este limpia",
+        4: "Verificar que no exista fugas del electrolito de la batería.",
+        5: "Medir el nivel de voltaje de baterías con equipo de medición (multímetro - pinza amperimétrica)",
+        6: "Realizar diagnóstico de batería con equipo de medición (probador de batería). Uso de EPP categoría 2.",
+        7: "Realizar Limpieza externa de baterías con un paño limpio y húmedo (no se usará paño seco).ajuste de soportes y/o abrazaderas,con ayuda de un soplador se aplicará aire para retirar polvo.",
+        8: "Retirar las tapas de baterías luego se inspecciona de forma visual el nivel correcto del electrolito (placas cubiertas por el electrolito). de estar bajo el nivel del electrolito, añadir agua destilada.",
+        9: "Verificar ajuste de tuercas en el motor de arranque,asimismo verificar terminales y aislamiento de cables",
+        10: "Reemplazar baterías(*)",
+        11: "Verifica que los cables de batería y terminales se encuentren en buen estado (evitar presencia desulfatación)",
+        12: "Verificar que la carcasa esté operativa,que no cuente con daños físicos (bornes flojos o dañados. cubierta sin rajaduras,golpes,hinchazón en la carcasa)",
+        13: "Asegurar que la superficie de la batería este limpia",
+        14: "Verificación de estados de alerta del indicador de condición: (Verde=Operativo,Negro=Requiere Carga,Blanco =Reemplazo de Batería)",
+        15: "Medir el nivel de voltaje de baterías con equipo de medición (multimetro-pinza amperimétrica).",
+        16: "Realizar diagnóstico de batería con equipo de medición (probador de batería)",
+        17: "Se deberá realizar limpieza externa de baterías con un paño limpio y húmedo (no se usará paño seco).ajuste de soportes y/o abrazaderas,con ayuda de un soplador se aplicara aire para retirar polvo.",
+        18: "Verificar ajuste de tuercas en el motor de arranque,asimismo verificar terminales y aislamiento de cables.",
+        19: "Reemplazar baterías(*)"
+      },
+      leyenda: [["OK", "Realizado"], ["NO", "No se hizo"], ["NA", "No aplica"]]
+    },
+    ot: {
+      titulo: "Ficha de trabajo para Mantenimiento",
+      // Desviaciones: cada fila es una causa impresa, con su duración y la
+      // descripción del retraso. Se anota sólo la que ocurrió.
+      desviaciones: [
+        ["Gestión de Materiales Relacionada", [
+          "Demora: Retraso de Material", "Demora: Calidad de Material",
+          "Demora: Material Incorrecto", "No Ejecutada: Mat. no dispon.",
+          "No Ejecutada: Calidad de Mat.", "No Ejecutada: Material Incorr."]],
+        ["Proveedor de Servicios Relacionado", [
+          "Demora: Retraso de Apoyo", "No Ejecutada: Apoyo no dispon"]],
+        ["Operaciones Relacionadas", [
+          "Demora: Retraso de Equipo", "Demora: Preparación Incompleta",
+          "Demora: Condición Insegura", "No Ejecutada: Eq no disponible",
+          "No Ejecutada: Prep. Incompleta", "No Ejecutada: Condición Inseg."]],
+        ["Mantenimiento Relacionado", [
+          "Demora: Traslado y sin transp.", "Demora: Falla", "Demora: Atraso de personal",
+          "Demora: atraso equipo de apoyo", "Demora: PTO/Entrenamiento",
+          "Demora: Plan no ejecutable", "Demora: Sin Planificar",
+          "No ejecutada: Tras. sin transp", "No ejecutada: Falla",
+          "No ejecutada: Atraso personal", "No ejecutada: atraso eq. apoyo",
+          "No ejecutada: PTO/Entrenam.", "No ejecutada: Plan no ejec.",
+          "No ejecutada: Sin Planificar"]]],
+      tareaCompleta: {
+        SI: "Hacer notificación final y Cierre Técnico",
+        NO: "Hacer notificación parcial e imprimir otra ficha de trabajo" }
+    }
+  };
+
   var ESTADOS = ["OK", "NO", "NA"];
   var FRECUENCIAS = [
-    { id: "PM1_250", horas: 250, rotulo: "PM1 · 250 h" },
-    { id: "PM2_500", horas: 500, rotulo: "PM2 · 500 h" },
-    { id: "PM3_1000", horas: 1000, rotulo: "PM3 · 1000 h" },
-    { id: "PM4_2000", horas: 2000, rotulo: "PM4 · 2000 h" }
+    { id: "PM1_250", horas: 250, rotulo: "PM1 · 250 HRS" },
+    { id: "PM2_500", horas: 500, rotulo: "PM2 · 500 HRS" },
+    { id: "PM3_1000", horas: 1000, rotulo: "PM3 · 1000 HRS" },
+    { id: "PM4_2000", horas: 2000, rotulo: "PM4 · 2000 HRS" }
   ];
   var ESPECIALIDADES = { "0010": "ELECTRICO", "0020": "MECANICO" };
-  var TIPOS_SERVICIO = ["INSPECCION", "PREVENTIVO", "CORRECTIVO", "VISITA"];
   var TIPOS_BATERIA = ["PLOMO_ACIDO", "LIBRE_MANTENIMIENTO"];
-  // Ítems del check-list: 1–10 plomo-ácido, 11–19 libre mantenimiento.
   var ITEMS_BATERIA = { PLOMO_ACIDO: rango(1, 10), LIBRE_MANTENIMIENTO: rango(11, 19) };
-  var CARGAS = [0, 25, 50, 100];
-  var ITEMS_MOTOR = rango(1, 12).map(function (i) { return "3." + i; });
-  var ITEMS_REPUESTOS = rango(1, 14).map(function (i) { return "5." + i; });
+  // Columnas de la tabla de parámetros: la lectura inicial y las cuatro cargas.
+  var CARGAS = FORMATO.informe.columnas.map(function (c) { return c[0]; });
+  var ITEMS_MOTOR = FORMATO.informe.motor.map(function (x) { return x[0]; });
+  var ITEMS_GENERADOR = [];
+  FORMATO.informe.generador.forEach(function (g) {
+    g[2].forEach(function (x) { ITEMS_GENERADOR.push(x[0]); });
+  });
+  var ITEMS_REPUESTOS = FORMATO.informe.repuestos.map(function (x) { return x[0]; });
+  var ITEMS_SERVICIO = FORMATO.informe.servicio.map(function (x) { return x[0]; });
 
   function rango(a, b) { var l = []; for (var i = a; i <= b; i++) l.push(i); return l; }
 
@@ -3423,21 +3537,30 @@ UNIMAQ.modelo = (function () {
 
   function estado(x) { return ESTADOS.indexOf(x) !== -1 ? x : null; }
 
+  function mapa(claves, valor) {
+    var o = {};
+    claves.forEach(function (k) { o[k] = clon(valor); });
+    return o;
+  }
+
   /* ---------- fábricas: la forma vacía de cada cosa ---------- */
 
-  function placa() { return { marca: "", modelo: "", serie: "", extra: {} }; }
+  // SPEC y HORAS son columnas del cuadro EQUIPO del informe.
+  function placa() { return { marca: "", modelo: "", serie: "", spec: "", extra: {} }; }
 
   function bateriaPlaca() {
-    return { marca: "", modelo: "", voltaje: null, ah: null, cca: null };
+    return { marca: "", modelo: "", voltaje: null, ah: null, cca: null, cantidad: null };
   }
 
   // La ficha del equipo. Se guarda en la tienda `equipos`, con el TAG de clave.
   function equipo(t) {
+    var motor = placa(); motor.cpl = "";          // Cummins: Control Parts List
     var alt = placa(); alt.winding = "";
     return {
       tag: tag(t), ubicacion: "",
-      grupo: placa(), motor: placa(), alternador: alt,
-      controlador: "",
+      grupo: placa(), motor: motor, alternador: alt,
+      controlador: "",          // módulo de control: marca (EMCP, PowerStart, DSE…)
+      controladorModelo: "",
       voltajeNominal: null, fases: null, frecuenciaHz: null, kva: null, rpm: null,
       bateria: bateriaPlaca(),
       horometro: null,          // el último registrado
@@ -3445,29 +3568,40 @@ UNIMAQ.modelo = (function () {
     };
   }
 
+  /* Una operación de la OT. La parte planificada viene impresa de SAP; la
+     real (Tarea Real · Resumen Hrs Hombre) la llena el técnico. */
   function operacion(n) {
     n = String(n || "");
     return {
       numero: n, especialidad: ESPECIALIDADES[n] || "",
+      descripcion: "", puestoTrabajo: "", trabajo: null, duracion: null,
+      cantidad: null, fechaProg: "", horaProg: "",
       inicio: "", fin: "",       // "AAAA-MM-DDTHH:MM", hora local del equipo
-      horasHombre: null, empleado: "",
+      horasHombre: null,         // «Trabajo Total»
+      empleado: "",              // N° de empleado
       personas: 1                // HH = duración × personas; sólo para el aviso
     };
   }
 
-  function demora() { return { tipo: "", inicio: "", fin: "", descripcion: "" }; }
+  // Una fila de «Desviaciones»: la causa impresa, cuánto duró y por qué.
+  function demora() { return { categoria: "", tipo: "", duracion: null, descripcion: "" }; }
 
   // `imagen`: identificador del PNG en la tienda `fotos`, no los bytes.
   function firma() { return { nombre: "", fecha: "", imagen: null }; }
 
   function ordenTrabajo() {
     return {
-      ot: "", aviso: "", ubicacionTecnica: "", puestoTrabajo: "", descripcion: "",
+      ot: "", descripcion: "", aviso: "",
+      ubicacionTecnica: "", denominacion: "", denomEquipo: "",
+      puestoTrabajo: "", fechaInicioExtrema: "", fechaRequerida: "",
+      hojaRuta: "", impacto: "", autorAviso: "", planValorContador: "",
       operaciones: [operacion("0010"), operacion("0020")],
       demoras: [],
       observaciones: "",
       defectoReco: "",
-      horometroSalida: null,
+      serieEntrada: "", serieSalida: "",
+      horometroSalida: null,     // «Valor de Contador»
+      fechaHoraContador: "",
       crearAviso: null,          // null = sin marcar · true = S · false = N
       textoAviso: "",
       tareaCompleta: null,       // true → notificación final + cierre técnico
@@ -3484,38 +3618,45 @@ UNIMAQ.modelo = (function () {
   }
 
   function informe() {
-    var motor = {}, repuestos = {};
-    ITEMS_MOTOR.forEach(function (k) { motor[k] = null; });
-    ITEMS_REPUESTOS.forEach(function (k) { repuestos[k] = ""; });
     return {
-      ot: "", cliente: "", fecha: "",
-      tipoServicio: "",
-      motor: motor,
-      generadorTablero: {},      // "4.x" → estado; los ítems salen del formato en papel
-      repuestos: repuestos,      // "5.x" → cantidad o "—"
+      cliente: "", direccion: "", ot: "", fecha: "",
+      horas: { grupo: null, motor: null, generador: null },
+      // 1. Generalidades: lo que el técnico escribe en el informe, que puede
+      // ser lo medido (el papel de referencia dice 441 V) y no la placa.
+      generalidades: { voltaje: null, velocidad: null, moduloMarca: "",
+                       fases: null, frecuencia: null,
+                       derrateadoPara: "", msnm: "",
+                       moduloModelo: "", emisionCC: "" },
+      servicio: mapa(ITEMS_SERVICIO, false),
+      motor: mapa(ITEMS_MOTOR, null),
+      generadorTablero: mapa(ITEMS_GENERADOR, null),
+      otrosGenerador: "",
+      repuestos: mapa(ITEMS_REPUESTOS, ""),   // cantidad o "—"
+      guiaRemision: "",
       pruebas: CARGAS.map(prueba),
       observaciones: "",
       operativo: null,
-      firmas: { unimaq: firma(), cliente: firma() }
+      firmas: { unimaq: [firma(), firma()], cliente: [firma(), firma()] }
     };
   }
 
+  // El probador no tiene casilla en el papel: va al anexo y a observaciones.
   function probador() {
     return { soh: null, soc: null, voltaje: null, ccaMedido: null,
              resistenciaMOhm: null, instrumento: "" };
   }
 
   function checklist() {
-    var items = {};
-    rango(1, 19).forEach(function (i) { items[i] = null; });
     return {
-      fecha: "", frecuencia: "", tipo: "",
+      ot: "", fecha: "", frecuencia: "", tipo: "",
       bateria: bateriaPlaca(),
-      items: items,
+      caracteristicas: "",
+      items: mapa(rango(1, 19), null),
       probador: probador(),
       observaciones: "",
-      personal: [firma()],
-      supervisor: firma()
+      personal: [firma(), firma(), firma()],
+      supervisor: firma(),
+      notas: ""
     };
   }
 
@@ -3541,7 +3682,9 @@ UNIMAQ.modelo = (function () {
     e.tag = tag(e.tag);
     ["voltajeNominal", "fases", "frecuenciaHz", "kva", "rpm", "horometro"]
       .forEach(function (k) { e[k] = numero(e[k]); });
-    ["voltaje", "ah", "cca"].forEach(function (k) { e.bateria[k] = numero(e.bateria[k]); });
+    ["voltaje", "ah", "cca", "cantidad"].forEach(function (k) {
+      e.bateria[k] = numero(e.bateria[k]);
+    });
     return e;
   }
 
@@ -3556,18 +3699,39 @@ UNIMAQ.modelo = (function () {
   }
 
   function nInforme(x) {
+    // La forma del kit traía una firma por lado, no una lista: se envuelve
+    // antes de rellenar, que si no la cambiaría por la lista vacía.
+    if (esObjeto(x) && esObjeto(x.firmas)) {
+      var f = clon(x.firmas);
+      ["unimaq", "cliente"].forEach(function (lado) {
+        if (f[lado] && !Array.isArray(f[lado])) f[lado] = [f[lado]];
+      });
+      x = rellenar({}, x);
+      x.firmas = f;
+    }
     var inf = rellenar(informe(), x);
     var porCarga = {};
     inf.pruebas.forEach(function (p) { if (p) porCarga[p.carga] = p; });
-    // Siempre las cuatro cargas y en orden: el formato tiene las cuatro columnas.
+    // Siempre las cinco columnas y en orden, como en el papel.
     inf.pruebas = CARGAS.map(function (c) { return rellenar(prueba(c), porCarga[c]); });
+    ["unimaq", "cliente"].forEach(function (lado) {
+      var l = inf.firmas[lado];
+      if (!Array.isArray(l)) l = l ? [l] : [];          // la forma del kit: una sola
+      while (l.length < 2) l.push(firma());
+      inf.firmas[lado] = l.map(function (f) { return rellenar(firma(), f); });
+    });
+    ITEMS_MOTOR.forEach(function (k) { inf.motor[k] = estado(inf.motor[k]); });
+    ITEMS_GENERADOR.forEach(function (k) {
+      inf.generadorTablero[k] = estado(inf.generadorTablero[k]);
+    });
     return inf;
   }
 
   function nChecklist(x) {
     var c = rellenar(checklist(), x);
-    c.personal = (c.personal.length ? c.personal : [firma()])
-      .map(function (f) { return rellenar(firma(), f); });
+    var p = c.personal.map(function (f) { return rellenar(firma(), f); });
+    while (p.length < 3) p.push(firma());
+    c.personal = p;
     rango(1, 19).forEach(function (i) { c.items[i] = estado(c.items[i]); });
     return c;
   }
@@ -3597,8 +3761,8 @@ UNIMAQ.modelo = (function () {
                   supervisor: firmaKit(m.ot.firmas.supervisor) };
     var inf = clon(m.informe);
     inf.equipoTag = m.tag;
-    inf.firmas = { unimaq: firmaKit(m.informe.firmas.unimaq),
-                   cliente: firmaKit(m.informe.firmas.cliente) };
+    inf.firmas = { unimaq: firmaKit(m.informe.firmas.unimaq[0]),
+                   cliente: firmaKit(m.informe.firmas.cliente[0]) };
     inf.fotos = m.fotos.map(function (f) { return { casilla: f.casilla, uri: f.foto }; });
     var baterias = m.baterias.map(function (c) {
       var k = clon(c);
@@ -3611,10 +3775,11 @@ UNIMAQ.modelo = (function () {
   }
 
   return {
+    FORMATO: FORMATO,
     ESTADOS: ESTADOS, FRECUENCIAS: FRECUENCIAS, ESPECIALIDADES: ESPECIALIDADES,
-    TIPOS_SERVICIO: TIPOS_SERVICIO, TIPOS_BATERIA: TIPOS_BATERIA,
-    ITEMS_BATERIA: ITEMS_BATERIA, CARGAS: CARGAS,
-    ITEMS_MOTOR: ITEMS_MOTOR, ITEMS_REPUESTOS: ITEMS_REPUESTOS,
+    TIPOS_BATERIA: TIPOS_BATERIA, ITEMS_BATERIA: ITEMS_BATERIA, CARGAS: CARGAS,
+    ITEMS_MOTOR: ITEMS_MOTOR, ITEMS_GENERADOR: ITEMS_GENERADOR,
+    ITEMS_REPUESTOS: ITEMS_REPUESTOS, ITEMS_SERVICIO: ITEMS_SERVICIO,
     tag: tag, numero: numero, clon: clon, rellenar: rellenar,
     equipo: equipo, operacion: operacion, demora: demora, firma: firma,
     ordenTrabajo: ordenTrabajo, prueba: prueba, informe: informe,

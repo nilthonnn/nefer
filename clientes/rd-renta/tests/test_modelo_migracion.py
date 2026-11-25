@@ -318,7 +318,7 @@ def test_formas_vacias(modelo):
     assert r["tag"] == "AAQ29" and r["eqTag"] == "AAQ29"
     assert r["conf"] is None, "la placa no se da por confirmada sola"
     assert r["ops"] == [["0010", "ELECTRICO"], ["0020", "MECANICO"]]
-    assert r["cargas"] == [0, 25, 50, 100]
+    assert r["cargas"] == ["inicial", 0, 25, 50, 100]
     assert r["motor"] == 12
     assert r["repuestos"][0] == "5.1" and r["repuestos"][-1] == "5.14"
     assert r["horometro"] is None and r["crearAviso"] is None
@@ -360,9 +360,9 @@ def test_normalizar_completa_un_registro_incompleto_y_conserva_lo_desconocido(mo
     assert r["ot"] == "4017300492" and r["horo"] == 6240.3
     assert r["op"] == ["ELECTRICO", "1,5"]  # HH se guarda como se tecleó; el aviso compara
     assert r["demoras"] == 0 and r["firmaTec"] == ""
-    assert r["cargas"] == [[0, None], [25, None], [50, 384], [100, None]]
+    assert r["cargas"] == [["inicial", None], [0, None], [25, None], [50, 384], [100, None]]
     assert r["items"] == ["OK", None, None]
-    assert r["personal"] == 1
+    assert r["personal"] == 3, "el papel tiene tres renglones de personal"
 
 
 def test_un_informe_es_un_tag(modelo):
@@ -381,3 +381,44 @@ def test_un_informe_es_un_tag(modelo):
     }""")
     assert r == {"eq": "064", "ot": "064", "inf": "064", "bat": "064", "kitEq": "064",
                  "piezasSinTag": True, "firmaVacia": True}
+
+
+def test_los_textos_son_los_del_papel(modelo):
+    r = modelo("""() => {
+      const F = UNIMAQ.modelo.FORMATO;
+      return {motor: F.informe.motor.length, gen: UNIMAQ.modelo.ITEMS_GENERADOR,
+              rep: F.informe.repuestos.length, par: F.informe.parametros.map(p => p[1]),
+              col: F.informe.columnas.map(c => c[1]),
+              items: Object.keys(F.baterias.items).length,
+              i14: F.baterias.items[14],
+              desv: F.ot.desviaciones.map(d => d[1].length),
+              servicio: F.informe.servicio.map(s => s[1])};
+    }""")
+    assert r["motor"] == 12 and r["rep"] == 14 and r["items"] == 19
+    assert r["gen"] == ["4.1.1", "4.1.2", "4.1.3", "4.1.4", "4.1.5", "4.1.6",
+                        "4.2.1", "4.2.2", "4.2.3", "4.2.4", "4.2.5", "4.2.6"]
+    assert r["par"] == ["Voltaje AC (Vac)", "Corriente (Amp)", "Potencia (kW)",
+                        "Potencia (kVA)", "Frecuencia (Hz)", "Volt. Batería (Vcc)",
+                        "Presión de Aceite (PSI)", "T° Refrigerante (°C)", "Velocidad (RPM)"]
+    assert r["col"] == ["VALOR INICIAL", "VACIO", "25%", "50%", "100%"]
+    assert r["i14"].startswith("Verificación de estados de alerta del indicador")
+    assert r["desv"] == [6, 2, 6, 14]
+    assert r["servicio"][3] == "Mantenimiento Correctivo"
+
+
+def test_el_informe_lleva_dos_firmas_por_lado(modelo):
+    r = modelo("""() => {
+      const M = UNIMAQ.modelo;
+      const vacio = M.informe();
+      // La forma del kit traía una sola firma por lado: se completa a dos.
+      const viejo = M.normalizar.informe({firmas: {unimaq: {nombre: 'TÉCNICO A'}}});
+      const k = M.aKit({tag: '064', informe: viejo});
+      return {u: vacio.firmas.unimaq.length, c: vacio.firmas.cliente.length,
+              viejo: viejo.firmas.unimaq.map(f => f.nombre),
+              kit: k.informe.firmas.unimaq.nombre,
+              motor: M.normalizar.informe({motor: {'3.1': 'OK', '3.2': 'bien'}}).motor};
+    }""")
+    assert r["u"] == 2 and r["c"] == 2
+    assert r["viejo"] == ["TÉCNICO A", ""]
+    assert r["kit"] == "TÉCNICO A"
+    assert r["motor"]["3.1"] == "OK" and r["motor"]["3.2"] is None
