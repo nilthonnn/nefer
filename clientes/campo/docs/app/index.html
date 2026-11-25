@@ -731,6 +731,13 @@
   .m-alerta.critico { border-left-color:var(--mal); background:var(--mal-soft); }
   .m-alerta.aviso { border-left-color:var(--obs); background:var(--obs-soft); }
   .m-borrar { color:var(--mal) !important; }
+  .m-firma-velo { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.6);
+                  display:flex; align-items:center; justify-content:center; padding:1rem; }
+  .m-firma-caja { background:var(--card); border-radius:8px; padding:.8rem; width:100%; max-width:640px; }
+  #m-firma-lienzo { display:block; width:100%; height:240px; background:#fff; border:2px solid var(--ink-3);
+                    border-radius:6px; touch-action:none; }
+  .m-firma-ver { display:block; max-width:220px; max-height:80px; background:#fff;
+                 border:1px solid var(--rule); border-radius:4px; margin:.3rem 0; }
   .m-hist { display:flex; flex-direction:column; gap:.15rem; padding:.55rem .7rem; background:var(--card);
             border:1px solid var(--rule); border-radius:7px; }
   .m-hist.anulada { opacity:.75; }
@@ -1311,6 +1318,18 @@
           <div class="seccion">
             <h2>Órdenes <span class="tally" id="m-ot-cuenta"></span></h2>
             <div class="m-lista" id="m-ot-lista"></div>
+          </div>
+        </div>
+
+        <div class="m-firma-velo" id="m-firma" hidden role="dialog" aria-modal="true" aria-labelledby="m-firma-titulo">
+          <div class="m-firma-caja">
+            <p class="m-sub" id="m-firma-titulo">Firma</p>
+            <canvas id="m-firma-lienzo" aria-label="Firme aquí con el dedo"></canvas>
+            <div class="m-sn" style="margin-top:.5rem">
+              <button type="button" id="m-firma-borrar">Borrar</button>
+              <button type="button" id="m-firma-cancelar">Cancelar</button>
+              <button type="button" class="primary" id="m-firma-guardar">Guardar firma</button>
+            </div>
           </div>
         </div>
 
@@ -5947,6 +5966,73 @@ MANT.ordenes = (function () {
       }).join("");
   }
 
+  /* ---------- firmas dibujadas ----------
+     La firma se dibuja con el dedo sobre blanco y se guarda como PNG en la
+     tienda `fotos`, ligada a esta orden; la firma del modelo sólo guarda el
+     id. Volver a firmar reemplaza la anterior. */
+  function firmaUI(ruta, rotulo) {
+    var f = leer(m, ruta) || {}, i = id(ruta);
+    return '<div class="m-op">' + campos([[ruta + ".nombre", rotulo], [ruta + ".fecha", "Fecha", "fecha"]]) +
+      (f.imagen ? '<img class="m-firma-ver" data-foto="' + esc(f.imagen) + '" alt="Firma de ' + esc(f.nombre || rotulo) + '">' : "") +
+      '<div class="m-sn"><button type="button" data-firmar="' + ruta + '" id="' + i + '-firmar">' +
+      (f.imagen ? "Volver a firmar" : "Firmar") + "</button>" +
+      (f.imagen ? '<button type="button" class="ghost m-borrar" data-firma-quitar="' + ruta + '">Quitar firma</button>' : "") +
+      "</div></div>";
+  }
+
+  var firmando = null, trazos = false;
+  function abrirFirma(ruta) {
+    firmando = ruta; trazos = false;
+    var f = leer(m, ruta) || {};
+    $("#m-firma-titulo").textContent = "Firma" + (f.nombre ? " de " + f.nombre : "");
+    $("#m-firma").hidden = false;
+    var c = $("#m-firma-lienzo"), k = window.devicePixelRatio || 1;
+    c.width = Math.round(c.clientWidth * k); c.height = Math.round(c.clientHeight * k);
+    var g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+    g.lineWidth = 2.5 * k; g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = "#0b1a3a";
+  }
+  function cerrarFirma() { firmando = null; $("#m-firma").hidden = true; }
+  (function lienzo() {
+    var c = $("#m-firma-lienzo"), abajo = false;
+    function punto(e) {
+      var r = c.getBoundingClientRect(), k = c.width / r.width;
+      return [(e.clientX - r.left) * k, (e.clientY - r.top) * k];
+    }
+    c.addEventListener("pointerdown", function (e) {
+      abajo = true; c.setPointerCapture(e.pointerId);
+      var p = punto(e), g = c.getContext("2d");
+      g.beginPath(); g.moveTo(p[0], p[1]);
+    });
+    c.addEventListener("pointermove", function (e) {
+      if (!abajo) return;
+      var p = punto(e), g = c.getContext("2d");
+      g.lineTo(p[0], p[1]); g.stroke(); trazos = true;
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (t) {
+      c.addEventListener(t, function () { abajo = false; });
+    });
+  })();
+  function guardarFirma() {
+    var ruta = firmando;
+    if (!ruta || !m || !miId) return Promise.resolve();
+    if (!trazos) { $("#m-firma-titulo").textContent = "Firme dentro del recuadro antes de guardar"; return Promise.resolve(); }
+    return new Promise(function (ok) { $("#m-firma-lienzo").toBlob(ok, "image/png"); }).then(function (png) {
+      var f = leer(m, ruta), viejo = f.imagen, fid = nuevoIdFoto();
+      return A.fotos.guardar({ id: fid, proyecto: miId, archivo: png, nombre: "firma.png", fecha: Date.now() })
+        .then(function () { return viejo ? A.fotos.borrar(viejo) : null; })
+        .then(function () {
+          if (viejo && urls[viejo]) { URL.revokeObjectURL(urls[viejo]); delete urls[viejo]; }
+          f.imagen = fid;
+          if (!f.fecha) f.fecha = ahoraLocal().slice(0, 10);
+          cerrarFirma(); tocar(); pintar();
+        });
+    });
+  }
+  $("#m-firma-borrar").addEventListener("click", function () { if (firmando) abrirFirma(firmando); });
+  $("#m-firma-cancelar").addEventListener("click", cerrarFirma);
+  $("#m-firma-guardar").addEventListener("click", guardarFirma);
+
   /* ---------- check-list de baterías ----------
      El formato en papel: cabecera, características, los ítems del tipo de
      batería con OK / NO / NA en la columna de la rutina, observaciones,
@@ -5986,10 +6072,11 @@ MANT.ordenes = (function () {
     var pr = m.probador;
     html += '<p class="m-nota-sn">Probador: ' + (pr.soh !== null ? "SOH " + esc(pr.soh) + " %" : "sin lectura") +
       " (se anota en Parámetros de operación).</p>" +
-      campos([[b + "observaciones", "Observaciones", "area"],
-              [b + "personal.0.nombre", "Personal 1 (nombre y apellidos)"], [b + "personal.1.nombre", "Personal 2"],
-              [b + "personal.2.nombre", "Personal 3"], [b + "supervisor.nombre", "Supervisor a cargo"],
-              [b + "notas", "Notas", "area"]]) +
+      campos([[b + "observaciones", "Observaciones", "area"]]) +
+      firmaUI(b + "personal.0", "Personal 1 (nombre y apellidos)") +
+      firmaUI(b + "personal.1", "Personal 2") + firmaUI(b + "personal.2", "Personal 3") +
+      firmaUI(b + "supervisor", "Supervisor a cargo") +
+      campos([[b + "notas", "Notas", "area"]]) +
       '<p class="m-nota-sn">Leyenda: ' + F.leyenda.map(function (l) { return "<b>" + l[0] + "</b> " + esc(l[1]); }).join(" · ") + "</p>";
     return html;
   }
@@ -6093,9 +6180,14 @@ MANT.ordenes = (function () {
       campos([["aptitud.por", "Declarado apto / no apto por"]]) +
       sn("ot.tareaCompleta", "Tarea completa", "SÍ", "NO",
          "<b>SÍ</b>: " + esc(tc.SI) + ". <b>NO</b>: " + esc(tc.NO) + ".") +
-      '<p class="m-sub">Firmas</p>' +
-      campos([["ot.firmas.tecnico.nombre", "Persona realizando tarea"], ["ot.firmas.tecnico.fecha", "Fecha", "fecha"],
-              ["ot.firmas.supervisor.nombre", "Supervisor (capataz)"], ["ot.firmas.supervisor.fecha", "Fecha", "fecha"]]));
+      '<p class="m-sub">Firmas de la ficha de trabajo</p>' +
+      firmaUI("ot.firmas.tecnico", "Persona realizando tarea") +
+      firmaUI("ot.firmas.supervisor", "Supervisor (capataz)") +
+      '<p class="m-sub">Firmas del informe (sección 8)</p>' +
+      firmaUI("informe.firmas.empresa.0", "Por la empresa · 1") +
+      firmaUI("informe.firmas.empresa.1", "Por la empresa · 2") +
+      firmaUI("informe.firmas.cliente.0", "Por el cliente · 1") +
+      firmaUI("informe.firmas.cliente.1", "Por el cliente · 2"));
 
     html += grupo("Reporte para WhatsApp",
       '<textarea class="salida" id="m-o-wa" readonly aria-label="Reporte para WhatsApp"></textarea>' +
@@ -6217,6 +6309,13 @@ MANT.ordenes = (function () {
         m.aptitud.fecha = leer(m, "informe.operativo") === null ? "" : new Date().toLocaleString("es-PE");
       }
       tocar(); pintar(); return;
+    }
+    if (b.dataset.firmar) { abrirFirma(b.dataset.firmar); return; }
+    if (b.dataset.firmaQuitar) {
+      var fq = leer(m, b.dataset.firmaQuitar), vi = fq.imagen;
+      fq.imagen = null;
+      (vi ? A.fotos.borrar(vi) : Promise.resolve()).then(function () { tocar(); pintar(); });
+      return;
     }
     if (b.dataset.estadoFoto) {
       var idc = b.dataset.estadoFoto, est = m.estados[idc] || { estado: null, nota: "", hora: "" };
