@@ -298,3 +298,24 @@ def test_salir_de_un_campo_sin_cambiarlo_no_lo_deja_sin_guardar(pw, servidor):
     pg.wait_for_timeout(100)
     assert pg.inner_text("#m-f-guardado").startswith("guardado")
     nav.close()
+
+
+def test_al_registrar_un_equipo_se_procede_con_una_inspeccion_nueva(pw, servidor):
+    nav = _lanzar(pw)
+    pg = _contexto(nav, movil=True).new_page()
+    _abrir(pg, servidor)
+    pg.click("#tab-mantenimiento")
+    pg.click("#m-seg-equipos")
+    pg.fill("#m-eq-tag", "C20D6")
+    pg.click("#m-eq-nuevo button[type=submit]")
+    pg.wait_for_selector("#m-ficha:not([hidden])")
+    _escribir(pg, "grupo.modelo", "C20D6")
+    pg.click("#m-f-inspeccion")
+    pg.wait_for_selector("#m-orden:not([hidden])")
+    assert pg.is_visible("#m-panel-ordenes") and not pg.is_visible("#m-panel-equipos")
+    assert pg.inner_text("#m-o-tag") == "C20D6"
+    assert "INSPECCIÓN" in pg.inner_text("#m-o-clase")
+    # La ficha se guardó antes de salir: la orden la ve para confirmar la placa.
+    assert "C20D6" in pg.inner_text("#m-o-cuerpo")
+    assert pg.is_visible("[data-accion=confirmar]")
+    nav.close()

@@ -849,23 +849,18 @@ def test_el_editor_ofrece_las_dos_posiciones_y_transpone_la_proporcion(servidor)
         assert app.errores == []
         nav.close()
 
-def test_la_foto_de_la_camara_sale_con_la_fecha_y_la_hora_quemadas(servidor):
-    """Como la camara del telefono: el sello va dentro de la imagen.
+def test_la_foto_de_la_camara_sale_sin_fecha_estampada(servidor):
+    """La foto sale como la tomó la cámara: sin fecha ni hora encima.
 
-    El acta se firma dias despues del despacho y se compara con la de
-    recepcion. Sin fecha en la foto, las dos son indistinguibles, y es
-    justo lo que hay que poder demostrar cuando el cliente discute que
-    salio y que volvio.
+    La hora de captura se sigue guardando como dato, pero no se quema en la
+    imagen: lo pidió el usuario.
     """
     with sync_playwright() as pw:
         nav = _lanzar(pw, camara=True)
         pg = _contexto(nav, movil=True, camara=True).new_page()
         pg.goto(servidor)
         app = App(pg).despacho()
-
-        # El texto se arma en un solo sitio: dia, mes, ano, hora y minuto.
-        assert pg.evaluate(
-            "() => CAMPO.selloFecha(new Date(2026, 8, 13, 7, 5))") == "13/09/2026  07:05"
+        assert pg.evaluate("() => typeof CAMPO.selloFecha") == "undefined"
 
         pg.click("#d-camara-app")
         pg.wait_for_function(
@@ -879,10 +874,8 @@ def test_la_foto_de_la_camara_sale_con_la_fecha_y_la_hora_quemadas(servidor):
         assert app.llenas == 1
         cuenta = pg.evaluate(PIXELES_DEL_SELLO, "#d-grid .slot.lleno img")
         assert cuenta is not None, "la foto no se pudo volver a abrir"
-        # El ambar del sello no sale de ninguna camara: si esta, lo pusimos
-        # nosotros. Y solo abajo a la derecha, que es donde no tapa el equipo.
-        assert cuenta["esquina"] > 500, cuenta
-        assert cuenta["resto"] == 0, cuenta
+        # Ni un píxel del ámbar del sello, en ninguna parte de la foto.
+        assert cuenta["esquina"] == 0 and cuenta["resto"] == 0, cuenta
         assert app.errores == []
         nav.close()
 

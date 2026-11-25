@@ -1322,6 +1322,10 @@
           <span class="m-guardado" id="m-f-guardado" role="status" aria-live="polite"></span>
         </div>
         <div class="aviso" id="m-f-aviso" role="status" hidden></div>
+        <!-- Registrar el equipo y salir a inspeccionarlo es un solo paso en el
+             patio: desde la ficha se abre la orden, ya con el TAG. -->
+        <button type="button" class="primary" id="m-f-inspeccion"
+                style="width:100%;margin:0 0 .7rem">Proceder con inspección nueva</button>
         <details class="panel plegable" id="m-f-revisar" open>
           <summary>Avisos <span class="tally" id="m-f-cuenta"></span></summary>
           <div class="panel-body">
@@ -2319,8 +2323,7 @@ var CAMPO = (function () {
       var c = document.createElement("canvas");
       c.width = Math.round(r.w * f); c.height = Math.round(r.h * f);
       c.getContext("2d").drawImage(v, r.x, r.y, r.w, r.h, 0, 0, c.width, c.height);
-      // El sello va despues del encuadre, no aqui: si se pusiera ahora, un
-      // recorte podria dejar la fecha fuera de la foto que se guarda.
+      // La hora del disparo viaja como dato de la foto; no se estampa.
       var cuando = new Date();
 
       var destino = pendientes[puntero] || null;
@@ -2347,7 +2350,7 @@ var CAMPO = (function () {
         editor.abrir({
           archivo: archivo,
           rotulo: destino ? destino.rotulo : "Fotografía",
-          sellar: true, fecha: cuando,
+          fecha: cuando,
           alAceptar: guardar,
           alRepetir: function () { /* la camara sigue ahi: no hay nada que hacer */ }
         });
@@ -3252,7 +3255,6 @@ var CAMPO = (function () {
         var g = c.getContext("2d");
         if (!g || !c.toBlob) { mal(new Error("el navegador no sabe recortar")); return; }
         g.drawImage(nodo("ed-img"), r.sx, r.sy, r.sw, r.sh, 0, 0, r.w, r.h);
-        if (e.sellar) sellarFecha(c, e.fecha || new Date());
         c.toBlob(function (b) {
           if (!b) { mal(new Error("no se pudo guardar el recorte")); return; }
           try {
@@ -3378,7 +3380,7 @@ var CAMPO = (function () {
       else if (motivo && sesion.alCancelar) sesion.alCancelar();
     }
 
-    /* `opciones`: {archivo, rotulo, proporcion, sellar, fecha, alAceptar,
+    /* `opciones`: {archivo, rotulo, proporcion, fecha, alAceptar,
        alRepetir, alCancelar}. Devuelve false si el archivo no se pudo abrir,
        y entonces quien llama sigue con la foto tal cual. */
     function abrir(opciones) {
@@ -3393,7 +3395,7 @@ var CAMPO = (function () {
           prop: opciones.proporcion || PROP,
           vertical: opciones.vertical === undefined ? VERTICAL : !!opciones.vertical,
           escala: 1, base: 1, x: 0, y: 0,
-          sellar: !!opciones.sellar, fecha: opciones.fecha || null,
+          fecha: opciones.fecha || null,
           alAceptar: opciones.alAceptar || function () {},
           alRepetir: opciones.alRepetir || null,
           alCancelar: opciones.alCancelar || null
@@ -3618,42 +3620,9 @@ var CAMPO = (function () {
 
   function hoy() { return new Date().toISOString().slice(0, 10); }
 
-  /* ---------- el sello de fecha y hora de las fotos ----------
-     La cámara del teléfono quema la fecha en la foto y el acta se firma días
-     después: sin ese sello, una foto de despacho y una de recepción son
-     indistinguibles, y es justo lo que hay que poder demostrar cuando el
-     cliente discute qué salió y qué volvió. Se escribe con la hora del
-     teléfono en el momento del disparo, no con la del acta. */
-  function dos(n) { return (n < 10 ? "0" : "") + n; }
-
-  function selloFecha(cuando) {
-    var d = cuando || new Date();
-    return dos(d.getDate()) + "/" + dos(d.getMonth() + 1) + "/" + d.getFullYear() +
-           "  " + dos(d.getHours()) + ":" + dos(d.getMinutes());
-  }
-
-  /* Abajo a la derecha, donde el equipo no suele estar, en ámbar y con sombra:
-     una foto de patio tiene cielo blanco arriba y asfalto oscuro abajo, y el
-     sello tiene que leerse sobre los dos. Devuelve lo que escribió. */
-  function sellarFecha(lienzo, cuando) {
-    var texto = selloFecha(cuando);
-    var g = lienzo.getContext("2d");
-    if (!g) return texto;
-    var pt = Math.max(11, Math.round(Math.min(lienzo.width, lienzo.height) * 0.045));
-    var margen = Math.round(pt * 0.75);
-
-    g.save();
-    g.font = "bold " + pt + 'px ui-monospace, "DejaVu Sans Mono", monospace';
-    g.textAlign = "right";
-    g.textBaseline = "alphabetic";
-    g.shadowColor = "rgba(0, 0, 0, 0.9)";
-    g.shadowBlur = Math.round(pt * 0.4);
-    g.shadowOffsetY = Math.max(1, Math.round(pt * 0.08));
-    g.fillStyle = "#FFB300";
-    g.fillText(texto, lienzo.width - margen, lienzo.height - margen);
-    g.restore();
-    return texto;
-  }
+  /* Las fotos salen tal como las tomó la cámara, sin fecha ni hora
+     estampadas encima: la hora de captura se guarda como dato de la foto
+     (ordena la propuesta de casillas) pero no se escribe sobre la imagen. */
 
   /* Si la cámara no puede funcionar aquí, se dice antes de que el operador
      lo descubra en el patio, y se dice dónde sí funciona. */
@@ -3745,7 +3714,7 @@ var CAMPO = (function () {
     $: $, esc: esc, ir: ir, arrancar: arrancar, conFoco: conFoco, VERSION: VERSION,
     armarZip: armarZip, leerZip: leerZip, leerBytes: leerBytes, entregar: entregar,
     copiar: copiar, avisador: avisador, recordar: recordar, hoy: hoy,
-    selloFecha: selloFecha, sellarFecha: sellarFecha, editor: editor,
+    editor: editor,
     proyectos: proyectos, almacen: almacen, identidad: identidad, LEGADO: LEGADO,
     ESQUEMA: ESQUEMA, migrarProyecto: migrarProyecto, demasiadoNuevo: demasiadoNuevo,
     incrustada: incrustada, CONTEXTO: CONTEXTO,
@@ -4869,6 +4838,14 @@ MANT.equipos = (function () {
     if (b) abrir(b.dataset.tag);
   });
   $("#m-f-volver").addEventListener("click", function () { cerrar(); });
+  $("#m-f-inspeccion").addEventListener("click", function () {
+    if (!ficha) return;
+    var tag = ficha.tag;
+    // Primero se guarda la ficha: la orden la lee para proponer la placa.
+    volcar().then(function () {
+      return MANT.ordenes.crear(tag, "INSPECCION", "", "");
+    }).then(function () { MANT.ordenes.panel("ordenes"); });
+  });
   $("#m-f-borrar").addEventListener("click", function () { borrar(); });
   $("#m-f-campos").addEventListener("input", alEscribir);
   $("#m-f-campos").addEventListener("change", alEscribir);
