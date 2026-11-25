@@ -5,6 +5,10 @@
 // La versión cambia con lo que se guarda: al subir, el trabajador nuevo
 // descarta la caché vieja y trae la tipografía.
 var CACHE = "campo-2026-11-25";
+// El lector de fotos (OCR, unos 7 MB) va en su propia caché: no se baja con
+// la app, sino la primera vez que se usa o desde Ajustes, y no se borra al
+// actualizar la app. Su nombre cambia sólo si cambian sus archivos.
+var LECTOR = "campo-lector-7.0.0";
 var PIEZAS = [
   "./",
   "./index.html",
@@ -33,7 +37,7 @@ self.addEventListener("activate", function (e) {
     caches.keys()
       .then(function (nombres) {
         return Promise.all(nombres.map(function (n) {
-          return n === CACHE ? null : caches.delete(n);
+          return (n === CACHE || n === LECTOR) ? null : caches.delete(n);
         }));
       })
       .then(function () { return self.clients.claim(); })
@@ -59,6 +63,22 @@ self.addEventListener("fetch", function (e) {
             return r || caches.match("./");
           });
         })
+    );
+    return;
+  }
+
+  // El lector: de su caché; si no está, de la red, y se guarda para la
+  // próxima vez sin señal.
+  if (pedido.url.indexOf("/lector/") !== -1) {
+    e.respondWith(
+      caches.open(LECTOR).then(function (c) {
+        return c.match(pedido).then(function (r) {
+          return r || fetch(pedido).then(function (red) {
+            if (red && red.status === 200) c.put(pedido, red.clone());
+            return red;
+          });
+        });
+      })
     );
     return;
   }

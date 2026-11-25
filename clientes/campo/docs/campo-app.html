@@ -745,6 +745,15 @@
                 background:var(--card-2); border-radius:4px; }
   .m-columna > summary { cursor:pointer; min-height:48px; display:flex; align-items:center;
                          font-family:var(--cond); font-size:1.05rem; font-weight:700; }
+  .m-lectura { border:2px solid var(--accent); border-radius:7px; padding:.5rem .6rem; margin:.4rem 0;
+               background:var(--accent-soft); }
+  .m-propuesta { border-bottom:1px solid var(--rule-2); padding:.35rem 0; }
+  .m-propuesta.otro { background:var(--mal-soft); }
+  .m-lect-mal { color:var(--mal); font-weight:700; margin:.2rem 0; }
+  .m-usar { display:flex; align-items:center; gap:.5rem; min-height:48px; font-weight:600; }
+  .m-usar input { width:24px; height:24px; min-height:24px !important; flex:none; }
+  .m-texto { white-space:pre-wrap; font-family:var(--mono); font-size:.75rem; max-height:12rem;
+             overflow:auto; background:var(--card); padding:.4rem; margin:0; }
   .m-criterio { margin:.35rem 0; font-size:.86rem; }
   .m-criterio summary { cursor:pointer; min-height:48px; display:flex; align-items:center;
                         font-weight:700; color:var(--accent); }
@@ -901,6 +910,11 @@
                    aria-label="Elegir el logo de la empresa">
             <label class="boton" for="id-logo">Elegir logo…</label>
             <button type="button" class="ghost" id="id-logo-quitar" hidden>quitar logo</button>
+          </div>
+          <div class="bar" style="margin:.7rem 0 0">
+            <span><b>Lector de fotos</b> (lee placas y pantallas en el teléfono, sin internet):
+              <span id="lector-estado">sin comprobar</span></span>
+            <button type="button" id="lector-preparar">Dejar listo sin señal</button>
           </div>
         </div>
       </details>
@@ -4353,6 +4367,10 @@ MANT.modelo = (function () {
       fotos: [],                  // {casilla, foto (id en `fotos`), texto}
       // Estado de cada componente según su foto: {casilla: {estado, nota, hora}}.
       estados: {},
+      // Lectura del probador de baterías (de la foto c21 o tecleada).
+      probador: probador(),
+      // Valores leídos de fotos y usados: qué foto, cuándo, qué se aplicó.
+      lecturas: [],
       // Qué clase de orden es. Se elige al crearla y manda en todo lo demás:
       // la casilla 2.x del informe, la rutina del check-list, los avisos.
       clasificacion: { tipo: "", pm: "" },
@@ -4447,6 +4465,9 @@ MANT.modelo = (function () {
     m.ot = nOT(m.ot);
     m.informe = nInforme(m.informe);
     m.baterias = m.baterias.map(nChecklist);
+    ["soh", "soc", "voltaje", "ccaMedido", "resistenciaMOhm"].forEach(function (k) {
+      m.probador[k] = numero(m.probador[k]);
+    });
     var sg = m.seguridad;
     Object.keys(sg.items).forEach(function (k) { sg.items[k] = estado(sg.items[k]); });
     Object.keys(sg.herramientas).forEach(function (k) { sg.herramientas[k] = estado(sg.herramientas[k]); });
@@ -4655,6 +4676,33 @@ MANT.validaciones = (function () {
     return a;
   }
 
+  /* ---------- batería ----------
+     La del kit. SOH < 70 % crítico (evaluar reemplazo), < 85 % aviso
+     (seguimiento), SOC < 75 % aviso (cargar). En un check-list, además, los
+     ítems de su tipo que quedaron sin marcar. */
+  function validarProbador(p, base) {
+    var a = [], soh = M.numero(p && p.soh), soc = M.numero(p && p.soc);
+    base = base || "probador.";
+    if (soh !== null) {
+      if (soh < 70) a.push(alerta("critico", base + "soh", "SOH " + soh + " % → evaluar reemplazo (ítem 10/19)"));
+      else if (soh < 85) a.push(alerta("aviso", base + "soh", "SOH " + soh + " % → seguimiento"));
+    }
+    if (soc !== null && soc < 75) a.push(alerta("aviso", base + "soc", "SOC " + soc + " % → cargar batería"));
+    return a;
+  }
+
+  function validarBateria(c) {
+    c = M.normalizar.checklist(c);
+    var a = validarProbador(c.probador, "probador.");
+    var rango = c.tipo === "PLOMO_ACIDO" ? [1, 10] : c.tipo === "LIBRE_MANTENIMIENTO" ? [11, 19] : null;
+    if (rango) {
+      for (var i = rango[0]; i <= rango[1]; i++) {
+        if (!c.items[i]) a.push(alerta("info", "item" + i, "Ítem " + i + " sin marcar"));
+      }
+    }
+    return a;
+  }
+
   /* ---------- la orden de trabajo ----------
      La del kit, con dos ajustes: las horas-hombre se comparan con la
      duración por el número de personas (dos técnicos dos horas son 4 HH), y
@@ -4830,6 +4878,8 @@ MANT.validaciones = (function () {
       }
     });
 
+    a = a.concat(validarProbador(m.probador, "probador."));
+
     // Parámetros de operación y prueba (sección 6), columna por columna, y el
     // voltaje que se escribió en Generalidades.
     m.informe.pruebas.forEach(function (p, i) {
@@ -4921,6 +4971,7 @@ MANT.validaciones = (function () {
   return { validarEquipo: validarEquipo, validarOT: validarOT,
            validarMantenimiento: validarMantenimiento, tagEnTexto: tagEnTexto,
            validarPrueba: validarPrueba, TOL_AVISO: TOL_AVISO, TOL_CRITICO: TOL_CRITICO,
+           validarBateria: validarBateria, validarProbador: validarProbador,
            ordenar: ordenar, VOLTAJES: VOLTAJES };
 })();
 </script>
@@ -5473,6 +5524,10 @@ MANT.ordenes = (function () {
       '<img data-foto="' + esc(f.foto) + '" alt="' + esc(f.nombre || "foto") + '">' +
       (f.propuesta ? '<span class="m-prop">PROPUESTA POR EL NOMBRE DEL ARCHIVO · ' + esc(f.nombre || "") + "</span>" : "") +
       (f.casilla === HALLAZGO ? campos([["fotos." + i + ".texto", "Descripción del hallazgo", "area"]]) : "") +
+      (f.casilla && MANT.lector && (MANT.lector.LEE[f.casilla] || f.casilla === "c01")
+        ? '<button type="button" data-accion="foto-leer" data-i="' + i + '" style="margin:.3rem 0">Leer valores de la foto</button>'
+        : "") +
+      (lectura && lectura.foto === f.foto ? pintarLectura() : "") +
       '<label class="campo" for="m-o-mover-' + i + '"><span class="lb">Casilla</span>' +
       '<select id="m-o-mover-' + i + '" data-mover="' + i + '">' + opcionesMover(f.casilla) + "</select></label>" +
       '<div class="m-sn" style="margin-top:.4rem">' +
@@ -5527,6 +5582,118 @@ MANT.ordenes = (function () {
       }).join("") + "</div>" +
       (e.estado === "OBS" || e.estado === "FALLA" ? campos([[nota, "Qué se ve", "area"]]) : "") +
       '<span class="m-campo-alerta" id="' + id("estados." + idc) + '-alerta"></span>';
+  }
+
+  /* ---------- leer valores de una foto ----------
+     El lector propone; el técnico corrige y elige. Los de placa van a la
+     ficha del equipo (y la placa vuelve a pedir confirmación), los de la
+     orden a su campo, y los del panel a la columna de carga que él elija. */
+  var lectura = null;   // {foto, casilla, estado, texto, propuestas, columna, aviso}
+
+  function pintarLectura() {
+    var L = lectura, F = M.FORMATO.informe;
+    if (L.estado === "leyendo") return '<p class="m-nota-sn m-lectura-estado" role="status">' + esc(L.aviso || "leyendo la foto…") + "</p>";
+    if (L.estado === "error") return '<p class="m-lect-mal" role="status">' + esc(L.aviso) + "</p>";
+    var hayColumna = L.propuestas.some(function (x) { return x.destino === "columna"; });
+    var filas = L.propuestas.map(function (x, k) {
+      var otro = x.destino === "tag" && x.valor !== m.tag;
+      return '<div class="m-propuesta' + (otro ? " otro" : "") + '">' +
+        '<label class="m-usar"><input type="checkbox" data-usar="' + k + '"' + (x.destino === "tag" ? " disabled" : " checked") + "> " +
+        esc(x.rotulo) + (x.destino === "ficha" ? " <small>(ficha del equipo)</small>" : "") + "</label>" +
+        (x.destino === "tag"
+          ? '<p class="' + (otro ? "m-lect-mal" : "m-ok") + '">' + esc(x.valor) +
+            (otro ? " — la foto es de otro equipo: esta orden es del " + esc(m.tag) : " — coincide con la orden") + "</p>"
+          : '<input type="text" data-valor-prop="' + k + '" value="' + esc(x.valor == null ? "" : x.valor) + '">') + "</div>";
+    }).join("");
+    return '<div class="m-lectura"><p class="m-sub">Leído de la foto · revise y elija</p>' +
+      (L.propuestas.length ? filas : '<p class="m-nota-sn">No se encontraron valores. Escríbalos a mano.</p>') +
+      (hayColumna ? '<label class="campo" for="m-o-lect-col"><span class="lb">Columna de la tabla de parámetros</span>' +
+        '<select id="m-o-lect-col">' + F.columnas.map(function (c, n) {
+          return '<option value="' + n + '"' + (n === L.columna ? " selected" : "") + ">" + esc(c[1]) + "</option>";
+        }).join("") + "</select></label>" : "") +
+      '<details class="m-criterio"><summary>Texto leído</summary><pre class="m-texto">' + esc(L.texto) + "</pre></details>" +
+      '<div class="m-sn">' + (L.propuestas.some(function (x) { return x.destino !== "tag"; })
+        ? '<button type="button" class="primary" data-accion="lect-usar">Usar lo marcado</button>' : "") +
+      '<button type="button" data-accion="lect-cerrar">Cerrar</button></div></div>';
+  }
+
+  function leerFoto(i) {
+    var f = m.fotos[i];
+    if (!f) return Promise.resolve();
+    var primeraVacia = 0;
+    m.informe.pruebas.some(function (pr, n) {
+      var vacia = M.FORMATO.informe.parametros.every(function (r) { return pr[r[0]] === null; });
+      if (vacia) { primeraVacia = n; return true; }
+      return false;
+    });
+    lectura = { foto: f.foto, casilla: f.casilla, estado: "leyendo", texto: "", propuestas: [],
+                columna: primeraVacia, aviso: "preparando el lector (la primera vez tarda un poco)…" };
+    pintar();
+    return Promise.all([A.fotos.leer(f.foto), A.equipos.listar()]).then(function (r) {
+      if (!r[0]) throw new Error("la foto ya no está guardada");
+      var tags = (r[1] || []).map(function (e) { return e.tag; });
+      return MANT.lector.leer(r[0].archivo, function (estado, avance) {
+        if (!lectura || lectura.foto !== f.foto) return;
+        lectura.aviso = (/recogniz/.test(estado) ? "leyendo" : "preparando el lector") + "… " + Math.round(avance * 100) + " %";
+        var n = raiz.querySelector(".m-lectura-estado");
+        if (n) n.textContent = lectura.aviso;
+      }).then(function (texto) {
+        if (!lectura || lectura.foto !== f.foto) return;
+        lectura.texto = texto;
+        lectura.propuestas = MANT.lector.interpretar(texto, f.casilla, { tags: tags });
+        lectura.estado = "listo";
+        pintar();
+      });
+    }).catch(function (err) {
+      if (!lectura) return;
+      lectura.estado = "error";
+      lectura.aviso = "No se pudo leer: " + ((err && err.message) || "error") + ". Escriba los valores a mano.";
+      pintar();
+    });
+  }
+
+  function usarLectura() {
+    var L = lectura;
+    if (!L) return Promise.resolve();
+    var elegidas = [];
+    raiz.querySelectorAll(".m-lectura [data-usar]").forEach(function (cb) {
+      if (!cb.checked || cb.disabled) return;
+      var k = Number(cb.dataset.usar), x = L.propuestas[k];
+      var campo = raiz.querySelector('.m-lectura [data-valor-prop="' + k + '"]');
+      var crudo = campo ? campo.value.trim() : x.valor;
+      var num = typeof x.valor === "number" || x.valor === null;
+      elegidas.push({ destino: x.destino, ruta: x.ruta, rotulo: x.rotulo,
+                      valor: num ? M.numero(crudo) : String(crudo).toUpperCase() });
+    });
+    var col = raiz.querySelector("#m-o-lect-col");
+    var columna = col ? Number(col.value) : L.columna;
+    var aFicha = elegidas.filter(function (x) { return x.destino === "ficha"; });
+    elegidas.forEach(function (x) {
+      if (x.destino === "orden") poner(m, x.ruta, x.valor);
+      else if (x.destino === "columna") poner(m, "informe.pruebas." + columna + "." + x.ruta, x.valor);
+      else if (x.destino === "estado") {
+        var idc = x.ruta.split(".")[1];
+        m.estados[idc] = { estado: x.valor, nota: (m.estados[idc] && m.estados[idc].nota) ||
+          (x.valor === "OK" ? "" : "SOH " + m.probador.soh + " % según el probador"), hora: new Date().toLocaleString("es-PE") };
+      }
+    });
+    m.lecturas.push({ casilla: L.casilla, foto: L.foto, fecha: new Date().toLocaleString("es-PE"),
+                      columna: elegidas.some(function (x) { return x.destino === "columna"; }) ? columna : null,
+                      aplicadas: elegidas.map(function (x) { return { ruta: x.ruta, destino: x.destino, valor: x.valor }; }),
+                      texto: String(L.texto || "").slice(0, 600) });
+    lectura = null;
+    var ficha = Promise.resolve();
+    if (aFicha.length) {
+      // La placa leída va a la ficha del equipo; la orden pide confirmarla de
+      // nuevo (la ficha cambió), así que nunca entra sola al informe.
+      ficha = A.equipos.leer(m.tag).then(function (e) {
+        var f = M.normalizar.equipo(e || M.equipo(m.tag));
+        aFicha.forEach(function (x) { poner(f, x.ruta, x.valor); });
+        f.actualizado = Date.now();
+        return A.equipos.guardar(f);
+      }).then(cargarContexto);
+    }
+    return ficha.then(function () { tocar(); pintar(); });
   }
 
   function miniaturas() {
@@ -5618,7 +5785,11 @@ MANT.ordenes = (function () {
      caben cinco columnas. Se abre la que se está midiendo. */
   function pintarParametros() {
     var F = M.FORMATO.informe;
-    return '<p class="m-nota-sn">Lo leído en el panel. Voltaje AC es el de línea (L-L).</p>' +
+    return '<p class="m-sub">Probador de baterías</p>' +
+      campos([["probador.soh", "SOH (%)", "num"], ["probador.soc", "SOC (%)", "num"],
+              ["probador.voltaje", "Voltaje (V)", "num"], ["probador.ccaMedido", "CCA medido", "num"],
+              ["probador.resistenciaMOhm", "Resistencia (mΩ)", "num"]]) +
+      '<p class="m-nota-sn">Lo leído en el panel. Voltaje AC es el de línea (L-L).</p>' +
       campos([["informe.generalidades.voltaje", "1. Generalidades · voltaje de conexión (V)", "num"],
               ["informe.generalidades.velocidad", "1. Generalidades · velocidad (RPM)", "num"]]) +
       m.informe.pruebas.map(function (pr, i) {
@@ -5791,6 +5962,7 @@ MANT.ordenes = (function () {
   }
 
   function alEscribir(e) {
+    if (e.target.closest && e.target.closest(".m-lectura")) return;
     var n = e.target, ruta = n.dataset && n.dataset.ruta;
     if (!ruta || !m) return;
     var v = n.value;
@@ -5873,6 +6045,9 @@ MANT.ordenes = (function () {
       quitarFoto(Number(b.dataset.i)).then(function () { tocar(); pintar(); });
       return;
     }
+    if (acc === "foto-leer") { leerFoto(Number(b.dataset.i)); return; }
+    if (acc === "lect-usar") { usarLectura(); return; }
+    if (acc === "lect-cerrar") { lectura = null; pintar(); return; }
     if (acc === "foto-confirmar") { m.fotos[Number(b.dataset.i)].propuesta = false; tocar(); pintar(); return; }
     if (acc === "fotos-confirmar") {
       m.fotos.forEach(function (f) { if (f.casilla) f.propuesta = false; });
@@ -6043,6 +6218,7 @@ MANT.ordenes = (function () {
     vacia: function () { return !m; },
     instantanea: function () { return M.clon(m); },
     limpiar: function () {
+      lectura = null;
       Object.keys(urls).forEach(function (k) { URL.revokeObjectURL(urls[k]); });
       urls = {};
       m = null; miId = null;
@@ -6109,6 +6285,7 @@ MANT.ordenes = (function () {
       f.propuesta = false;              // moverla a mano es decidir
       tocar(); pintar(); return;
     }
+    if (n.closest && n.closest(".m-lectura")) return;
     if (!alElegir(e)) alEscribir(e);
   });
   $("#m-orden").addEventListener("click", clic);
@@ -6202,6 +6379,23 @@ MANT.ordenes = (function () {
     img.src = url;
   });
   $("#id-logo-quitar").addEventListener("click", function () { I.guardar({ logo: null }); pintar(); });
+
+  // El lector se baja una vez, con señal, y queda en el teléfono.
+  function estadoLector() {
+    if (!window.MANT || !MANT.lector) return;
+    var no = MANT.lector.disponible();
+    if (no) { $("#lector-estado").textContent = no; $("#lector-preparar").hidden = true; return; }
+    MANT.lector.listoSinSenal().then(function (si) {
+      $("#lector-estado").textContent = si ? "listo sin señal" : "todavía no descargado (unos 7 MB)";
+    });
+  }
+  $("#lector-preparar").addEventListener("click", function () {
+    $("#lector-estado").textContent = "descargando…";
+    MANT.lector.descargar().then(function (si) {
+      $("#lector-estado").textContent = si ? "listo sin señal" : "no se pudo guardar";
+    }, function (e) { $("#lector-estado").textContent = "no se pudo: " + e.message; });
+  });
+  $("#ajustes-identidad").addEventListener("toggle", estadoLector);
   pintar();
 })();
 </script>
@@ -10562,6 +10756,241 @@ MANT.reporte = (function () {
   }
 
   return { datos: datos, texto: texto, pdf: pdf, xlsx: xlsx, nombre: nombre, estado: estado };
+})();
+</script>
+
+<script>
+/* ================================================================
+   MANTENIMIENTO · LECTOR · leer valores de las fotos, en el teléfono.
+
+   Reconocimiento de texto (Tesseract, en WebAssembly) que corre en el
+   propio aparato: ninguna foto sale de él. Los archivos del motor están en
+   `lector/` y se guardan para usarse sin señal (ver sw.js).
+
+   Lo que devuelve es siempre una PROPUESTA: el técnico ve el valor leído
+   al lado de la foto, lo corrige si hace falta y marca cuáles usa. Nunca se
+   escribe un dato de placa sin esa confirmación. Lee bien texto impreso
+   (placas, etiquetas, pantallas de matriz); los dígitos de 7 segmentos y
+   las fotos con reflejo, regular: por eso todo se puede corregir.
+   ================================================================ */
+MANT.lector = (function () {
+  "use strict";
+  var M = MANT.modelo;
+  var ARCHIVOS = ["tesseract.min.js", "worker.min.js", "tesseract-core-simd-lstm.wasm.js", "eng.traineddata.gz"];
+  var CACHE = "campo-lector-7.0.0";
+
+  /* ---------- interpretar: texto leído → campos de la ficha ----------
+     Pura: sin motor, sin DOM. `destino`: «ficha» (placa del equipo, que
+     luego se confirma), «orden» (un campo de la orden) o «columna» (una
+     columna de la tabla de parámetros que elige el técnico). */
+  var NUM = "(\\d{1,6}(?:[.,]\\d{1,3})?)";
+
+  function limpiar(t) {
+    return String(t || "").toUpperCase().replace(/[|]/g, "I").replace(/\s+/g, " ");
+  }
+  function todos(re, t) {
+    var r = [], m;
+    re.lastIndex = 0;
+    while ((m = re.exec(t))) { r.push(m); if (!re.global) break; }
+    return r;
+  }
+  function primero(re, t) { var m = re.exec(t); return m ? m[1] : null; }
+  function numero(x) { return M.numero(x); }
+
+  function placa(t, base, extra) {
+    var p = [];
+    var modelo = primero(/(?:MODEL|MODELO|TYPE|TIPO|FRAME)\s*(?:NO\.?|N[°º])?\s*[:.\-]?\s*([A-Z0-9][A-Z0-9.\-\/]{2,})/, t);
+    var serie = primero(/(?:SERIAL|SERIE|S\/N|ESN|\bSN\b|SER\.)\s*(?:NO\.?|N[°º]|NUMBER)?\s*[:.\-]?\s*([A-Z0-9][A-Z0-9\-]{4,})/, t);
+    if (modelo) p.push({ destino: "ficha", ruta: base + ".modelo", rotulo: "Modelo", valor: modelo });
+    if (serie) p.push({ destino: "ficha", ruta: base + ".serie", rotulo: "N° de serie", valor: serie });
+    (extra || []).forEach(function (x) {
+      var v = primero(x[0], t);
+      if (v !== null) p.push({ destino: "ficha", ruta: x[1], rotulo: x[2], valor: x[3] ? numero(v) : v });
+    });
+    return p;
+  }
+
+  var LEE = {
+    c06: function (t) {
+      // El horómetro: el número junto a H/HRS/HOURS, o el más largo.
+      var cerca = primero(new RegExp(NUM + "\\s*(?:H\\b|HRS|HOURS|HORAS)"), t) ||
+                  primero(new RegExp("(?:HRS|HOURS|HORAS|HOROMETRO|HOUR METER)\\s*[:.]?\\s*" + NUM), t);
+      // Un número corto junto a la palabra suele ser ruido («12 34» de otra
+      // línea): manda el más largo, y entre iguales el que tiene decimales.
+      var ns = todos(/\d{2,6}(?:[.,]\d)?/g, t).map(function (m) { return m[0]; });
+      ns.sort(function (a, b) {
+        return (b.replace(/\D/g, "").length - a.replace(/\D/g, "").length) ||
+               (/[.,]/.test(b) - /[.,]/.test(a));
+      });
+      var v = cerca && cerca.replace(/\D/g, "").length >= 3 ? cerca : (ns[0] || cerca);
+      return v ? [{ destino: "orden", ruta: "ot.horometroSalida", rotulo: "Horómetro (valor de contador)", valor: numero(v) }] : [];
+    },
+    c05: function (t) {
+      return placa(t, "grupo", [
+        [new RegExp(NUM + "\\s*KVA"), "kva", "Potencia (kVA)", true],
+        [/(\d{3})\s*(?:\/\s*\d{3})?\s*V(?:OLTS?|AC)?\b/, "voltajeNominal", "Voltaje nominal (V)", true],
+        [/\b(50|60)\s*HZ/, "frecuenciaHz", "Frecuencia (Hz)", true],
+        [/\b([13])\s*(?:PH\b|PHASE|FASE)/, "fases", "Fases", true],
+        [/(\d{4})\s*(?:RPM|R\/MIN|MIN-1)/, "rpm", "Velocidad (RPM)", true]]);
+    },
+    c12: function (t) { return placa(t, "motor", [[/CPL\s*[:.\-]?\s*(\d{3,5})/, "motor.cpl", "CPL", false]]); },
+    g01: function (t) { return placa(t, "alternador", [[/(?:WDG|WINDING)\s*[:.\-]?\s*(\d{2,3})/, "alternador.winding", "Winding (WDG)", false]]); },
+    c19: function (t) {
+      var p = [], v = primero(/\b(12|24)\s*V\b/, t), ah = primero(/(\d{2,3})\s*AH\b/, t),
+          cca = primero(/(\d{3,4})\s*(?:CCA|A\b|EN\b|SAE\b)/, t);
+      if (v) p.push({ destino: "ficha", ruta: "bateria.voltaje", rotulo: "Voltaje de batería (V)", valor: numero(v) });
+      if (ah) p.push({ destino: "ficha", ruta: "bateria.ah", rotulo: "Capacidad (Ah)", valor: numero(ah) });
+      if (cca) p.push({ destino: "ficha", ruta: "bateria.cca", rotulo: "CCA", valor: numero(cca) });
+      return p;
+    },
+    c21: function (t) {
+      var p = [], f = [
+        [/SOH\s*[:=]?\s*(\d{1,3})\s*%?/, "soh", "SOH (%)"], [/SOC\s*[:=]?\s*(\d{1,3})\s*%?/, "soc", "SOC (%)"],
+        [/(\d{1,2}[.,]\d{1,2})\s*V\b/, "voltaje", "Voltaje (V)"], [/(\d{3,4})\s*CCA/, "ccaMedido", "CCA medido"],
+        [new RegExp(NUM + "\\s*M\\s*(?:Ω|OHM|O\\b|Q\\b)"), "resistenciaMOhm", "Resistencia (mΩ)"]];
+      f.forEach(function (x) {
+        var v = primero(x[0], t);
+        if (v !== null) p.push({ destino: "orden", ruta: "probador." + x[1], rotulo: x[2], valor: numero(v) });
+      });
+      // El estado que corresponde por SOH, también como propuesta.
+      var soh = p.filter(function (x) { return x.ruta === "probador.soh"; })[0];
+      if (soh && soh.valor !== null) {
+        var e = soh.valor >= 85 ? "OK" : soh.valor >= 70 ? "OBS" : "FALLA";
+        p.push({ destino: "estado", ruta: "estados.c21", rotulo: "Estado de la batería por SOH", valor: e });
+      }
+      return p;
+    },
+    g04: function (t) {
+      var p = [], ns = todos(/(\d{2,3}(?:[.,]\d)?)\s*(V|A)\b/g, t);
+      var ll = null, ln = null, amp = null;
+      ns.forEach(function (m) {
+        var v = numero(m[1]);
+        if (m[2] === "V" && v >= 300 && v <= 700 && ll === null) ll = v;
+        else if (m[2] === "V" && v >= 100 && v < 300 && ln === null) ln = v;
+        else if (m[2] === "A" && amp === null) amp = v;
+      });
+      if (ll !== null) p.push({ destino: "columna", ruta: "voltajeLL", rotulo: "Voltaje L-L (V)", valor: ll });
+      if (ln !== null) p.push({ destino: "columna", ruta: "voltajeLN", rotulo: "Voltaje L-N (V)", valor: ln });
+      if (amp !== null) p.push({ destino: "columna", ruta: "corrienteA", rotulo: "Corriente (A)", valor: amp });
+      return p;
+    },
+    g05: function (t) {
+      var p = [], hz = primero(/(\d{2}(?:[.,]\d{1,2})?)\s*HZ/, t), rpm = primero(/(\d{3,4})\s*(?:RPM|R\/MIN)/, t);
+      if (hz) p.push({ destino: "columna", ruta: "hz", rotulo: "Frecuencia (Hz)", valor: numero(hz) });
+      if (rpm) p.push({ destino: "columna", ruta: "rpm", rotulo: "Velocidad (RPM)", valor: numero(rpm) });
+      return p;
+    },
+    g06: function (t) {
+      var p = [], pr = /(\d{1,4}(?:[.,]\d{1,2})?)\s*(PSI|KPA|BAR)/.exec(t), te = /(\d{2,3}(?:[.,]\d)?)\s*°?\s*([CF])\b/.exec(t);
+      if (pr) {
+        var v = numero(pr[1]), f = { PSI: 1, KPA: 0.1450377, BAR: 14.50377 }[pr[2]];
+        p.push({ destino: "columna", ruta: "presionAceitePsi", rotulo: "Presión de aceite (PSI)" +
+                 (pr[2] === "PSI" ? "" : ", convertida de " + pr[2]), valor: Math.round(v * f * 10) / 10 });
+      }
+      if (te) {
+        var c = numero(te[1]);
+        if (te[2] === "F") c = Math.round((c - 32) / 1.8 * 10) / 10;
+        p.push({ destino: "columna", ruta: "tempRefrigeranteC", rotulo: "T° refrigerante (°C)" +
+                 (te[2] === "F" ? ", convertida de °F" : ""), valor: c });
+      }
+      return p;
+    },
+    g07: function (t) {
+      var v = todos(/(\d{1,2}[.,]\d{1,2})\s*V\b/g, t).map(function (m) { return numero(m[1]); })
+        .filter(function (x) { return x >= 8 && x <= 32; })[0];
+      return v !== undefined ? [{ destino: "columna", ruta: "vBateria", rotulo: "Volt. batería (Vcc)", valor: v }] : [];
+    }
+  };
+
+  /* El equipo de la foto: un TAG conocido escrito en ella (pintado en el
+     canopy, en la etiqueta). Es la forma de «reconocer» el equipo sin
+     reconocimiento de imágenes: se compara con las fichas que ya existen. */
+  function reconocerTag(texto, tags) {
+    var t = " " + limpiar(texto).replace(/[^A-Z0-9-]+/g, " ") + " ";
+    var hallados = (tags || []).filter(function (g) {
+      return g && t.indexOf(" " + String(g).toUpperCase() + " ") !== -1;
+    });
+    hallados.sort(function (a, b) { return b.length - a.length; });
+    return hallados[0] || null;
+  }
+
+  function interpretar(texto, idc, opciones) {
+    var t = limpiar(texto), lee = LEE[idc];
+    var p = lee ? lee(t) : [];
+    var tag = reconocerTag(texto, opciones && opciones.tags);
+    if (tag) p.unshift({ destino: "tag", ruta: "tag", rotulo: "Equipo reconocido en la foto", valor: tag });
+    return p;
+  }
+
+  /* ---------- el motor ---------- */
+  function base() { return new URL("lector/", location.href).href; }
+  function disponible() {
+    if (!/^https?:$/.test(location.protocol)) return "abra la app instalada o servida: el archivo suelto no trae el lector";
+    if (typeof WebAssembly === "undefined") return "este navegador no tiene WebAssembly";
+    try {
+      // SIMD: lo tienen Chrome para Android desde 2021 y Safari desde 16.4.
+      var simd = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10,
+                                 1, 8, 0, 65, 0, 253, 15, 253, 98, 11]);
+      if (!WebAssembly.validate(simd)) return "este teléfono no puede correr el lector: escriba el valor a mano";
+    } catch (e) { return "este navegador no puede correr el lector"; }
+    return "";
+  }
+
+  var motor = null;
+  function cargarScript(url) {
+    return new Promise(function (ok, mal) {
+      if (window.Tesseract) { ok(); return; }
+      var s = document.createElement("script");
+      s.src = url; s.onload = ok; s.onerror = function () { mal(new Error("no se pudo cargar el lector")); };
+      document.head.appendChild(s);
+    });
+  }
+  function preparar(avance) {
+    var no = disponible();
+    if (no) return Promise.reject(new Error(no));
+    if (motor) return motor;
+    var b = base();
+    motor = cargarScript(b + "tesseract.min.js").then(function () {
+      return window.Tesseract.createWorker("eng", 1, {
+        workerPath: b + "worker.min.js",
+        corePath: b + "tesseract-core-simd-lstm.wasm.js",
+        langPath: b.replace(/\/$/, ""),
+        gzip: true,
+        cacheMethod: "none",            // ya lo guarda el trabajador de servicio
+        logger: function (m) { if (avance && m && m.status) avance(m.status, m.progress || 0); }
+      });
+    });
+    motor.catch(function () { motor = null; });
+    return motor;
+  }
+
+  function leer(blob, avance) {
+    return preparar(avance).then(function (w) { return w.recognize(blob); })
+      .then(function (r) { return (r && r.data && r.data.text) || ""; });
+  }
+
+  // ¿Está guardado para usarse sin señal?
+  function listoSinSenal() {
+    if (!window.caches) return Promise.resolve(false);
+    var b = base();
+    return caches.open(CACHE).then(function (c) {
+      return Promise.all(ARCHIVOS.map(function (a) { return c.match(b + a); }));
+    }).then(function (l) { return l.every(Boolean); }, function () { return false; });
+  }
+  // Bajarlo ahora, con señal, para tenerlo en el patio.
+  function descargar() {
+    var b = base();
+    return Promise.all(ARCHIVOS.map(function (a) {
+      return fetch(b + a).then(function (r) {
+        if (!r.ok) throw new Error("no se pudo bajar " + a);
+        // Si el trabajador de servicio no lo guardó (primera visita), se guarda aquí.
+        return caches.open(CACHE).then(function (c) { return c.put(b + a, r); });
+      });
+    })).then(listoSinSenal);
+  }
+
+  return { LEE: LEE, interpretar: interpretar, reconocerTag: reconocerTag, disponible: disponible,
+           preparar: preparar, leer: leer, listoSinSenal: listoSinSenal, descargar: descargar };
 })();
 </script>
 
