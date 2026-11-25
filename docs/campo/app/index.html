@@ -1,4 +1,5 @@
 <!doctype html>
+<html lang="es">
 <meta charset="utf-8">
 <title>Actas de campo</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -355,8 +356,10 @@
   .proy .estado { font-family:var(--mono); font-size:.62rem; letter-spacing:.09em;
                   text-transform:uppercase; padding:.22rem .45rem; border-radius:99px;
                   border:1px solid var(--rule); color:var(--ink-2); white-space:nowrap; }
-  .proy .estado.sucio { border-color:#C79A3A; color:#C79A3A; }
-  .proy .estado.exportado { border-color:#4E8B5A; color:#4E8B5A; }
+  /* Con los tonos del tema: el ámbar y el verde fijos no llegaban a 4,5:1
+     sobre el fondo claro (WCAG 1.4.3). */
+  .proy .estado.sucio { border-color:var(--obs); color:var(--obs); }
+  .proy .estado.exportado { border-color:var(--ok); color:var(--ok); }
   .lista-proy { display:flex; flex-direction:column; gap:.5rem; margin:.8rem 0 0; }
   .proy-fila { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
                padding:.55rem .65rem; border:1px solid var(--rule); border-radius:6px;
@@ -5169,7 +5172,9 @@ MANT.equipos = (function () {
     });
   }
 
-  function abrir(tag) {
+  // `silencioso`: al reabrir la app la ficha vuelve, pero no se adueña de la
+  // pantalla; si había una orden a medias, manda la orden.
+  function abrir(tag, silencioso) {
     return volcar().then(function () { return A.equipos.leer(M.tag(tag)); }).then(function (e) {
       if (!e) throw new Error("no existe la ficha de " + tag);
       ficha = M.normalizar.equipo(e);
@@ -5179,8 +5184,10 @@ MANT.equipos = (function () {
       try { localStorage.setItem(CLAVE_ABIERTO, ficha.tag); } catch (x) { /* da igual */ }
       pintarFicha();
       pintarHistorial();
-      try { localStorage.setItem("campo.mant.panel", "equipos"); } catch (x) { /* da igual */ }
-      raiz.dispatchEvent(new CustomEvent("m-panel", { detail: "equipos" }));
+      if (!silencioso) {
+        try { localStorage.setItem("campo.mant.panel", "equipos"); } catch (x) { /* da igual */ }
+        raiz.dispatchEvent(new CustomEvent("m-panel", { detail: "equipos" }));
+      }
       estado(ficha.actualizado ? "guardado " + hora(ficha.actualizado) : "");
       return ficha;
     });
@@ -5463,7 +5470,7 @@ MANT.equipos = (function () {
   var previa = null;
   try { previa = localStorage.getItem(CLAVE_ABIERTO); } catch (x) { /* da igual */ }
   var listo = pintarLista().then(function () {
-    if (previa) return abrir(previa).catch(function () {
+    if (previa) return abrir(previa, true).catch(function () {
       try { localStorage.removeItem(CLAVE_ABIERTO); } catch (x) { /* da igual */ }
     });
   }).catch(function () { /* sin almacén: la lista ya lo dice */ });

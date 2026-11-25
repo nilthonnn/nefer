@@ -168,6 +168,7 @@ jobs:
             tests/test_baterias.py \
             tests/test_firmas.py \
             tests/test_documentos.py \
+            tests/test_calidad.py \
             tests/test_build_extract.py \
             tests/test_layout.py \
             tests/test_schema.py \
