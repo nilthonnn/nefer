@@ -130,3 +130,67 @@ def test_avisa_si_la_foto_salio_movida_u_oscura(pw, servidor, fotos):
     assert "Parece movida" in texto and "usted decide" in texto
     assert "Cómo tomarla" in pg.text_content("[data-casilla=c05]")
     nav.close()
+
+
+# --------------------------------------------------------------------------
+# Lo que salió usando la app como técnico, una jornada completa
+# --------------------------------------------------------------------------
+
+def test_el_lector_siempre_deja_salir(pw, servidor, fotos):
+    """Leyendo o fallado, el panel tiene botón: no se queda pegado en la foto."""
+    nav = _lanzar(pw)
+    pg = _contexto(nav).new_page()
+    pg.goto(servidor)
+    _orden(pg)
+    pg.evaluate("() => { MANT.lector.leerFoto = () => new Promise(() => {}); }")
+    pg.set_input_files("#m-o-foto-c05", str(fotos / "placa.jpg"))
+    pg.wait_for_selector("[data-casilla=c05] [data-accion=foto-leer]")
+    pg.click("[data-casilla=c05] [data-accion=foto-leer]")
+    pg.wait_for_selector(".m-lectura-estado")
+    pg.click("[data-casilla=c05] [data-accion=lect-cerrar]")
+    assert pg.locator(".m-lectura-estado").count() == 0
+    nav.close()
+
+
+def test_el_nombre_de_la_orden_sigue_a_la_clasificacion(pw, servidor):
+    nav = _lanzar(pw)
+    pg = _contexto(nav).new_page()
+    pg.goto(servidor)
+    _orden(pg)
+    pg.check("input[name=m-o-tipo][value=PREVENTIVO]")
+    pg.wait_for_timeout(300)
+    pg.fill("#m-o-ot-ot", "4017305000")
+    pg.wait_for_timeout(1500)
+    pg.click("#m-o-volver")
+    pg.wait_for_timeout(500)
+    texto = pg.inner_text("#m-ot-lista")
+    assert "OT 4017305000 · 064 · Preventivo" in texto, texto
+    # El que escribió el técnico no se toca.
+    pg.locator("#m-ot-lista [data-retomar], #m-ot-lista button:has-text('Continuar')").first.click()
+    pg.fill("#m-proy-nombre", "Mi orden de prueba")
+    pg.wait_for_timeout(300)
+    pg.check("input[name=m-o-tipo][value=CORRECTIVO]")
+    pg.wait_for_timeout(1500)
+    pg.click("#m-o-volver")
+    pg.wait_for_timeout(500)
+    assert "Mi orden de prueba" in pg.inner_text("#m-ot-lista")
+    nav.close()
+
+
+def test_el_historial_de_la_ficha_abierta_se_actualiza(pw, servidor):
+    nav = _lanzar(pw)
+    pg = _contexto(nav).new_page()
+    pg.goto(servidor)
+    pg.wait_for_function("() => window.MANT && MANT.equipos")
+    pg.click("#tab-mantenimiento")
+    pg.click("#m-seg-equipos")
+    pg.fill("#m-eq-tag", "077")
+    pg.click("#m-eq-nuevo button[type=submit]")
+    pg.wait_for_selector("#m-ficha:not([hidden])")
+    assert "Sin órdenes" in pg.inner_text("#m-f-hist-lista")
+    pg.click("#m-f-inspeccion")
+    pg.wait_for_selector("#m-orden:not([hidden])")
+    pg.wait_for_timeout(1200)
+    pg.click("#m-seg-equipos")
+    pg.wait_for_function("() => !/Sin órdenes/.test(document.querySelector('#m-f-hist-lista').innerText)")
+    nav.close()

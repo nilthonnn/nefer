@@ -2802,9 +2802,15 @@ var CAMPO = (function () {
         if (ya && ya.estado === "anulado") throw new Error(MENSAJE_ANULADA);
         return instantanea();
       }).then(function (datos) {
+        // El nombre que pone la app («OT … · 064 · Preventivo PM1») sigue a los
+        // datos: si la orden se reclasifica o recibe su N° de OT, la lista lo
+        // dice. El que escribió el técnico no se toca.
+        var auto = nombrePorDefecto(actual.vista, datos);
+        var esAuto = !opciones.nombre && (!actual.nombre || actual.nombre === actual.nombreAuto);
         var p = {
           id: opciones.comoNuevo ? nuevoId() : actual.id,
-          nombre: opciones.nombre || actual.nombre || nombrePorDefecto(actual.vista, datos),
+          nombre: opciones.nombre || (esAuto ? auto : actual.nombre),
+          nombreAuto: esAuto ? auto : (actual.nombreAuto || null),
           vista: actual.vista,
           estado: opciones.estado || actual.estado || "borrador",
           creado: opciones.comoNuevo ? Date.now() : (actual.creado || Date.now()),
@@ -2814,7 +2820,7 @@ var CAMPO = (function () {
         };
         if (!opciones.comoNuevo && actual.historial) p.historial = actual.historial;
         return almacen.guardar(p).then(function () {
-          actual = { id: p.id, nombre: p.nombre, vista: p.vista,
+          actual = { id: p.id, nombre: p.nombre, nombreAuto: p.nombreAuto || null, vista: p.vista,
                      estado: p.estado, creado: p.creado, modificado: p.modificado };
           sucio = false;
           avisar();
@@ -2857,7 +2863,7 @@ var CAMPO = (function () {
         var api = vistas[p.vista];
         if (!api) throw new Error("no se reconoce el tipo de proyecto");
         return Promise.resolve(api.restaurar(p.datos)).then(function () {
-          actual = { id: p.id, nombre: p.nombre, vista: p.vista, estado: p.estado,
+          actual = { id: p.id, nombre: p.nombre, nombreAuto: p.nombreAuto || null, vista: p.vista, estado: p.estado,
                      creado: p.creado, modificado: p.modificado, historial: p.historial };
           sucio = false;
           ultimaVista = p.vista;
@@ -2878,7 +2884,7 @@ var CAMPO = (function () {
       return almacen.leer(id).then(function (p) {
         if (!p) throw new Error("ese proyecto ya no existe");
         if (p.estado === "anulado") throw new Error(MENSAJE_ANULADA);
-        actual = { id: p.id, nombre: p.nombre, vista: p.vista, estado: p.estado,
+        actual = { id: p.id, nombre: p.nombre, nombreAuto: p.nombreAuto || null, vista: p.vista, estado: p.estado,
                    creado: p.creado, modificado: p.modificado, historial: p.historial };
         ultimaVista = p.vista;
         apuntarSesion(actual);
@@ -5629,6 +5635,9 @@ MANT.equipos = (function () {
   // proyecto importado) puede haber añadido fichas mientras tanto.
   document.addEventListener("click", function (e) {
     if (e.target.closest("[data-ir='mantenimiento']") && !ficha) pintarLista();
+    // Con una ficha abierta, su historial se rehace al volver a ella: la
+    // orden que se acaba de llenar tiene que aparecer.
+    if (ficha && e.target.closest("[data-ir='mantenimiento'], #m-seg-equipos")) pintarHistorial();
   });
   $("#m-eq-lista").addEventListener("click", function (e) {
     var b = e.target.closest("[data-tag]");
@@ -6096,8 +6105,11 @@ MANT.ordenes = (function () {
 
   function pintarLectura() {
     var L = lectura, F = M.FORMATO.informe;
-    if (L.estado === "leyendo") return '<p class="m-nota-sn m-lectura-estado" role="status">' + esc(L.aviso || "leyendo la foto…") + "</p>";
-    if (L.estado === "error") return '<p class="m-lect-mal" role="status">' + esc(L.aviso) + "</p>";
+    // Leyendo o fallado, siempre hay salida: el panel no se queda pegado.
+    if (L.estado === "leyendo") return '<p class="m-nota-sn m-lectura-estado" role="status">' + esc(L.aviso || "leyendo la foto…") + "</p>" +
+      '<div class="m-sn"><button type="button" data-accion="lect-cerrar">Cancelar</button></div>';
+    if (L.estado === "error") return '<p class="m-lect-mal" role="status">' + esc(L.aviso) + "</p>" +
+      '<div class="m-sn"><button type="button" data-accion="lect-cerrar">Cerrar</button></div>';
     var hayColumna = L.propuestas.some(function (x) { return x.destino === "columna"; });
     var filas = L.propuestas.map(function (x, k) {
       var otro = x.destino === "tag" && x.valor !== m.tag;
@@ -6148,6 +6160,7 @@ MANT.ordenes = (function () {
     });
   }
 
+  var LIMITE_LECTURA = 90000;
   function leerFoto(i, recorte) {
     var f = m.fotos[i];
     if (!f) return Promise.resolve();
@@ -6157,9 +6170,18 @@ MANT.ordenes = (function () {
       if (vacia) { primeraVacia = n; return true; }
       return false;
     });
-    lectura = { foto: f.foto, casilla: f.casilla, estado: "leyendo", texto: "", propuestas: [],
+    var esta = lectura = { foto: f.foto, casilla: f.casilla, estado: "leyendo", texto: "", propuestas: [],
                 columna: primeraVacia, aviso: "preparando el lector (la primera vez tarda un poco)…" };
     pintar();
+    // Un lector que no contesta no puede dejar la foto «leyendo» para siempre.
+    setTimeout(function () {
+      if (lectura === esta && esta.estado === "leyendo") {
+        esta.estado = "error";
+        esta.aviso = "El lector tardó demasiado (más de " + LIMITE_LECTURA / 1000 + " s). Escriba los valores a mano " +
+          "o pruebe «Encuadrar y leer» con sólo la placa o la pantalla.";
+        pintar();
+      }
+    }, LIMITE_LECTURA);
     return Promise.all([recorte ? Promise.resolve({ archivo: recorte }) : A.fotos.leer(f.foto), A.equipos.listar()]).then(function (r) {
       if (!r[0]) throw new Error("la foto ya no está guardada");
       var fichas = r[1] || [], tags = fichas.map(function (e) { return e.tag; });
@@ -6167,12 +6189,12 @@ MANT.ordenes = (function () {
       return MANT.lector.leerFoto(r[0].archivo, f.casilla,
         { tags: tags, fichas: fichas, tag: m.tag, nominal: nominal,
           horometroPrevio: (ctx.ficha && M.normalizar.equipo(ctx.ficha).horometro) || null }, function (estado, avance) {
-        if (!lectura || lectura.foto !== f.foto) return;
+        if (lectura !== esta) return;
         lectura.aviso = (/recogniz/.test(estado) ? "leyendo" : "preparando el lector") + "… " + Math.round(avance * 100) + " %";
         var n = raiz.querySelector(".m-lectura-estado");
         if (n) n.textContent = lectura.aviso;
       }).then(function (res) {
-        if (!lectura || lectura.foto !== f.foto) return;
+        if (lectura !== esta) return;
         lectura.texto = res.texto;
         lectura.giro = res.giro;
         lectura.recortada = !!recorte;
@@ -6181,7 +6203,7 @@ MANT.ordenes = (function () {
         pintar();
       });
     }).catch(function (err) {
-      if (!lectura) return;
+      if (lectura !== esta) return;
       lectura.estado = "error";
       lectura.aviso = "No se pudo leer: " + ((err && err.message) || "error") + ". Escriba los valores a mano.";
       pintar();
