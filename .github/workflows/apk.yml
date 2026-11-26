@@ -141,6 +141,11 @@ jobs:
           # sw.js se deja fuera a propósito: dentro del .apk no pinta nada.
           fuera = {str(a.relative_to(web)): a.read_bytes()
                    for a in web.rglob("*") if a.is_file() and a.name != "sw.js"}
+          # El empaquetador de Android guarda los .gz descomprimidos y sin
+          # la extensión; la app lo sabe (pide el lector sin comprimir).
+          import gzip
+          for n in [n for n in fuera if n.endswith(".gz")]:
+              fuera[n[:-3]] = gzip.decompress(fuera.pop(n))
 
           faltan = sorted(set(fuera) - set(dentro))
           sobran = sorted(set(dentro) - set(fuera))

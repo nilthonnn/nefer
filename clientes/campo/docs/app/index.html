@@ -11587,7 +11587,9 @@ MANT.lector = (function () {
         workerPath: b + "worker.min.js",
         corePath: b + "tesseract-core-simd-lstm.wasm.js",
         langPath: b.replace(/\/$/, ""),
-        gzip: true,
+        // Dentro del .apk el empaquetador de Android descomprime los .gz
+        // (queda eng.traineddata a secas): allí se pide sin comprimir.
+        gzip: !enApk(),
         cacheMethod: "none",            // ya lo guarda el trabajador de servicio
         logger: function (m) { if (avance && m && m.status) avance(m.status, m.progress || 0); }
       });
@@ -11601,8 +11603,10 @@ MANT.lector = (function () {
       .then(function (r) { return (r && r.data && r.data.text) || ""; });
   }
 
-  // ¿Está guardado para usarse sin señal?
+  function enApk() { return !!(window.CAMPO && CAMPO.CONTEXTO && CAMPO.CONTEXTO.enAndroid); }
+  // ¿Está guardado para usarse sin señal? En el .apk ya viene dentro.
   function listoSinSenal() {
+    if (enApk()) return Promise.resolve(true);
     if (!window.caches) return Promise.resolve(false);
     var b = base();
     return caches.open(CACHE).then(function (c) {
@@ -11611,6 +11615,7 @@ MANT.lector = (function () {
   }
   // Bajarlo ahora, con señal, para tenerlo en el patio.
   function descargar() {
+    if (enApk()) return Promise.resolve(true);
     var b = base();
     return Promise.all(ARCHIVOS.map(function (a) {
       return fetch(b + a).then(function (r) {
