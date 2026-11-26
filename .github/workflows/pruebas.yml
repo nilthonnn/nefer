@@ -178,6 +178,7 @@ jobs:
             tests/test_calidad.py \
             tests/test_plegado.py \
             tests/test_evidencia.py \
+            tests/test_fotos_telefono.py \
             tests/test_build_extract.py \
             tests/test_layout.py \
             tests/test_schema.py \

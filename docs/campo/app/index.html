@@ -744,6 +744,8 @@
   .m-diag .lb { display:inline-block; min-width:6.5rem; }
   .m-diag.alta { border-left-color:var(--mal); }
   .m-diag.media { border-left-color:var(--obs); }
+  .m-calidad { border-left:5px solid var(--obs); background:var(--obs-soft); border-radius:6px;
+               padding:.4rem .6rem; margin:.35rem 0; font-size:.86rem; }
   .m-sueltas { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:.45rem; }
   .m-sueltas .m-foto { margin:0; }
   .m-sueltas .m-foto img { height:120px; max-height:120px; object-fit:cover; }
@@ -3643,7 +3645,9 @@ var CAMPO = (function () {
 
       var vale;
       try {
-        vale = window.Anfitrion.abrir(nombre, blob.type || "application/octet-stream");
+        vale = peticion.foto !== undefined
+          ? window.Anfitrion.abrirFoto(nombre, blob.type || "image/jpeg", peticion.foto)
+          : window.Anfitrion.abrir(nombre, blob.type || "application/octet-stream");
       } catch (e) { rendirse(String(e && e.message || e)); return; }
       if (!vale || vale.indexOf("ERROR:") === 0) {
         rendirse(vale ? vale.slice(6) : "el teléfono no contestó");
@@ -3695,6 +3699,28 @@ var CAMPO = (function () {
     // se descarga directo, por el enlace de siempre.
     return Promise.resolve(null);
   })();
+
+  /* ---------- copia de cada foto en la galería del teléfono ----------
+     Trazabilidad: cada foto que entra a una orden queda también en el
+     teléfono, en DCIM/Actas de campo/<TAG>/, con un nombre que dice qué es
+     (TAG, casilla, fecha y hora). Así la foto existe aunque se borre la app
+     o se pierda la orden. Sólo dentro del .apk: una página web no puede
+     escribir en la galería; allí se ofrece guardarlas a mano. */
+  var CLAVE_COPIA = "campo.fotos.copia";
+  var copiaFotos = {
+    puede: function () { return !!(CONTEXTO.enAndroid && window.Anfitrion && window.Anfitrion.abrirFoto); },
+    activa: function () {
+      var v = null;
+      try { v = localStorage.getItem(CLAVE_COPIA); } catch (e) { /* por omisión, sí */ }
+      return v !== "0";
+    },
+    activar: function (si) { try { localStorage.setItem(CLAVE_COPIA, si ? "1" : "0"); } catch (e) { /* sesión */ } },
+    guardar: function (blob, nombre, tag) {
+      if (!copiaFotos.puede() || !copiaFotos.activa()) return Promise.resolve(null);
+      return guardarPorAndroid({ data: blob, filename: nombre, foto: String(tag || "") })
+        .then(function (r) { return r && r.ruta ? r.ruta : null; }, function () { return null; });
+    }
+  };
 
   function entregar(blob, nombre, avisar) {
     // Exportar no cierra el proyecto: lo deja marcado y abierto a cambios.
@@ -3875,6 +3901,48 @@ var CAMPO = (function () {
     }
   }
 
+  /* ---------- ¿la foto sirve? ----------
+     Criterios de fotografía técnica, medidos en la propia foto: nitidez
+     (varianza del laplaciano: una foto movida o desenfocada da poco),
+     exposición (brillo medio) y reflejo (área quemada). Avisa con el
+     consejo para repetirla; no bloquea: el técnico decide. Los umbrales
+     salen de fotos reales de campo: 19 fotos, sus copias desenfocadas
+     (desenfoque gaussiano de 4 px) y oscurecidas al 30 %. Con 60 avisa la
+     placa de alternador que el lector no pudo leer y deja pasar las nítidas
+     (241 a 5368); el oscurecimiento sale en 19–55 frente a 63–186 real. */
+  var CALIDAD = { borrosa: 60, oscura: 55, clara: 215, reflejo: 0.06 };
+  function calidadFoto(blob) {
+    if (!window.createImageBitmap) return Promise.resolve(null);
+    return createImageBitmap(blob).then(function (img) {
+      var lado = 480, esc = Math.min(1, lado / Math.max(img.width, img.height));
+      var W = Math.max(8, Math.round(img.width * esc)), H = Math.max(8, Math.round(img.height * esc));
+      var c = document.createElement("canvas"); c.width = W; c.height = H;
+      var g = c.getContext("2d"); g.drawImage(img, 0, 0, W, H);
+      if (img.close) img.close();
+      var p = g.getImageData(0, 0, W, H).data, y = new Float32Array(W * H), i, j, suma = 0, quemado = 0;
+      for (i = 0, j = 0; i < p.length; i += 4, j++) {
+        y[j] = p[i] * 0.299 + p[i + 1] * 0.587 + p[i + 2] * 0.114;
+        suma += y[j]; if (y[j] >= 250) quemado++;
+      }
+      var n = W * H, media = suma / n, l = [], s1 = 0, s2 = 0, k = 0;
+      for (var r = 1; r < H - 1; r++) for (var q = 1; q < W - 1; q++) {
+        var o = r * W + q, v = 4 * y[o] - y[o - 1] - y[o + 1] - y[o - W] - y[o + W];
+        s1 += v; s2 += v * v; k++;
+      }
+      var varianza = k ? s2 / k - (s1 / k) * (s1 / k) : 0;
+      var avisos = [];
+      if (varianza < CALIDAD.borrosa) avisos.push({ clave: "borrosa", texto: "Parece movida o desenfocada",
+        consejo: "Apoye los codos, toque la pantalla sobre la placa para enfocar y espere a que enfoque antes de disparar. De cerca, no use el zoom: acérquese." });
+      if (media < CALIDAD.oscura) avisos.push({ clave: "oscura", texto: "Está oscura",
+        consejo: "Busque luz de costado o use la linterna de otro teléfono en ángulo. Evite el flash de frente sobre metal o pantalla." });
+      else if (media > CALIDAD.clara) avisos.push({ clave: "clara", texto: "Está muy clara",
+        consejo: "Haga sombra con el cuerpo o la mano y vuelva a tomarla." });
+      if (quemado / n > CALIDAD.reflejo) avisos.push({ clave: "reflejo", texto: "Tiene reflejo",
+        consejo: "Incline el teléfono unos grados, haga sombra con la mano y no use flash de frente." });
+      return { nitidez: Math.round(varianza), brillo: Math.round(media), reflejo: Math.round(quemado / n * 1000) / 10, avisos: avisos };
+    }, function () { return null; });
+  }
+
   return {
     $: $, esc: esc, ir: ir, arrancar: arrancar, conFoco: conFoco, VERSION: VERSION,
     armarZip: armarZip, leerZip: leerZip, leerBytes: leerBytes, entregar: entregar,
@@ -3885,7 +3953,8 @@ var CAMPO = (function () {
     incrustada: incrustada, CONTEXTO: CONTEXTO,
     RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo, camara: camara,
     archivosArrastrados: archivosArrastrados, imagenesPegadas: imagenesPegadas,
-    pesoLegible: pesoLegible, MAX_LADO: MAX_LADO, nombresUnicos: nombresUnicos
+    pesoLegible: pesoLegible, MAX_LADO: MAX_LADO, nombresUnicos: nombresUnicos,
+    copiaFotos: copiaFotos, calidadFoto: calidadFoto
   };
 })();
 </script>
@@ -5858,11 +5927,40 @@ MANT.ordenes = (function () {
     }).join("");
   }
 
+  var CONSEJO = {
+    borrosa: ["Parece movida o desenfocada", "Apoye los codos, toque la pantalla sobre la placa para enfocar y espere. De cerca, acérquese en vez de usar el zoom."],
+    oscura: ["Está oscura", "Luz de costado o una linterna en ángulo; sin flash de frente sobre metal o pantalla."],
+    clara: ["Está muy clara", "Haga sombra con el cuerpo o la mano y repítala."],
+    reflejo: ["Tiene reflejo", "Incline el teléfono unos grados y haga sombra con la mano; sin flash de frente."]
+  };
+  function avisosCalidad(f) {
+    var q = f.calidad;
+    if (!q || !q.avisos || !q.avisos.length) return "";
+    return '<div class="m-calidad" role="note"><b>Revise la foto:</b> ' + q.avisos.map(function (k) {
+      var c = CONSEJO[k] || [k, ""];
+      return esc(c[0]) + ". <span>" + esc(c[1]) + "</span>";
+    }).join(" ") + " <span class=\"m-nota-sn\">Si se lee bien, déjela: usted decide.</span></div>";
+  }
+
+  /* Cómo tomar cada foto: de cerca y sin reflejo las que se leen (placas,
+     pantallas, probador); con el equipo entero y el TAG a la vista las
+     generales. */
+  function comoTomarla(idc) {
+    var lee = MANT.lector && MANT.lector.LEE && MANT.lector.LEE[idc];
+    if (lee) return "De frente y de cerca: que la placa o la pantalla llene el cuadro. Toque para enfocar, " +
+      "haga sombra con la mano y no use flash de frente. Si brilla, incline el teléfono unos grados.";
+    if (idc === "c01") return "El equipo entero y el TAG legible en la misma foto, con luz de frente o de costado.";
+    return "Que se vea el componente entero y, si se puede, una referencia (TAG o rótulo). " +
+      "Luz pareja; si hay sol directo, póngase entre el sol y el equipo.";
+  }
+
   function fichaFoto(i) {
     var f = m.fotos[i];
     return '<div class="m-foto' + (f.propuesta ? " propuesta" : "") + '">' +
       '<img data-foto="' + esc(f.foto) + '" alt="' + esc(f.nombre || "foto") + '">' +
       (f.propuesta ? '<span class="m-prop">PROPUESTA POR EL NOMBRE DEL ARCHIVO · ' + esc(f.nombre || "") + "</span>" : "") +
+      avisosCalidad(f) +
+      (f.copia ? '<p class="m-nota-sn">Copia en el teléfono: ' + esc(f.copia.ruta) + "</p>" : "") +
       (f.casilla === HALLAZGO ? campos([["fotos." + i + ".texto", "Descripción del hallazgo", "area"]]) : "") +
       (f.casilla && MANT.lector && (MANT.lector.LEE[f.casilla] || f.casilla === "c01")
         ? '<div class="m-sn" style="margin:.3rem 0">' +
@@ -5876,6 +5974,41 @@ MANT.ordenes = (function () {
       (f.propuesta ? '<button type="button" class="primary" data-accion="foto-confirmar" data-i="' + i + '">Confirmar</button>' : "") +
       '<button type="button" class="ghost m-borrar" data-accion="foto-quitar" data-i="' + i + '">Quitar</button>' +
       "</div></div>";
+  }
+
+  /* Trazabilidad de las fotos: en el .apk cada foto se copia sola a la
+     galería (DCIM/Actas de campo/<TAG>/); en el navegador, que no puede
+     escribir en la galería, se guardan a mano con el mismo nombre. */
+  function pintarCopia() {
+    if (R.copiaFotos.puede()) {
+      return '<label class="m-usar"><input type="checkbox" data-copia-fotos' + (R.copiaFotos.activa() ? " checked" : "") +
+        "> Guardar copia de cada foto en la galería (DCIM/Actas de campo/" + esc(m.tag) + ")</label>";
+    }
+    return m.fotos.length
+      ? '<div class="m-sn"><button type="button" data-accion="fotos-al-telefono">Guardar las fotos en el teléfono</button></div>' +
+        '<p class="m-nota-sn">Desde el navegador quedan en Descargas, con el TAG, la casilla, la fecha y la hora en el nombre. ' +
+        "Con la app instalada (.apk) se guardan solas en la galería.</p>"
+      : "";
+  }
+  function fotosAlTelefono() {
+    var estado = function (t) { var n = $("#m-o-fotos-estado"); if (n) n.textContent = t || ""; };
+    var lista = m.fotos.slice(), hechas = 0;
+    estado("guardando…");
+    return lista.reduce(function (cadena, f) {
+      return cadena.then(function () { return A.fotos.leer(f.foto); }).then(function (r) {
+        if (!r || !r.archivo) return;
+        var nombre = M.nombreFoto(m.tag, f.casilla || "sc", r.fecha || Date.now());
+        var url = URL.createObjectURL(r.archivo), a = document.createElement("a");
+        a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        f.copia = { ruta: "Descargas/" + nombre, fecha: new Date().toLocaleString("es-PE") };
+        hechas++;
+        return new Promise(function (ok) { setTimeout(ok, 350); });
+      });
+    }, Promise.resolve()).then(function () {
+      tocar(); pintar();
+      estado(hechas + (hechas === 1 ? " foto guardada" : " fotos guardadas") + " en Descargas.");
+    });
   }
 
   function resumenFotos() {
@@ -5900,7 +6033,7 @@ MANT.ordenes = (function () {
       '<div class="m-sn"><input type="file" class="archivo" id="m-o-fotos-varias" accept="image/*" multiple ' +
       'aria-label="Cargar varias fotos de la inspección"><label class="boton" for="m-o-fotos-varias">Cargar fotos…</label>' +
       (prop ? '<button type="button" data-accion="fotos-confirmar">Confirmar propuestas (' + prop + ")</button>" : "") +
-      '</div><p class="m-nota-sn" id="m-o-fotos-estado" role="status"></p>';
+      '</div>' + pintarCopia() + '<p class="m-nota-sn" id="m-o-fotos-estado" role="status"></p>';
     if (sueltas.length) {
       html += '<div class="m-casilla"><span class="lb">Sin casilla: elija dónde va cada una</span>' +
         '<div class="m-sueltas">' + sueltas.map(fichaFoto).join("") + "</div></div>";
@@ -5937,7 +6070,8 @@ MANT.ordenes = (function () {
   function pintarEstado(idc) {
     var cr = M.FORMATO.criterios[idc], e = (m.estados || {})[idc] || {};
     var nota = "estados." + idc + ".nota";
-    return (cr ? '<details class="m-criterio"><summary>Qué mirar</summary><p><b>OK:</b> ' + esc(cr[0]) + "</p>" +
+    return (cr ? '<details class="m-criterio"><summary>Qué mirar</summary>' +
+        '<p><b>Cómo tomarla:</b> ' + esc(comoTomarla(idc)) + "</p><p><b>OK:</b> " + esc(cr[0]) + "</p>" +
         (cr[1] ? "<p><b>Observado:</b> " + esc(cr[1]) + "</p>" : "") +
         (cr[2] ? "<p><b>Falla:</b> " + esc(cr[2]) + "</p>" : "") + "</details>" : "") +
       '<div class="m-sn" role="group" aria-label="Estado de ' + idc + '">' +
@@ -6127,9 +6261,23 @@ MANT.ordenes = (function () {
     return f.foto ? A.fotos.borrar(f.foto) : Promise.resolve();
   }
 
+  function alElegirFotos(e) {
+    var n = e.currentTarget, lista = Array.prototype.slice.call(n.files || []);
+    n.value = "";
+    if (lista.length) agregarFotos(lista, n.dataset.fotoCasilla || null);
+  }
+
+  // Una tras otra: dos tomas seguidas no se pisan al guardar la orden.
+  var colaFotos = Promise.resolve();
+  function agregarFotos(archivos, idc) {
+    colaFotos = colaFotos.then(function () { return agregarFotosYa(archivos, idc); },
+                               function () { return agregarFotosYa(archivos, idc); });
+    return colaFotos;
+  }
+
   /* Entran fotos: en una casilla elegida (directo, sin propuesta) o varias a
      la vez, y entonces cada una se propone por su nombre de archivo. */
-  function agregarFotos(archivos, idc) {
+  function agregarFotosYa(archivos, idc) {
     if (!m || !miId || !archivos || !archivos.length) return Promise.resolve();
     var estado = function (t) { var n = $("#m-o-fotos-estado"); if (n) n.textContent = t || ""; };
     estado("procesando…");
@@ -6149,15 +6297,28 @@ MANT.ordenes = (function () {
             if (idc) antes = quitarFoto(previa);  // en su casilla: la nueva reemplaza
             else dest = null;                     // propuesta a casilla llena: queda suelta
           }
-          var fid = nuevoIdFoto();
-          var nombre = idc ? M.nombreFoto(m.tag, idc, Date.now()) : (origen.name || "foto.jpg");
+          var fid = nuevoIdFoto(), ahora = Date.now();
+          var nombre = idc ? M.nombreFoto(m.tag, idc, ahora) : (origen.name || "foto.jpg");
+          var registro = { casilla: dest || null, foto: fid, texto: "", nombre: nombre,
+                           propuesta: !idc && !!dest, calidad: null, copia: null };
           return antes.then(function () {
             return A.fotos.guardar({ id: fid, proyecto: miId, archivo: x.archivo, nombre: nombre,
-                                     fecha: origen.lastModified || Date.now() });
+                                     fecha: origen.lastModified || ahora });
           }).then(function () {
             if (x.url) urls[fid] = x.url;
-            m.fotos.push({ casilla: dest || null, foto: fid, texto: "", nombre: nombre,
-                           propuesta: !idc && !!dest });
+            m.fotos.push(registro);
+            // La calidad se mide en la foto entera; la copia va a la galería
+            // con el nombre que dice qué es: TAG, casilla, fecha y hora.
+            return Promise.all([
+              R.calidadFoto(x.archivo).then(function (q) {
+                if (q) registro.calidad = { nitidez: q.nitidez, brillo: q.brillo, reflejo: q.reflejo,
+                                            avisos: q.avisos.map(function (a) { return a.clave; }) };
+              }),
+              R.copiaFotos.guardar(origen, M.nombreFoto(m.tag, dest || "sc", ahora).replace(/\.jpg$/,
+                "-" + ("0" + new Date(ahora).getSeconds()).slice(-2) + ".jpg"), m.tag).then(function (ruta) {
+                if (ruta) registro.copia = { ruta: ruta, fecha: new Date(ahora).toLocaleString("es-PE") };
+              })
+            ]);
           });
         });
       });
@@ -6502,6 +6663,13 @@ MANT.ordenes = (function () {
       '<p class="m-nota-sn" id="m-o-wa-estado" role="status"></p>');
 
     $("#m-o-cuerpo").innerHTML = html;
+    // Cada selector de fotos escucha por su cuenta: si la pantalla se
+    // repinta mientras la cámara está abierta (la foto anterior aún se
+    // procesa), el selector viejo queda fuera del documento y su «change» ya
+    // no llega al cuerpo. Escuchándolo directamente, la foto entra igual.
+    raiz.querySelectorAll('#m-o-cuerpo input[type="file"]').forEach(function (n) {
+      n.addEventListener("change", alElegirFotos);
+    });
     miniaturas();
     pintarAlertas();
   }
@@ -6668,6 +6836,7 @@ MANT.ordenes = (function () {
     if (acc === "lect-usar") { usarLectura(); return; }
     if (acc === "lect-cerrar") { lectura = null; pintar(); return; }
     if (acc === "foto-confirmar") { m.fotos[Number(b.dataset.i)].propuesta = false; tocar(); pintar(); return; }
+    if (acc === "fotos-al-telefono") { fotosAlTelefono(); return; }
     if (acc === "fotos-confirmar") {
       m.fotos.forEach(function (f) { if (f.casilla) f.propuesta = false; });
       tocar(); pintar(); return;
@@ -6921,12 +7090,8 @@ MANT.ordenes = (function () {
   }, true);
   $("#m-o-cuerpo").addEventListener("change", function (e) {
     var n = e.target;
-    if (n.type === "file") {
-      var lista = Array.prototype.slice.call(n.files || []);
-      n.value = "";
-      agregarFotos(lista, n.dataset.fotoCasilla || null);
-      return;
-    }
+    if (n.hasAttribute && n.hasAttribute("data-copia-fotos")) { R.copiaFotos.activar(n.checked); return; }
+    if (n.type === "file") return;          // lo atiende alElegirFotos
     if (n.dataset && n.dataset.mover !== undefined) {
       var i = Number(n.dataset.mover), destino = n.value || null, f = m.fotos[i];
       if (destino && destino !== HALLAZGO) {
