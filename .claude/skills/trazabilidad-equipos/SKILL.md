@@ -28,6 +28,13 @@ Pruebas que lo vigilan: `clientes/campo/tests/`.
 5. **Seguridad antes de iniciar** (lo que exige el aviso): bloqueo y
    etiquetado, IPERC según PETS, HIRA, batería desconectada; desbloqueo al
    cerrar; herramientas e instrumentos con calibración. Cada marca, con hora.
+5b. **IPERC continuo** (sección V de la hoja de campo; `FORMATO.iperc`,
+   `m.iperc.filas`): el técnico elige las actividades de hoy (o las
+   sugeridas por tipo de servicio) y confirma por peligro que las medidas
+   están aplicadas (con hora). Las filas de las hojas de campo llevan su
+   evaluación (8→5, 13→9); las agregadas por la app van marcadas
+   «Propuesta: validar con SSOMA». Residual A o S = aviso crítico (no
+   aceptable: reevaluar; si no se controla, se paraliza). Sale en el PDF.
 6. **Fotos por casilla**, cada componente con su estado OK / Observado /
    Falla y nota; el criterio del especialista a la vista, la decisión del
    técnico. Nada de diagnóstico automático.

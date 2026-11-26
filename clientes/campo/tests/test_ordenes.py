@@ -87,6 +87,11 @@ def _m(js, tag="064", tipo="PREVENTIVO", pm="PM1_250", **cambios):
     m["placaConfirmada"] = {"fecha": "hoy", "tecnico": "T"}
     m["equipo"] = dict(js("e => MANT.modelo.normalizar.equipo(e)", EQUIPOS[tag]))
     m["ot"]["ot"] = "4017300492"
+    # Una orden en regla lleva su IPERC continuo con las medidas confirmadas.
+    filas = js("() => MANT.modelo.filasIperc('area')")
+    for f in filas:
+        f.update(aplicadas=True, hora="hoy")
+    m["iperc"] = {"actividades": ["area"], "filas": filas, "fecha": "hoy"}
     for k, v in cambios.items():
         m[k] = v
     return m
@@ -268,6 +273,9 @@ def test_ot_completa_del_064_en_modo_avion_sobrevive_a_cerrar_la_app(pw, servido
     pg.click("[data-sn='informe.operativo'][data-valor=true]")
     pg.click("[data-sn='ot.tareaCompleta'][data-valor=true]")
     pg.click("[data-estado='seguridad.items.desbloqueo'][data-valor=OK]")
+    # IPERC continuo: la desenergización, con sus medidas confirmadas.
+    pg.click("[data-iperc-act=desenergizar]")
+    pg.click("[data-iperc-ok='0']")
     _guardado(pg)
     pg.wait_for_timeout(900)
     _guardado(pg)
