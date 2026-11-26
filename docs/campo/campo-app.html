@@ -799,6 +799,16 @@
   .g-nav .primary { flex:1; }
   .g-hallazgo { border-left:5px solid var(--obs); background:var(--card); border-radius:6px; padding:.5rem .7rem; }
   .g-hallazgo.mal { border-left-color:var(--mal); }
+  .g-actividades button { text-align:left; }
+  .g-actividades button[aria-pressed="true"] { background:var(--accent-soft); border-color:var(--accent); }
+  .g-prop { font-family:var(--mono); font-size:.66rem; text-transform:uppercase; color:var(--obs); }
+  .g-iperc { background:var(--card); border:1px solid var(--rule); border-left:5px solid var(--rule); border-radius:7px;
+             padding:.5rem .7rem; display:flex; flex-direction:column; gap:.3rem; }
+  .g-iperc.ok { border-left-color:var(--ok); } .g-iperc.obs { border-left-color:var(--obs); } .g-iperc.mal { border-left-color:var(--mal); }
+  .g-iperc p { margin:0; }
+  .g-iperc-paso { font-family:var(--mono); font-size:.72rem; text-transform:uppercase; color:var(--ink-2); }
+  .g-iperc-medidas { margin:0; padding-left:1.1rem; font-size:.92rem; }
+  .g-iperc-ok[aria-pressed="true"] { background:var(--ok-soft); border-color:var(--ok); color:var(--ok); }
   .m-sueltas { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:.45rem; }
   .m-sueltas .m-foto { margin:0; }
   .m-sueltas .m-foto img { height:120px; max-height:120px; object-fit:cover; }
@@ -4305,6 +4315,94 @@ MANT.modelo = (function () {
         ["dielectrica", "Maleta de herramientas dieléctricas"]],
       instrumentos: ["Pirómetro", "Pinza amperimétrica", "Multímetro", "Revelador de tensión"]
     },
+    /* IPERC continuo: «V. Identificación de peligros de la tarea y entorno
+       del trabajo, evaluación de riesgos e implementación de medidas de
+       control», como en la hoja de campo. Cada fila: peligro, riesgo,
+       evaluación inicial [valor, nivel], medidas de control y evaluación
+       residual [valor, nivel]. Las seis primeras actividades se copiaron de
+       las hojas llenadas en campo; las marcadas `propuesta` son sugeridas con
+       la misma escala y las tiene que validar SSOMA. */
+    iperc: {
+      titulo: "IDENTIFICACIÓN DE PELIGROS DE LA TAREA Y ENTORNO DEL TRABAJO, EVALUACIÓN DE RIESGOS E IMPLEMENTACIÓN DE MEDIDAS DE CONTROL",
+      slam: [["PARE", "y piense."],
+             ["OBSERVE", "e identifique los peligros de su entorno (arriba, abajo, atrás y adelante) y los peligros involucrados en la tarea que está a punto de realizar."],
+             ["EVALÚE", "el efecto de los riesgos que ha identificado sobre usted y los demás. Identifique qué controles puede implementar cumpliendo la jerarquía de los controles."],
+             ["GESTIONE", "los peligros / impactos para que sean eliminados o controlados. Implemente los controles antes de iniciar los trabajos."]],
+      niveles: {
+        A: ["Riesgo Alto", "Riesgo No Aceptable: requiere controles inmediatos. Si no se puede controlar el PELIGRO se paraliza los trabajos."],
+        S: ["Riesgo Significativo", "Riesgo No Aceptable: requiere controles inmediatos. Es necesario la adopción de un control de ingeniería como mínimo para ejecutar el trabajo. Si no se puede controlar el PELIGRO se paraliza los trabajos."],
+        M: ["Riesgo Medio", "Riesgo Aceptable; iniciar medidas para eliminar o reducir el riesgo, evaluar si la acción se puede ejecutar de manera inmediata."],
+        B: ["Riesgo Bajo", "Riesgo Aceptable. La acción se puede ejecutar de manera inmediata."]
+      },
+      nota: "Si en la evaluación de Riesgo Residual da como resultado Riesgo Alto, se deberá realizar una reevaluación de la actividad y establecer controles adecuados de modo que el nivel del riesgo sea medio o bajo.",
+      actividades: [
+        ["traslado", "Traslado de equipos, materiales y herramientas", false, [
+          ["Piso / superficie irregular", "Lesiones, tropiezos, caídas a mismo nivel", [8, "M"],
+           ["Transitar por zonas señalizadas y autorizadas, libres de obstáculos"], [5, "B"]],
+          ["Tránsito vehicular", "Atropellos, choques", [13, "S"], ["Transitar por vías autorizadas"], [9, "M"]],
+          ["Posturas disergonómicas", "Tensión muscular, lumbalgia", [8, "M"],
+           ["No cargar peso mayor a 25 kg", "Solicitar apoyo al compañero para cargar"], [5, "B"]]]],
+        ["area", "Inspección del área de trabajo", false, [
+          ["Manipulación de equipos", "Cortes, golpes en distintas partes del cuerpo", [8, "M"],
+           ["Uso de guantes anticorte", "Uso de EPP dieléctrico"], [5, "B"]],
+          ["Radiación solar", "Exposición a rayos UV, dermatitis, quemaduras", [8, "M"],
+           ["Uso de bloqueador solar", "Hidratación constante"], [5, "B"]],
+          ["Polvo", "Exposición al polvo", [8, "M"], ["Uso de mascarilla de medio rostro"], [5, "B"]],
+          ["Clima adverso", "Tormentas eléctricas, lluvias", [13, "S"],
+           ["Tener refugios cercanos", "Estar alerta a las comunicaciones"], [9, "M"]]]],
+        ["desenergizar", "Desenergización y bloqueo del grupo electrógeno", false, [
+          ["Energía residual / punto energizado", "Descarga eléctrica, shock eléctrico, arco eléctrico", [13, "S"],
+           ["Personal capacitado y autorizado", "Uso de revelador de tensión", "Uso de careta facial contra arco",
+            "Uso de traje ignífugo mayor a 14 cal/cm²", "Uso de guantes dieléctricos clase 0", "Uso de pértiga de rescate",
+            "Liberar energía residual", "Colocar puesta a tierra temporal"], [9, "M"]]]],
+        ["motor", "Inspección de motor, generador y componentes", false, [
+          ["Apertura de compuertas", "Atrapamiento, contusiones, aplastamiento", [8, "M"],
+           ["Asegurar compuertas", "No exponer las manos a puntos de atrapamiento"], [5, "B"]],
+          ["Superficies calientes", "Exposición a superficies calientes", [8, "M"],
+           ["Verificar temperatura con pirómetro", "Esperar el enfriamiento"], [5, "B"]]]],
+        ["limpieza", "Limpieza, medición de temperatura y resistencia de ITM, muestreo de aceite", false, [
+          ["Manipulación de herramientas", "Golpes, cortes, lesiones en distintas partes del cuerpo", [8, "M"],
+           ["Uso de herramientas inspeccionadas", "Uso de guantes anticorte"], [5, "B"]],
+          ["Manipulación de hidrocarburos", "Irritación de la piel, derrames, contaminación", [8, "M"],
+           ["Uso de guantes de nitrilo", "Uso de bandejas / kit antiderrame"], [5, "B"]]]],
+        ["encendido", "Encendido del grupo electrógeno", false, [
+          ["Fuente de energía / punto energizado", "Descarga eléctrica, arco eléctrico, shock eléctrico", [13, "S"],
+           ["Personal capacitado y autorizado", "Uso de traje ignífugo 14 cal/cm²", "Uso de revelador de tensión",
+            "Uso de pértiga de rescate", "Uso de careta facial contra arco"], [9, "M"]],
+          ["Ruido industrial", "Exposición al ruido", [8, "M"], ["Uso de orejeras / tapones"], [5, "B"]]]],
+        ["aceite", "Cambio de aceite y filtros", true, [
+          ["Aceite y filtros calientes", "Quemaduras", [8, "M"],
+           ["Esperar el enfriamiento del motor", "Verificar temperatura con pirómetro", "Guantes de nitrilo con protección térmica"], [5, "B"]],
+          ["Manipulación de hidrocarburos", "Derrame, contaminación del suelo, irritación de la piel", [8, "M"],
+           ["Bandeja y kit antiderrame", "Guantes de nitrilo", "Residuos en contenedor rotulado"], [5, "B"]],
+          ["Arranque inesperado del motor", "Atrapamiento, golpes", [13, "S"],
+           ["Bloqueo y etiquetado", "Batería desconectada", "Verificar energía cero antes de intervenir"], [9, "M"]]]],
+        ["refrigerante", "Cambio o reposición de refrigerante", true, [
+          ["Sistema presurizado y caliente", "Quemaduras por proyección de refrigerante", [13, "S"],
+           ["No abrir la tapa del radiador con el motor caliente", "Esperar el enfriamiento", "Careta facial y guantes"], [9, "M"]],
+          ["Refrigerante (etilenglicol)", "Irritación, ingestión accidental, contaminación", [8, "M"],
+           ["Guantes de nitrilo y lentes", "Bandeja antiderrame", "Recipientes rotulados"], [5, "B"]]]],
+        ["baterias", "Mantenimiento y prueba de baterías", true, [
+          ["Electrolito ácido", "Quemaduras químicas en piel y ojos", [8, "M"],
+           ["Lentes de seguridad y careta", "Guantes de nitrilo o PVC", "Agua o lavaojos disponible"], [5, "B"]],
+          ["Gases de hidrógeno", "Explosión, incendio", [13, "S"],
+           ["Ventilar el compartimiento", "No generar chispas ni fumar", "Desconectar primero el borne negativo"], [9, "M"]],
+          ["Cortocircuito con herramientas", "Arco eléctrico, quemaduras", [8, "M"],
+           ["Herramientas aisladas", "Retirar anillos, relojes y cadenas"], [5, "B"]]]],
+        ["radiador", "Limpieza de radiador con aire o agua a presión", true, [
+          ["Partículas proyectadas", "Lesiones oculares", [8, "M"],
+           ["Lentes de seguridad y careta facial", "Aire a menos de 30 psi", "Delimitar el área"], [5, "B"]],
+          ["Ventilador y fajas", "Atrapamiento", [13, "S"],
+           ["Grupo bloqueado y etiquetado", "Verificar energía cero", "No retirar guardas con el equipo energizado"], [9, "M"]]]],
+        ["carga", "Prueba con carga (banco de carga)", true, [
+          ["Conexión de cables de potencia", "Descarga eléctrica, arco eléctrico", [13, "S"],
+           ["Personal capacitado y autorizado", "Conectar con el grupo apagado y bloqueado", "Uso de revelador de tensión",
+            "Traje ignífugo y careta contra arco"], [9, "M"]],
+          ["Aire caliente del banco y del escape", "Quemaduras, golpe de calor", [8, "M"],
+           ["Delimitar el área de descarga", "No ubicarse frente a la salida de aire"], [5, "B"]],
+          ["Ruido industrial", "Exposición al ruido", [8, "M"], ["Uso de orejeras / tapones"], [5, "B"]]]]
+      ]
+    },
     ot: {
       titulo: "Ficha de trabajo para Mantenimiento",
       // Desviaciones: cada fila es una causa impresa, con su duración y la
@@ -4475,6 +4573,32 @@ MANT.modelo = (function () {
     var n = Math.max(1, Math.round(h / 250));
     var pm = n % 8 === 0 ? "PM4_2000" : n % 4 === 0 ? "PM3_1000" : n % 2 === 0 ? "PM2_500" : "PM1_250";
     return { pm: pm, objetivo: n * 250, desvio: Math.round((h - n * 250) * 10) / 10 };
+  }
+
+  /* ---------- IPERC continuo ---------- */
+  function actividadIperc(id) {
+    var a = FORMATO.iperc.actividades.filter(function (x) { return x[0] === id; })[0];
+    return a ? { id: a[0], paso: a[1], propuesta: a[2], filas: a[3] } : null;
+  }
+  // Las filas de una actividad, listas para la orden: cada medida con su marca.
+  function filasIperc(id) {
+    var a = actividadIperc(id);
+    if (!a) return [];
+    return a.filas.map(function (f) {
+      return { actividad: a.id, paso: a.paso, peligro: f[0], riesgo: f[1],
+               inicial: { n: f[2][0], nivel: f[2][1] }, medidas: f[3].slice(),
+               residual: { n: f[4][0], nivel: f[4][1] }, propuesta: a.propuesta, aplicadas: false, hora: "" };
+    });
+  }
+  // Las actividades que suele tener cada tipo de servicio: una propuesta.
+  function ipercSugerido(clasificacion) {
+    var c = clasificacion || {}, base = ["traslado", "area", "desenergizar", "motor", "encendido"];
+    if (c.tipo === "PREVENTIVO") {
+      base = base.concat(["limpieza", "aceite", "baterias", "radiador"]);
+      if (c.pm === "PM3_1000" || c.pm === "PM4_2000") base.push("refrigerante");
+    } else if (c.tipo === "CORRECTIVO") base = base.concat(["limpieza", "carga"]);
+    else base.push("limpieza");
+    return base;
   }
 
   /* ---------- plan de mantenimiento por horómetro ----------
@@ -4674,6 +4798,9 @@ MANT.modelo = (function () {
       // Lo que el aviso exige antes, durante y al cerrar: bloqueo, IPERC,
       // HIRA, herramientas e instrumentos. Cada marca guarda su hora.
       seguridad: seguridad(),
+      // IPERC continuo de la tarea: copia de las filas elegidas del catálogo
+      // (y las que agregue el técnico), con qué medidas confirmó y cuándo.
+      iperc: { actividades: [], filas: [], fecha: "" },
       // Sólo en un correctivo: qué falló, por qué, qué se hizo y cómo se probó.
       correctivo: { falla: "", causa: "", accion: "", pruebas: "" },
       // La aptitud operativa (sección 8, «Grupo operativo») es
@@ -4805,6 +4932,7 @@ MANT.modelo = (function () {
   return {
     FORMATO: FORMATO, TIPOS_SERVICIO: TIPOS_SERVICIO,
     tipoServicio: tipoServicio, frecuencia: frecuencia, sugerirPM: sugerirPM, planPM: planPM, PROXIMO_H: PROXIMO_H,
+    actividadIperc: actividadIperc, filasIperc: filasIperc, ipercSugerido: ipercSugerido,
     clasificar: clasificar,
     ESTADOS: ESTADOS, FRECUENCIAS: FRECUENCIAS, ESPECIALIDADES: ESPECIALIDADES,
     TIPOS_BATERIA: TIPOS_BATERIA, ITEMS_BATERIA: ITEMS_BATERIA, CARGAS: CARGAS,
@@ -5197,6 +5325,30 @@ MANT.validaciones = (function () {
           a.push(alerta("info", "clasificacion.pm", "El servicio de las " + sug.objetivo + " h se hace a " +
             horas + " h (" + (sug.desvio > 0 ? "+" : "") + sug.desvio + " h)"));
         }
+      }
+    }
+
+    // IPERC continuo: que exista, que las medidas estén confirmadas y que
+    // ningún riesgo residual quede en un nivel no aceptable (A o S).
+    var ip = (m.iperc && m.iperc.filas) || [];
+    if (!ip.length) {
+      a.push(alerta("aviso", "iperc", "IPERC continuo sin actividades: elija las tareas de hoy y sus peligros"));
+    } else {
+      var sinConfirmar = ip.filter(function (r) { return !r.aplicadas; });
+      if (sinConfirmar.length) {
+        a.push(alerta("aviso", "iperc", "IPERC: " + sinConfirmar.length + (sinConfirmar.length === 1 ? " peligro" : " peligros") +
+          " sin confirmar sus medidas de control (" + sinConfirmar.slice(0, 2).map(function (r) { return r.peligro; }).join(", ") +
+          (sinConfirmar.length > 2 ? "…" : "") + ")"));
+      }
+      ip.forEach(function (r) {
+        var nv = r.residual && r.residual.nivel;
+        if (nv === "A" || nv === "S") {
+          a.push(alerta("critico", "iperc", "IPERC: riesgo residual " + (nv === "A" ? "ALTO" : "SIGNIFICATIVO") + " en «" + r.peligro +
+            "». No aceptable: reevalúe y agregue controles; si no se puede controlar, se paraliza el trabajo"));
+        }
+      });
+      if (ip.some(function (r) { return r.propuesta; })) {
+        a.push(alerta("info", "iperc", "IPERC con filas propuestas por la app: valídelas con SSOMA"));
       }
     }
 
@@ -6935,6 +7087,56 @@ MANT.ordenes = (function () {
       campos([["ot.ot", "N° de OT"], ["ot.horometroSalida", "Horómetro de hoy (h)", "num"]]);
   }
 
+  /* IPERC continuo, como la hoja de campo: primero el técnico elige las
+     actividades de hoy (o las sugeridas para el tipo de servicio) y la app
+     trae sus peligros, riesgos, evaluación y medidas de control. Para cada
+     peligro confirma que las medidas están aplicadas (queda la hora). Puede
+     agregar peligros que no estén. Un residual A o S se avisa: no aceptable. */
+  var NIVEL_CLASE = { A: "mal", S: "mal", M: "obs", B: "ok" };
+  function insigniaNivel(e) {
+    if (!e || !e.nivel) return '<span class="m-insignia">sin evaluar</span>';
+    return '<span class="m-insignia ' + NIVEL_CLASE[e.nivel] + '">' + esc(e.nivel) + (e.n !== null && e.n !== undefined && e.n !== "" ? " · " + esc(e.n) : "") + "</span>";
+  }
+  function pintarIperc() {
+    var F = M.FORMATO.iperc, ip = m.iperc, presentes = {};
+    ip.filas.forEach(function (r) { presentes[r.actividad] = true; });
+    var sug = M.ipercSugerido(m.clasificacion).filter(function (id) { return !presentes[id]; });
+    var html = '<details class="m-criterio"><summary>Secuencia SLAM: pare, observe, evalúe, gestione</summary>' +
+      F.slam.map(function (x, k) { return "<p><b>" + (k + 1) + ") " + esc(x[0]) + "</b> " + esc(x[1]) + "</p>"; }).join("") + "</details>" +
+      '<p class="m-sub">¿Qué actividades hará hoy?</p><div class="m-sn g-actividades">' +
+      F.actividades.map(function (a) {
+        return '<button type="button" data-iperc-act="' + a[0] + '" aria-pressed="' + !!presentes[a[0]] + '">' + esc(a[1]) +
+          (a[2] ? ' <small class="g-prop">propuesta</small>' : "") + "</button>";
+      }).join("") + "</div>" +
+      (sug.length ? '<button type="button" class="primary" data-accion="iperc-sugerido">Agregar las de ' +
+        esc(rotuloClase(m.clasificacion) || "este servicio") + " (" + sug.length + ")</button>" : "");
+    html += ip.filas.map(function (r, i) {
+      var b = "iperc.filas." + i + ".";
+      var medidas = (r.medidas || []).concat(String(r.medidasTexto || "").split("\n").map(function (t) { return t.trim(); }).filter(Boolean));
+      var cuerpo = r.extra
+        ? campos([[b + "paso", "Paso de la tarea"], [b + "peligro", "Peligro"], [b + "riesgo", "Riesgo"],
+                  [b + "medidasTexto", "Medidas de control (una por línea)", "area"]]) +
+          ["inicial", "residual"].map(function (cual) {
+            return '<p class="m-sub">Evaluación ' + cual + '</p><div class="m-sn">' + ["A", "S", "M", "B"].map(function (nv) {
+              return '<button type="button" data-iperc-nivel="' + i + "|" + cual + "|" + nv + '" aria-pressed="' + (r[cual].nivel === nv) + '">' + nv + "</button>";
+            }).join("") + "</div>" + campos([[b + cual + ".n", "Valor", "num"]]);
+          }).join("") +
+          '<button type="button" class="ghost m-borrar" data-accion="iperc-quitar" data-i="' + i + '">Quitar este peligro</button>'
+        : '<p class="g-iperc-peligro"><b>' + esc(r.peligro) + "</b> → " + esc(r.riesgo) + "</p>" +
+          '<p class="g-iperc-eval">Inicial ' + insigniaNivel(r.inicial) + " → con medidas " + insigniaNivel(r.residual) + "</p>" +
+          '<ul class="g-iperc-medidas">' + medidas.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>";
+      return '<div class="g-iperc ' + (NIVEL_CLASE[r.residual.nivel] || "") + '"><p class="g-iperc-paso">' + esc(r.paso || "Otro peligro") +
+        (r.propuesta ? ' <small class="g-prop">Propuesta: validar con SSOMA</small>' : "") + "</p>" + cuerpo +
+        '<button type="button" class="g-iperc-ok" data-iperc-ok="' + i + '" aria-pressed="' + !!r.aplicadas + '">' +
+        (r.aplicadas ? "Medidas aplicadas · " + esc(r.hora) : "Confirmo que las medidas están aplicadas") + "</button></div>";
+    }).join("");
+    html += '<button type="button" data-accion="iperc-otro">+ Otro peligro que no está en la lista</button>' +
+      '<details class="m-criterio"><summary>Niveles de riesgo</summary>' + ["A", "S", "M", "B"].map(function (k) {
+        return "<p>" + insigniaNivel({ nivel: k }) + " <b>" + esc(F.niveles[k][0]) + ":</b> " + esc(F.niveles[k][1]) + "</p>";
+      }).join("") + "<p>" + esc(F.nota) + "</p></details>";
+    return html;
+  }
+
   function pasoSeguridad() {
     var S = M.FORMATO.seguridad, todo = S.previo.concat(S.herramientas).every(function (x) {
       return m.seguridad.items[x[0]] === "OK" || m.seguridad.herramientas[x[0]] === "OK";
@@ -6942,7 +7144,8 @@ MANT.ordenes = (function () {
     return '<p class="g-ayuda">Antes de tocar el equipo. Si todo está en orden, un toque lo marca y deja la hora.</p>' +
       '<button type="button" class="primary g-grande" data-accion="g-seguridad-ok"' + (todo ? " disabled" : "") + ">" +
       (todo ? "Seguridad marcada" : "Todo en orden: bloqueo, IPERC, HIRA y herramientas") + "</button>" +
-      '<details class="m-criterio"><summary>Revisar o cambiar uno por uno</summary>' + pintarSeguridad() + "</details>";
+      '<details class="m-criterio"><summary>Revisar o cambiar uno por uno</summary>' + pintarSeguridad() + "</details>" +
+      '<h3 class="g-casilla">IPERC continuo</h3>' + pintarIperc();
   }
 
   function pasoFotos() {
@@ -7076,6 +7279,8 @@ MANT.ordenes = (function () {
 
     html += grupo("Placa del equipo", pintarPlaca());
     html += grupo("Seguridad antes de iniciar", pintarSeguridad());
+    html += grupo("IPERC continuo", pintarIperc(), "", m.iperc.filas.length ? m.iperc.filas.filter(function (r) { return r.aplicadas; }).length +
+      " / " + m.iperc.filas.length + " confirmados" : "");
     html += grupo("Fotos de la inspección", pintarFotos(), "", resumenFotos());
     html += grupo("Informe técnico (secciones 1 a 5 y 7)", pintarInforme());
     html += grupo("Parámetros de operación y prueba", pintarParametros());
@@ -7127,6 +7332,7 @@ MANT.ordenes = (function () {
       '<button type="button" data-doc="informe">Informe técnico</button>' +
       '<button type="button" data-doc="ficha">Ficha de trabajo</button>' +
       '<button type="button" data-doc="baterias"' + (m.baterias.length ? "" : " disabled") + '>Check-list de baterías</button>' +
+      '<button type="button" data-doc="iperc"' + (m.iperc.filas.length ? "" : " disabled") + '>IPERC continuo</button>' +
       '<button type="button" data-doc="anexo">Anexo fotográfico</button>' +
       '<button type="button" class="primary" data-doc="todo">Todo en un PDF</button></div>' +
       '<p class="m-nota-sn" id="m-o-doc-estado" role="status"></p>');
@@ -7265,7 +7471,8 @@ MANT.ordenes = (function () {
     }
     if (b.dataset.doc) {
       var cuales = b.dataset.doc === "todo"
-        ? ["informe", "ficha"].concat(m.baterias.length ? ["baterias"] : []).concat(["anexo"]) : [b.dataset.doc];
+        ? ["informe", "ficha"].concat(m.baterias.length ? ["baterias"] : []).concat(m.iperc.filas.length ? ["iperc"] : []).concat(["anexo"])
+        : [b.dataset.doc];
       var est = $("#m-o-doc-estado");
       est.textContent = "armando el PDF…";
       MANT.documentos.pdf(m, cuales).then(function (blob) {
@@ -7280,6 +7487,30 @@ MANT.ordenes = (function () {
       fq.imagen = null;
       (vi ? A.fotos.borrar(vi) : Promise.resolve()).then(function () { tocar(); pintar(); });
       return;
+    }
+    if (b.dataset.ipercAct) {
+      var act = b.dataset.ipercAct, hay = m.iperc.filas.some(function (r) { return r.actividad === act; });
+      if (hay) {
+        if (m.iperc.filas.some(function (r) { return r.actividad === act && r.aplicadas; }) &&
+            !window.confirm("Esta actividad ya tiene medidas confirmadas. ¿Quitarla del IPERC?")) return;
+        m.iperc.filas = m.iperc.filas.filter(function (r) { return r.actividad !== act; });
+      } else {
+        m.iperc.filas = m.iperc.filas.concat(M.filasIperc(act));
+      }
+      m.iperc.actividades = m.iperc.filas.map(function (r) { return r.actividad; })
+        .filter(function (x, k, l) { return l.indexOf(x) === k; });
+      if (!m.iperc.fecha) m.iperc.fecha = new Date().toLocaleString("es-PE");
+      tocar(); pintar(); return;
+    }
+    if (b.dataset.ipercOk) {
+      var rf = m.iperc.filas[Number(b.dataset.ipercOk)];
+      if (rf) { rf.aplicadas = !rf.aplicadas; rf.hora = rf.aplicadas ? new Date().toLocaleString("es-PE") : ""; }
+      tocar(); pintar(); return;
+    }
+    if (b.dataset.ipercNivel) {
+      var pz = b.dataset.ipercNivel.split("|"), rn = m.iperc.filas[Number(pz[0])];
+      if (rn) rn[pz[1]].nivel = rn[pz[1]].nivel === pz[2] ? "" : pz[2];
+      tocar(); pintar(); return;
     }
     if (b.dataset.estadoFoto) {
       var idc = b.dataset.estadoFoto, est = m.estados[idc] || { estado: null, nota: "", hora: "" };
@@ -7312,6 +7543,21 @@ MANT.ordenes = (function () {
     if (acc === "g-foto") { guia.foto = Number(b.dataset.n); pintar(); window.scrollTo(0, raiz.querySelector("#m-orden").offsetTop); return; }
     if (acc === "g-camara") { abrirCamaraGuia(b.dataset.c); return; }
     if (acc === "g-terminar") { volver(); return; }
+    if (acc === "iperc-sugerido") {
+      M.ipercSugerido(m.clasificacion).forEach(function (id) {
+        if (!m.iperc.filas.some(function (r) { return r.actividad === id; })) m.iperc.filas = m.iperc.filas.concat(M.filasIperc(id));
+      });
+      m.iperc.actividades = m.iperc.filas.map(function (r) { return r.actividad; }).filter(function (x, k, l) { return l.indexOf(x) === k; });
+      if (!m.iperc.fecha) m.iperc.fecha = new Date().toLocaleString("es-PE");
+      tocar(); pintar(); return;
+    }
+    if (acc === "iperc-otro") {
+      m.iperc.filas.push({ actividad: "otro", paso: "", peligro: "", riesgo: "", inicial: { n: null, nivel: "" },
+                           medidas: [], medidasTexto: "", residual: { n: null, nivel: "" }, propuesta: false,
+                           aplicadas: false, hora: "", extra: true });
+      tocar(); pintar(); return;
+    }
+    if (acc === "iperc-quitar") { m.iperc.filas.splice(Number(b.dataset.i), 1); tocar(); pintar(); return; }
     if (acc === "g-seguridad-ok") {
       var S2 = M.FORMATO.seguridad, ahora2 = new Date().toLocaleString("es-PE");
       S2.previo.forEach(function (x) { m.seguridad.items[x[0]] = "OK"; m.seguridad.horas[x[0]] = ahora2; });
@@ -13423,6 +13669,80 @@ MANT.documentos = (function () {
     return [L];
   }
 
+  /* ---------- IPERC continuo (sección V de la hoja de campo) ---------- */
+  var COLOR_NIVEL = { A: "0.85 0.2 0.15", S: "0.93 0.55 0.2", M: "0.98 0.85 0.25", B: "0.35 0.7 0.35" };
+  function iperc(m, im) {
+    var F = M.FORMATO.iperc, filas = (m.iperc && m.iperc.filas) || [];
+    if (!filas.length) return [];
+    var pie = "TAG " + m.tag + " · OT " + v(m.ot.ot) + " · IPERC continuo", paginas = [];
+    var cPaso = 78, cPel = 74, cRie = 82, cN = 15, cMed = W - cPaso - cPel - cRie - cN * 8;
+    var L = null, y = 0;
+    function encabezado() {
+      L = new E.Lienzo(); paginas.push(L);
+      y = cabecera(L, "V. IPERC CONTINUO · IDENTIFICACIÓN DE PELIGROS Y EVALUACIÓN DE RIESGOS", im, pie);
+      E.envolver(F.titulo, 6.5, true, W, 2).forEach(function (l) { L.texto(l, X, y, 6.5, true); y += 8; });
+      y += 2;
+      var slam = F.slam.map(function (x, k) { return (k + 1) + ") " + x[0] + " " + x[1]; }).join("  ");
+      E.envolver("Secuencia para identificar, controlar el peligro y reducir el riesgo (SLAM): " + slam, 6.5, false, W, 4)
+        .forEach(function (l, i) { L.texto(l, X, y + i * 8, 6.5, false); });
+      y += 36;
+      var x = X;
+      [["PASOS DE LA TAREA", cPaso], ["PELIGRO", cPel], ["RIESGO", cRie]].forEach(function (c) {
+        celda(L, x, y, c[1], 26, c[0], 7, true, CLARO, true); x += c[1];
+      });
+      celda(L, x, y, cN * 4, 13, "EVALUACIÓN INICIAL", 6, true, CLARO, true);
+      ["A", "S", "M", "B"].forEach(function (k, i) { celda(L, x + cN * i, y + 13, cN, 13, k, 6.5, true, COLOR_NIVEL[k], true); });
+      x += cN * 4;
+      celda(L, x, y, cMed, 26, "MEDIDAS DE CONTROL", 7, true, CLARO, true); x += cMed;
+      celda(L, x, y, cN * 4, 13, "RIESGO RESIDUAL", 6, true, CLARO, true);
+      ["A", "S", "M", "B"].forEach(function (k, i) { celda(L, x + cN * i, y + 13, cN, 13, k, 6.5, true, COLOR_NIVEL[k], true); });
+      y += 26;
+    }
+    encabezado();
+    var anterior = null;
+    filas.forEach(function (r) {
+      var medidas = (r.medidas || []).concat(String(r.medidasTexto || "").split("\n").map(function (t) { return t.trim(); }).filter(Boolean));
+      var textoMed = medidas.map(function (t) { return "· " + t; }).join("\n");
+      var lineasMed = medidas.reduce(function (n, t) { return n + E.envolver("· " + t, 7, false, cMed - 6, 4).length; }, 0);
+      var h = Math.max(22, lineasMed * 8.5 + 9, E.envolver(r.riesgo || "", 7, false, cRie - 6, 6).length * 8.5 + 6);
+      if (y + h > A4.h - X - 70) encabezado();
+      var x = X, paso = r.paso === anterior ? "" : (r.paso || "");
+      anterior = r.paso;
+      celda(L, x, y, cPaso, h, paso, 7, true); x += cPaso;
+      celda(L, x, y, cPel, h, r.peligro, 7); x += cPel;
+      celda(L, x, y, cRie, h, r.riesgo, 7); x += cRie;
+      ["A", "S", "M", "B"].forEach(function (k, i) {
+        celda(L, x + cN * i, y, cN, h, r.inicial && r.inicial.nivel === k ? v(r.inicial.n) || "X" : "", 7.5, true, null, true);
+      });
+      x += cN * 4;
+      L.caja(x, y, cMed, h, null, 0.6);
+      medidas.reduce(function (yy, t) {
+        E.envolver("· " + t, 7, false, cMed - 6, 4).forEach(function (l, i) { L.texto(l, x + 3, yy + 8 + i * 8.5, 7, false); yy += 8.5; });
+        return yy;
+      }, y + 1);
+      x += cMed;
+      ["A", "S", "M", "B"].forEach(function (k, i) {
+        celda(L, x + cN * i, y, cN, h, r.residual && r.residual.nivel === k ? v(r.residual.n) || "X" : "", 7.5, true, null, true);
+      });
+      y += h;
+      if (r.propuesta || r.aplicadas) {
+        L.texto((r.aplicadas ? "Medidas confirmadas " + v(r.hora) : "") + (r.propuesta ? (r.aplicadas ? " · " : "") + "Propuesta: validar con SSOMA" : ""),
+                X + cPaso + 2, y + 7, 6, false, "0.35 0.35 0.35");
+        y += 9;
+      }
+    });
+    y += 8;
+    if (y > A4.h - X - 120) encabezado();
+    ["A", "S", "M", "B"].forEach(function (k) {
+      celda(L, X, y, 100, 13, F.niveles[k][0] + " (" + k + ")", 6.5, true, COLOR_NIVEL[k]);
+      celda(L, X + 100, y, W - 100, 13, F.niveles[k][1], 6.2); y += 13;
+    });
+    E.envolver(F.nota, 6.5, true, W, 2).forEach(function (l) { L.texto(l, X, y + 9, 6.5, true); y += 8; });
+    firma(L, X, y + 40, W / 2 - 20, "Técnico:", m.ot.firmas.tecnico, im);
+    firma(L, X + W / 2, y + 40, W / 2 - 20, "Supervisor:", m.ot.firmas.supervisor, im);
+    return paginas;
+  }
+
   /* ---------- anexo fotográfico ---------- */
   function anexo(m, im) {
     var pie = "TAG " + m.tag + " · OT " + v(m.ot.ot) + " · Anexo fotográfico", paginas = [];
@@ -13461,7 +13781,7 @@ MANT.documentos = (function () {
     var ids = {}, add = function (x) { if (x) ids[x] = true; };
     if (cuales.indexOf("anexo") !== -1) m.fotos.forEach(function (f) { if (f.casilla) add(f.foto); });
     if (cuales.indexOf("informe") !== -1) m.informe.firmas.empresa.concat(m.informe.firmas.cliente).forEach(function (f) { add(f.imagen); });
-    if (cuales.indexOf("ficha") !== -1) { add(m.ot.firmas.tecnico.imagen); add(m.ot.firmas.supervisor.imagen); }
+    if (cuales.indexOf("ficha") !== -1 || cuales.indexOf("iperc") !== -1) { add(m.ot.firmas.tecnico.imagen); add(m.ot.firmas.supervisor.imagen); }
     if (cuales.indexOf("baterias") !== -1 && m.baterias[0]) m.baterias[0].personal.concat([m.baterias[0].supervisor])
       .forEach(function (f) { add(f.imagen); });
     var im = {}, ref = 1;
@@ -13480,8 +13800,9 @@ MANT.documentos = (function () {
     });
   }
 
-  var ARMAR = { informe: informe, ficha: ficha, baterias: baterias, anexo: anexo };
-  var NOMBRES = { informe: "informe-tecnico", ficha: "ficha-de-trabajo", baterias: "check-list-baterias", anexo: "anexo-fotografico" };
+  var ARMAR = { informe: informe, ficha: ficha, baterias: baterias, iperc: iperc, anexo: anexo };
+  var NOMBRES = { informe: "informe-tecnico", ficha: "ficha-de-trabajo", baterias: "check-list-baterias", iperc: "iperc-continuo",
+                  anexo: "anexo-fotografico" };
 
   /* `cuales`: lista de documentos, en el orden en que van en el PDF. */
   function pdf(x, cuales) {

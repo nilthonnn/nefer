@@ -182,6 +182,7 @@ jobs:
             tests/test_plan_flota.py \
             tests/test_sincronia.py \
             tests/test_guiado.py \
+            tests/test_iperc.py \
             tests/test_build_extract.py \
             tests/test_layout.py \
             tests/test_schema.py \
