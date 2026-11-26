@@ -31,6 +31,14 @@ Pruebas que lo vigilan: `clientes/campo/tests/`.
 6. **Fotos por casilla**, cada componente con su estado OK / Observado /
    Falla y nota; el criterio del especialista a la vista, la decisión del
    técnico. Nada de diagnóstico automático.
+   - **Copia en el teléfono**: en el .apk cada foto que entra a una orden se
+     copia sola a `DCIM/Actas de campo/<TAG>/` con nombre
+     `<TAG>_grupo_<casilla>_<descripción>_<AAAAMMDD-HHMM>-<ss>.jpg`, y la
+     orden anota la ruta (`fotos[i].copia`). En el navegador, botón «Guardar
+     las fotos en el teléfono» (a Descargas, mismo nombre). Sin sello de
+     fecha sobre la imagen: la fecha va en el nombre.
+   - **Calidad**: movida, oscura, muy clara o con reflejo se avisa con el
+     consejo para repetirla (`fotos[i].calidad`); no bloquea.
 7. **Valores leídos de fotos** (horómetro, placas, panel, batería,
    probador): siempre propuesta editable; lo usado queda en `lecturas` con
    foto, fecha y texto leído. El teléfono aprende de las correcciones a

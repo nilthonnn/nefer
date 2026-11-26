@@ -743,6 +743,14 @@
   .m-subgrupo > summary > span:first-child { flex:1; }
   .m-subgrupo > summary::after { content:"\25BE"; }
   .m-subgrupo[open] > summary::after { content:"\25B4"; }
+  .m-diag { border-left:5px solid var(--rule); background:var(--card-2); border-radius:6px;
+            padding:.45rem .7rem; margin:0 0 .45rem; font-size:.88rem; }
+  .m-diag p { margin:.15rem 0; }
+  .m-diag .lb { display:inline-block; min-width:6.5rem; }
+  .m-diag.alta { border-left-color:var(--mal); }
+  .m-diag.media { border-left-color:var(--obs); }
+  .m-calidad { border-left:5px solid var(--obs); background:var(--obs-soft); border-radius:6px;
+               padding:.4rem .6rem; margin:.35rem 0; font-size:.86rem; }
   .m-sueltas { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:.45rem; }
   .m-sueltas .m-foto { margin:0; }
   .m-sueltas .m-foto img { height:120px; max-height:120px; object-fit:cover; }
@@ -2794,9 +2802,15 @@ var CAMPO = (function () {
         if (ya && ya.estado === "anulado") throw new Error(MENSAJE_ANULADA);
         return instantanea();
       }).then(function (datos) {
+        // El nombre que pone la app («OT … · 064 · Preventivo PM1») sigue a los
+        // datos: si la orden se reclasifica o recibe su N° de OT, la lista lo
+        // dice. El que escribió el técnico no se toca.
+        var auto = nombrePorDefecto(actual.vista, datos);
+        var esAuto = !opciones.nombre && (!actual.nombre || actual.nombre === actual.nombreAuto);
         var p = {
           id: opciones.comoNuevo ? nuevoId() : actual.id,
-          nombre: opciones.nombre || actual.nombre || nombrePorDefecto(actual.vista, datos),
+          nombre: opciones.nombre || (esAuto ? auto : actual.nombre),
+          nombreAuto: esAuto ? auto : (actual.nombreAuto || null),
           vista: actual.vista,
           estado: opciones.estado || actual.estado || "borrador",
           creado: opciones.comoNuevo ? Date.now() : (actual.creado || Date.now()),
@@ -2806,7 +2820,7 @@ var CAMPO = (function () {
         };
         if (!opciones.comoNuevo && actual.historial) p.historial = actual.historial;
         return almacen.guardar(p).then(function () {
-          actual = { id: p.id, nombre: p.nombre, vista: p.vista,
+          actual = { id: p.id, nombre: p.nombre, nombreAuto: p.nombreAuto || null, vista: p.vista,
                      estado: p.estado, creado: p.creado, modificado: p.modificado };
           sucio = false;
           avisar();
@@ -2849,7 +2863,7 @@ var CAMPO = (function () {
         var api = vistas[p.vista];
         if (!api) throw new Error("no se reconoce el tipo de proyecto");
         return Promise.resolve(api.restaurar(p.datos)).then(function () {
-          actual = { id: p.id, nombre: p.nombre, vista: p.vista, estado: p.estado,
+          actual = { id: p.id, nombre: p.nombre, nombreAuto: p.nombreAuto || null, vista: p.vista, estado: p.estado,
                      creado: p.creado, modificado: p.modificado, historial: p.historial };
           sucio = false;
           ultimaVista = p.vista;
@@ -2870,7 +2884,7 @@ var CAMPO = (function () {
       return almacen.leer(id).then(function (p) {
         if (!p) throw new Error("ese proyecto ya no existe");
         if (p.estado === "anulado") throw new Error(MENSAJE_ANULADA);
-        actual = { id: p.id, nombre: p.nombre, vista: p.vista, estado: p.estado,
+        actual = { id: p.id, nombre: p.nombre, nombreAuto: p.nombreAuto || null, vista: p.vista, estado: p.estado,
                    creado: p.creado, modificado: p.modificado, historial: p.historial };
         ultimaVista = p.vista;
         apuntarSesion(actual);
@@ -3642,7 +3656,9 @@ var CAMPO = (function () {
 
       var vale;
       try {
-        vale = window.Anfitrion.abrir(nombre, blob.type || "application/octet-stream");
+        vale = peticion.foto !== undefined
+          ? window.Anfitrion.abrirFoto(nombre, blob.type || "image/jpeg", peticion.foto)
+          : window.Anfitrion.abrir(nombre, blob.type || "application/octet-stream");
       } catch (e) { rendirse(String(e && e.message || e)); return; }
       if (!vale || vale.indexOf("ERROR:") === 0) {
         rendirse(vale ? vale.slice(6) : "el teléfono no contestó");
@@ -3694,6 +3710,28 @@ var CAMPO = (function () {
     // se descarga directo, por el enlace de siempre.
     return Promise.resolve(null);
   })();
+
+  /* ---------- copia de cada foto en la galería del teléfono ----------
+     Trazabilidad: cada foto que entra a una orden queda también en el
+     teléfono, en DCIM/Actas de campo/<TAG>/, con un nombre que dice qué es
+     (TAG, casilla, fecha y hora). Así la foto existe aunque se borre la app
+     o se pierda la orden. Sólo dentro del .apk: una página web no puede
+     escribir en la galería; allí se ofrece guardarlas a mano. */
+  var CLAVE_COPIA = "campo.fotos.copia";
+  var copiaFotos = {
+    puede: function () { return !!(CONTEXTO.enAndroid && window.Anfitrion && window.Anfitrion.abrirFoto); },
+    activa: function () {
+      var v = null;
+      try { v = localStorage.getItem(CLAVE_COPIA); } catch (e) { /* por omisión, sí */ }
+      return v !== "0";
+    },
+    activar: function (si) { try { localStorage.setItem(CLAVE_COPIA, si ? "1" : "0"); } catch (e) { /* sesión */ } },
+    guardar: function (blob, nombre, tag) {
+      if (!copiaFotos.puede() || !copiaFotos.activa()) return Promise.resolve(null);
+      return guardarPorAndroid({ data: blob, filename: nombre, foto: String(tag || "") })
+        .then(function (r) { return r && r.ruta ? r.ruta : null; }, function () { return null; });
+    }
+  };
 
   function entregar(blob, nombre, avisar) {
     // Exportar no cierra el proyecto: lo deja marcado y abierto a cambios.
@@ -3874,6 +3912,48 @@ var CAMPO = (function () {
     }
   }
 
+  /* ---------- ¿la foto sirve? ----------
+     Criterios de fotografía técnica, medidos en la propia foto: nitidez
+     (varianza del laplaciano: una foto movida o desenfocada da poco),
+     exposición (brillo medio) y reflejo (área quemada). Avisa con el
+     consejo para repetirla; no bloquea: el técnico decide. Los umbrales
+     salen de fotos reales de campo: 19 fotos, sus copias desenfocadas
+     (desenfoque gaussiano de 4 px) y oscurecidas al 30 %. Con 60 avisa la
+     placa de alternador que el lector no pudo leer y deja pasar las nítidas
+     (241 a 5368); el oscurecimiento sale en 19–55 frente a 63–186 real. */
+  var CALIDAD = { borrosa: 60, oscura: 55, clara: 215, reflejo: 0.06 };
+  function calidadFoto(blob) {
+    if (!window.createImageBitmap) return Promise.resolve(null);
+    return createImageBitmap(blob).then(function (img) {
+      var lado = 480, esc = Math.min(1, lado / Math.max(img.width, img.height));
+      var W = Math.max(8, Math.round(img.width * esc)), H = Math.max(8, Math.round(img.height * esc));
+      var c = document.createElement("canvas"); c.width = W; c.height = H;
+      var g = c.getContext("2d"); g.drawImage(img, 0, 0, W, H);
+      if (img.close) img.close();
+      var p = g.getImageData(0, 0, W, H).data, y = new Float32Array(W * H), i, j, suma = 0, quemado = 0;
+      for (i = 0, j = 0; i < p.length; i += 4, j++) {
+        y[j] = p[i] * 0.299 + p[i + 1] * 0.587 + p[i + 2] * 0.114;
+        suma += y[j]; if (y[j] >= 250) quemado++;
+      }
+      var n = W * H, media = suma / n, l = [], s1 = 0, s2 = 0, k = 0;
+      for (var r = 1; r < H - 1; r++) for (var q = 1; q < W - 1; q++) {
+        var o = r * W + q, v = 4 * y[o] - y[o - 1] - y[o + 1] - y[o - W] - y[o + W];
+        s1 += v; s2 += v * v; k++;
+      }
+      var varianza = k ? s2 / k - (s1 / k) * (s1 / k) : 0;
+      var avisos = [];
+      if (varianza < CALIDAD.borrosa) avisos.push({ clave: "borrosa", texto: "Parece movida o desenfocada",
+        consejo: "Apoye los codos, toque la pantalla sobre la placa para enfocar y espere a que enfoque antes de disparar. De cerca, no use el zoom: acérquese." });
+      if (media < CALIDAD.oscura) avisos.push({ clave: "oscura", texto: "Está oscura",
+        consejo: "Busque luz de costado o use la linterna de otro teléfono en ángulo. Evite el flash de frente sobre metal o pantalla." });
+      else if (media > CALIDAD.clara) avisos.push({ clave: "clara", texto: "Está muy clara",
+        consejo: "Haga sombra con el cuerpo o la mano y vuelva a tomarla." });
+      if (quemado / n > CALIDAD.reflejo) avisos.push({ clave: "reflejo", texto: "Tiene reflejo",
+        consejo: "Incline el teléfono unos grados, haga sombra con la mano y no use flash de frente." });
+      return { nitidez: Math.round(varianza), brillo: Math.round(media), reflejo: Math.round(quemado / n * 1000) / 10, avisos: avisos };
+    }, function () { return null; });
+  }
+
   return {
     $: $, esc: esc, ir: ir, arrancar: arrancar, conFoco: conFoco, VERSION: VERSION,
     armarZip: armarZip, leerZip: leerZip, leerBytes: leerBytes, entregar: entregar,
@@ -3884,7 +3964,8 @@ var CAMPO = (function () {
     incrustada: incrustada, CONTEXTO: CONTEXTO,
     RUTAS: RUTAS, admitir: admitir, motivoRechazo: motivoRechazo, camara: camara,
     archivosArrastrados: archivosArrastrados, imagenesPegadas: imagenesPegadas,
-    pesoLegible: pesoLegible, MAX_LADO: MAX_LADO, nombresUnicos: nombresUnicos
+    pesoLegible: pesoLegible, MAX_LADO: MAX_LADO, nombresUnicos: nombresUnicos,
+    copiaFotos: copiaFotos, calidadFoto: calidadFoto
   };
 })();
 </script>
@@ -4753,6 +4834,110 @@ MANT.validaciones = (function () {
     return a;
   }
 
+  /* ---------- lectura por evidencia de la prueba con carga ----------
+     Del método de diagnóstico por evidencia: cada hallazgo separa
+       · medido      — los números de la tabla, tal cual,
+       · interpretación, con su confianza (alta / media / investigar),
+       · supuesto    — lo que viene del conocimiento general de grupos
+                       electrógenos y NO de la medición,
+       · verificar   — qué mirar en el equipo para confirmarlo o descartarlo.
+     Nunca se adivina: sin el dato de placa (voltaje, Hz, RPM, kVA) no se
+     interpreta, se dice que falta. Y nunca decide: el técnico confirma y es
+     quien responde por la seguridad del equipo. */
+  var GENERAL = "Conocimiento general de grupos electrógenos, no medido";
+  function diagnosticar(eq, pruebas) {
+    eq = M.normalizar.equipo(eq || {});
+    var out = [], col = function (p) { return p.carga === "inicial" ? "valor inicial" : p.carga === 0 ? "vacío" : p.carga + " %"; };
+    var num = function (p, k) { return p ? M.numero(p[k]) : null; };
+    var lista = (pruebas || []).filter(function (p) { return p; });
+    var vacio = lista.filter(function (p) { return p.carga === 0; })[0];
+    var cargadas = lista.filter(function (p) { return typeof p.carga === "number" && p.carga > 0; });
+    var mayor = cargadas.filter(function (p) {
+      return ["hz", "voltajeLL", "presionAceitePsi", "tempRefrigeranteC", "corrienteA", "vBateria", "rpm"]
+        .some(function (k) { return num(p, k) !== null; });
+    }).sort(function (a, b) { return b.carga - a.carga; })[0];
+    function h(o) { o.supuesto = o.supuesto || GENERAL; out.push(o); }
+    var faltan = [];
+
+    // Frecuencia que cae con la carga: velocidad.
+    if (vacio && mayor && num(vacio, "hz") !== null && num(mayor, "hz") !== null) {
+      if (!eq.frecuenciaHz) faltan.push("frecuencia");
+      else {
+        var caida = num(vacio, "hz") - num(mayor, "hz");
+        if (caida > 1) h({ tema: "Frecuencia con carga", confianza: caida > 2 ? "alta" : "media",
+          medido: "Hz " + num(vacio, "hz") + " en vacío → " + num(mayor, "hz") + " a " + col(mayor) + " (placa " + eq.frecuenciaHz + " Hz)",
+          interpretacion: "La frecuencia cae " + caida.toFixed(1).replace(".", ",") + " Hz al tomar carga: compatible con un gobernador lento, combustible restringido o carga mayor a la que el motor sostiene.",
+          verificar: "Filtros y suministro de combustible, respuesta del gobernador / actuador y carga real frente a la potencia de placa." });
+      }
+    }
+    // Voltaje que cae con la carga: excitación / AVR.
+    if (vacio && mayor && num(vacio, "voltajeLL") !== null && num(mayor, "voltajeLL") !== null) {
+      var v0 = num(vacio, "voltajeLL"), v1 = num(mayor, "voltajeLL"), dv = (v0 - v1) / v0;
+      if (dv > 0.05) h({ tema: "Regulación de voltaje", confianza: dv > 0.1 ? "alta" : "media",
+        medido: "VLL " + v0 + " V en vacío → " + v1 + " V a " + col(mayor),
+        interpretacion: "El voltaje cae " + (dv * 100).toFixed(1).replace(".", ",") + " % con la carga: compatible con un regulador de voltaje (AVR) o excitación que no compensa, o con sobrecarga.",
+        verificar: "AVR y su ajuste, conexiones del alternador, diodos rotativos y la corriente frente a la nominal." });
+    }
+    // Corriente frente a la nominal de placa.
+    if (mayor && num(mayor, "corrienteA") !== null) {
+      var vn = eq.voltajeNominal || null;
+      if (!eq.kva || !vn) faltan.push("kVA y voltaje nominal");
+      else {
+        var inom = eq.kva * 1000 / ((eq.fases === 1 ? 1 : Math.sqrt(3)) * vn), uso = num(mayor, "corrienteA") / inom;
+        if (uso > 1) h({ tema: "Carga", confianza: "alta",
+          medido: num(mayor, "corrienteA") + " A a " + col(mayor) + "; nominal de placa ≈ " + Math.round(inom) + " A (" + eq.kva + " kVA, " + vn + " V)",
+          interpretacion: "La corriente supera la nominal (" + Math.round(uso * 100) + " %): sobrecarga.",
+          supuesto: "Corriente nominal calculada con la placa: kVA × 1000 / (√3 × V).",
+          verificar: "Repartir o reducir la carga y revisar el ajuste de la protección del interruptor principal." });
+      }
+    }
+    // Presión de aceite que baja con carga o temperatura.
+    if (vacio && mayor && num(vacio, "presionAceitePsi") !== null && num(mayor, "presionAceitePsi") !== null) {
+      var p0 = num(vacio, "presionAceitePsi"), p1 = num(mayor, "presionAceitePsi");
+      if (p1 < p0 * 0.7 && p1 < 40) h({ tema: "Lubricación", confianza: "investigar",
+        medido: "Presión " + p0 + " psi en vacío → " + p1 + " psi a " + col(mayor),
+        interpretacion: "La presión baja con la carga más de lo esperable: compatible con aceite diluido o muy caliente, nivel bajo o desgaste de la bomba. No se puede afirmar cuál sin revisar.",
+        verificar: "Nivel y aspecto del aceite (combustible, refrigerante), temperatura, filtro y sensor de presión." });
+    }
+    // Temperatura alta en carga.
+    if (mayor && num(mayor, "tempRefrigeranteC") !== null && num(mayor, "tempRefrigeranteC") > 95) {
+      h({ tema: "Refrigeración", confianza: num(mayor, "tempRefrigeranteC") > 100 ? "alta" : "media",
+        medido: "Refrigerante " + num(mayor, "tempRefrigeranteC") + " °C a " + col(mayor),
+        interpretacion: "Temperatura alta con carga: compatible con radiador obstruido, faja floja, nivel bajo de refrigerante o termostato.",
+        verificar: "Fotos del radiador (c15), fajas y ventilador (c16) y nivel de refrigerante (c14)." });
+    }
+    // Carga de baterías con el motor en marcha.
+    var enMarcha = lista.filter(function (p) { return p.carga !== "inicial" && num(p, "vBateria") !== null; })[0];
+    if (enMarcha) {
+      var vb = num(enMarcha, "vBateria"), sist = eq.bateria && eq.bateria.voltaje;
+      if (!sist) faltan.push("voltaje del sistema de baterías");
+      else {
+        var k = sist >= 24 ? 2 : 1;
+        if (vb < 13.2 * k) h({ tema: "Carga de baterías", confianza: "media",
+          medido: "Batería " + vb + " V con el motor en marcha (" + col(enMarcha) + "), sistema de " + sist + " V",
+          interpretacion: "Con el motor en marcha la batería debería estar cargando (≈ " + (13.8 * k).toFixed(1).replace(".", ",") + "–" + (14.4 * k).toFixed(1).replace(".", ",") + " V): compatible con alternador de carga o faja que no carga.",
+          verificar: "Faja y conexiones del alternador de carga; medir con multímetro en bornes." });
+        else if (vb > 14.8 * k) h({ tema: "Carga de baterías", confianza: "media",
+          medido: "Batería " + vb + " V en marcha, sistema de " + sist + " V",
+          interpretacion: "Voltaje de carga alto: compatible con regulador del alternador de carga dañado; acelera la pérdida de electrolito.",
+          verificar: "Regulador del alternador de carga y nivel de electrolito." });
+      }
+    }
+    // Velocidad frente a la de placa.
+    if (mayor && num(mayor, "rpm") !== null) {
+      if (!eq.rpm) faltan.push("RPM nominal");
+      else if (Math.abs(num(mayor, "rpm") - eq.rpm) / eq.rpm > 0.02) h({ tema: "Velocidad (RPM)", confianza: "media",
+        medido: num(mayor, "rpm") + " RPM a " + col(mayor) + " (placa " + eq.rpm + ")",
+        interpretacion: "La velocidad se aleja más de 2 % de la nominal.",
+        verificar: "Ajuste del gobernador y sensor de velocidad (pickup magnético)." });
+    }
+    if (faltan.length) out.push({ tema: "Sin dato de placa", confianza: "investigar", medido: "—",
+      interpretacion: "Falta " + faltan.filter(function (x, i) { return faltan.indexOf(x) === i; }).join(", ") +
+        " en la placa confirmada: no se interpreta sin ese dato (no se adivina).",
+      supuesto: "—", verificar: "Complete la ficha del equipo con la placa y confírmela en la orden." });
+    return out;
+  }
+
   /* ---------- batería ----------
      La del kit. SOH < 70 % crítico (evaluar reemplazo), < 85 % aviso
      (seguimiento), SOC < 75 % aviso (cargar). En un check-list, además, los
@@ -5066,6 +5251,7 @@ MANT.validaciones = (function () {
   return { validarEquipo: validarEquipo, validarOT: validarOT,
            validarMantenimiento: validarMantenimiento, tagEnTexto: tagEnTexto,
            validarPrueba: validarPrueba, TOL_AVISO: TOL_AVISO, TOL_CRITICO: TOL_CRITICO,
+           diagnosticar: diagnosticar,
            validarBateria: validarBateria, validarProbador: validarProbador,
            ordenar: ordenar, VOLTAJES: VOLTAJES };
 })();
@@ -5449,6 +5635,9 @@ MANT.equipos = (function () {
   // proyecto importado) puede haber añadido fichas mientras tanto.
   document.addEventListener("click", function (e) {
     if (e.target.closest("[data-ir='mantenimiento']") && !ficha) pintarLista();
+    // Con una ficha abierta, su historial se rehace al volver a ella: la
+    // orden que se acaba de llenar tiene que aparecer.
+    if (ficha && e.target.closest("[data-ir='mantenimiento'], #m-seg-equipos")) pintarHistorial();
   });
   $("#m-eq-lista").addEventListener("click", function (e) {
     var b = e.target.closest("[data-tag]");
@@ -5752,11 +5941,40 @@ MANT.ordenes = (function () {
     }).join("");
   }
 
+  var CONSEJO = {
+    borrosa: ["Parece movida o desenfocada", "Apoye los codos, toque la pantalla sobre la placa para enfocar y espere. De cerca, acérquese en vez de usar el zoom."],
+    oscura: ["Está oscura", "Luz de costado o una linterna en ángulo; sin flash de frente sobre metal o pantalla."],
+    clara: ["Está muy clara", "Haga sombra con el cuerpo o la mano y repítala."],
+    reflejo: ["Tiene reflejo", "Incline el teléfono unos grados y haga sombra con la mano; sin flash de frente."]
+  };
+  function avisosCalidad(f) {
+    var q = f.calidad;
+    if (!q || !q.avisos || !q.avisos.length) return "";
+    return '<div class="m-calidad" role="note"><b>Revise la foto:</b> ' + q.avisos.map(function (k) {
+      var c = CONSEJO[k] || [k, ""];
+      return esc(c[0]) + ". <span>" + esc(c[1]) + "</span>";
+    }).join(" ") + " <span class=\"m-nota-sn\">Si se lee bien, déjela: usted decide.</span></div>";
+  }
+
+  /* Cómo tomar cada foto: de cerca y sin reflejo las que se leen (placas,
+     pantallas, probador); con el equipo entero y el TAG a la vista las
+     generales. */
+  function comoTomarla(idc) {
+    var lee = MANT.lector && MANT.lector.LEE && MANT.lector.LEE[idc];
+    if (lee) return "De frente y de cerca: que la placa o la pantalla llene el cuadro. Toque para enfocar, " +
+      "haga sombra con la mano y no use flash de frente. Si brilla, incline el teléfono unos grados.";
+    if (idc === "c01") return "El equipo entero y el TAG legible en la misma foto, con luz de frente o de costado.";
+    return "Que se vea el componente entero y, si se puede, una referencia (TAG o rótulo). " +
+      "Luz pareja; si hay sol directo, póngase entre el sol y el equipo.";
+  }
+
   function fichaFoto(i) {
     var f = m.fotos[i];
     return '<div class="m-foto' + (f.propuesta ? " propuesta" : "") + '">' +
       '<img data-foto="' + esc(f.foto) + '" alt="' + esc(f.nombre || "foto") + '">' +
       (f.propuesta ? '<span class="m-prop">PROPUESTA POR EL NOMBRE DEL ARCHIVO · ' + esc(f.nombre || "") + "</span>" : "") +
+      avisosCalidad(f) +
+      (f.copia ? '<p class="m-nota-sn">Copia en el teléfono: ' + esc(f.copia.ruta) + "</p>" : "") +
       (f.casilla === HALLAZGO ? campos([["fotos." + i + ".texto", "Descripción del hallazgo", "area"]]) : "") +
       (f.casilla && MANT.lector && (MANT.lector.LEE[f.casilla] || f.casilla === "c01")
         ? '<div class="m-sn" style="margin:.3rem 0">' +
@@ -5770,6 +5988,41 @@ MANT.ordenes = (function () {
       (f.propuesta ? '<button type="button" class="primary" data-accion="foto-confirmar" data-i="' + i + '">Confirmar</button>' : "") +
       '<button type="button" class="ghost m-borrar" data-accion="foto-quitar" data-i="' + i + '">Quitar</button>' +
       "</div></div>";
+  }
+
+  /* Trazabilidad de las fotos: en el .apk cada foto se copia sola a la
+     galería (DCIM/Actas de campo/<TAG>/); en el navegador, que no puede
+     escribir en la galería, se guardan a mano con el mismo nombre. */
+  function pintarCopia() {
+    if (R.copiaFotos.puede()) {
+      return '<label class="m-usar"><input type="checkbox" data-copia-fotos' + (R.copiaFotos.activa() ? " checked" : "") +
+        "> Guardar copia de cada foto en la galería (DCIM/Actas de campo/" + esc(m.tag) + ")</label>";
+    }
+    return m.fotos.length
+      ? '<div class="m-sn"><button type="button" data-accion="fotos-al-telefono">Guardar las fotos en el teléfono</button></div>' +
+        '<p class="m-nota-sn">Desde el navegador quedan en Descargas, con el TAG, la casilla, la fecha y la hora en el nombre. ' +
+        "Con la app instalada (.apk) se guardan solas en la galería.</p>"
+      : "";
+  }
+  function fotosAlTelefono() {
+    var estado = function (t) { var n = $("#m-o-fotos-estado"); if (n) n.textContent = t || ""; };
+    var lista = m.fotos.slice(), hechas = 0;
+    estado("guardando…");
+    return lista.reduce(function (cadena, f) {
+      return cadena.then(function () { return A.fotos.leer(f.foto); }).then(function (r) {
+        if (!r || !r.archivo) return;
+        var nombre = M.nombreFoto(m.tag, f.casilla || "sc", r.fecha || Date.now());
+        var url = URL.createObjectURL(r.archivo), a = document.createElement("a");
+        a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        f.copia = { ruta: "Descargas/" + nombre, fecha: new Date().toLocaleString("es-PE") };
+        hechas++;
+        return new Promise(function (ok) { setTimeout(ok, 350); });
+      });
+    }, Promise.resolve()).then(function () {
+      tocar(); pintar();
+      estado(hechas + (hechas === 1 ? " foto guardada" : " fotos guardadas") + " en Descargas.");
+    });
   }
 
   function resumenFotos() {
@@ -5794,7 +6047,7 @@ MANT.ordenes = (function () {
       '<div class="m-sn"><input type="file" class="archivo" id="m-o-fotos-varias" accept="image/*" multiple ' +
       'aria-label="Cargar varias fotos de la inspección"><label class="boton" for="m-o-fotos-varias">Cargar fotos…</label>' +
       (prop ? '<button type="button" data-accion="fotos-confirmar">Confirmar propuestas (' + prop + ")</button>" : "") +
-      '</div><p class="m-nota-sn" id="m-o-fotos-estado" role="status"></p>';
+      '</div>' + pintarCopia() + '<p class="m-nota-sn" id="m-o-fotos-estado" role="status"></p>';
     if (sueltas.length) {
       html += '<div class="m-casilla"><span class="lb">Sin casilla: elija dónde va cada una</span>' +
         '<div class="m-sueltas">' + sueltas.map(fichaFoto).join("") + "</div></div>";
@@ -5831,7 +6084,8 @@ MANT.ordenes = (function () {
   function pintarEstado(idc) {
     var cr = M.FORMATO.criterios[idc], e = (m.estados || {})[idc] || {};
     var nota = "estados." + idc + ".nota";
-    return (cr ? '<details class="m-criterio"><summary>Qué mirar</summary><p><b>OK:</b> ' + esc(cr[0]) + "</p>" +
+    return (cr ? '<details class="m-criterio"><summary>Qué mirar</summary>' +
+        '<p><b>Cómo tomarla:</b> ' + esc(comoTomarla(idc)) + "</p><p><b>OK:</b> " + esc(cr[0]) + "</p>" +
         (cr[1] ? "<p><b>Observado:</b> " + esc(cr[1]) + "</p>" : "") +
         (cr[2] ? "<p><b>Falla:</b> " + esc(cr[2]) + "</p>" : "") + "</details>" : "") +
       '<div class="m-sn" role="group" aria-label="Estado de ' + idc + '">' +
@@ -5851,20 +6105,26 @@ MANT.ordenes = (function () {
 
   function pintarLectura() {
     var L = lectura, F = M.FORMATO.informe;
-    if (L.estado === "leyendo") return '<p class="m-nota-sn m-lectura-estado" role="status">' + esc(L.aviso || "leyendo la foto…") + "</p>";
-    if (L.estado === "error") return '<p class="m-lect-mal" role="status">' + esc(L.aviso) + "</p>";
+    // Leyendo o fallado, siempre hay salida: el panel no se queda pegado.
+    if (L.estado === "leyendo") return '<p class="m-nota-sn m-lectura-estado" role="status">' + esc(L.aviso || "leyendo la foto…") + "</p>" +
+      '<div class="m-sn"><button type="button" data-accion="lect-cerrar">Cancelar</button></div>';
+    if (L.estado === "error") return '<p class="m-lect-mal" role="status">' + esc(L.aviso) + "</p>" +
+      '<div class="m-sn"><button type="button" data-accion="lect-cerrar">Cerrar</button></div>';
     var hayColumna = L.propuestas.some(function (x) { return x.destino === "columna"; });
     var filas = L.propuestas.map(function (x, k) {
       var otro = x.destino === "tag" && x.valor !== m.tag;
       return '<div class="m-propuesta' + (otro ? " otro" : "") + '">' +
-        '<label class="m-usar"><input type="checkbox" data-usar="' + k + '"' + (x.destino === "tag" ? " disabled" : " checked") + "> " +
+        '<label class="m-usar"><input type="checkbox" data-usar="' + k + '"' + (x.destino === "tag" ? " disabled" : x.duda ? "" : " checked") + "> " +
         esc(x.rotulo) + (x.destino === "ficha" ? " <small>(ficha del equipo)</small>" : "") + "</label>" +
         (x.destino === "tag"
           ? '<p class="' + (otro ? "m-lect-mal" : "m-ok") + '">' + esc(x.valor) +
             (otro ? " — la foto es de otro equipo: esta orden es del " + esc(m.tag) : " — coincide con la orden") + "</p>"
           : '<input type="text" data-valor-prop="' + k + '" value="' + esc(x.valor == null ? "" : x.valor) + '">' +
             (x.leido !== undefined ? '<p class="m-nota-sn">Leído «' + esc(x.leido) + "» · corregido " +
-              (x.origen === "aprendido" ? "con lo aprendido en este teléfono" : "según la " + esc(x.origen)) + "</p>" : "")) +
+              (x.origen === "aprendido" ? "con una regla aprendida en este teléfono" : "según la " + esc(x.origen)) + "</p>" : "") +
+            (x.antes !== undefined ? '<p class="m-nota-sn">La vez anterior lo corrigió a «' + esc(x.antes) +
+              "»: si vuelve a corregirlo igual, el teléfono lo aprende.</p>" : "") +
+            (x.duda ? '<p class="m-lect-mal">Revise antes de usar: ' + esc(x.duda) + "</p>" : "")) +
         "</div>";
     }).join("");
     return '<div class="m-lectura"><p class="m-sub">Leído de la foto' + (L.recortada ? " (encuadre)" : "") +
@@ -5900,6 +6160,7 @@ MANT.ordenes = (function () {
     });
   }
 
+  var LIMITE_LECTURA = 90000;
   function leerFoto(i, recorte) {
     var f = m.fotos[i];
     if (!f) return Promise.resolve();
@@ -5909,21 +6170,31 @@ MANT.ordenes = (function () {
       if (vacia) { primeraVacia = n; return true; }
       return false;
     });
-    lectura = { foto: f.foto, casilla: f.casilla, estado: "leyendo", texto: "", propuestas: [],
+    var esta = lectura = { foto: f.foto, casilla: f.casilla, estado: "leyendo", texto: "", propuestas: [],
                 columna: primeraVacia, aviso: "preparando el lector (la primera vez tarda un poco)…" };
     pintar();
+    // Un lector que no contesta no puede dejar la foto «leyendo» para siempre.
+    setTimeout(function () {
+      if (lectura === esta && esta.estado === "leyendo") {
+        esta.estado = "error";
+        esta.aviso = "El lector tardó demasiado (más de " + LIMITE_LECTURA / 1000 + " s). Escriba los valores a mano " +
+          "o pruebe «Encuadrar y leer» con sólo la placa o la pantalla.";
+        pintar();
+      }
+    }, LIMITE_LECTURA);
     return Promise.all([recorte ? Promise.resolve({ archivo: recorte }) : A.fotos.leer(f.foto), A.equipos.listar()]).then(function (r) {
       if (!r[0]) throw new Error("la foto ya no está guardada");
       var fichas = r[1] || [], tags = fichas.map(function (e) { return e.tag; });
       var nominal = m.equipo.voltajeNominal || (ctx.ficha && M.normalizar.equipo(ctx.ficha).voltajeNominal) || null;
       return MANT.lector.leerFoto(r[0].archivo, f.casilla,
-        { tags: tags, fichas: fichas, tag: m.tag, nominal: nominal }, function (estado, avance) {
-        if (!lectura || lectura.foto !== f.foto) return;
+        { tags: tags, fichas: fichas, tag: m.tag, nominal: nominal,
+          horometroPrevio: (ctx.ficha && M.normalizar.equipo(ctx.ficha).horometro) || null }, function (estado, avance) {
+        if (lectura !== esta) return;
         lectura.aviso = (/recogniz/.test(estado) ? "leyendo" : "preparando el lector") + "… " + Math.round(avance * 100) + " %";
         var n = raiz.querySelector(".m-lectura-estado");
         if (n) n.textContent = lectura.aviso;
       }).then(function (res) {
-        if (!lectura || lectura.foto !== f.foto) return;
+        if (lectura !== esta) return;
         lectura.texto = res.texto;
         lectura.giro = res.giro;
         lectura.recortada = !!recorte;
@@ -5932,7 +6203,7 @@ MANT.ordenes = (function () {
         pintar();
       });
     }).catch(function (err) {
-      if (!lectura) return;
+      if (lectura !== esta) return;
       lectura.estado = "error";
       lectura.aviso = "No se pudo leer: " + ((err && err.message) || "error") + ". Escriba los valores a mano.";
       pintar();
@@ -5944,7 +6215,12 @@ MANT.ordenes = (function () {
     if (!L) return Promise.resolve();
     var elegidas = [];
     raiz.querySelectorAll(".m-lectura [data-usar]").forEach(function (cb) {
-      if (!cb.checked || cb.disabled) return;
+      if (cb.disabled) return;
+      if (!cb.checked) {
+        var xd = L.propuestas[Number(cb.dataset.usar)];
+        if (xd) MANT.lector.descartar(xd.ruta, xd.leido !== undefined ? xd.leido : xd.valor);
+        return;
+      }
       var k = Number(cb.dataset.usar), x = L.propuestas[k];
       var campo = raiz.querySelector('.m-lectura [data-valor-prop="' + k + '"]');
       var crudo = campo ? campo.value.trim() : x.valor;
@@ -6012,9 +6288,23 @@ MANT.ordenes = (function () {
     return f.foto ? A.fotos.borrar(f.foto) : Promise.resolve();
   }
 
+  function alElegirFotos(e) {
+    var n = e.currentTarget, lista = Array.prototype.slice.call(n.files || []);
+    n.value = "";
+    if (lista.length) agregarFotos(lista, n.dataset.fotoCasilla || null);
+  }
+
+  // Una tras otra: dos tomas seguidas no se pisan al guardar la orden.
+  var colaFotos = Promise.resolve();
+  function agregarFotos(archivos, idc) {
+    colaFotos = colaFotos.then(function () { return agregarFotosYa(archivos, idc); },
+                               function () { return agregarFotosYa(archivos, idc); });
+    return colaFotos;
+  }
+
   /* Entran fotos: en una casilla elegida (directo, sin propuesta) o varias a
      la vez, y entonces cada una se propone por su nombre de archivo. */
-  function agregarFotos(archivos, idc) {
+  function agregarFotosYa(archivos, idc) {
     if (!m || !miId || !archivos || !archivos.length) return Promise.resolve();
     var estado = function (t) { var n = $("#m-o-fotos-estado"); if (n) n.textContent = t || ""; };
     estado("procesando…");
@@ -6034,15 +6324,28 @@ MANT.ordenes = (function () {
             if (idc) antes = quitarFoto(previa);  // en su casilla: la nueva reemplaza
             else dest = null;                     // propuesta a casilla llena: queda suelta
           }
-          var fid = nuevoIdFoto();
-          var nombre = idc ? M.nombreFoto(m.tag, idc, Date.now()) : (origen.name || "foto.jpg");
+          var fid = nuevoIdFoto(), ahora = Date.now();
+          var nombre = idc ? M.nombreFoto(m.tag, idc, ahora) : (origen.name || "foto.jpg");
+          var registro = { casilla: dest || null, foto: fid, texto: "", nombre: nombre,
+                           propuesta: !idc && !!dest, calidad: null, copia: null };
           return antes.then(function () {
             return A.fotos.guardar({ id: fid, proyecto: miId, archivo: x.archivo, nombre: nombre,
-                                     fecha: origen.lastModified || Date.now() });
+                                     fecha: origen.lastModified || ahora });
           }).then(function () {
             if (x.url) urls[fid] = x.url;
-            m.fotos.push({ casilla: dest || null, foto: fid, texto: "", nombre: nombre,
-                           propuesta: !idc && !!dest });
+            m.fotos.push(registro);
+            // La calidad se mide en la foto entera; la copia va a la galería
+            // con el nombre que dice qué es: TAG, casilla, fecha y hora.
+            return Promise.all([
+              R.calidadFoto(x.archivo).then(function (q) {
+                if (q) registro.calidad = { nitidez: q.nitidez, brillo: q.brillo, reflejo: q.reflejo,
+                                            avisos: q.avisos.map(function (a) { return a.clave; }) };
+              }),
+              R.copiaFotos.guardar(origen, M.nombreFoto(m.tag, dest || "sc", ahora).replace(/\.jpg$/,
+                "-" + ("0" + new Date(ahora).getSeconds()).slice(-2) + ".jpg"), m.tag).then(function (ruta) {
+                if (ruta) registro.copia = { ruta: ruta, fecha: new Date(ahora).toLocaleString("es-PE") };
+              })
+            ]);
           });
         });
       });
@@ -6092,7 +6395,23 @@ MANT.ordenes = (function () {
           (lleno ? " · con datos" : "") + "</summary>" +
           campos(F.parametros.map(function (r) { return [b + r[0], r[1], "num"]; })
                  .concat([[b + "voltajeLN", "Voltaje L-N (V)", "num"]])) + "</details>";
-      }).join("");
+      }).join("") +
+      '<p class="m-sub">Lectura por evidencia</p>' +
+      '<p class="m-nota-sn">Lo medido, lo que podría indicar y qué revisar. No decide: usted confirma.</p>' +
+      '<div id="m-o-diag" role="status" aria-live="polite"></div>';
+  }
+
+  function pintarDiagnostico() {
+    var n = raiz.querySelector("#m-o-diag");
+    if (!n || !m) return;
+    var l = V.diagnosticar(m.equipo, m.informe.pruebas);
+    n.innerHTML = l.length ? l.map(function (d) {
+      return '<div class="m-diag ' + esc(d.confianza) + '"><p><b>' + esc(d.tema) + "</b> · confianza " + esc(d.confianza) + "</p>" +
+        "<p><span class=\"lb\">Medido</span> " + esc(d.medido) + "</p>" +
+        "<p><span class=\"lb\">Puede indicar</span> " + esc(d.interpretacion) + "</p>" +
+        "<p><span class=\"lb\">Supuesto</span> " + esc(d.supuesto) + "</p>" +
+        "<p><span class=\"lb\">Verificar</span> " + esc(d.verificar) + "</p></div>";
+    }).join("") : '<p class="m-nota-sn">Sin hallazgos con lo cargado en la tabla (vacío y con carga).</p>';
   }
 
   /* ---------- firmas dibujadas ----------
@@ -6371,6 +6690,13 @@ MANT.ordenes = (function () {
       '<p class="m-nota-sn" id="m-o-wa-estado" role="status"></p>');
 
     $("#m-o-cuerpo").innerHTML = html;
+    // Cada selector de fotos escucha por su cuenta: si la pantalla se
+    // repinta mientras la cámara está abierta (la foto anterior aún se
+    // procesa), el selector viejo queda fuera del documento y su «change» ya
+    // no llega al cuerpo. Escuchándolo directamente, la foto entra igual.
+    raiz.querySelectorAll('#m-o-cuerpo input[type="file"]').forEach(function (n) {
+      n.addEventListener("change", alElegirFotos);
+    });
     miniaturas();
     pintarAlertas();
   }
@@ -6388,6 +6714,7 @@ MANT.ordenes = (function () {
   function pintarAlertas() {
     if (!m) return;
     pintarReporte();
+    pintarDiagnostico();
     var l = alertas();
     var vistas = {};
     m.decisiones.forEach(function (d) { vistas[d.clave] = d; });
@@ -6536,6 +6863,7 @@ MANT.ordenes = (function () {
     if (acc === "lect-usar") { usarLectura(); return; }
     if (acc === "lect-cerrar") { lectura = null; pintar(); return; }
     if (acc === "foto-confirmar") { m.fotos[Number(b.dataset.i)].propuesta = false; tocar(); pintar(); return; }
+    if (acc === "fotos-al-telefono") { fotosAlTelefono(); return; }
     if (acc === "fotos-confirmar") {
       m.fotos.forEach(function (f) { if (f.casilla) f.propuesta = false; });
       tocar(); pintar(); return;
@@ -6789,12 +7117,8 @@ MANT.ordenes = (function () {
   }, true);
   $("#m-o-cuerpo").addEventListener("change", function (e) {
     var n = e.target;
-    if (n.type === "file") {
-      var lista = Array.prototype.slice.call(n.files || []);
-      n.value = "";
-      agregarFotos(lista, n.dataset.fotoCasilla || null);
-      return;
-    }
+    if (n.hasAttribute && n.hasAttribute("data-copia-fotos")) { R.copiaFotos.activar(n.checked); return; }
+    if (n.type === "file") return;          // lo atiende alElegirFotos
     if (n.dataset && n.dataset.mover !== undefined) {
       var i = Number(n.dataset.mover), destino = n.value || null, f = m.fotos[i];
       if (destino && destino !== HALLAZGO) {
@@ -11544,15 +11868,60 @@ MANT.lector = (function () {
     try { localStorage.setItem(CLAVE_APRENDIZAJE, JSON.stringify(a)); return true; } catch (e) { return false; }
   }
   function clave(ruta, leido) { return ruta + "|" + String(leido).toUpperCase(); }
+  /* Aprender por etapas, con evidencia:
+       · NOTA  — la primera corrección. No cambia lo leído: sólo lo recuerda
+                 al lado («la vez anterior lo corrigió a …»).
+       · REGLA — la misma corrección confirmada dos veces o más, y explicada
+                 por un error de lectura con nombre (confusión O/0, I/1, S/5…
+                 o un carácter mal leído). Sólo entonces se propone sola.
+     Si lo que el técnico escribió no se parece a lo leído, no es un error del
+     lector (otra placa, otro equipo): se guarda como nota y nunca sube a
+     regla. Lo que el técnico desmarca se anota como descarte; dos descartes
+     iguales hacen que la propuesta llegue sin marcar y con el aviso.
+     Nunca se guarda nada que parezca una clave o contraseña. */
+  var PROMOVER = 2;
+  function pareceSecreto(v) {
+    var t = String(v == null ? "" : v);
+    return t.length > 40 || /(sk-|ghp_|AKIA|bearer\s|password|contrase|token)/i.test(t);
+  }
+  function patronDe(leido, usado) {
+    var a = String(leido).toUpperCase(), b = String(usado).toUpperCase();
+    if (a === b) return null;
+    if (confusiones(a) === confusiones(b)) return "confusión de caracteres del lector (O/0, I/1, S/5, B/8…)";
+    if (distancia(a.replace(/[^A-Z0-9]/g, ""), b.replace(/[^A-Z0-9]/g, "")) <= 1) return "un carácter mal leído";
+    return null;
+  }
+  function etapa(c) { return c && c.patron && c.veces >= PROMOVER ? "regla" : "nota"; }
   // El técnico usó `usado` donde se leyó `leido`.
   function aprender(ruta, leido, usado) {
     if (leido === null || leido === undefined || usado === null || usado === undefined) return;
     if (String(leido).toUpperCase() === String(usado).toUpperCase()) return;
+    if (pareceSecreto(leido) || pareceSecreto(usado)) return;
     var a = aprendizaje(), k = clave(ruta, leido);
     a.correcciones = a.correcciones || {};
     var c = a.correcciones[k] || { ruta: ruta, leido: String(leido), usado: usado, veces: 0 };
+    // Otra corrección distinta para la misma lectura: la evidencia anterior
+    // ya no vale, se empieza de nuevo.
+    if (String(c.usado).toUpperCase() !== String(usado).toUpperCase()) c.veces = 0;
     c.usado = usado; c.veces += 1; c.ultima = Date.now();
+    c.patron = patronDe(leido, usado);
+    c.etapa = etapa(c);
     a.correcciones[k] = c;
+    guardarAprendizaje(a);
+  }
+  // El técnico desmarcó una propuesta: un callejón sin salida para la próxima.
+  function descartar(ruta, leido) {
+    if (leido === null || leido === undefined || leido === "" || pareceSecreto(leido)) return;
+    var a = aprendizaje(), k = clave(ruta, leido);
+    a.descartes = a.descartes || {};
+    var d = a.descartes[k] || { ruta: ruta, leido: String(leido), veces: 0 };
+    d.veces += 1; d.ultima = Date.now();
+    a.descartes[k] = d;
+    var ks = Object.keys(a.descartes);
+    if (ks.length > 300) {
+      ks.sort(function (x, y) { return a.descartes[x].ultima - a.descartes[y].ultima; });
+      ks.slice(0, ks.length - 300).forEach(function (x) { delete a.descartes[x]; });
+    }
     guardarAprendizaje(a);
   }
   function confusiones(t) {
@@ -11584,7 +11953,8 @@ MANT.lector = (function () {
     });
     return propuestas.map(function (x) {
       var c = corr[clave(x.ruta, x.valor)];
-      if (c) return extender(x, { valor: c.usado, leido: x.valor, origen: "aprendido" });
+      if (c && etapa(c) === "regla") return extender(x, { valor: c.usado, leido: x.valor, origen: "aprendido" });
+      if (c) x = extender(x, { antes: c.usado });
       if (/\.(modelo|serie)$/.test(x.ruta) && typeof x.valor === "string") {
         var nx = confusiones(x.valor), cand = null;
         conocidos.forEach(function (k) {
@@ -11617,7 +11987,17 @@ MANT.lector = (function () {
     a.correcciones = a.correcciones || {};
     Object.keys(entra).forEach(function (k) {
       var x = entra[k], y = a.correcciones[k];
-      if (!y || (x.ultima || 0) > (y.ultima || 0)) { a.correcciones[k] = x; n++; }
+      if (pareceSecreto(x && x.leido) || pareceSecreto(x && x.usado)) return;
+      if (!y || (x.ultima || 0) > (y.ultima || 0)) {
+        x.patron = patronDe(x.leido, x.usado); x.etapa = etapa(x);
+        a.correcciones[k] = x; n++;
+      }
+    });
+    var des = (j.datos && j.datos.descartes) || {};
+    a.descartes = a.descartes || {};
+    Object.keys(des).forEach(function (k) {
+      var x = des[k], y = a.descartes[k];
+      if (!y || (x.ultima || 0) > (y.ultima || 0)) a.descartes[k] = x;
     });
     guardarAprendizaje(a);
     return n;
@@ -11723,7 +12103,39 @@ MANT.lector = (function () {
      binarizarla con un umbral LOCAL —el reflejo del sol y el fondo verde de
      las pantallas no dejan usar uno solo para toda la imagen— y leerla en
      dos modos de página (bloque y texto disperso). */
-  function prepararImagen(blob, giro) {
+  /* Segundo preparado, para cuando el umbral local lee poco: grises,
+     contraste ×2 alrededor de la media, mediana 3×3 contra el ruido y
+     nitidez (el núcleo «SHARPEN» clásico). Sirve en pantallas con poco
+     contraste y placas grabadas, donde binarizar borra los trazos finos. */
+  function contrastar(y, W, H) {
+    var n = W * H, media = 0, i, r, q;
+    for (i = 0; i < n; i++) media += y[i];
+    media /= n || 1;
+    var a = new Float32Array(n);
+    for (i = 0; i < n; i++) a[i] = Math.max(0, Math.min(255, media + (y[i] - media) * 2));
+    var b = new Float32Array(n), v = [];
+    for (r = 0; r < H; r++) for (q = 0; q < W; q++) {
+      v.length = 0;
+      for (var dr = -1; dr <= 1; dr++) for (var dq = -1; dq <= 1; dq++) {
+        var rr = Math.min(H - 1, Math.max(0, r + dr)), qq = Math.min(W - 1, Math.max(0, q + dq));
+        v.push(a[rr * W + qq]);
+      }
+      v.sort(function (x, z) { return x - z; });
+      b[r * W + q] = v[4];
+    }
+    var c = new Float32Array(n);
+    for (r = 0; r < H; r++) for (q = 0; q < W; q++) {
+      var s = 0;
+      for (var er = -1; er <= 1; er++) for (var eq = -1; eq <= 1; eq++) {
+        var r2 = Math.min(H - 1, Math.max(0, r + er)), q2 = Math.min(W - 1, Math.max(0, q + eq));
+        s += b[r2 * W + q2] * (er === 0 && eq === 0 ? 32 : -2);
+      }
+      c[r * W + q] = Math.max(0, Math.min(255, s / 16));
+    }
+    return c;
+  }
+
+  function prepararImagen(blob, giro, modo) {
     return createImageBitmap(blob).then(function (img) {
       var rot = giro % 180 !== 0, iw = rot ? img.height : img.width, ih = rot ? img.width : img.height;
       var esc = Math.min(1500 / ih, 3000 / iw);
@@ -11738,6 +12150,12 @@ MANT.lector = (function () {
       if (img.close) img.close();
       var d = g.getImageData(0, 0, W, H), p = d.data, y = new Float32Array(W * H), i, j;
       for (i = 0, j = 0; i < p.length; i += 4, j++) y[j] = p[i] * 0.299 + p[i + 1] * 0.587 + p[i + 2] * 0.114;
+      if (modo === "contraste") {
+        var cc = contrastar(y, W, H);
+        for (i = 0, j = 0; i < p.length; i += 4, j++) p[i] = p[i + 1] = p[i + 2] = cc[j];
+        g.putImageData(d, 0, 0);
+        return new Promise(function (ok) { c.toBlob(ok, "image/png"); });
+      }
       // Imagen integral: la media de cualquier ventana en tiempo constante.
       var I = new Float64Array((W + 1) * (H + 1)), r, q;
       for (r = 1; r <= H; r++) {
@@ -11760,8 +12178,8 @@ MANT.lector = (function () {
     });
   }
 
-  function leerPreparada(blob, giro, avance) {
-    return Promise.all([preparar(avance), prepararImagen(blob, giro)]).then(function (r) {
+  function leerPreparada(blob, giro, avance, modo) {
+    return Promise.all([preparar(avance), prepararImagen(blob, giro, modo)]).then(function (r) {
       var w = r[0], img = r[1], textos = [], confianza = 0;
       // Dos modos de página: 6 (un bloque) y 11 (texto disperso). Se unen;
       // la confianza del motor se toma del primero.
@@ -11788,26 +12206,75 @@ MANT.lector = (function () {
   function leerFoto(blob, idc, opciones, avance) {
     var mejor = null;
     opciones = opciones || {};
-    function intento(giro) {
-      return leerPreparada(blob, giro, avance).then(function (r) {
+    function intento(giro, modo) {
+      return leerPreparada(blob, giro, avance, modo).then(function (r) {
         var p = interpretar(r.texto, idc, opciones);
         var n = p.filter(function (x) { return x.destino !== "tag"; }).length;
         var nota = r.confianza + n * 8;
-        if (!mejor || nota > mejor.nota) mejor = { texto: r.texto, giro: giro, propuestas: p, n: n, nota: nota, confianza: r.confianza };
+        if (!mejor || nota > mejor.nota) mejor = { texto: r.texto, giro: giro, propuestas: p, n: n, nota: nota,
+                                                   confianza: r.confianza, modo: modo || "umbral" };
         return r;
       });
     }
-    return intento(0).then(function (r) {
-      if (r.confianza >= 60 && mejor.n > 0) return mejor;
-      return intento(90).then(function () { return intento(270); }).then(function () { return mejor; });
-    }).then(function (r) {
-      r.propuestas = ajustar(r.propuestas, opciones.fichas, opciones.tag);
+    function bueno() { return mejor && mejor.confianza >= 60 && mejor.n > 0; }
+    return intento(0).then(function () {
+      if (bueno()) return;
+      return intento(90).then(function () { return intento(270); });
+    }).then(function () {
+      // Si el umbral local leyó poco, una pasada más con el otro preparado,
+      // en el giro que mejor salió.
+      if (bueno()) return;
+      return intento(mejor.giro, "contraste");
+    }).then(function () {
+      var r = mejor;
+      r.propuestas = revisar(ajustar(r.propuestas, opciones.fichas, opciones.tag), r.confianza, opciones);
       return r;
+    });
+  }
+
+  /* ---------- validar lo leído ----------
+     Lo que el lector propone pasa por un control de lo posible antes de
+     llegar al técnico: un valor fuera de rango, o leído con poca confianza,
+     no se marca solo —queda a la vista con el motivo y él decide—. Es la
+     regla del diagnóstico por evidencia: se dice qué se midió, qué se
+     interpreta y qué no se puede afirmar; nunca se adivina. */
+  var RANGOS = {
+    hz: [45, 65, "Hz"], frecuenciaHz: [45, 65, "Hz"], rpm: [600, 4000, "RPM"],
+    voltajeLL: [100, 15000, "V"], voltajeLN: [50, 9000, "V"], voltajeNominal: [100, 15000, "V"],
+    vBateria: [8, 32, "V"], presionAceitePsi: [0, 150, "PSI"], tempRefrigeranteC: [-30, 130, "°C"],
+    corrienteA: [0, 6000, "A"], kw: [0, 5000, "kW"], kva: [1, 6000, "kVA"],
+    "probador.soh": [0, 100, "%"], "probador.soc": [0, 100, "%"], "probador.voltaje": [8, 32, "V"],
+    "probador.ccaMedido": [50, 3000, "CCA"], "probador.resistenciaMOhm": [0.5, 50, "mΩ"],
+    "bateria.voltaje": [6, 48, "V"], "bateria.ah": [10, 400, "Ah"], fases: [1, 3, ""]
+  };
+  function hoja(ruta) { var t = String(ruta || "").split("."); return t[t.length - 1]; }
+  function verosimil(x, opciones) {
+    if (typeof x.valor !== "number") return null;
+    var R = RANGOS[x.ruta] || RANGOS[hoja(x.ruta)];
+    if (R && (x.valor < R[0] || x.valor > R[1])) {
+      return "fuera de lo posible para este dato (" + R[0] + "–" + R[1] + " " + R[2] + ")";
+    }
+    if (/horometro/i.test(x.ruta) && opciones.horometroPrevio && x.valor < opciones.horometroPrevio) {
+      return "menor que el horómetro ya registrado (" + opciones.horometroPrevio + " h): el horómetro no retrocede";
+    }
+    return null;
+  }
+  function revisar(propuestas, confianza, opciones) {
+    var rech = (aprendizaje().descartes) || {};
+    return propuestas.map(function (x) {
+      if (x.destino === "tag") return x;
+      var motivos = [], v = verosimil(x, opciones || {});
+      if (v) motivos.push(v);
+      if (confianza < 45) motivos.push("lectura de baja confianza (" + Math.round(confianza) + " %)");
+      var d = rech[clave(x.ruta, x.valor)];
+      if (d && d.veces >= 2) motivos.push("descartado antes " + d.veces + " veces en este teléfono");
+      return motivos.length ? extender(x, { duda: motivos.join(" · ") }) : x;
     });
   }
 
   return { LEE: LEE, interpretar: interpretar, reconocerTag: reconocerTag, disponible: disponible, leerFoto: leerFoto,
            prepararImagen: prepararImagen, aprender: aprender, ajustar: ajustar, aprendizaje: aprendizaje,
+           descartar: descartar, revisar: revisar, verosimil: verosimil, patronDe: patronDe, etapa: etapa,
            exportarAprendizaje: exportarAprendizaje, importarAprendizaje: importarAprendizaje,
            confusiones: confusiones,
            preparar: preparar, leer: leer, listoSinSenal: listoSinSenal, descargar: descargar };

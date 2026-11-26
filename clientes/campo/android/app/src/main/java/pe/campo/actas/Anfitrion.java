@@ -63,6 +63,8 @@ public class Anfitrion {
 
   private static class Envio {
     String nombre;
+    String carpetaVisible;   // lo que se le dice al operario: dónde quedó
+    boolean foto;
     OutputStream salida;
     Uri destino;      // Android 10 en adelante
     File archivo;     // hasta Android 9
@@ -85,15 +87,47 @@ public class Anfitrion {
       Envio envio = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
           ? abrirEnMediaStore(limpio, mime)
           : abrirEnDescargas(limpio);
-      String vale = "e" + contador.getAndIncrement();
-      synchronized (enCurso) {
-        enCurso.put(vale, envio);
-      }
-      return vale;
+      envio.carpetaVisible = "Descargas/" + CARPETA;
+      return registrar(envio);
     } catch (Exception e) {
       Log.w(ETIQUETA, "no se pudo abrir " + limpio, e);
       return "ERROR:" + descripcion(e);
     }
+  }
+
+  /**
+   * Una foto de la inspección, a la galería del teléfono: DCIM/Actas de
+   * campo/&lt;TAG&gt;/. Así cada foto que se toma en la app queda también en
+   * el teléfono, ordenada por equipo y con un nombre que dice qué es
+   * (TAG, casilla, fecha y hora): la trazabilidad no depende de la app.
+   * Mismo contrato que {@link #abrir}: luego `trozo` y `cerrar`.
+   */
+  @JavascriptInterface
+  public String abrirFoto(String nombre, String mime, String subcarpeta) {
+    String limpio = limpiarNombre(nombre);
+    String sub = limpiarNombre(subcarpeta == null || subcarpeta.trim().isEmpty() ? "sin TAG" : subcarpeta);
+    if (mime == null || !mime.startsWith("image/")) {
+      mime = "image/jpeg";
+    }
+    try {
+      Envio envio = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+          ? abrirFotoEnMediaStore(limpio, mime, sub)
+          : abrirFotoEnDcim(limpio, sub);
+      envio.foto = true;
+      envio.carpetaVisible = "DCIM/" + CARPETA + "/" + sub;
+      return registrar(envio);
+    } catch (Exception e) {
+      Log.w(ETIQUETA, "no se pudo abrir la foto " + limpio, e);
+      return "ERROR:" + descripcion(e);
+    }
+  }
+
+  private String registrar(Envio envio) {
+    String vale = "e" + contador.getAndIncrement();
+    synchronized (enCurso) {
+      enCurso.put(vale, envio);
+    }
+    return vale;
   }
 
   @JavascriptInterface
@@ -143,8 +177,12 @@ public class Anfitrion {
             new String[]{envio.archivo.getAbsolutePath()}, null, null);
         nombreFinal = envio.archivo.getName();
       }
-      final String ruta = "Descargas/" + CARPETA + "/" + nombreFinal;
-      avisar(actividad.getString(R.string.guardado_en, CARPETA + "/" + nombreFinal));
+      final String ruta = envio.carpetaVisible + "/" + nombreFinal;
+      if (!envio.foto) {
+        // Una foto por toma: avisar de cada una taparía la pantalla. La
+        // página dice dónde quedó.
+        avisar(actividad.getString(R.string.guardado_en, CARPETA + "/" + nombreFinal));
+      }
       return "OK:" + ruta;
     } catch (Exception e) {
       Log.w(ETIQUETA, "fallo al cerrar " + envio.nombre, e);
@@ -194,6 +232,45 @@ public class Anfitrion {
     return envio;
   }
 
+  @RequiresApi(Build.VERSION_CODES.Q)
+  private Envio abrirFotoEnMediaStore(String nombre, String mime, String sub) throws Exception {
+    ContentResolver resolucion = actividad.getContentResolver();
+    ContentValues datos = new ContentValues();
+    datos.put(MediaStore.Images.Media.DISPLAY_NAME, nombre);
+    datos.put(MediaStore.Images.Media.MIME_TYPE, mime);
+    datos.put(MediaStore.Images.Media.RELATIVE_PATH,
+              Environment.DIRECTORY_DCIM + "/" + CARPETA + "/" + sub);
+    datos.put(MediaStore.Images.Media.IS_PENDING, 1);
+    Uri destino = resolucion.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, datos);
+    if (destino == null) {
+      throw new IllegalStateException("la galería no admitió la foto");
+    }
+    OutputStream salida = resolucion.openOutputStream(destino);
+    if (salida == null) {
+      resolucion.delete(destino, null, null);
+      throw new IllegalStateException("no se pudo abrir la foto para escribir");
+    }
+    Envio envio = new Envio();
+    envio.nombre = nombre;
+    envio.destino = destino;
+    envio.salida = salida;
+    return envio;
+  }
+
+  private Envio abrirFotoEnDcim(String nombre, String sub) throws Exception {
+    File carpeta = new File(new File(
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM), CARPETA), sub);
+    if (!carpeta.isDirectory() && !carpeta.mkdirs()) {
+      throw new IllegalStateException("sin permiso para escribir en la galería");
+    }
+    File archivo = sinPisar(carpeta, nombre);
+    Envio envio = new Envio();
+    envio.nombre = nombre;
+    envio.archivo = archivo;
+    envio.salida = new FileOutputStream(archivo);
+    return envio;
+  }
+
   private Envio abrirEnDescargas(String nombre) throws Exception {
     File carpeta = new File(
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), CARPETA);
@@ -211,7 +288,7 @@ public class Anfitrion {
   @RequiresApi(Build.VERSION_CODES.Q)
   private void publicar(Uri destino) {
     ContentValues fin = new ContentValues();
-    fin.put(MediaStore.Downloads.IS_PENDING, 0);
+    fin.put(MediaStore.MediaColumns.IS_PENDING, 0);
     actividad.getContentResolver().update(destino, fin, null, null);
   }
 
@@ -220,7 +297,7 @@ public class Anfitrion {
     Cursor c = null;
     try {
       c = actividad.getContentResolver().query(
-          destino, new String[]{MediaStore.Downloads.DISPLAY_NAME}, null, null, null);
+          destino, new String[]{MediaStore.MediaColumns.DISPLAY_NAME}, null, null, null);
       if (c != null && c.moveToFirst()) {
         String nombre = c.getString(0);
         if (nombre != null && !nombre.isEmpty()) {

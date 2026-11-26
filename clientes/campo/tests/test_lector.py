@@ -284,6 +284,11 @@ def test_recuerda_la_correccion_del_tecnico_y_viaja(js):
     js("() => localStorage.removeItem('campo.lector.aprendizaje')")
     js("() => MANT.lector.aprender('alternador.modelo', 'HC.IS34E1', 'HCI534E1')")
     r = js(AJUSTAR, [[{"destino": "ficha", "ruta": "alternador.modelo", "valor": "HC.IS34E1"}], [], None])
+    # Una sola corrección es una nota: no cambia lo leído, lo recuerda al lado.
+    assert (r[0]["valor"], r[0].get("antes"), r[0].get("origen")) == ("HC.IS34E1", "HCI534E1", None)
+    # Confirmada dos veces y explicada por una confusión del lector: regla.
+    js("() => MANT.lector.aprender('alternador.modelo', 'HC.IS34E1', 'HCI534E1')")
+    r = js(AJUSTAR, [[{"destino": "ficha", "ruta": "alternador.modelo", "valor": "HC.IS34E1"}], [], None])
     assert (r[0]["valor"], r[0]["origen"]) == ("HCI534E1", "aprendido")
     texto = js("() => MANT.lector.exportarAprendizaje().text()")
     js("() => localStorage.removeItem('campo.lector.aprendizaje')")
