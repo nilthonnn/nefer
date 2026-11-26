@@ -272,3 +272,19 @@ def test_el_icono_esta_en_todas_las_densidades():
     adaptable = recursos / "mipmap-anydpi-v26" / "ic_launcher.xml"
     assert adaptable.is_file(), "sin icono adaptable, Android 8 lo mete en un cuadro blanco"
     assert "@mipmap/ic_launcher_foreground" in _texto(adaptable)
+
+
+def test_tomar_foto_abre_la_camara_y_no_solo_la_galeria():
+    """El selector del WebView abre sólo la galería: el contenedor tiene que
+    ofrecer la cámara él mismo (menú cámara + galería; cámara directa con
+    `capture`) y prestarle un archivo por FileProvider."""
+    java = _texto(ANDROID / "app" / "src" / "main" / "java" / "pe" / "campo"
+                  / "actas" / "MainActivity.java")
+    assert "MediaStore.ACTION_IMAGE_CAPTURE" in java
+    assert "EXTRA_INITIAL_INTENTS" in java and "isCaptureEnabled()" in java
+    assert "FileProvider.getUriForFile" in java
+    man = _texto(ANDROID / "app" / "src" / "main" / "AndroidManifest.xml")
+    assert "androidx.core.content.FileProvider" in man
+    assert '${applicationId}.tomas' in man and 'android:exported="false"' in man
+    rutas = _texto(ANDROID / "app" / "src" / "main" / "res" / "xml" / "tomas.xml")
+    assert '<cache-path name="tomas" path="tomas/" />' in rutas

@@ -46,5 +46,17 @@
       </intent-filter>
     </activity>
 
+    <!-- La camara del sistema deja la foto aqui (cache/tomas), y la pagina la
+         recibe como si se hubiera elegido de la galeria. -->
+    <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.tomas"
+        android:exported="false"
+        android:grantUriPermissions="true">
+      <meta-data
+          android:name="android.support.FILE_PROVIDER_PATHS"
+          android:resource="@xml/tomas" />
+    </provider>
+
   </application>
 </manifest>

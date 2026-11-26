@@ -135,8 +135,11 @@ jobs:
           import hashlib, pathlib, sys, zipfile
 
           apk = zipfile.ZipFile(sys.argv[1])
+          # dexopt/ son perfiles de arranque que mete androidx (core): son del
+          # compilador de Android, no de la app web.
           dentro = {n[len("assets/"):]: apk.read(n)
-                    for n in apk.namelist() if n.startswith("assets/")}
+                    for n in apk.namelist()
+                    if n.startswith("assets/") and not n.startswith("assets/dexopt/")}
           web = pathlib.Path("../docs/app")
           # sw.js se deja fuera a propósito: dentro del .apk no pinta nada.
           fuera = {str(a.relative_to(web)): a.read_bytes()

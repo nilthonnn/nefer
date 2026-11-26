@@ -6,4 +6,5 @@
       concédalo en Ajustes › Aplicaciones › Actas de campo › Permisos.</string>
   <string name="no_se_pudo_guardar">No se pudo guardar el archivo</string>
   <string name="elegir_archivo">Elegir archivo</string>
+  <string name="tomar_o_elegir">Tomar foto o elegir de la galería</string>
 </resources>

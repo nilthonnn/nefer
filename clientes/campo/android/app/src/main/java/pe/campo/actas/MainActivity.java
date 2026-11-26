@@ -18,9 +18,13 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.provider.MediaStore;
 import android.widget.Toast;
 
+import androidx.core.content.FileProvider;
 import androidx.webkit.WebViewAssetLoader;
+
+import java.io.File;
 
 /**
  * La aplicacion entera es la misma app web que se publica: esta clase solo la
@@ -47,11 +51,17 @@ public class MainActivity extends Activity {
   private static final int PIDE_CAMARA = 71;
   private static final int PIDE_ESCRITURA = 72;
   private static final int ELIGE_ARCHIVO = 73;
+  private static final int PIDE_CAMARA_FOTO = 74;
 
   private WebView vista;
   private WebViewAssetLoader cargador;
   private PermissionRequest permisoWebPendiente;
   private ValueCallback<Uri[]> respuestaArchivos;
+  /** Lo que el selector esperaba mientras se pedia el permiso de camara. */
+  private WebChromeClient.FileChooserParams selectorPendiente;
+  /** Donde la camara del sistema deja la foto de esta toma. */
+  private Uri tomaUri;
+  private File tomaArchivo;
 
   @Override
   protected void onCreate(Bundle guardado) {
@@ -134,14 +144,17 @@ public class MainActivity extends Activity {
           respuestaArchivos.onReceiveValue(null);
         }
         respuestaArchivos = respuesta;
-        try {
-          startActivityForResult(parametros.createIntent(), ELIGE_ARCHIVO);
-          return true;
-        } catch (Exception e) {
-          respuestaArchivos = null;
-          Log.w(ETIQUETA, "no hay selector de archivos", e);
-          return false;
+        if (!pideImagen(parametros)) {
+          return lanzarSelector(parametros, false);
         }
+        // Una foto: la camara del sistema necesita el permiso de CAMERA,
+        // porque la app lo declara. Se pide y se sigue al volver.
+        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+          selectorPendiente = parametros;
+          requestPermissions(new String[]{Manifest.permission.CAMERA}, PIDE_CAMARA_FOTO);
+          return true;
+        }
+        return lanzarSelector(parametros, true);
       }
 
       @Override
@@ -166,6 +179,92 @@ public class MainActivity extends Activity {
       vista.restoreState(guardado);
     } else {
       vista.loadUrl(INICIO);
+    }
+  }
+
+  private static boolean pideImagen(WebChromeClient.FileChooserParams p) {
+    String[] tipos = p.getAcceptTypes();
+    if (tipos == null || tipos.length == 0) {
+      return true;
+    }
+    for (String t : tipos) {
+      if (t == null || t.isEmpty() || t.startsWith("image/") || t.equals("*/*")) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Abre lo que el campo de la pagina pide. Antes se abria solo el selector
+   * de archivos —la galeria—, y «Tomar foto» nunca llegaba a la camara. Ahora:
+   *
+   *   · con `capture` (Camara del sistema, escanear el QR): la camara, directo;
+   *   · sin `capture` (Tomar o elegir foto): un menu con la camara y la galeria.
+   *
+   * La camara escribe la foto en cache/tomas por el FileProvider, y al volver
+   * la pagina la recibe como un archivo elegido.
+   */
+  private boolean lanzarSelector(WebChromeClient.FileChooserParams parametros, boolean conCamara) {
+    Intent galeria = parametros.createIntent();
+    Intent camara = conCamara ? intentCamara() : null;
+    try {
+      if (camara != null && parametros.isCaptureEnabled()) {
+        startActivityForResult(camara, ELIGE_ARCHIVO);
+      } else if (camara != null) {
+        Intent menu = Intent.createChooser(galeria, getString(R.string.tomar_o_elegir));
+        menu.putExtra(Intent.EXTRA_INITIAL_INTENTS, new Intent[]{camara});
+        startActivityForResult(menu, ELIGE_ARCHIVO);
+      } else {
+        startActivityForResult(galeria, ELIGE_ARCHIVO);
+      }
+      return true;
+    } catch (Exception e) {
+      Log.w(ETIQUETA, "no se pudo abrir la camara ni la galeria", e);
+      if (respuestaArchivos != null) {
+        respuestaArchivos.onReceiveValue(null);
+        respuestaArchivos = null;
+      }
+      return true;
+    }
+  }
+
+  private Intent intentCamara() {
+    Intent camara = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+    if (camara.resolveActivity(getPackageManager()) == null) {
+      return null;
+    }
+    try {
+      File carpeta = new File(getCacheDir(), "tomas");
+      if (!carpeta.isDirectory() && !carpeta.mkdirs()) {
+        return null;
+      }
+      limpiarTomasViejas(carpeta);
+      tomaArchivo = new File(carpeta, "toma-" + System.currentTimeMillis() + ".jpg");
+      tomaUri = FileProvider.getUriForFile(this, getPackageName() + ".tomas", tomaArchivo);
+      camara.putExtra(MediaStore.EXTRA_OUTPUT, tomaUri);
+      camara.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+      return camara;
+    } catch (Exception e) {
+      Log.w(ETIQUETA, "sin archivo para la camara", e);
+      tomaArchivo = null;
+      tomaUri = null;
+      return null;
+    }
+  }
+
+  /** Las tomas ya entregadas a la pagina no hacen falta pasado un dia. */
+  private static void limpiarTomasViejas(File carpeta) {
+    File[] viejas = carpeta.listFiles();
+    if (viejas == null) {
+      return;
+    }
+    long limite = System.currentTimeMillis() - 24L * 3600 * 1000;
+    for (File f : viejas) {
+      if (f.lastModified() < limite) {
+        //noinspection ResultOfMethodCallIgnored
+        f.delete();
+      }
     }
   }
 
@@ -211,6 +310,21 @@ public class MainActivity extends Activity {
       }
       return;
     }
+    if (codigo == PIDE_CAMARA_FOTO) {
+      WebChromeClient.FileChooserParams parametros = selectorPendiente;
+      selectorPendiente = null;
+      if (parametros == null || respuestaArchivos == null) {
+        return;
+      }
+      boolean concedido = resultados.length > 0
+          && resultados[0] == PackageManager.PERMISSION_GRANTED;
+      if (!concedido) {
+        Toast.makeText(this, R.string.sin_permiso_camara, Toast.LENGTH_LONG).show();
+      }
+      // Sin permiso queda la galeria: el acta no se detiene por eso.
+      lanzarSelector(parametros, concedido);
+      return;
+    }
     if (codigo == PIDE_ESCRITURA) {
       return;
     }
@@ -221,10 +335,20 @@ public class MainActivity extends Activity {
   protected void onActivityResult(int codigo, int resultado, Intent datos) {
     if (codigo == ELIGE_ARCHIVO) {
       if (respuestaArchivos != null) {
-        respuestaArchivos.onReceiveValue(
-            WebChromeClient.FileChooserParams.parseResult(resultado, datos));
+        Uri[] elegidos = null;
+        boolean deGaleria = datos != null && (datos.getData() != null || datos.getClipData() != null);
+        if (resultado == RESULT_OK && !deGaleria && tomaArchivo != null
+            && tomaArchivo.isFile() && tomaArchivo.length() > 0) {
+          // Volvio de la camara: la foto esta en el archivo que se le presto.
+          elegidos = new Uri[]{tomaUri};
+        } else {
+          elegidos = WebChromeClient.FileChooserParams.parseResult(resultado, datos);
+        }
+        respuestaArchivos.onReceiveValue(elegidos);
         respuestaArchivos = null;
       }
+      tomaArchivo = null;
+      tomaUri = null;
       return;
     }
     super.onActivityResult(codigo, resultado, datos);
