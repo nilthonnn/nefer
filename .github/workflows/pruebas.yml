@@ -147,6 +147,13 @@ jobs:
       - name: Navegador
         run: python -m playwright install --with-deps chromium
 
+      # Los PDF del informe, la ficha y el check-list se leen de vuelta con
+      # pdftotext: sin él, esas pruebas se saltarían.
+      - name: Lector de PDF
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+
       # La app de la copia ya no es la del proyecto de origen: lleva el
       # encuadre, los proyectos guardados y el puente del contenedor de
       # Android, y es la que va dentro del .apk que se instala en el telefono.
