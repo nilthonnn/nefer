@@ -59,6 +59,14 @@ Pruebas que lo vigilan: `clientes/campo/tests/`.
 ## Reglas de siempre
 
 12. Las validaciones **avisan, no bloquean**; «Lo revisé, sigo» deja constancia.
+12b. **Compartir entre teléfonos** (`MANT.sincronia`, paquete `.nefer-flota`):
+    sin servidor ni nube; el archivo lo lleva el técnico. Al importar se UNE:
+    fichas por TAG (lo vacío no borra lo escrito; distinto → gana la ficha
+    tocada más tarde; horómetro = el mayor); órdenes por su id (gana la más
+    reciente, pero una ANULADA siempre viaja y no se des-anula); la orden
+    abierta en el teléfono no se toca; mismo TAG + N° de OT en órdenes
+    distintas = posible duplicado (se señala, no se borra). Cada orden
+    recibida anota «sincronizada desde <teléfono>» en su historial.
 13. **Nada sale del teléfono**: ni fotos ni datos del cliente a servicios
     externos. El lector de fotos corre en el aparato.
 14. **Sin nombres de empresa** en el repositorio (prueba

@@ -760,6 +760,8 @@
   .m-cifra.mal { border-left:5px solid var(--mal); }
   .m-cifra.obs { border-left:5px solid var(--obs); }
   .m-plan h2 { display:flex; gap:.5rem; align-items:center; }
+  .m-sinc-estado { margin:.5rem 0 0; padding-left:1.1rem; font-size:.88rem; }
+  .m-sinc-estado:empty { display:none; }
   .m-sueltas { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:.45rem; }
   .m-sueltas .m-foto { margin:0; }
   .m-sueltas .m-foto img { height:120px; max-height:120px; object-fit:cover; }
@@ -803,6 +805,8 @@
   .m-lect-mal { color:var(--mal); font-weight:700; margin:.2rem 0; }
   .m-usar { display:flex; align-items:center; gap:.5rem; min-height:48px; font-weight:600; }
   .m-usar input { width:24px; height:24px; min-height:24px !important; flex:none; }
+  /* En Equipos se toca con el pulgar en el patio: la casilla entera mide 48 px de alto. */
+  #m-sinc .m-usar input { width:28px; height:48px; min-height:48px !important; }
   .m-texto { white-space:pre-wrap; font-family:var(--mono); font-size:.75rem; max-height:12rem;
              overflow:auto; background:var(--card); padding:.4rem; margin:0; }
   .m-criterio { margin:.35rem 0; font-size:.86rem; }
@@ -1432,6 +1436,24 @@
             <input type="search" id="m-eq-buscar"></label>
           <div class="m-lista" id="m-eq-lista"></div>
         </div>
+        <details class="panel plegable" id="m-sinc">
+          <summary>Compartir con otros teléfonos</summary>
+          <div class="panel-body">
+            <p class="m-nota-sn">Sin nube ni servidor: exporte un paquete con sus fichas y órdenes, páselo
+              por WhatsApp o cable, e impórtelo en el otro teléfono. Se unen sin duplicar; una orden
+              anulada sigue anulada.</p>
+            <label class="campo" for="m-sinc-nombre"><span class="lb">Nombre de este teléfono</span>
+              <input type="text" id="m-sinc-nombre" placeholder="p. ej. técnico 2 · turno día"></label>
+            <label class="m-usar"><input type="checkbox" id="m-sinc-fotos"> Incluir las fotos (el archivo pesa más)</label>
+            <div class="m-sn" style="margin-top:.4rem">
+              <button type="button" class="primary" id="m-sinc-exportar">Exportar paquete</button>
+              <input type="file" id="m-sinc-archivo" class="archivo" accept=".nefer-flota,.zip,application/zip"
+                     aria-label="Importar un paquete de otro teléfono">
+              <label class="boton" for="m-sinc-archivo">Importar paquete…</label>
+            </div>
+            <ul class="m-sinc-estado" id="m-sinc-estado" role="status"></ul>
+          </div>
+        </details>
       </div>
 
       <div id="m-ficha" hidden>
@@ -5881,6 +5903,7 @@ MANT.equipos = (function () {
     alertas: function () { return ficha ? alertas() : []; },
     listo: function () { return listo; },
     historial: historial, escanear: escanear, flota: flota,
+    refrescar: function () { return ficha ? abrir(ficha.tag, true) : pintarLista(); },
     GRUPOS: GRUPOS
   };
 })();
@@ -12458,6 +12481,244 @@ MANT.lector = (function () {
            exportarAprendizaje: exportarAprendizaje, importarAprendizaje: importarAprendizaje,
            confusiones: confusiones,
            preparar: preparar, leer: leer, listoSinSenal: listoSinSenal, descargar: descargar };
+})();
+</script>
+
+<script>
+/* ================================================================
+   MANTENIMIENTO · COMPARTIR ENTRE TELÉFONOS · sin servidor ni nube.
+
+   Cada técnico trabaja en su teléfono, sin señal. Para que el plan, el
+   historial y la flota reúnan el trabajo de todos, un teléfono exporta un
+   paquete de sincronización (.nefer-flota) con sus fichas y órdenes —y, si
+   se quiere, sus fotos— y el otro lo importa. El archivo viaja como el
+   técnico elija (WhatsApp, cable, USB): ningún dato pasa por un servicio de
+   la app.
+
+   Al importar se UNE, no se copia encima:
+     · fichas por TAG: lo vacío nunca borra lo escrito; si los dos tienen un
+       valor distinto, gana la ficha tocada más tarde (y se cuenta); el
+       horómetro es el mayor;
+     · órdenes por su id: la que falta entra; si están en los dos, gana la
+       modificada más tarde, salvo que una esté ANULADA: la anulación siempre
+       viaja y no se deshace;
+     · la orden abierta en este teléfono no se toca (se avisa);
+     · dos órdenes distintas con el mismo TAG y N° de OT se señalan como
+       posible duplicado; no se borra ninguna.
+   ================================================================ */
+MANT.sincronia = (function () {
+  "use strict";
+  var M = MANT.modelo, R = CAMPO, A = R.almacen;
+  var FORMATO = "nefer-flota/1", CLAVE_TELEFONO = "campo.telefono";
+
+  function telefono() {
+    try { return localStorage.getItem(CLAVE_TELEFONO) || ""; } catch (e) { return ""; }
+  }
+  function nombrarTelefono(n) {
+    try { localStorage.setItem(CLAVE_TELEFONO, String(n || "").trim()); } catch (e) { /* sólo esta vez */ }
+  }
+  function clon(x) { return JSON.parse(JSON.stringify(x)); }
+  function vacio(v) { return v === null || v === undefined || v === ""; }
+
+  /* ---------- exportar ---------- */
+  function exportar(opciones) {
+    opciones = opciones || {};
+    var conFotos = !!opciones.fotos, entradas = [], nFotos = 0;
+    return Promise.all([A.equipos.listar(), A.listar()]).then(function (r) {
+      var ordenes = r[1].filter(function (p) { return p.vista === "mantenimiento" && p.datos; });
+      var tareas = [];
+      var salida = ordenes.map(function (p) {
+        var c = clon({ id: p.id, nombre: p.nombre, nombreAuto: p.nombreAuto || null, vista: p.vista,
+                       estado: p.estado, creado: p.creado, modificado: p.modificado, esquema: p.esquema,
+                       historial: p.historial || null, anulacion: p.anulacion || null, datos: p.datos });
+        (c.datos.fotos || []).forEach(function (f) {
+          delete f.archivo;
+          if (!conFotos || !f.foto) return;
+          tareas.push(A.fotos.leer(f.foto).then(function (x) {
+            if (!x || !x.archivo) return;
+            return x.archivo.arrayBuffer().then(function (buf) {
+              f.paquete = "fotos/" + f.foto + ".jpg";
+              entradas.push({ nombre: f.paquete, datos: new Uint8Array(buf) });
+              nFotos++;
+            });
+          }));
+        });
+        return c;
+      });
+      return Promise.all(tareas).then(function () {
+        var cuerpo = { formato: FORMATO, fecha: Date.now(), origen: telefono() || "teléfono sin nombre",
+                       equipos: r[0], ordenes: salida };
+        entradas.unshift({ nombre: "flota.json", datos: new TextEncoder().encode(JSON.stringify(cuerpo)) });
+        var d = new Date(), z = function (n) { return ("0" + n).slice(-2); };
+        var nombre = "flota-" + (telefono() || "telefono").toLowerCase().normalize("NFD")
+          .replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") +
+          "-" + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + "-" + z(d.getHours()) + z(d.getMinutes()) + ".nefer-flota";
+        return { blob: R.armarZip(entradas), nombre: nombre,
+                 resumen: { equipos: r[0].length, ordenes: salida.length, fotos: nFotos } };
+      });
+    });
+  }
+
+  /* ---------- unir ---------- */
+  function mezclarEquipo(local, remoto, cuenta) {
+    var l = M.normalizar.equipo(local), r = M.normalizar.equipo(remoto);
+    var gana = (r.actualizado || 0) > (l.actualizado || 0);
+    function unir(a, b) {
+      Object.keys(b).forEach(function (k) {
+        if (k === "tag" || k === "actualizado" || k === "horometro") return;
+        var vb = b[k], va = a[k];
+        if (vb && typeof vb === "object" && !Array.isArray(vb)) {
+          if (!va || typeof va !== "object") a[k] = {};
+          unir(a[k], vb);
+        } else if (!vacio(vb)) {
+          if (vacio(va)) a[k] = vb;
+          else if (String(va) !== String(vb)) { if (gana) a[k] = vb; cuenta.diferencias++; }
+        }
+      });
+    }
+    unir(l, r);
+    var hs = [M.numero(l.horometro), M.numero(r.horometro)].filter(function (x) { return x !== null; });
+    l.horometro = hs.length ? Math.max.apply(null, hs) : null;
+    l.actualizado = Math.max(l.actualizado || 0, r.actualizado || 0) || null;
+    return l;
+  }
+
+  function importar(archivo) {
+    var informe = { origen: "", equiposNuevos: 0, equiposUnidos: 0, diferencias: 0,
+                    ordenesNuevas: 0, ordenesActualizadas: 0, anulacionesRecibidas: 0, sinCambios: 0,
+                    abiertaSinTocar: [], fotos: 0, duplicados: [] };
+    return R.leerZip(archivo).then(function (mapa) {
+      var crudo = mapa["flota.json"];
+      if (!crudo) throw new Error("no es un paquete de sincronización (.nefer-flota)");
+      var j;
+      try { j = JSON.parse(new TextDecoder().decode(crudo)); } catch (e) { throw new Error("el paquete viene dañado"); }
+      if (!j || j.formato !== FORMATO) throw new Error("no es un paquete de sincronización de esta app");
+      informe.origen = j.origen || "";
+      var abierta = R.proyectos.actual && R.proyectos.actual();
+      var idAbierta = abierta ? abierta.id : null;
+      var cadena = Promise.resolve();
+
+      // Fichas
+      (j.equipos || []).forEach(function (e) {
+        cadena = cadena.then(function () {
+          var tag = M.tag(e.tag);
+          if (!tag) return;
+          return A.equipos.leer(tag).then(function (ya) {
+            if (!ya) { informe.equiposNuevos++; return A.equipos.guardar(M.normalizar.equipo(e)); }
+            informe.equiposUnidos++;
+            return A.equipos.guardar(mezclarEquipo(ya, e, informe));
+          });
+        });
+      });
+
+      // Órdenes
+      (j.ordenes || []).forEach(function (o) {
+        cadena = cadena.then(function () {
+          if (!o || !o.id || o.vista !== "mantenimiento" || !o.datos) return;
+          if (R.demasiadoNuevo && R.demasiadoNuevo(o)) return;
+          return A.leer(o.id).then(function (ya) {
+            var entra = null;
+            if (!ya) { entra = o; informe.ordenesNuevas++; }
+            else if (o.estado === "anulado" && ya.estado !== "anulado") { entra = o; informe.anulacionesRecibidas++; }
+            else if (ya.estado === "anulado") { informe.sinCambios++; }
+            else if ((o.modificado || 0) > (ya.modificado || 0)) { entra = o; informe.ordenesActualizadas++; }
+            else { informe.sinCambios++; }
+            if (!entra) return;
+            if (o.id === idAbierta) {
+              informe.abiertaSinTocar.push(o.nombre || o.id);
+              if (!ya) informe.ordenesNuevas--; else if (o.estado === "anulado") informe.anulacionesRecibidas--;
+              else informe.ordenesActualizadas--;
+              return;
+            }
+            var p = clon(entra);
+            // La orden lleva constancia de por dónde llegó.
+            p.historial = (p.historial || []).concat([{ fecha: Date.now(), accion: "sincronizada",
+              detalle: "desde " + (j.origen || "otro teléfono") }]);
+            var fotos = (p.datos.fotos || []).map(function (f) {
+              var bytes = f.paquete ? mapa[f.paquete] : null;
+              delete f.paquete;
+              if (!bytes || !f.foto) return Promise.resolve();
+              return A.fotos.leer(f.foto).then(function (hay) {
+                if (hay) return;
+                informe.fotos++;
+                return A.fotos.guardar({ id: f.foto, proyecto: p.id, archivo: new Blob([bytes], { type: "image/jpeg" }),
+                                         nombre: f.nombre || "foto.jpg", fecha: Date.now() });
+              });
+            });
+            return Promise.all(fotos).then(function () { return A.guardar(R.migrarProyecto(p)); });
+          });
+        });
+      });
+
+      return cadena.then(function () { return A.listar(); }).then(function (todas) {
+        // Posibles duplicados: mismo TAG y N° de OT en órdenes distintas.
+        var vistos = {};
+        todas.forEach(function (p) {
+          if (p.vista !== "mantenimiento" || !p.datos || p.estado === "anulado") return;
+          var ot = p.datos.ot && p.datos.ot.ot;
+          if (!ot) return;
+          var k = M.tag(p.datos.tag) + "|" + ot;
+          (vistos[k] = vistos[k] || []).push(p.nombre || p.id);
+        });
+        Object.keys(vistos).forEach(function (k) {
+          if (vistos[k].length > 1) informe.duplicados.push({ clave: k.replace("|", " · OT "), ordenes: vistos[k] });
+        });
+        return informe;
+      });
+    });
+  }
+
+  function textoInforme(i) {
+    var l = [];
+    l.push("Desde: " + (i.origen || "otro teléfono"));
+    l.push("Fichas: " + i.equiposNuevos + " nuevas, " + i.equiposUnidos + " unidas" +
+           (i.diferencias ? " (" + i.diferencias + " datos distintos: quedó el más reciente)" : ""));
+    l.push("Órdenes: " + i.ordenesNuevas + " nuevas, " + i.ordenesActualizadas + " actualizadas, " +
+           i.anulacionesRecibidas + " anuladas en el otro teléfono, " + i.sinCambios + " sin cambios");
+    if (i.fotos) l.push("Fotos recibidas: " + i.fotos);
+    if (i.abiertaSinTocar.length) l.push("No se tocó la orden abierta aquí (" + i.abiertaSinTocar.join(", ") +
+           "): ciérrela y vuelva a importar.");
+    i.duplicados.forEach(function (d) {
+      l.push("Posible duplicado " + d.clave + ": " + d.ordenes.join(" / ") + ". Revise y anule la que sobre.");
+    });
+    return l;
+  }
+
+  /* ---------- pantalla ---------- */
+  var raiz = document.getElementById("v-mantenimiento");
+  var caja = raiz && raiz.querySelector("#m-sinc");
+  if (caja) {
+    var $ = function (s) { return caja.querySelector(s); };
+    $("#m-sinc-nombre").value = telefono();
+    $("#m-sinc-nombre").addEventListener("input", function () { nombrarTelefono(this.value); });
+    var estado = function (t, malo) {
+      var n = $("#m-sinc-estado");
+      n.innerHTML = Array.isArray(t) ? t.map(function (x) { return "<li>" + R.esc(x) + "</li>"; }).join("") : "<li>" + R.esc(t || "") + "</li>";
+      n.classList.toggle("m-lect-mal", !!malo);
+    };
+    $("#m-sinc-exportar").addEventListener("click", function () {
+      estado("preparando el paquete…");
+      exportar({ fotos: $("#m-sinc-fotos").checked }).then(function (r) {
+        R.entregar(r.blob, r.nombre, function (t) {
+          if (t) estado([r.nombre + ": " + r.resumen.equipos + " fichas, " + r.resumen.ordenes + " órdenes, " +
+                         r.resumen.fotos + " fotos", t]);
+        });
+      }, function (e) { estado("no se pudo armar: " + ((e && e.message) || e), true); });
+    });
+    $("#m-sinc-archivo").addEventListener("change", function (e) {
+      var f = e.target.files && e.target.files[0];
+      e.target.value = "";
+      if (!f) return;
+      estado("uniendo " + f.name + "…");
+      importar(f).then(function (i) {
+        estado(textoInforme(i));
+        if (MANT.equipos && MANT.equipos.refrescar) MANT.equipos.refrescar();
+      }, function (err) { estado("no se pudo importar: " + ((err && err.message) || err), true); });
+    });
+  }
+
+  return { exportar: exportar, importar: importar, mezclarEquipo: mezclarEquipo, textoInforme: textoInforme,
+           telefono: telefono, nombrarTelefono: nombrarTelefono, FORMATO: FORMATO };
 })();
 </script>
 
