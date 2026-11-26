@@ -100,6 +100,9 @@ dependencies {
   // convierte la carpeta local en un origen seguro y deja pasar la camara.
   implementation "androidx.webkit:webkit:1.11.0"
   implementation "androidx.annotation:annotation:1.8.2"
+  // FileProvider: la camara del sistema escribe la foto en un archivo que le
+  // presta la app. Sin esto el selector solo podia abrir la galeria.
+  implementation "androidx.core:core:1.13.1"
 }
 
 tasks.named("preBuild") { dependsOn("copiarWeb") }
