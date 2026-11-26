@@ -88,7 +88,14 @@ de maquinaria; las skills de vibración no aplican (necesitan sensores).
    equipos del cliente: no lo subas.
 9. **Commit** `fix(lector): …` con la medición antes y después en el mensaje.
 
-## Dónde estamos (2026-11-25)
+## Dónde estamos (2026-11-26)
+
+Foto entera, sin encuadrar ni fichas, las mismas 19 fotos: **18 % → 25 %**
+(12 → 17 de 67 campos) al añadir la pasada de contraste; tarda ~3 s más
+por foto difícil. Mejoraron la placa del alternador en vertical y la placa
+del grupo con poco contraste.
+
+### Medición anterior (2026-11-25)
 
 19 fotos de campo, 67 campos: 3 % → **24 %** en primera visita y **31 %**
 con fichas. Se leen bien las pantallas PowerCommand encuadradas y las placas
