@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 RAIZ = Path(__file__).resolve().parents[1]
-CLON = RAIZ / "clientes" / "rd-renta"
+CLON = RAIZ / "clientes" / "campo"
 ANDROID = CLON / "android"
 APP = CLON / "docs" / "app" / "index.html"
 FLUJO = RAIZ / ".github" / "workflows" / "apk.yml"
@@ -62,7 +62,7 @@ def test_la_direccion_que_carga_el_contenedor_es_la_que_sirve_el_cargador():
     carga `https://<dominio>/app/index.html`. Si alguien mueve uno sin el otro,
     el .apk compila igual y lo que se instala es una pantalla vacia.
     """
-    java = _texto(ANDROID / "app" / "src" / "main" / "java" / "pe" / "rdrental"
+    java = _texto(ANDROID / "app" / "src" / "main" / "java" / "pe" / "campo"
                   / "actas" / "MainActivity.java")
     dominio = re.search(r'String DOMINIO = "([^"]+)"', java).group(1)
     inicio = re.search(r'String INICIO = "https://" \+ DOMINIO \+ "([^"]+)"', java).group(1)
@@ -95,7 +95,7 @@ def test_la_pagina_solo_llama_a_metodos_que_el_puente_declara():
     La pagina llamaria a un metodo que no existe, la exportacion fallaria en el
     telefono y aqui no se habria enterado nadie. Se comparan los dos lados.
     """
-    java = _texto(ANDROID / "app" / "src" / "main" / "java" / "pe" / "rdrental"
+    java = _texto(ANDROID / "app" / "src" / "main" / "java" / "pe" / "campo"
                   / "actas" / "Anfitrion.java")
     declarados = set(re.findall(
         r"@JavascriptInterface\s+public\s+\S+\s+(\w+)\s*\(", java))

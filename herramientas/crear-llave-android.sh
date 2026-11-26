@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Crea la llave con la que se firma el .apk de RD RENTAL. Se ejecuta UNA vez.
+# Crea la llave con la que se firma el .apk de actas de campo. Se ejecuta UNA vez.
 #
 # Por que hace falta:
 #   Android no instala nada sin firma, y solo deja actualizar una aplicacion
@@ -8,7 +8,7 @@
 #   app —y con ella las actas a medias— para poner la version nueva.
 #
 # Que hacer con lo que sale:
-#   1. Guardar `firma-rd-rental.jks` en un sitio seguro y con copia. Si se
+#   1. Guardar `firma-campo.jks` en un sitio seguro y con copia. Si se
 #      pierde, no hay forma de publicar una actualizacion: hay que empezar con
 #      otra aplicacion y desinstalar la vieja en todos los telefonos.
 #   2. NO meterlo en el repositorio. Esta en .gitignore por si acaso.
@@ -20,7 +20,7 @@
 
 set -euo pipefail
 
-salida="${1:-firma-rd-rental.jks}"
+salida="${1:-firma-campo.jks}"
 alias_llave="actas"
 
 if [ -e "$salida" ]; then
@@ -43,7 +43,7 @@ keytool -genkeypair -v \
   -keyalg RSA -keysize 4096 \
   -validity 10000 \
   -storepass "$clave" -keypass "$clave" \
-  -dname "CN=RD RENTAL Actas, OU=Campo, O=RD RENTAL, L=Lima, C=PE"
+  -dname "CN=Actas de campo, OU=Campo, O=Actas de campo, L=Lima, C=PE"
 
 chmod 600 "$salida"
 

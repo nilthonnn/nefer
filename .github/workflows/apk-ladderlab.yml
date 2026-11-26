@@ -200,7 +200,7 @@ jobs:
       # Una publicación por compilación, con el .apk dentro desde el primer
       # momento: las publicaciones de este repositorio nacen inmutables. Desde
       # una rama sale como prepublicación; nunca como «última», que esa
-      # dirección es de las actas de RD RENTAL.
+      # dirección es de las actas de campo.
       - name: Publicar para descargar
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         env:

@@ -4,7 +4,7 @@ name: apk del camal
 # nadie: el SDK de Android son cientos de megas, y una compilación a mano es
 # una compilación que sólo sabe hacer una persona.
 #
-# Va aparte del flujo `apk.yml` —el de las actas de RD RENTAL— a propósito: son
+# Va aparte del flujo `apk.yml` —el de las actas de campo— a propósito: son
 # dos aplicaciones distintas, con su identificador, su llave y su versión, y
 # compartir archivo de flujo sólo serviría para que un cambio en una rompiera
 # la otra.
@@ -195,7 +195,7 @@ jobs:
       # les cuelgue nada después.
       #
       # Sin `--latest` a propósito: esa dirección la usa el .apk de las actas
-      # de RD RENTAL, y su QR está impreso en un taller. Esta publicación lleva
+      # de campo, y su QR está impreso en un taller. Esta publicación lleva
       # su propia etiqueta y no le toca la suya a nadie.
       - name: Publicar para descargar
         env:

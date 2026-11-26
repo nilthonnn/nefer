@@ -232,17 +232,17 @@ diagnóstico.
 
 ## Copias por cliente
 
-`clientes/rd-renta/` es una copia completa del proyecto —motor, app de campo,
-pruebas y documentación— preparada para **RD RENTAL**: paquete `rdrenta`,
+`clientes/campo/` es una copia completa del proyecto —motor, app de campo,
+pruebas y documentación— preparada para trabajo de campo, sin nombre de empresa: paquete `campo`,
 catálogo con su razón social y su bloque de control (`FO-DR-001`, versión
 `00`) y el hueco del logo en `marca/`. Es un árbol independiente, pensado para
 mudarse a su propio repositorio, y sus pruebas de núcleo corren en su propio
 trabajo de CI.
 
 Su aplicación de campo **sí se publica desde aquí**: Pages sirve `docs/` y nada
-más, así que una copia vive en `docs/rd-rental/` y queda servida en
-`https://nilthonnn.github.io/nefer/rd-rental/app/`, con su página de descarga y
-su QR en `https://nilthonnn.github.io/nefer/rd-rental/`. La copia se rehace con
+más, así que una copia vive en `docs/campo/` y queda servida en
+`https://nilthonnn.github.io/nefer/campo/app/`, con su página de descarga y
+su QR en `https://nilthonnn.github.io/nefer/campo/`. La copia se rehace con
 `python3 herramientas/publicar-clon.py` y `tests/test_publicacion_clon.py`
 falla si se queda atrás.
 

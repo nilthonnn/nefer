@@ -23,7 +23,7 @@ RAIZ = pathlib.Path(__file__).resolve().parents[1]
 
 # (lo que se copia, donde se publica). La direccion publicada resultante es
 # https://<usuario>.github.io/<repo>/<destino>/app/
-CLONES = [("clientes/rd-renta/docs", "docs/rd-rental")]
+CLONES = [("clientes/campo/docs", "docs/campo")]
 
 
 def publicar(origen: pathlib.Path, destino: pathlib.Path) -> tuple[int, int]:

@@ -9,7 +9,7 @@ se pierde un byte sin que nadie lo note: el archivo llega, pesa casi lo mismo y
 no abre. Aqui se conduce el navegador de verdad con un puente falso al otro
 lado, y se comprueba que lo que llega es exactamente lo que salio.
 
-Se prueba contra la app del clon de RD RENTAL, que es la que va dentro del
+Se prueba contra la app de actas de campo, que es la que va dentro del
 .apk.
 """
 
@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 RAIZ = Path(__file__).resolve().parents[1]
-APP = RAIZ / "clientes" / "rd-renta" / "docs" / "app" / "index.html"
+APP = RAIZ / "clientes" / "campo" / "docs" / "app" / "index.html"
 
 pytest.importorskip("playwright.sync_api", reason="Playwright no esta instalado")
 from playwright.sync_api import sync_playwright  # noqa: E402
@@ -53,7 +53,7 @@ window.Anfitrion = {
     if (!envio) { return "ERROR:el envío ya no está abierto"; }
     delete this._abiertos[vale];
     window.__recibido.push(envio);
-    return "OK:Descargas/RD RENTAL/" + envio.nombre;
+    return "OK:Descargas/Actas de campo/" + envio.nombre;
   },
   cancelar: function (vale) { delete this._abiertos[vale]; },
   version: function () { return "1.0 (1)"; }
@@ -86,7 +86,7 @@ def entregado():
 
         pg.goto(APP.as_uri())
         pg.wait_for_timeout(600)
-        assert pg.evaluate("RDRENTA.CONTEXTO.enAndroid") is True, \
+        assert pg.evaluate("CAMPO.CONTEXTO.enAndroid") is True, \
             "la app no reconocio el contenedor"
 
         pg.click("#btn-demo")
@@ -104,7 +104,7 @@ def entregado():
         pg.evaluate("""() => new Promise(function (listo) {
           var patron = new Uint8Array(256 * 5120);
           for (var i = 0; i < patron.length; i++) { patron[i] = i % 256; }
-          RDRENTA.entregar(new Blob([patron]), "grande.bin", function () { });
+          CAMPO.entregar(new Blob([patron]), "grande.bin", function () { });
           var espera = setInterval(function () {
             if (window.__recibido.length >= 3) { clearInterval(espera); listo(); }
           }, 50);
@@ -135,7 +135,7 @@ def test_el_excel_llega_entero_por_el_puente(entregado):
     assert "xl/workbook.xml" in libro.namelist()
     imagenes = [n for n in libro.namelist() if n.startswith("xl/media/")]
     # Las diez fotos del acta y el logo de la cabecera.
-    assert len(imagenes) == 11, imagenes
+    assert len(imagenes) == 10, imagenes   # diez fotos; la app no trae logo
 
 
 def test_el_paquete_llega_entero_por_el_puente(entregado):
@@ -169,4 +169,4 @@ def test_un_acta_grande_cruza_el_puente_a_trozos_y_sin_perder_un_byte(entregado)
 def test_el_aviso_dice_donde_quedo_el_archivo(entregado):
     """En un telefono, «guardado» a secas no le sirve a nadie."""
     # La hoja lo pinta en mayusculas; lo que importa es lo que dice.
-    assert "descargas/rd rental/" in entregado["aviso"].lower(), entregado["aviso"]
+    assert "descargas/actas de campo/" in entregado["aviso"].lower(), entregado["aviso"]

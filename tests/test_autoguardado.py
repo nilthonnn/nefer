@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 
 RAIZ = Path(__file__).resolve().parents[1]
-APP = RAIZ / "clientes" / "rd-renta" / "docs" / "app"
+APP = RAIZ / "clientes" / "campo" / "docs" / "app"
 
 pytest.importorskip("playwright.sync_api", reason="Playwright no esta instalado")
 from playwright.sync_api import sync_playwright  # noqa: E402
@@ -56,12 +56,12 @@ def _acta_de_ejemplo(pg):
                          timeout=30000)
     # El ejemplo se carga desde la portada; el acta se llena en su propia hoja,
     # y los datos van en un panel que arranca plegado.
-    pg.evaluate("RDRENTA.ir('despacho'); document.getElementById('d-datos').open = true;")
+    pg.evaluate("CAMPO.ir('despacho'); document.getElementById('d-datos').open = true;")
     pg.wait_for_selector("#d-cliente", state="visible", timeout=15000)
 
 
 def _apunte(pg):
-    return pg.evaluate("localStorage.getItem('rdrenta.sesion')")
+    return pg.evaluate("localStorage.getItem('campo.sesion')")
 
 
 # Las dos esperas de esta suite. Antes eran relojes —500 ms para que arrancara
@@ -71,10 +71,10 @@ def _apunte(pg):
 # decir nada sobre el código.
 def _lista(pg):
     """Espera a que la app esté montada. Es la precondición real de todo lo
-    que sigue: las pruebas llaman a `RDRENTA.proyectos` en la línea
+    que sigue: las pruebas llaman a `CAMPO.proyectos` en la línea
     siguiente."""
     pg.wait_for_function(
-        "() => typeof RDRENTA !== 'undefined' && !!RDRENTA.proyectos",
+        "() => typeof CAMPO !== 'undefined' && !!CAMPO.proyectos",
         timeout=30000)
 
 
@@ -92,7 +92,7 @@ def _escritura_cerrada(pg, cuantos=1):
     que apostaba de verdad era el de 800 ms tras el segundo `volcar()`, que
     es el único que esperaba una escritura diferida."""
     pg.wait_for_function(
-        "async (n) => (await RDRENTA.proyectos.listar()).length >= n",
+        "async (n) => (await CAMPO.proyectos.listar()).length >= n",
         arg=cuantos, timeout=30000)
 
 
@@ -115,9 +115,9 @@ def test_el_acta_se_guarda_sola_sin_que_nadie_toque_guardar(servida):
         _acta_de_ejemplo(pg)
 
         # Sin tocar nada más: el autoguardado tiene que dispararse solo.
-        pg.wait_for_function("localStorage.getItem('rdrenta.sesion') !== null",
+        pg.wait_for_function("localStorage.getItem('campo.sesion') !== null",
                              timeout=15000)
-        guardados = pg.evaluate("RDRENTA.proyectos.listar().then(l => l.length)")
+        guardados = pg.evaluate("CAMPO.proyectos.listar().then(l => l.length)")
         nav.close()
 
     assert fallos == [], fallos
@@ -155,7 +155,7 @@ def test_el_acta_a_medias_vuelve_despues_de_que_el_sistema_descarte_la_app(servi
                                 { value: 'hidden', configurable: true });
           document.dispatchEvent(new Event('visibilitychange'));
         }""")
-        pg.wait_for_function("localStorage.getItem('rdrenta.sesion') !== null",
+        pg.wait_for_function("localStorage.getItem('campo.sesion') !== null",
                              timeout=15000)
         _escritura_cerrada(pg)             # ...de verdad, no por reloj
         pg.close()                         # ...y Android se lleva la app
@@ -200,9 +200,9 @@ def test_abrir_la_app_y_no_hacer_nada_no_deja_un_proyecto_vacio(servida):
         # aquí saldría.
         # `volcar()` devuelve una promesa que se resuelve con la escritura
         # hecha, y `evaluate` la espera: no hay nada que cronometrar.
-        pg.evaluate("RDRENTA.proyectos.volcar()")
+        pg.evaluate("CAMPO.proyectos.volcar()")
         apunte = _apunte(pg)
-        guardados = pg.evaluate("RDRENTA.proyectos.listar().then(l => l.length)")
+        guardados = pg.evaluate("CAMPO.proyectos.listar().then(l => l.length)")
         nav.close()
 
     assert apunte is None, "se apuntó una sesión sin que nadie trabajara"
@@ -226,7 +226,7 @@ def test_empezar_una_nueva_no_arrastra_el_acta_recuperada(servida):
         pg.goto(servida)
         _lista(pg)
         _acta_de_ejemplo(pg)
-        pg.wait_for_function("localStorage.getItem('rdrenta.sesion') !== null",
+        pg.wait_for_function("localStorage.getItem('campo.sesion') !== null",
                              timeout=15000)
         _escritura_cerrada(pg)
         pg.close()
@@ -240,7 +240,7 @@ def test_empezar_una_nueva_no_arrastra_el_acta_recuperada(servida):
             "document.querySelectorAll('#d-grid .slot.lleno').length === 0",
             timeout=15000)
 
-        guardados = otra.evaluate("RDRENTA.proyectos.listar().then(l => l.length)")
+        guardados = otra.evaluate("CAMPO.proyectos.listar().then(l => l.length)")
         nav.close()
 
     assert guardados == 1, "el acta recuperada debía seguir guardada en la lista"
@@ -267,7 +267,7 @@ def test_pasarse_a_la_otra_hoja_no_escribe_encima_del_acta_anterior(servida):
         _lista(pg)
 
         _acta_de_ejemplo(pg)
-        pg.wait_for_function("localStorage.getItem('rdrenta.sesion') !== null",
+        pg.wait_for_function("localStorage.getItem('campo.sesion') !== null",
                              timeout=15000)
         _escritura_cerrada(pg)
 
@@ -275,15 +275,15 @@ def test_pasarse_a_la_otra_hoja_no_escribe_encima_del_acta_anterior(servida):
         # mano porque el campo vive en un panel plegado; el que escucha es el
         # mismo.
         pg.evaluate("""() => {
-          RDRENTA.ir('recepcion');
+          CAMPO.ir('recepcion');
           const n = document.getElementById('r-cliente');
           n.value = 'OTRO CLIENTE S.A.';
           n.dispatchEvent(new Event('input', { bubbles: true }));
         }""")
-        pg.evaluate("RDRENTA.proyectos.volcar()")
+        pg.evaluate("CAMPO.proyectos.volcar()")
         _escritura_cerrada(pg, 2)          # el despacho y la recepción
 
-        guardados = pg.evaluate("""RDRENTA.proyectos.listar().then(
+        guardados = pg.evaluate("""CAMPO.proyectos.listar().then(
           l => l.map(p => ({ vista: p.vista, fotos: (p.datos.fotos || []).length })))""")
         nav.close()
 

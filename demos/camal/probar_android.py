@@ -214,13 +214,13 @@ with socketserver.TCPServer(("127.0.0.1", 0), Servidor) as servidor:
         p = ctx.new_page()
         p.on("pageerror", lambda e: errores.append(str(e)))
 
-        # En el mismo repositorio publican dos apps. La de RD RENTAL sale con
+        # En el mismo repositorio publican dos apps. La de actas de campo sale con
         # etiquetas android-vN y es la más reciente aquí a propósito: si el
         # filtro fallara, el operario del camal se instalaría las actas.
         publicaciones = [
             {"tag_name": "android-v12", "name": "Aplicación de Android · 1.12", "draft": False,
-             "assets": [{"name": "rd-rental-actas.apk", "size": 500000,
-                         "browser_download_url": "https://ejemplo/android-v12/rd-rental-actas.apk"}]},
+             "assets": [{"name": "actas-campo.apk", "size": 500000,
+                         "browser_download_url": "https://ejemplo/android-v12/actas-campo.apk"}]},
             {"tag_name": "camal-v9", "name": "Camal · Pesaje por lotes 3.9", "draft": False,
              "assets": [{"name": "camal-pesaje.apk", "size": 452477,
                          "browser_download_url": "https://ejemplo/camal-v9/camal-pesaje.apk"}]},
@@ -235,7 +235,7 @@ with socketserver.TCPServer(("127.0.0.1", 0), Servidor) as servidor:
         enlace = p.get_attribute("#apk", "href")
         exigir(enlace == "https://ejemplo/camal-v10/camal-pesaje.apk",
                f"elige el camal más reciente, camal-v10 —no camal-v9 por orden de texto—: {enlace}")
-        exigir("rd-rental" not in enlace, "y nunca el APK de RD RENTAL, aunque sea más nuevo")
+        exigir("campo" not in enlace, "y nunca el APK de actas de campo, aunque sea más nuevo")
         exigir("3.10" in p.inner_text("#versionApk"), "y dice qué versión es")
         exigir(not p.locator("#interno").is_visible(), "fuera de WhatsApp no pide salir a Chrome")
         p.screenshot(path=SALIDA / "android-7-instalar.png", full_page=True)
