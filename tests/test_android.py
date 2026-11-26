@@ -274,7 +274,7 @@ def test_el_icono_esta_en_todas_las_densidades():
     assert "@mipmap/ic_launcher_foreground" in _texto(adaptable)
 
 
-def test_tomar_foto_abre_la_camara_y_no_solo_la_galeria(manifiesto):
+def test_tomar_foto_abre_la_camara_y_no_solo_la_galeria():
     """El selector del WebView abre sólo la galería: el contenedor tiene que
     ofrecer la cámara él mismo (menú cámara + galería; cámara directa con
     `capture`) y prestarle un archivo por FileProvider."""
@@ -283,7 +283,8 @@ def test_tomar_foto_abre_la_camara_y_no_solo_la_galeria(manifiesto):
     assert "MediaStore.ACTION_IMAGE_CAPTURE" in java
     assert "EXTRA_INITIAL_INTENTS" in java and "isCaptureEnabled()" in java
     assert "FileProvider.getUriForFile" in java
-    assert "androidx.core.content.FileProvider" in manifiesto
-    assert '${applicationId}.tomas' in manifiesto and 'android:exported="false"' in manifiesto
+    man = _texto(ANDROID / "app" / "src" / "main" / "AndroidManifest.xml")
+    assert "androidx.core.content.FileProvider" in man
+    assert '${applicationId}.tomas' in man and 'android:exported="false"' in man
     rutas = _texto(ANDROID / "app" / "src" / "main" / "res" / "xml" / "tomas.xml")
     assert '<cache-path name="tomas" path="tomas/" />' in rutas
