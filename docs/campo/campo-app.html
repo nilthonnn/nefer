@@ -726,8 +726,26 @@
   .m-guardado.malo { color:var(--mal); font-weight:700; }
   .m-grupo { border:1px solid var(--rule); border-radius:7px; background:var(--card);
              margin:0 0 .7rem; padding:.4rem .8rem .8rem; }
-  .m-grupo legend { font-family:var(--cond); font-size:1.1rem; font-weight:700;
-                    text-transform:uppercase; padding:0 .3rem; }
+  .m-grupo > summary { font-family:var(--cond); font-size:1.1rem; font-weight:700;
+                    text-transform:uppercase; min-height:48px; display:flex; align-items:center;
+                    gap:.5rem; cursor:pointer; list-style:none; }
+  .m-grupo > summary::-webkit-details-marker { display:none; }
+  .m-grupo > summary > span:first-child { flex:1; }
+  .m-grupo > summary::after { content:"\25BE"; font-size:1rem; transition:transform .15s; }
+  .m-grupo[open] > summary::after { transform:rotate(180deg); }
+  .m-grupo > summary .tally { font-family:var(--mono); font-size:.72rem; font-weight:400;
+                              text-transform:none; color:var(--ink-2); }
+  .m-subgrupo { border-top:1px solid var(--rule-2); }
+  .m-subgrupo > summary { min-height:48px; display:flex; align-items:center; gap:.5rem; cursor:pointer;
+                          font-family:var(--mono); font-size:.78rem; text-transform:uppercase;
+                          letter-spacing:.06em; color:var(--ink); list-style:none; }
+  .m-subgrupo > summary::-webkit-details-marker { display:none; }
+  .m-subgrupo > summary > span:first-child { flex:1; }
+  .m-subgrupo > summary::after { content:"\25BE"; }
+  .m-subgrupo[open] > summary::after { content:"\25B4"; }
+  .m-sueltas { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:.45rem; }
+  .m-sueltas .m-foto { margin:0; }
+  .m-sueltas .m-foto img { height:120px; max-height:120px; object-fit:cover; }
   .m-campo-alerta { font-size:.8rem; color:var(--mal); font-weight:600; }
   .m-campo-alerta:empty { display:none; }
   .m-alertas { list-style:none; margin:0; padding:0; display:flex;
@@ -5608,8 +5626,27 @@ MANT.ordenes = (function () {
       '<span class="m-campo-alerta" id="' + i + '-alerta"></span></div>';
   }
 
-  function grupo(titulo, cuerpo, extra) {
-    return '<fieldset class="m-grupo"' + (extra || "") + "><legend>" + esc(titulo) + "</legend>" + cuerpo + "</fieldset>";
+  /* Cada sección se pliega: la orden completa no cabe en un teléfono y el
+     técnico trabaja una sección a la vez. Lo que abre o cierra se recuerda
+     mientras dure la sesión, también al repintar. */
+  var ABIERTAS_INICIO = { "Clasificación": 1, "Fotos de la inspección": 1 };
+  // «Abrir todo» se recuerda en este teléfono: hay quien prefiere ver la orden entera.
+  var CLAVE_ABIERTA = "campo.orden.abierta";
+  var abiertas = null, todoAbierto = false;
+  try { todoAbierto = localStorage.getItem(CLAVE_ABIERTA) === "1"; } catch (e) { /* plegada */ }
+  function desplegar(si) {
+    todoAbierto = !!si; abiertas = {};
+    try { localStorage.setItem(CLAVE_ABIERTA, si ? "1" : "0"); } catch (e) { /* sólo esta sesión */ }
+    raiz.querySelectorAll("#m-o-cuerpo details.m-grupo, #m-o-cuerpo details.m-subgrupo")
+      .forEach(function (d) { d.open = !!si; });
+  }
+  function grupo(titulo, cuerpo, extra, resumen) {
+    if (!abiertas) abiertas = {};
+    var abierta = titulo in abiertas ? abiertas[titulo] : (todoAbierto || !!ABIERTAS_INICIO[titulo]);
+    return '<details class="m-grupo"' + (extra || "") + ' data-grupo="' + esc(titulo) + '"' + (abierta ? " open" : "") +
+      "><summary><span>" + esc(titulo) + "</span>" +
+      (resumen ? '<span class="tally">' + esc(resumen) + "</span>" : "") + "</summary>" +
+      '<div class="m-grupo-cuerpo">' + cuerpo + "</div></details>";
   }
 
   function opcionesTipo(nombre, actual) {
@@ -5735,6 +5772,15 @@ MANT.ordenes = (function () {
       "</div></div>";
   }
 
+  function resumenFotos() {
+    var por = {};
+    m.fotos.forEach(function (f) { if (f.casilla) por[f.casilla] = 1; });
+    var oblig = M.FORMATO.fotos.filter(function (c) { return c[3]; });
+    var hay = oblig.filter(function (c) { return por[c[0]]; }).length;
+    var sueltas = m.fotos.filter(function (f) { return !f.casilla; }).length;
+    return hay + " / " + oblig.length + (sueltas ? " · " + sueltas + " sin casilla" : "");
+  }
+
   function pintarFotos() {
     var F = M.FORMATO.fotos, por = {}, sueltas = [];
     m.fotos.forEach(function (f, i) {
@@ -5751,11 +5797,24 @@ MANT.ordenes = (function () {
       '</div><p class="m-nota-sn" id="m-o-fotos-estado" role="status"></p>';
     if (sueltas.length) {
       html += '<div class="m-casilla"><span class="lb">Sin casilla: elija dónde va cada una</span>' +
-        sueltas.map(fichaFoto).join("") + "</div>";
+        '<div class="m-sueltas">' + sueltas.map(fichaFoto).join("") + "</div></div>";
     }
-    var seccion = "";
+    // Cada sección del formato (identificación, motor, batería…) se pliega
+    // por su cuenta, con cuántas fotos lleva.
+    var seccion = "", abierto = false;
+    if (!abiertas) abiertas = {};
     F.forEach(function (c) {
-      if (c[1] !== seccion) { seccion = c[1]; html += '<p class="m-sub">' + esc(seccion) + "</p>"; }
+      if (c[1] !== seccion) {
+        if (abierto) html += "</div></details>";
+        seccion = c[1]; abierto = true;
+        var deSec = F.filter(function (x) { return x[1] === seccion; });
+        var conFoto = deSec.filter(function (x) { return por[x[0]]; }).length;
+        var clave = "fotos:" + seccion;
+        var ab = clave in abiertas ? abiertas[clave] : todoAbierto;
+        html += '<details class="m-subgrupo" data-grupo="' + esc(clave) + '"' + (ab ? " open" : "") +
+          "><summary><span>" + esc(seccion) + '</span><span class="tally">' + conFoto + " / " + deSec.length +
+          "</span></summary><div>";
+      }
       var idxs = por[c[0]] || [];
       html += '<div class="m-casilla" data-casilla="' + c[0] + '"><span class="lb">' + c[0] + " · " +
         esc(c[2]) + (c[3] ? " *" : "") + "</span>" + idxs.map(fichaFoto).join("") +
@@ -5763,6 +5822,7 @@ MANT.ordenes = (function () {
           : c[0] === HALLAZGO ? entradaFoto(c[0], "+ Otro hallazgo") : "") +
         (c[0] === HALLAZGO ? "" : pintarEstado(c[0])) + "</div>";
     });
+    if (abierto) html += "</div></details>";
     return html;
   }
 
@@ -6233,7 +6293,9 @@ MANT.ordenes = (function () {
     $("#m-o-clase").textContent = rotuloClase(m.clasificacion);
     var c = m.clasificacion, sug = M.sugerirPM(horasDe());
     var tc = M.FORMATO.ot.tareaCompleta;
-    var html = "";
+    var html = '<div class="m-sn" style="justify-content:flex-end;margin:0 0 .5rem">' +
+      '<button type="button" class="ghost" data-accion="abrir-todo" aria-pressed="' + todoAbierto + '">' +
+      (todoAbierto ? "Plegar secciones" : "Abrir todas las secciones") + "</button></div>";
 
     html += grupo("Clasificación",
       '<div class="m-opciones" role="radiogroup" aria-label="Tipo de servicio">' + opcionesTipo("m-o-tipo", c.tipo) + "</div>" +
@@ -6245,7 +6307,7 @@ MANT.ordenes = (function () {
 
     html += grupo("Placa del equipo", pintarPlaca());
     html += grupo("Seguridad antes de iniciar", pintarSeguridad());
-    html += grupo("Fotos de la inspección", pintarFotos());
+    html += grupo("Fotos de la inspección", pintarFotos(), "", resumenFotos());
     html += grupo("Informe técnico (secciones 1 a 5 y 7)", pintarInforme());
     html += grupo("Parámetros de operación y prueba", pintarParametros());
     html += grupo("Check-list de baterías", pintarBaterias());
@@ -6505,6 +6567,8 @@ MANT.ordenes = (function () {
       m.ot.demoras.push(M.demora()); tocar(); pintar();
     } else if (acc === "quitar-demora") {
       m.ot.demoras.splice(Number(b.dataset.i), 1); tocar(); pintar();
+    } else if (acc === "abrir-todo") {
+      desplegar(!todoAbierto); pintar();
     }
   }
 
@@ -6715,6 +6779,14 @@ MANT.ordenes = (function () {
   });
   $("#m-o-volver").addEventListener("click", function () { volver(); });
   $("#m-o-cuerpo").addEventListener("input", alEscribir);
+  // «toggle» no burbujea: se escucha en captura.
+  $("#m-o-cuerpo").addEventListener("toggle", function (e) {
+    var d = e.target;
+    if (d && d.classList && (d.classList.contains("m-grupo") || d.classList.contains("m-subgrupo"))) {
+      if (!abiertas) abiertas = {};
+      abiertas[d.dataset.grupo] = d.open;
+    }
+  }, true);
   $("#m-o-cuerpo").addEventListener("change", function (e) {
     var n = e.target;
     if (n.type === "file") {
@@ -6759,7 +6831,9 @@ MANT.ordenes = (function () {
     alertas: alertas,
     contexto: cargarContexto,
     confirmarPlaca: confirmarPlaca,
-    agregarFotos: agregarFotos
+    agregarFotos: agregarFotos,
+    // Abrir (o volver a plegar) todas las secciones de la orden.
+    desplegar: desplegar
   };
 })();
 </script>
@@ -8240,6 +8314,7 @@ MANT.ordenes = (function () {
       c.forEach(function (x) { if (x.fotoId === foto.id) x.fotoId = null; });
     });
     col[i].fotoId = foto.id;
+    col[i].propuesta = false;
   }
 
   // Una foto tomada para la celda DESPACHO se registra entre las «antes», que
@@ -8358,10 +8433,19 @@ MANT.ordenes = (function () {
       reducir: true,
       avance: function (h, t) { aviso.textContent = "abriendo " + h + " de " + t + "\u2026"; }
     }).then(function (r) {
+      var nuevas = [];
       r.aceptadas.forEach(function (x) {
         var nombre = x.archivo.name || ("foto-" + sig + ".jpg");
         if (destino === "antes") antes[nombre] = { url: x.url, archivo: x.archivo };
-        else retorno.push({ id: sig++, nombre: nombre, url: x.url, archivo: x.archivo });
+        else { var f = { id: sig++, nombre: nombre, url: x.url, archivo: x.archivo }; retorno.push(f); nuevas.push(f); }
+      });
+      // Como en el despacho: las fotos del retorno se proponen en las vistas
+      // vacías, en el orden en que llegaron. Quedan marcadas «propuesta» y el
+      // técnico corrige tocando la casilla (vuelve a la tira) o la foto.
+      nuevas.forEach(function (f) {
+        for (var i = 0; i < vistas.length; i++) {
+          if (!vistas[i].fotoId) { vistas[i].fotoId = f.id; vistas[i].propuesta = true; return; }
+        }
       });
       var n = destino === "antes" ? Object.keys(antes).length : retorno.length;
       var tarjeta = tarjetaId ? $("#" + tarjetaId) : null;
@@ -8546,7 +8630,7 @@ MANT.ordenes = (function () {
       '<span class="num">' + (i + 1) + '</span></span>';
 
     if (url) {
-      return '<button type="button" class="slot lleno" ' + attrs +
+      return '<button type="button" class="slot lleno' + (v.propuesta ? " propuesto" : "") + '" ' + attrs +
         ' aria-label="' + esc(v.rotulo) + ', con foto de retorno">' + cuerpo + '</button>';
     }
     return '<label class="slot" for="r-slot" role="button" tabindex="0" ' + attrs +

@@ -361,10 +361,10 @@ def recepcion(tmp_path_factory):
         pg.evaluate(RECEPCION_EN_EL_NAVEGADOR)
         pg.wait_for_timeout(3000)
 
-        for k in range(10):
-            pg.click("#r-tira .tile:first-child")
-            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
-            pg.wait_for_timeout(60)
+        # Las fotos del retorno se proponen solas en las vistas vacías, en el
+        # orden en que llegan: las 10 primeras ya están en su casilla.
+        pg.wait_for_function("() => document.querySelector('#r-t-vistas')"
+                             ".textContent.trim().startsWith('10 /')")
 
         pg.click("#r-consumibles .par:first-child .estados button[data-e='NO_RETORNA']")
         pg.wait_for_timeout(200)
@@ -442,10 +442,10 @@ def test_una_observacion_sin_estado_conserva_su_fotografia(tmp_path):
         pg.wait_for_timeout(800)
         pg.evaluate(RECEPCION_EN_EL_NAVEGADOR)
         pg.wait_for_timeout(3000)
-        for k in range(10):
-            pg.click("#r-tira .tile:first-child")
-            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
-            pg.wait_for_timeout(60)
+        # Las fotos del retorno se proponen solas en las vistas vacías, en el
+        # orden en que llegan: las 10 primeras ya están en su casilla.
+        pg.wait_for_function("() => document.querySelector('#r-t-vistas')"
+                             ".textContent.trim().startsWith('10 /')")
 
         # Una observación nueva: nombre y fotografía, SIN marcar el estado.
         pg.click("#r-add-cons")
@@ -526,10 +526,10 @@ def test_una_observacion_sin_nombre_conserva_su_fotografia():
         pg.evaluate(RECEPCION_EN_EL_NAVEGADOR)
         pg.wait_for_timeout(3000)
         # Diez vistas y una foto de sobra: la última es para la observación.
-        for k in range(10):
-            pg.click("#r-tira .tile:first-child")
-            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
-            pg.wait_for_timeout(60)
+        # Las fotos del retorno se proponen solas en las vistas vacías, en el
+        # orden en que llegan: las 10 primeras ya están en su casilla.
+        pg.wait_for_function("() => document.querySelector('#r-t-vistas')"
+                             ".textContent.trim().startsWith('10 /')")
 
         # Observación nueva: sólo la fotografía, sin escribir el nombre.
         # Desde un archivo local no hay cámara —el navegador la deniega—, así
@@ -670,10 +670,10 @@ def test_la_recepcion_conserva_todas_las_vistas_del_despacho(tmp_path):
           i.dispatchEvent(new Event('change', {bubbles: true}));
         }""")
         pg.wait_for_timeout(2500)
-        for k in range(6):
-            pg.click("#r-tira .tile:first-child")
-            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
-            pg.wait_for_timeout(60)
+        # Las fotos del retorno se proponen solas en las vistas vacías, en el
+        # orden en que llegan: las 6 primeras ya están en su casilla.
+        pg.wait_for_function("() => document.querySelector('#r-t-vistas')"
+                             ".textContent.trim().startsWith('6 /')")
 
         pg.fill("#r-acta", "004-001157")
         pg.fill("#r-horometro", "1731.2")
@@ -870,10 +870,10 @@ def test_la_recepcion_arranca_sin_acta_de_despacho(tmp_path):
           i.dispatchEvent(new Event('change', {bubbles: true}));
         }""")
         pg.wait_for_timeout(3000)
-        for k in range(9):
-            pg.click("#r-tira .tile:first-child")
-            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
-            pg.wait_for_timeout(60)
+        # Las fotos del retorno se proponen solas en las vistas vacías, en el
+        # orden en que llegan: las 9 primeras ya están en su casilla.
+        pg.wait_for_function("() => document.querySelector('#r-t-vistas')"
+                             ".textContent.trim().startsWith('9 /')")
 
         # Un accesorio del catalogo, no retornado: genera recuperacion.
         pg.click("#r-add-cons")
@@ -1014,10 +1014,10 @@ def parcial(tmp_path_factory):
         # Sin fotografias de retorno el acta no se deja descargar, y con razon.
         pg.evaluate(RECEPCION_EN_EL_NAVEGADOR.replace("i <= 11", "i <= 2"))
         pg.wait_for_timeout(2500)
-        for k in range(2):
-            pg.click("#r-tira .tile:first-child")
-            pg.click(f"#r-vistas .slot:nth-child({k + 1})")
-            pg.wait_for_timeout(80)
+        # Las fotos del retorno se proponen solas en las vistas vacías, en el
+        # orden en que llegan: las 2 primeras ya están en su casilla.
+        pg.wait_for_function("() => document.querySelector('#r-t-vistas')"
+                             ".textContent.trim().startsWith('2 /')")
 
         for i, (nombre, cantidad, vuelven) in enumerate(accesorios):
             pg.click("#r-add-cons")

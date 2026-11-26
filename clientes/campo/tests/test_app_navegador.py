@@ -170,14 +170,19 @@ def _lanzar(pw, *, camara=False):
     return pw.chromium.launch(**opciones(args=args))
 
 
-def _contexto(nav, *, movil=False, camara=False, descargas=False):
+def _contexto(nav, *, movil=False, camara=False, descargas=False, plegada=False):
     opciones = {"viewport": {"width": 390, "height": 844}, "locale": "es-PE"}
     if movil:
         opciones.update(has_touch=True, is_mobile=True, user_agent=UA_ANDROID)
     opciones["permissions"] = ["camera"] if camara else []
     if descargas:
         opciones["accept_downloads"] = True
-    return nav.new_context(**opciones)
+    ctx = nav.new_context(**opciones)
+    # La orden de mantenimiento se abre plegada por secciones; las pruebas que
+    # tocan sus campos la quieren entera, como quien pulsa «Abrir todas».
+    if not plegada:
+        ctx.add_init_script("try{localStorage.setItem('campo.orden.abierta','1')}catch(e){}")
+    return ctx
 
 
 def _sin_camara(pagina):

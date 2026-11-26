@@ -131,6 +131,7 @@ def test_en_la_orden_se_copia_y_se_descarga(pw, servidor):
     ctx = nav.new_context(viewport={"width": 390, "height": 844}, accept_downloads=True,
                           permissions=["clipboard-read", "clipboard-write"])
     pg = ctx.new_page()
+    pg.add_init_script("try{localStorage.setItem('campo.orden.abierta','1')}catch(e){}")  # orden entera, todas las secciones
     pg.goto(servidor)
     pg.wait_for_function("() => window.MANT && MANT.ordenes")
     pg.evaluate("e => CAMPO.almacen.equipos.guardar(e)", EQUIPOS["064"])
