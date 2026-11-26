@@ -269,6 +269,12 @@
             display:flex; flex-direction:column; }
   .camara video { flex:1; width:100%; height:100%; object-fit:cover;
                   background:#000; min-height:0; }
+  /* El marco guía: lo que queda dentro es lo que lee el lector. El resto se
+     oscurece para que el ojo vaya al marco. */
+  .cam-marco { position:absolute; left:8%; right:8%; top:28%; height:38%; border:3px solid #f3c34e;
+               border-radius:8px; box-shadow:0 0 0 100vmax rgba(0,0,0,.38); pointer-events:none; }
+  .cam-marco span { position:absolute; left:0; right:0; bottom:-2.2rem; text-align:center; color:#fff;
+                    font-size:.85rem; text-shadow:0 1px 3px #000; }
   .cam-alto { position:absolute; top:0; left:0; right:0;
               padding:calc(env(safe-area-inset-top) + .7rem) .9rem .9rem;
               background:linear-gradient(rgba(0,0,0,.88), rgba(0,0,0,.55) 60%, transparent); }
@@ -767,6 +773,32 @@
   .m-plan h2 { display:flex; gap:.5rem; align-items:center; }
   .m-sinc-estado { margin:.5rem 0 0; padding-left:1.1rem; font-size:.88rem; }
   .m-sinc-estado:empty { display:none; }
+  /* Con una orden abierta la cabecera de la sección sobra: el trabajo sube. */
+  #v-mantenimiento.orden-abierta > .encab { display:none; }
+  #m-orden.guiado #m-proy { display:none; }
+  .g-cab { display:flex; justify-content:space-between; align-items:center; gap:.5rem; margin:.2rem 0 .4rem; }
+  .g-paso { display:block; font-family:var(--mono); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-2); }
+  .g-titulo { display:block; font-family:var(--cond); font-size:1.7rem; font-weight:700; text-transform:uppercase; line-height:1; }
+  .g-barra { height:8px; background:var(--rule); border-radius:4px; overflow:hidden; margin-bottom:.5rem; }
+  .g-barra i { display:block; height:100%; background:var(--accent); }
+  .g-pasos { display:flex; gap:.3rem; overflow-x:auto; padding-bottom:.4rem; margin-bottom:.4rem; }
+  .g-pasos button { flex:none; font-size:.82rem; }
+  .g-pasos button[aria-current] { background:var(--ink) !important; color:var(--bg) !important; border-color:var(--ink) !important; }
+  .g-cuerpo { display:flex; flex-direction:column; gap:.5rem; }
+  .g-ayuda { margin:0; padding:.55rem .7rem; border-radius:7px; background:var(--accent-soft); font-size:.95rem; }
+  .g-mirar { margin:0; font-size:.92rem; }
+  .g-grande { width:100%; min-height:56px; font-size:1.05rem; }
+  .g-contador { margin:0; font-family:var(--mono); font-size:.8rem; color:var(--ink-2); }
+  .g-casilla { margin:.2rem 0 0; font-family:var(--cond); font-size:1.5rem; text-transform:uppercase; line-height:1.05; }
+  .g-puntos { display:flex; flex-wrap:wrap; gap:.25rem; }
+  .g-punto { display:inline-block; height:14px; width:14px; border-radius:50%;
+             border:2px solid var(--rule); background:var(--card); }
+  .g-punto.hecha { background:var(--ok); border-color:var(--ok); }
+  .g-punto.actual { border-color:var(--ink); box-shadow:0 0 0 2px var(--accent); }
+  .g-nav { display:flex; justify-content:space-between; gap:.5rem; margin-top:.8rem; flex-wrap:wrap; }
+  .g-nav .primary { flex:1; }
+  .g-hallazgo { border-left:5px solid var(--obs); background:var(--card); border-radius:6px; padding:.5rem .7rem; }
+  .g-hallazgo.mal { border-left-color:var(--mal); }
   .m-sueltas { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:.45rem; }
   .m-sueltas .m-foto { margin:0; }
   .m-sueltas .m-foto img { height:120px; max-height:120px; object-fit:cover; }
@@ -1615,6 +1647,7 @@ campo construir acta.json -o ACTA.xlsx --pdf</textarea>
   <div class="camara" id="camara" hidden aria-modal="true" role="dialog"
        aria-label="Cámara">
     <video id="cam-video" playsinline autoplay muted></video>
+    <div class="cam-marco" id="cam-marco" hidden><span>Ponga la placa o la pantalla dentro del marco</span></div>
     <div class="cam-aviso" id="cam-aviso" hidden></div>
     <div class="cam-alto">
       <p class="cam-destino"><span id="cam-rotulo">Foto libre</span>
@@ -2364,7 +2397,7 @@ var CAMPO = (function () {
      visor donde se abrió la página no dejan abrir el selector.
      ================================================================ */
   var camara = (function () {
-    var flujo = null, pendientes = [], puntero = 0, alTomar = null, alFallar = null;
+    var flujo = null, pendientes = [], puntero = 0, alTomar = null, alFallar = null, directo = false;
     // null = no se ha probado. Una vez que falla, no se vuelve a interponer
     // entre el operador y el selector de archivos.
     var sirve = null;
@@ -2418,6 +2451,7 @@ var CAMPO = (function () {
              : "todas las casillas llenas · sigue a la bandeja")
         : "va a la bandeja";
       $("#cam-saltar").hidden = !d;
+      $("#cam-marco").hidden = !(d && d.marco);
     }
 
     function cerrar() {
@@ -2426,6 +2460,7 @@ var CAMPO = (function () {
       $("#camara").hidden = true;
       alTomar = null;
       alFallar = null;
+      directo = false;
     }
 
     function abrir(opciones) {
@@ -2433,6 +2468,9 @@ var CAMPO = (function () {
       puntero = 0;
       alTomar = opciones && opciones.tomar;
       alFallar = opciones && opciones.respaldo;
+      // `directo`: la foto se acepta al disparar, sin pasar por el editor
+      // (la inspección guiada: una foto, una decisión).
+      directo = !!(opciones && opciones.directo);
       // Sin respaldo no hay galeria que ofrecer: el boton mentiria.
       $("#cam-galeria").hidden = !alFallar;
       $("#cam-aviso").hidden = true;
@@ -2495,6 +2533,24 @@ var CAMPO = (function () {
             .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
         : "foto-" + sello;
 
+      // Con marco, además, el recorte de lo que quedó dentro, a la
+      // resolución del vídeo: es lo que va al lector. El vídeo se ve con
+      // object-fit: cover, así que el marco en pantalla se lleva a píxeles del
+      // vídeo con la misma escala y desplazamiento.
+      var recorte = null;
+      if (destino && destino.marco) {
+        var caja = v.getBoundingClientRect(), mb = $("#cam-marco").getBoundingClientRect();
+        var esc2 = Math.max(caja.width / v.videoWidth, caja.height / v.videoHeight);
+        var ox = (caja.width - v.videoWidth * esc2) / 2, oy = (caja.height - v.videoHeight * esc2) / 2;
+        var rx = Math.max(0, (mb.left - caja.left - ox) / esc2), ry = Math.max(0, (mb.top - caja.top - oy) / esc2);
+        var rw = Math.min(v.videoWidth - rx, mb.width / esc2), rh = Math.min(v.videoHeight - ry, mb.height / esc2);
+        if (rw > 20 && rh > 20) {
+          recorte = document.createElement("canvas");
+          recorte.width = Math.round(rw); recorte.height = Math.round(rh);
+          recorte.getContext("2d").drawImage(v, rx, ry, rw, rh, 0, 0, recorte.width, recorte.height);
+        }
+      }
+
       c.toBlob(function (b) {
         if (!b) return;
         var archivo;
@@ -2505,9 +2561,16 @@ var CAMPO = (function () {
         // La camara queda abierta detras: «Repetir» vuelve a ella sin haber
         // gastado la casilla, y solo al aceptar avanza el recorrido.
         function guardar(definitiva) {
-          if (alTomar) alTomar(definitiva, destino);
+          // Se guarda quién recibe antes de cerrar: el recorte llega después.
+          var dest = destino, recibe = alTomar;
+          var entregar = function (rec) {
+            if (recibe) recibe(definitiva, dest, rec);
+          };
+          if (recorte) recorte.toBlob(entregar, "image/jpeg", 0.92); else entregar(null);
           if (destino) { puntero++; pintarDestino(); }
+          if (directo && puntero >= pendientes.length) cerrar();
         }
+        if (directo) { guardar(archivo); return; }
         editor.abrir({
           archivo: archivo,
           rotulo: destino ? destino.rotulo : "Fotografía",
@@ -6289,8 +6352,8 @@ MANT.ordenes = (function () {
 
   /* El criterio del especialista, a la vista, y el estado que decide el
      técnico. Plegado para no alargar la pantalla; se abre al tocarlo. */
-  function pintarEstado(idc) {
-    var cr = M.FORMATO.criterios[idc], e = (m.estados || {})[idc] || {};
+  function pintarEstado(idc, sinCriterio) {
+    var cr = sinCriterio ? null : M.FORMATO.criterios[idc], e = (m.estados || {})[idc] || {};
     var nota = "estados." + idc + ".nota";
     return (cr ? '<details class="m-criterio"><summary>Qué mirar</summary>' +
         '<p><b>Cómo tomarla:</b> ' + esc(comoTomarla(idc)) + "</p><p><b>OK:</b> " + esc(cr[0]) + "</p>" +
@@ -6813,24 +6876,203 @@ MANT.ordenes = (function () {
     }).join("") + '<button type="button" data-accion="agregar-demora">+ Agregar desviación</button>';
   }
 
+  /* ---------- inspección guiada ----------
+     La misma orden, recorrida en seis pasos con una sola tarea por pantalla:
+     equipo, seguridad, ronda de fotos, mediciones, hallazgos y cierre. Una
+     barra dice cuánto falta y un botón grande dice qué sigue. El formulario
+     completo sigue a un toque («Formulario completo»), con los mismos datos.
+     Nada bloquea: «Siguiente» siempre pasa, y los avisos se revisan al final. */
+  var CLAVE_MODO = "campo.orden.modo";
+  var modo = "guiado";
+  try { modo = localStorage.getItem(CLAVE_MODO) === "completo" ? "completo" : "guiado"; } catch (e) { /* guiado */ }
+  var PASOS = ["Equipo", "Seguridad", "Fotos", "Mediciones", "Hallazgos", "Cierre"];
+  var guia = { paso: 0, foto: 0 };
+  var recortes = {};               // id de foto → recorte del marco, para el lector
+
+  function cambiarModo(nuevo) {
+    modo = nuevo;
+    try { localStorage.setItem(CLAVE_MODO, nuevo); } catch (e) { /* sólo esta vez */ }
+    pintar();
+    window.scrollTo(0, 0);
+  }
+  function casillasGuia() { return M.FORMATO.fotos.filter(function (c) { return c[3]; }); }
+  function fotoDe(idc) {
+    for (var i = 0; i < m.fotos.length; i++) if (m.fotos[i].casilla === idc) return i;
+    return -1;
+  }
+  function avanceGuia() {
+    var cs = casillasGuia(), hechas = cs.filter(function (c) { return fotoDe(c[0]) !== -1 || (m.estados[c[0]] || {}).estado; }).length;
+    return { fotos: hechas, total: cs.length };
+  }
+
+  function pintarGuia() {
+    var n = guia.paso, av = avanceGuia();
+    var pct = Math.round(((n + (n === 2 ? av.fotos / Math.max(1, av.total) : 0)) / PASOS.length) * 100);
+    var html = '<div class="g-cab"><div><span class="g-paso">Paso ' + (n + 1) + " de " + PASOS.length + "</span>" +
+      '<span class="g-titulo">' + esc(PASOS[n]) + "</span></div>" +
+      '<button type="button" class="ghost" data-accion="g-modo">Formulario completo</button></div>' +
+      '<div class="g-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><i style="width:' + pct + '%"></i></div>' +
+      '<nav class="g-pasos" aria-label="Pasos de la inspección">' + PASOS.map(function (p, k) {
+        return '<button type="button" data-accion="g-paso" data-n="' + k + '"' + (k === n ? ' aria-current="step"' : "") + ">" +
+          (k + 1) + ". " + esc(p) + "</button>";
+      }).join("") + "</nav>";
+    html += '<div class="g-cuerpo">' + [pasoEquipo, pasoSeguridad, pasoFotos, pasoMediciones, pasoHallazgos, pasoCierre][n]() + "</div>";
+    var sig = n < PASOS.length - 1 ? PASOS[n + 1] : null;
+    if (n !== 2) {
+      html += '<div class="g-nav">' +
+        (n > 0 ? '<button type="button" data-accion="g-paso" data-n="' + (n - 1) + '">← ' + esc(PASOS[n - 1]) + "</button>" : "<span></span>") +
+        (sig ? '<button type="button" class="primary" data-accion="g-paso" data-n="' + (n + 1) + '">Siguiente: ' + esc(sig) + " →</button>"
+             : '<button type="button" class="primary" data-accion="g-terminar">Terminar</button>') + "</div>";
+    }
+    terminarPintado(html);
+  }
+
+  function pasoEquipo() {
+    return '<p class="g-ayuda">Confirme que el equipo que tiene delante es el ' + esc(m.tag) +
+      ": la placa de la ficha tiene que coincidir con la del equipo.</p>" +
+      '<p class="m-sub">Tipo de servicio</p>' + pintarClasificacion() +
+      '<p class="m-sub">Placa</p>' + pintarPlaca() +
+      campos([["ot.ot", "N° de OT"], ["ot.horometroSalida", "Horómetro de hoy (h)", "num"]]);
+  }
+
+  function pasoSeguridad() {
+    var S = M.FORMATO.seguridad, todo = S.previo.concat(S.herramientas).every(function (x) {
+      return m.seguridad.items[x[0]] === "OK" || m.seguridad.herramientas[x[0]] === "OK";
+    });
+    return '<p class="g-ayuda">Antes de tocar el equipo. Si todo está en orden, un toque lo marca y deja la hora.</p>' +
+      '<button type="button" class="primary g-grande" data-accion="g-seguridad-ok"' + (todo ? " disabled" : "") + ">" +
+      (todo ? "Seguridad marcada" : "Todo en orden: bloqueo, IPERC, HIRA y herramientas") + "</button>" +
+      '<details class="m-criterio"><summary>Revisar o cambiar uno por uno</summary>' + pintarSeguridad() + "</details>";
+  }
+
+  function pasoFotos() {
+    var cs = casillasGuia(), k = Math.min(guia.foto, cs.length - 1), c = cs[k], idc = c[0];
+    var i = fotoDe(idc), cr = M.FORMATO.criterios[idc], lee = MANT.lector && MANT.lector.LEE && MANT.lector.LEE[idc];
+    var puntos = cs.map(function (x, j) {
+      var hecha = fotoDe(x[0]) !== -1 || (m.estados[x[0]] || {}).estado;
+      // Puntos de avance, sólo para ver: se navega con Anterior / Siguiente
+      // (los botones miden 48 px; un punto de 20 px no se acierta con guante).
+      return '<span class="g-punto' + (hecha ? " hecha" : "") + (j === k ? " actual" : "") + '"></span>';
+    }).join("");
+    var tomar = R.camara.hay()
+      ? '<button type="button" class="primary g-grande" data-accion="g-camara" data-c="' + idc + '">' + (i === -1 ? "Tomar foto" : "Repetir foto") + "</button>"
+      : '<input type="file" class="archivo" id="m-o-gfoto-' + idc + '" accept="image/*" capture="environment" data-foto-casilla="' + idc + '">' +
+        '<label class="boton primary g-grande" for="m-o-gfoto-' + idc + '">' + (i === -1 ? "Tomar foto" : "Repetir foto") + "</label>";
+    return '<p class="g-contador"><b>Foto ' + (k + 1) + " de " + cs.length + "</b> · " + esc(c[1]) + "</p>" +
+      '<div class="g-puntos" aria-hidden="true">' + puntos + "</div>" +
+      '<h3 class="g-casilla">' + esc(c[2]) + "</h3>" +
+      '<p class="g-ayuda">' + esc(comoTomarla(idc)) + (lee ? " La app lee los datos sola." : "") + "</p>" +
+      (cr ? '<p class="g-mirar"><b>Qué mirar:</b> ' + esc(cr[0]) + "</p>" : "") +
+      '<div class="m-casilla" data-casilla="' + idc + '">' +
+      (i !== -1 ? fichaFoto(i) : "") +
+      '<div class="m-sn">' + tomar +
+      '<input type="file" class="archivo" id="m-o-ggal-' + idc + '" accept="image/*" data-foto-casilla="' + idc + '">' +
+      '<label class="boton" for="m-o-ggal-' + idc + '">Galería</label></div>' +
+      '<p class="m-sub">¿Cómo está?</p>' + pintarEstado(idc, true) + "</div>" +
+      '<div class="g-nav">' +
+      (k > 0 ? '<button type="button" data-accion="g-foto" data-n="' + (k - 1) + '">← Anterior</button>'
+             : '<button type="button" data-accion="g-paso" data-n="1">← Seguridad</button>') +
+      (k < cs.length - 1
+        ? '<button type="button" class="primary" data-accion="g-foto" data-n="' + (k + 1) + '">Siguiente: ' + esc(cs[k + 1][2]) + " →</button>"
+        : '<button type="button" class="primary" data-accion="g-paso" data-n="3">Siguiente: Mediciones →</button>') + "</div>";
+  }
+
+  function pasoMediciones() {
+    return '<p class="g-ayuda">Con el grupo en marcha: lea el panel en vacío y con carga. Si tomó la foto de la pantalla, ' +
+      "lo leído ya está en la tabla; revíselo.</p>" + pintarParametros() +
+      '<details class="m-criterio"><summary>Check-list de baterías</summary>' + pintarBaterias() + "</details>";
+  }
+
+  function pasoHallazgos() {
+    var malos = M.FORMATO.fotos.filter(function (c) {
+      var e = m.estados[c[0]]; return e && (e.estado === "OBS" || e.estado === "FALLA");
+    });
+    var ok = Object.keys(m.estados).filter(function (k) { return m.estados[k] && m.estados[k].estado === "OK"; }).length;
+    return '<p class="g-ayuda">Sólo lo observado o en falla pide texto. Arriba están los avisos: revíselos y decida.</p>' +
+      (malos.length ? malos.map(function (c) {
+        var e = m.estados[c[0]];
+        return '<div class="g-hallazgo ' + (e.estado === "FALLA" ? "mal" : "obs") + '"><b>' + esc(c[2]) + "</b> · " +
+          (e.estado === "FALLA" ? "falla" : "observado") + campos([["estados." + c[0] + ".nota", "Qué se vio y qué se hizo", "area"]]) + "</div>";
+      }).join("") : '<p class="m-ok">Nada observado ni en falla.</p>') +
+      '<p class="m-nota-sn">' + ok + " componentes marcados OK.</p>" +
+      (m.clasificacion.tipo === "CORRECTIVO" ? campos([["correctivo.falla", "Falla reportada", "area"],
+        ["correctivo.causa", "Causa encontrada", "area"], ["correctivo.accion", "Acción correctiva", "area"],
+        ["correctivo.pruebas", "Pruebas después de reparar", "area"]]) : "") +
+      sn("ot.crearAviso", "¿Queda trabajo pendiente? · Crear aviso", "Sí", "No") +
+      (m.ot.crearAviso ? campos([["ot.textoAviso", "Qué queda pendiente"]]) : "") +
+      campos([["ot.observaciones", "Observaciones generales", "area"]]) +
+      sn("informe.operativo", "¿El grupo queda apto para operar?", "SÍ, apto", "NO apto") +
+      campos([["aptitud.por", "Declarado por"]]);
+  }
+
+  function pasoCierre() {
+    var tc = M.FORMATO.ot.tareaCompleta;
+    return sn("ot.tareaCompleta", "Tarea completa", "SÍ", "NO", "<b>SÍ</b>: " + esc(tc.SI) + ". <b>NO</b>: " + esc(tc.NO) + ".") +
+      '<p class="m-sub">Firmas</p>' +
+      firmaUI("ot.firmas.tecnico", "Técnico") + firmaUI("ot.firmas.supervisor", "Supervisor") +
+      '<details class="m-criterio"><summary>Firmas del informe (empresa y cliente)</summary>' +
+      firmaUI("informe.firmas.empresa.0", "Por la empresa · 1") + firmaUI("informe.firmas.empresa.1", "Por la empresa · 2") +
+      firmaUI("informe.firmas.cliente.0", "Por el cliente · 1") + firmaUI("informe.firmas.cliente.1", "Por el cliente · 2") + "</details>" +
+      '<p class="m-sub">Entregar</p><div class="m-sn">' +
+      '<button type="button" class="primary" data-doc="todo">PDF completo</button>' +
+      '<button type="button" data-accion="wa-copiar">Copiar reporte de WhatsApp</button>' +
+      '<button type="button" data-accion="wa-compartir">Compartir</button></div>' +
+      '<p class="m-nota-sn" id="m-o-doc-estado" role="status"></p><p class="m-nota-sn" id="m-o-wa-estado" role="status"></p>' +
+      '<textarea class="salida" id="m-o-wa" readonly aria-label="Reporte para WhatsApp" hidden></textarea>' +
+      '<details class="m-criterio"><summary>Ítems del informe técnico (3.x, 4.x, 5.x)</summary>' + pintarInforme() + "</details>" +
+      '<details class="m-criterio"><summary>Datos de la OT para la oficina (operaciones y desviaciones)</summary>' +
+      m.ot.operaciones.map(pintarOperacion).join("") +
+      '<button type="button" data-accion="agregar-operacion">+ Agregar operación</button>' + pintarDemoras() + "</details>";
+  }
+
+  function abrirCamaraGuia(idc) {
+    var c = M.casilla(idc), lee = MANT.lector && MANT.lector.LEE && MANT.lector.LEE[idc];
+    R.camara.abrir({
+      pendientes: [{ rotulo: c ? c[2] : idc, indice: 0, marco: !!lee }],
+      directo: true,
+      tomar: function (archivo, destino, recorte) {
+        agregarFotos([archivo], idc).then(function () {
+          var i = fotoDe(idc);
+          if (i === -1) return;
+          // Con recorte del marco, la lectura empieza sola.
+          if (recorte && lee) { recortes[m.fotos[i].foto] = recorte; leerFoto(i, recorte); }
+        });
+      },
+      respaldo: function () {
+        var n = raiz.querySelector("#m-o-ggal-" + idc);
+        if (n) n.click();
+      }
+    });
+  }
+
+  function pintarClasificacion() {
+    var c = m.clasificacion, sug = M.sugerirPM(horasDe());
+    return '<div class="m-opciones" role="radiogroup" aria-label="Tipo de servicio">' + opcionesTipo("m-o-tipo", c.tipo) + "</div>" +
+      (c.tipo === "PREVENTIVO"
+        ? '<div class="m-opciones" role="radiogroup" aria-label="Rutina">' + opcionesPM("m-o-pm", c.pm, sug && sug.pm) + "</div>" +
+          '<p class="m-sugerido">' + (sug ? "Horómetro " + horasDe() + " h → servicio de las " + sug.objetivo + " h: " +
+            esc(M.frecuencia(sug.pm).rotulo) + "." : "Sin horómetro no hay rutina sugerida.") + "</p>"
+        : "");
+  }
+
   function pintar() {
     $("#m-ordenes").hidden = true;
     $("#m-orden").hidden = false;
     $("#m-o-tag").textContent = m.tag;
     $("#m-o-clase").textContent = rotuloClase(m.clasificacion);
-    var c = m.clasificacion, sug = M.sugerirPM(horasDe());
+    raiz.classList.add("orden-abierta");
+    var guiado = modo === "guiado";
+    $("#m-orden").classList.toggle("guiado", guiado);
+    $("#m-o-revisar").hidden = guiado && guia.paso !== 4;
+    if (guiado) { pintarGuia(); return; }
+    var c = m.clasificacion;
     var tc = M.FORMATO.ot.tareaCompleta;
-    var html = '<div class="m-sn" style="justify-content:flex-end;margin:0 0 .5rem">' +
+    var html = '<div class="m-sn" style="justify-content:space-between;margin:0 0 .5rem">' +
+      '<button type="button" class="primary" data-accion="g-modo">Inspección guiada</button>' +
       '<button type="button" class="ghost" data-accion="abrir-todo" aria-pressed="' + todoAbierto + '">' +
       (todoAbierto ? "Plegar secciones" : "Abrir todas las secciones") + "</button></div>";
 
-    html += grupo("Clasificación",
-      '<div class="m-opciones" role="radiogroup" aria-label="Tipo de servicio">' + opcionesTipo("m-o-tipo", c.tipo) + "</div>" +
-      (c.tipo === "PREVENTIVO"
-        ? '<div class="m-opciones" role="radiogroup" aria-label="Rutina">' + opcionesPM("m-o-pm", c.pm, sug && sug.pm) + "</div>" +
-          '<p class="m-sugerido">' + (sug ? "Horómetro " + horasDe() + " h → servicio de las " + sug.objetivo + " h: " +
-            esc(M.frecuencia(sug.pm).rotulo) + "." : "Sin horómetro no hay rutina sugerida.") + "</p>"
-        : ""));
+    html += grupo("Clasificación", pintarClasificacion());
 
     html += grupo("Placa del equipo", pintarPlaca());
     html += grupo("Seguridad antes de iniciar", pintarSeguridad());
@@ -6897,6 +7139,10 @@ MANT.ordenes = (function () {
       '<button type="button" data-accion="wa-excel">Excel</button></div>' +
       '<p class="m-nota-sn" id="m-o-wa-estado" role="status"></p>');
 
+    terminarPintado(html);
+  }
+
+  function terminarPintado(html) {
     $("#m-o-cuerpo").innerHTML = html;
     // Cada selector de fotos escucha por su cuenta: si la pantalla se
     // repinta mientras la cámara está abierta (la foto anterior aún se
@@ -7061,6 +7307,17 @@ MANT.ordenes = (function () {
     }
     var acc = b.dataset.accion;
     if (acc && acc.indexOf("wa-") === 0) { reporte(acc); return; }
+    if (acc === "g-modo") { cambiarModo(modo === "guiado" ? "completo" : "guiado"); return; }
+    if (acc === "g-paso") { guia.paso = Number(b.dataset.n); pintar(); window.scrollTo(0, raiz.querySelector("#m-orden").offsetTop); return; }
+    if (acc === "g-foto") { guia.foto = Number(b.dataset.n); pintar(); window.scrollTo(0, raiz.querySelector("#m-orden").offsetTop); return; }
+    if (acc === "g-camara") { abrirCamaraGuia(b.dataset.c); return; }
+    if (acc === "g-terminar") { volver(); return; }
+    if (acc === "g-seguridad-ok") {
+      var S2 = M.FORMATO.seguridad, ahora2 = new Date().toLocaleString("es-PE");
+      S2.previo.forEach(function (x) { m.seguridad.items[x[0]] = "OK"; m.seguridad.horas[x[0]] = ahora2; });
+      S2.herramientas.forEach(function (x) { m.seguridad.herramientas[x[0]] = "OK"; });
+      tocar(); pintar(); return;
+    }
     if (acc === "foto-quitar") {
       if (!window.confirm("¿Quitar esta foto de la orden?")) return;
       quitarFoto(Number(b.dataset.i)).then(function () { tocar(); pintar(); });
@@ -7192,6 +7449,7 @@ MANT.ordenes = (function () {
       }
       P.nuevo("mantenimiento");
       m = M.mantenimiento(tag);
+      guia = { paso: 0, foto: 0 };
       M.clasificar(m, tipo, pm);
       m.ot.ot = numero;
       m.informe.ot = numero;
@@ -7243,6 +7501,7 @@ MANT.ordenes = (function () {
     var p = P.sucio() ? P.volcar() : Promise.resolve();
     return p.then(function () {
       m = null; miId = null;
+      raiz.classList.remove("orden-abierta");
       P.olvidarSesion();
       $("#m-orden").hidden = true;
       $("#m-ordenes").hidden = false;
@@ -7266,6 +7525,7 @@ MANT.ordenes = (function () {
     },
     restaurar: function (d) {
       m = M.normalizar.mantenimiento(d);
+      guia = { paso: 0, foto: 0 };
       cambios = 0;
       panel("ordenes");
       return cargarContexto().then(function () { pintar(); window.scrollTo(0, 0); });
@@ -7364,6 +7624,8 @@ MANT.ordenes = (function () {
     contexto: cargarContexto,
     confirmarPlaca: confirmarPlaca,
     agregarFotos: agregarFotos,
+    modo: function (nuevo) { if (nuevo) { modo = nuevo; if (m) pintar(); } return modo; },
+    guia: function () { return { paso: guia.paso, foto: guia.foto }; },
     // Abrir (o volver a plegar) todas las secciones de la orden.
     desplegar: desplegar
   };

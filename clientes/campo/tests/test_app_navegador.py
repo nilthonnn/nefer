@@ -170,7 +170,7 @@ def _lanzar(pw, *, camara=False):
     return pw.chromium.launch(**opciones(args=args))
 
 
-def _contexto(nav, *, movil=False, camara=False, descargas=False, plegada=False):
+def _contexto(nav, *, movil=False, camara=False, descargas=False, plegada=False, modo="completo"):
     opciones = {"viewport": {"width": 390, "height": 844}, "locale": "es-PE"}
     if movil:
         opciones.update(has_touch=True, is_mobile=True, user_agent=UA_ANDROID)
@@ -182,6 +182,10 @@ def _contexto(nav, *, movil=False, camara=False, descargas=False, plegada=False)
     # tocan sus campos la quieren entera, como quien pulsa «Abrir todas».
     if not plegada:
         ctx.add_init_script("try{localStorage.setItem('campo.orden.abierta','1')}catch(e){}")
+    # La orden se abre en la inspección guiada; las pruebas del formulario
+    # completo lo piden así, como quien toca «Formulario completo».
+    if modo:
+        ctx.add_init_script("try{localStorage.setItem('campo.orden.modo','%s')}catch(e){}" % modo)
     return ctx
 
 

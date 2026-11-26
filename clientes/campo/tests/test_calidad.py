@@ -44,7 +44,7 @@ def test_pantallas_de_mantenimiento_sin_fallas_de_accesibilidad(pw, servidor, te
     nav = _lanzar(pw)
     pg = nav.new_context(viewport={"width": 390, "height": 844}, color_scheme=tema,
                          has_touch=True, is_mobile=True).new_page()
-    pg.add_init_script("try{localStorage.setItem('campo.orden.abierta','1')}catch(e){}")  # orden entera, todas las secciones
+    pg.add_init_script("try{localStorage.setItem('campo.orden.abierta','1');localStorage.setItem('campo.orden.modo','completo')}catch(e){}")  # orden entera, todas las secciones
     pg.goto(servidor)
     pg.wait_for_function("() => window.MANT && MANT.ordenes")
     pg.evaluate("e => CAMPO.almacen.equipos.guardar(e)", EQUIPOS["064"])
@@ -171,7 +171,7 @@ def test_jornada_completa_en_modo_avion(pw, servidor, tmp_path):
     ctx = nav.new_context(viewport={"width": 390, "height": 844}, accept_downloads=True,
                           has_touch=True, is_mobile=True)
     pg = ctx.new_page()
-    pg.add_init_script("try{localStorage.setItem('campo.orden.abierta','1')}catch(e){}")  # orden entera, todas las secciones
+    pg.add_init_script("try{localStorage.setItem('campo.orden.abierta','1');localStorage.setItem('campo.orden.modo','completo')}catch(e){}")  # orden entera, todas las secciones
     # Con señal, una vez: la app se instala y el lector se deja listo.
     pg.goto(servidor)
     pg.wait_for_function("() => window.MANT && MANT.lector")
