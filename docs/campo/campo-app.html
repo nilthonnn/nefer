@@ -751,6 +751,20 @@
   .m-diag.media { border-left-color:var(--obs); }
   .m-calidad { border-left:5px solid var(--obs); background:var(--obs-soft); border-radius:6px;
                padding:.4rem .6rem; margin:.35rem 0; font-size:.86rem; }
+  .m-insignias { display:flex; flex-wrap:wrap; gap:.25rem; margin-top:.2rem; }
+  .m-insignia { display:inline-block; font-family:var(--mono); font-size:.68rem; text-transform:uppercase;
+                letter-spacing:.04em; padding:.1rem .4rem; border-radius:4px; border:1px solid var(--rule);
+                color:var(--ink); background:var(--card-2); }
+  .m-insignia.mal { border-color:var(--mal); background:var(--mal-soft); }
+  .m-insignia.obs { border-color:var(--obs); background:var(--obs-soft); }
+  .m-insignia.ok { border-color:var(--ok); }
+  .m-cifras { display:grid; grid-template-columns:repeat(auto-fill, minmax(96px, 1fr)); gap:.4rem; margin:.4rem 0 .6rem; }
+  .m-cifra { border:1px solid var(--rule); border-radius:7px; padding:.4rem .5rem; background:var(--card); }
+  .m-cifra b { display:block; font-family:var(--cond); font-size:1.6rem; line-height:1; }
+  .m-cifra span { font-size:.75rem; color:var(--ink-2); }
+  .m-cifra.mal { border-left:5px solid var(--mal); }
+  .m-cifra.obs { border-left:5px solid var(--obs); }
+  .m-plan h2 { display:flex; gap:.5rem; align-items:center; }
   .m-sueltas { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:.45rem; }
   .m-sueltas .m-foto { margin:0; }
   .m-sueltas .m-foto img { height:120px; max-height:120px; object-fit:cover; }
@@ -1415,6 +1429,7 @@
           <label class="boton primary" for="m-eq-escanear">Escanear equipo (QR o TAG)</label>
           <span class="m-nota-sn" id="m-eq-escaneo" role="status"></span>
         </div>
+        <section class="seccion" id="m-flota" aria-live="polite"></section>
         <div class="seccion">
           <h2>Equipos <span class="tally" id="m-eq-cuenta"></span></h2>
           <label class="campo" for="m-eq-buscar" style="margin:.5rem 0">
@@ -1436,6 +1451,7 @@
              patio: desde la ficha se abre la orden, ya con el TAG. -->
         <button type="button" class="primary" id="m-f-inspeccion"
                 style="width:100%;margin:0 0 .7rem">Proceder con inspección nueva</button>
+        <section class="panel m-plan" id="m-f-plan" aria-live="polite"></section>
         <details class="panel plegable" id="m-f-revisar" open>
           <summary>Avisos <span class="tally" id="m-f-cuenta"></span></summary>
           <div class="panel-body">
@@ -4376,6 +4392,45 @@ MANT.modelo = (function () {
     return { pm: pm, objetivo: n * 250, desvio: Math.round((h - n * 250) * 10) / 10 };
   }
 
+  /* ---------- plan de mantenimiento por horómetro ----------
+     Con lo que ya hay en el teléfono —el horómetro de la ficha y las órdenes
+     de ese equipo— dice cuándo toca el próximo preventivo y cuál.
+       · `horas`      el horómetro más alto conocido del equipo;
+       · `servicios`  preventivos hechos: {pm, horometro, fecha};
+       · `lecturas`   {horas, fecha} para estimar las horas por día.
+     El próximo es el múltiplo de 250 que sigue al último servicio (o al
+     horómetro, si no hay ninguno), y su rutina sale de sugerirPM. Avisa con
+     margen (PROXIMO_H horas antes); no programa nada solo. */
+  var PROXIMO_H = 50;
+  function planPM(horas, servicios, lecturas) {
+    var h = numero(horas);
+    if (h === null) return null;
+    var hechos = (servicios || []).filter(function (x) { return numero(x.horometro) !== null; })
+      .sort(function (a, b) { return numero(b.horometro) - numero(a.horometro); });
+    var ultimo = hechos[0] || null;
+    var base = ultimo ? Math.max(250, Math.round(numero(ultimo.horometro) / 250) * 250) : null;
+    var proximo = base !== null ? base + 250 : Math.max(250, Math.ceil(h / 250) * 250);
+    var faltan = Math.round((proximo - h) * 10) / 10;
+    var saltados = faltan < 0 ? Math.floor(-faltan / 250) : 0;
+    // Si se pasaron varios servicios, toca el que corresponde al horómetro de hoy.
+    var objetivo = saltados ? Math.max(proximo, Math.round(h / 250) * 250) : proximo;
+    var rutina = sugerirPM(objetivo).pm;
+    var estado = faltan < 0 ? "vencido" : faltan <= PROXIMO_H ? "proximo" : "al_dia";
+    // Horas por día, de la primera a la última lectura con fecha.
+    var l = (lecturas || []).filter(function (x) { return numero(x.horas) !== null && x.fecha !== null && x.fecha !== undefined; })
+      .sort(function (a, b) { return a.fecha - b.fecha; });
+    var ritmo = null, estimada = null;
+    if (l.length >= 2) {
+      var dias = (l[l.length - 1].fecha - l[0].fecha) / 864e5, dh = numero(l[l.length - 1].horas) - numero(l[0].horas);
+      if (dias >= 1 && dh > 0) {
+        ritmo = Math.round(dh / dias * 10) / 10;
+        if (faltan > 0) estimada = l[l.length - 1].fecha + faltan / ritmo * 864e5;
+      }
+    }
+    return { horas: h, ultimo: ultimo, proximo: objetivo, rutina: rutina, faltan: Math.round((objetivo - h) * 10) / 10,
+             estado: estado, saltados: saltados, ritmo: ritmo, estimada: estimada, sinHistorial: !ultimo };
+  }
+
   function mapa(claves, valor) {
     var o = {};
     claves.forEach(function (k) { o[k] = clon(valor); });
@@ -4664,7 +4719,7 @@ MANT.modelo = (function () {
 
   return {
     FORMATO: FORMATO, TIPOS_SERVICIO: TIPOS_SERVICIO,
-    tipoServicio: tipoServicio, frecuencia: frecuencia, sugerirPM: sugerirPM,
+    tipoServicio: tipoServicio, frecuencia: frecuencia, sugerirPM: sugerirPM, planPM: planPM, PROXIMO_H: PROXIMO_H,
     clasificar: clasificar,
     ESTADOS: ESTADOS, FRECUENCIAS: FRECUENCIAS, ESPECIALIDADES: ESPECIALIDADES,
     TIPOS_BATERIA: TIPOS_BATERIA, ITEMS_BATERIA: ITEMS_BATERIA, CARGAS: CARGAS,
@@ -5339,9 +5394,12 @@ MANT.equipos = (function () {
       $("#m-eq-lista").innerHTML = '<p class="vacia">Este navegador no guarda fichas.</p>';
       return Promise.resolve();
     }
-    return A.equipos.listar().then(function (l) {
+    return flota().then(function (sit) {
+      pintarFlota(sit);
+      var porTag = {};
+      sit.forEach(function (x) { porTag[x.tag] = x; });
       var q = $("#m-eq-buscar").value.trim().toLowerCase();
-      l = l.map(M.normalizar.equipo).sort(function (a, b) { return a.tag < b.tag ? -1 : 1; });
+      var l = sit.map(function (x) { return x.equipo; }).sort(function (a, b) { return a.tag < b.tag ? -1 : 1; });
       var vistos = l.filter(function (e) {
         if (!q) return true;
         return [e.tag, e.grupo.modelo, e.grupo.serie, e.ubicacion]
@@ -5357,11 +5415,86 @@ MANT.equipos = (function () {
         var det = [[e.grupo.marca, e.grupo.modelo].join(" ").trim(),
                    e.grupo.serie ? "s/n " + e.grupo.serie : "", e.ubicacion]
           .filter(Boolean).join(" · ");
+        var x = porTag[e.tag] || {};
         return '<button type="button" class="m-fila" data-tag="' + esc(e.tag) + '">' +
           '<span class="m-tag">' + esc(e.tag) + "</span>" +
-          '<span class="m-det">' + esc(det || "sin datos de placa") + "</span></button>";
+          '<span class="m-det">' + esc(det || "sin datos de placa") + "</span>" + insignias(x) + "</button>";
       }).join("");
     });
+  }
+
+  /* ---------- plan y flota ---------- */
+  var ESTADO_PM = { vencido: "PM vencido", proximo: "PM próximo", al_dia: "PM al día" };
+  function horasTxt(h) { return String(Math.round(h * 10) / 10).replace(".", ",") + " h"; }
+  function insignias(x) {
+    var b = [];
+    if (x.aptitud && x.aptitud.operativo === false) b.push('<span class="m-insignia mal">no apto</span>');
+    if (x.avisos && x.avisos.length) b.push('<span class="m-insignia obs">aviso</span>');
+    if (x.plan && x.plan.estado !== "al_dia") {
+      b.push('<span class="m-insignia ' + (x.plan.estado === "vencido" ? "mal" : "obs") + '">' +
+        esc(ESTADO_PM[x.plan.estado]) + "</span>");
+    }
+    return b.length ? '<span class="m-insignias">' + b.join("") + "</span>" : "";
+  }
+  function textoPlan(pl) {
+    if (!pl) return "Sin horómetro registrado: escriba el último en la ficha para planificar el preventivo.";
+    var fr = M.frecuencia(pl.rutina);
+    var t = "Próximo: " + (fr ? fr.rotulo : pl.rutina) + " a las " + horasTxt(pl.proximo) + " · ";
+    t += pl.faltan < 0 ? "vencido por " + horasTxt(-pl.faltan) : pl.faltan === 0 ? "toca ahora" : "faltan " + horasTxt(pl.faltan);
+    if (pl.saltados) t += " (se pasaron " + pl.saltados + (pl.saltados === 1 ? " servicio" : " servicios") + ")";
+    if (pl.estimada) t += " · ≈ " + fechaCorta(pl.estimada) + " a " + String(pl.ritmo).replace(".", ",") + " h/día";
+    return t;
+  }
+
+  /* El tablero de la flota: lo que pide atención primero —no aptos, avisos
+     abiertos, PM vencidos y próximos—; cada fila abre su ficha. */
+  function pintarFlota(sit) {
+    var n = $("#m-flota");
+    if (!n) return;
+    if (!sit.length) { n.innerHTML = ""; return; }
+    var noAptos = sit.filter(function (x) { return x.aptitud && x.aptitud.operativo === false; });
+    var avisos = sit.filter(function (x) { return x.avisos.length; });
+    var vencidos = sit.filter(function (x) { return x.plan && x.plan.estado === "vencido"; });
+    var proximos = sit.filter(function (x) { return x.plan && x.plan.estado === "proximo"; });
+    var sinHoras = sit.filter(function (x) { return !x.plan; });
+    var cifra = function (v, rot, clase) {
+      return '<div class="m-cifra ' + (v ? clase : "") + '"><b>' + v + "</b><span>" + rot + "</span></div>";
+    };
+    var filas = [];
+    noAptos.forEach(function (x) {
+      filas.push([x.tag, "mal", "No apto desde " + fechaCorta(x.aptitud.fecha) + (x.aptitud.ot ? " · OT " + x.aptitud.ot : "")]);
+    });
+    vencidos.forEach(function (x) { filas.push([x.tag, "mal", textoPlan(x.plan)]); });
+    avisos.forEach(function (x) { filas.push([x.tag, "obs", "Aviso abierto: " + x.avisos[0].aviso]); });
+    proximos.forEach(function (x) { filas.push([x.tag, "obs", textoPlan(x.plan)]); });
+    n.innerHTML = "<h2>Estado de la flota</h2>" +
+      '<div class="m-cifras">' + cifra(sit.length, "equipos", "") + cifra(noAptos.length, "no aptos", "mal") +
+      cifra(avisos.length, "avisos abiertos", "obs") + cifra(vencidos.length, "PM vencidos", "mal") +
+      cifra(proximos.length, "PM en " + M.PROXIMO_H + " h", "obs") + "</div>" +
+      (filas.length ? '<div class="m-lista">' + filas.map(function (f) {
+        return '<button type="button" class="m-fila" data-tag="' + esc(f[0]) + '"><span class="m-tag">' + esc(f[0]) +
+          '</span><span class="m-det"><span class="m-insignia ' + f[1] + '">' + (f[1] === "mal" ? "atender" : "revisar") +
+          "</span> " + esc(f[2]) + "</span></button>";
+      }).join("") + "</div>" : '<p class="m-nota-sn">Nada pendiente en la flota.</p>') +
+      (sinHoras.length ? '<p class="m-nota-sn">Sin horómetro para planificar: ' + sinHoras.map(function (x) { return esc(x.tag); }).join(", ") + ".</p>" : "");
+  }
+
+  function pintarPlan(h) {
+    var n = $("#m-f-plan");
+    if (!n || !ficha) return;
+    var x = situacion(ficha, h), pl = x.plan;
+    var ult = pl && pl.ultimo;
+    n.innerHTML = '<h2>Plan de mantenimiento' + (pl ? ' <span class="m-insignia ' +
+        (pl.estado === "vencido" ? "mal" : pl.estado === "proximo" ? "obs" : "ok") + '">' + esc(ESTADO_PM[pl.estado]) + "</span>" : "") + "</h2>" +
+      '<div class="panel-body">' +
+      (pl ? "<p>Horómetro: <b>" + horasTxt(pl.horas) + "</b>" +
+        (ult ? " · último preventivo " + esc(ult.pm.split("_")[0]) + " a las " + horasTxt(M.numero(ult.horometro)) +
+               (ult.fecha ? " (" + fechaCorta(ult.fecha) + ")" : "") : " · sin preventivos registrados en este teléfono") + "</p>" : "") +
+      "<p>" + esc(textoPlan(pl)) + "</p>" +
+      (pl ? '<button type="button" class="primary" data-plan-pm="' + esc(pl.rutina) + '">Crear orden: ' +
+        esc(pl.rutina.split("_")[0]) + "</button>" : "") +
+      '<p class="m-nota-sn">Cuenta cada 250 h desde el último preventivo; la rutina mayor incluye a las menores. ' +
+      "Es una guía: usted decide cuándo hacerlo.</p></div>";
   }
 
   /* ---------- crear y abrir ---------- */
@@ -5524,17 +5657,49 @@ MANT.equipos = (function () {
     return R.proyectos.listar().then(function (l) {
       return l.filter(function (p) {
         return p.vista === "mantenimiento" && p.datos && M.tag(p.datos.tag) === M.tag(tag);
-      }).map(function (p) {
+      }).map(resumenOrden);
+    });
+  }
+  function resumenOrden(p) {
         var d = p.datos, c = d.clasificacion || {}, est = d.estados || {};
         var fallas = Object.keys(est).filter(function (k) { return est[k] && est[k].estado === "FALLA"; }).length;
         var obs = Object.keys(est).filter(function (k) { return est[k] && est[k].estado === "OBS"; }).length;
         return { id: p.id, fecha: p.modificado, estado: p.estado, anulacion: p.anulacion,
+                 tipoId: c.tipo || null, pm: c.pm || null,
                  tipo: (TIPOS[c.tipo] || "Sin clasificar") + (c.pm ? " " + c.pm.split("_")[0] : ""),
                  ot: d.ot && d.ot.ot, horometro: d.ot ? d.ot.horometroSalida : null,
                  operativo: d.informe ? d.informe.operativo : null,
                  ubicacion: d.equipo && d.equipo.ubicacion, fallas: fallas, observados: obs,
                  observaciones: d.ot && d.ot.observaciones, aviso: d.ot && d.ot.crearAviso ? d.ot.textoAviso : "" };
+  }
+
+  /* El plan y el estado de un equipo, de su ficha y sus órdenes (sin las
+     anuladas: una orden registrada por error no cuenta como servicio). */
+  function situacion(e, ordenes) {
+    var validas = ordenes.filter(function (o) { return o.estado !== "anulado"; })
+      .sort(function (a, b) { return b.fecha - a.fecha; });
+    var lecturas = validas.filter(function (o) { return o.horometro !== null && o.horometro !== undefined; })
+      .map(function (o) { return { horas: o.horometro, fecha: o.fecha }; });
+    if (e.horometro !== null) lecturas.push({ horas: e.horometro, fecha: e.actualizado || Date.now() });
+    var horas = lecturas.reduce(function (mx, x) { return Math.max(mx, M.numero(x.horas)); }, -1);
+    var servicios = validas.filter(function (o) { return o.tipoId === "PREVENTIVO" && o.pm; })
+      .map(function (o) { return { pm: o.pm, horometro: o.horometro, fecha: o.fecha }; });
+    var conAptitud = validas.filter(function (o) { return o.operativo === true || o.operativo === false; })[0] || null;
+    var avisos = validas.filter(function (o) { return o.aviso; });
+    return { tag: e.tag, equipo: e, plan: horas >= 0 ? M.planPM(horas, servicios, lecturas) : null,
+             ultima: validas[0] || null, aptitud: conAptitud, avisos: avisos };
+  }
+
+  // Toda la flota de una vez: una sola lectura de los proyectos.
+  function flota() {
+    return Promise.all([A.equipos.listar(), R.proyectos.listar()]).then(function (r) {
+      var por = {};
+      r[1].forEach(function (p) {
+        if (p.vista !== "mantenimiento" || !p.datos) return;
+        var t = M.tag(p.datos.tag);
+        (por[t] = por[t] || []).push(resumenOrden(p));
       });
+      return r[0].map(M.normalizar.equipo).map(function (e) { return situacion(e, por[e.tag] || []); });
     });
   }
   function pintarHistorial() {
@@ -5542,6 +5707,7 @@ MANT.equipos = (function () {
     var tag = ficha.tag;
     return historial(tag).then(function (h) {
       if (!ficha || ficha.tag !== tag) return;
+      pintarPlan(h);
       $("#m-f-hist-cuenta").textContent = h.length ? String(h.length) : "";
       $("#m-f-hist-lista").innerHTML = h.length ? h.map(function (x) {
         var anulada = x.estado === "anulado";
@@ -5634,7 +5800,7 @@ MANT.equipos = (function () {
   // Al entrar a la pestaña la lista se rehace: otra pantalla (una OT, un
   // proyecto importado) puede haber añadido fichas mientras tanto.
   document.addEventListener("click", function (e) {
-    if (e.target.closest("[data-ir='mantenimiento']") && !ficha) pintarLista();
+    if (e.target.closest("[data-ir='mantenimiento'], #m-seg-equipos") && !ficha) pintarLista();
     // Con una ficha abierta, su historial se rehace al volver a ella: la
     // orden que se acaba de llenar tiene que aparecer.
     if (ficha && e.target.closest("[data-ir='mantenimiento'], #m-seg-equipos")) pintarHistorial();
@@ -5677,6 +5843,25 @@ MANT.equipos = (function () {
     }).then(function () { MANT.ordenes.panel("ordenes"); });
   });
   $("#m-f-borrar").addEventListener("click", function () { borrar(); });
+  // Una orden que termina de guardarse cambia la flota y el historial: si
+  // esa pantalla está a la vista, se rehace (volver rápido no muestra lo viejo).
+  R.proyectos.alTocar(function (actual, sucio) {
+    if (sucio || !actual || actual.vista !== "mantenimiento") return;
+    var panelEq = document.getElementById("m-panel-equipos");
+    if (!panelEq || panelEq.hidden) return;
+    if (ficha) pintarHistorial(); else pintarLista();
+  });
+  $("#m-f-plan").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-plan-pm]");
+    if (!b || !ficha) return;
+    var tag = ficha.tag, pm = b.dataset.planPm;
+    volcar().then(function () { return MANT.ordenes.crear(tag, "PREVENTIVO", pm, ""); })
+      .then(function () { MANT.ordenes.panel("ordenes"); });
+  });
+  $("#m-flota").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-tag]");
+    if (b) abrir(b.dataset.tag);
+  });
   $("#m-f-campos").addEventListener("input", alEscribir);
   $("#m-f-campos").addEventListener("change", alEscribir);
 
@@ -5700,7 +5885,7 @@ MANT.equipos = (function () {
     actual: function () { return ficha ? M.clon(ficha) : null; },
     alertas: function () { return ficha ? alertas() : []; },
     listo: function () { return listo; },
-    historial: historial, escanear: escanear,
+    historial: historial, escanear: escanear, flota: flota,
     GRUPOS: GRUPOS
   };
 })();
