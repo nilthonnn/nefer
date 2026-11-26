@@ -12,14 +12,50 @@ Pruebas: `clientes/campo/tests/test_lector.py`.
 
 El lector aprende por dos vías:
 
-- **En el teléfono, solo**: cada corrección del técnico a un identificador
-  (modelo, serie, CPL, WDG, módulo) queda en `campo.lector.aprendizaje` y se
-  aplica la próxima vez («aprendido»); y lo leído se compara con las fichas
-  existentes tolerando las confusiones del OCR («según la ficha de 064»).
-  Ajustes › Aprendizaje del lector › Exportar / Importar lo pasa entre
-  teléfonos.
+- **En el teléfono, solo, y con evidencia** (`campo.lector.aprendizaje`):
+  - **Nota**: la primera corrección del técnico a un identificador (modelo,
+    serie, CPL, WDG, módulo). No cambia lo leído; lo recuerda al lado
+    («la vez anterior lo corrigió a …»).
+  - **Regla**: la misma corrección confirmada **2 veces** (`PROMOVER`) **y**
+    explicada por un error de lectura con nombre (`patronDe`: confusión
+    O/0, I/1, S/5, B/8… o un carácter mal leído). Sólo entonces se propone
+    sola («aprendido»). Si lo escrito no se parece a lo leído no es error del
+    lector (otra placa, otro equipo): queda en nota para siempre.
+  - **Descarte**: lo que el técnico desmarca se anota; con 2 descartes iguales
+    la propuesta llega sin marcar y lo dice (callejón sin salida conocido).
+  - **Nada que parezca una clave** (`pareceSecreto`) se guarda ni se importa.
+  - Además, lo leído se compara con las fichas existentes tolerando las
+    confusiones del OCR («según la ficha de 064»). Ajustes › Aprendizaje del
+    lector › Exportar / Importar lo pasa entre teléfonos.
 - **Contigo (esta skill)**: con fotos de campo se mide, se encuentra qué falla
-  y se escriben reglas y pruebas nuevas.
+  y se escriben reglas y pruebas nuevas. Una regla del código también se
+  «promueve» sólo con evidencia: una prueba que pasa, el patrón de fallo con
+  nombre y al menos un intento descartado anotado (qué no funcionó y por qué).
+
+## Lo leído se valida antes de llegar al técnico (`revisar`)
+
+- Fuera de lo posible (`RANGOS`: Hz 45–65, RPM 600–4000, SOH 0–100 %…) o un
+  horómetro menor al ya registrado → llega **sin marcar** y con el motivo.
+- Confianza del motor < 45 % → «lectura de baja confianza (NN %)».
+- El preprocesado tiene dos variantes: umbral local (por defecto) y, si
+  aquél lee poco, **contraste** (grises → contraste ×2 → mediana 3×3 →
+  nitidez). Se queda con la que mejor lee.
+
+## La prueba con carga se lee por evidencia (`MANT.validaciones.diagnosticar`)
+
+Cada hallazgo separa **medido** / **puede indicar** (con confianza alta,
+media o investigar) / **supuesto** (conocimiento general, no medido) /
+**verificar**. Sin el dato de placa (voltaje, Hz, RPM, kVA, voltaje de
+baterías) no se interpreta: se dice qué falta. Nunca decide: el técnico
+confirma y responde por la seguridad. Se aprendió de métodos de diagnóstico
+de maquinaria; las skills de vibración no aplican (necesitan sensores).
+
+## Qué no se usa y por qué
+
+- Leer las fotos con un servicio de visión en la nube: las fotos son del
+  cliente y no salen del teléfono.
+- Instalar skills de terceros sin revisarlas: se toman las ideas y se
+  reescriben aquí, con pruebas.
 
 ## Pasos
 

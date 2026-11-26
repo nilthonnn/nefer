@@ -743,6 +743,12 @@
   .m-subgrupo > summary > span:first-child { flex:1; }
   .m-subgrupo > summary::after { content:"\25BE"; }
   .m-subgrupo[open] > summary::after { content:"\25B4"; }
+  .m-diag { border-left:5px solid var(--rule); background:var(--card-2); border-radius:6px;
+            padding:.45rem .7rem; margin:0 0 .45rem; font-size:.88rem; }
+  .m-diag p { margin:.15rem 0; }
+  .m-diag .lb { display:inline-block; min-width:6.5rem; }
+  .m-diag.alta { border-left-color:var(--mal); }
+  .m-diag.media { border-left-color:var(--obs); }
   .m-sueltas { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:.45rem; }
   .m-sueltas .m-foto { margin:0; }
   .m-sueltas .m-foto img { height:120px; max-height:120px; object-fit:cover; }
@@ -4753,6 +4759,110 @@ MANT.validaciones = (function () {
     return a;
   }
 
+  /* ---------- lectura por evidencia de la prueba con carga ----------
+     Del método de diagnóstico por evidencia: cada hallazgo separa
+       · medido      — los números de la tabla, tal cual,
+       · interpretación, con su confianza (alta / media / investigar),
+       · supuesto    — lo que viene del conocimiento general de grupos
+                       electrógenos y NO de la medición,
+       · verificar   — qué mirar en el equipo para confirmarlo o descartarlo.
+     Nunca se adivina: sin el dato de placa (voltaje, Hz, RPM, kVA) no se
+     interpreta, se dice que falta. Y nunca decide: el técnico confirma y es
+     quien responde por la seguridad del equipo. */
+  var GENERAL = "Conocimiento general de grupos electrógenos, no medido";
+  function diagnosticar(eq, pruebas) {
+    eq = M.normalizar.equipo(eq || {});
+    var out = [], col = function (p) { return p.carga === "inicial" ? "valor inicial" : p.carga === 0 ? "vacío" : p.carga + " %"; };
+    var num = function (p, k) { return p ? M.numero(p[k]) : null; };
+    var lista = (pruebas || []).filter(function (p) { return p; });
+    var vacio = lista.filter(function (p) { return p.carga === 0; })[0];
+    var cargadas = lista.filter(function (p) { return typeof p.carga === "number" && p.carga > 0; });
+    var mayor = cargadas.filter(function (p) {
+      return ["hz", "voltajeLL", "presionAceitePsi", "tempRefrigeranteC", "corrienteA", "vBateria", "rpm"]
+        .some(function (k) { return num(p, k) !== null; });
+    }).sort(function (a, b) { return b.carga - a.carga; })[0];
+    function h(o) { o.supuesto = o.supuesto || GENERAL; out.push(o); }
+    var faltan = [];
+
+    // Frecuencia que cae con la carga: velocidad.
+    if (vacio && mayor && num(vacio, "hz") !== null && num(mayor, "hz") !== null) {
+      if (!eq.frecuenciaHz) faltan.push("frecuencia");
+      else {
+        var caida = num(vacio, "hz") - num(mayor, "hz");
+        if (caida > 1) h({ tema: "Frecuencia con carga", confianza: caida > 2 ? "alta" : "media",
+          medido: "Hz " + num(vacio, "hz") + " en vacío → " + num(mayor, "hz") + " a " + col(mayor) + " (placa " + eq.frecuenciaHz + " Hz)",
+          interpretacion: "La frecuencia cae " + caida.toFixed(1).replace(".", ",") + " Hz al tomar carga: compatible con un gobernador lento, combustible restringido o carga mayor a la que el motor sostiene.",
+          verificar: "Filtros y suministro de combustible, respuesta del gobernador / actuador y carga real frente a la potencia de placa." });
+      }
+    }
+    // Voltaje que cae con la carga: excitación / AVR.
+    if (vacio && mayor && num(vacio, "voltajeLL") !== null && num(mayor, "voltajeLL") !== null) {
+      var v0 = num(vacio, "voltajeLL"), v1 = num(mayor, "voltajeLL"), dv = (v0 - v1) / v0;
+      if (dv > 0.05) h({ tema: "Regulación de voltaje", confianza: dv > 0.1 ? "alta" : "media",
+        medido: "VLL " + v0 + " V en vacío → " + v1 + " V a " + col(mayor),
+        interpretacion: "El voltaje cae " + (dv * 100).toFixed(1).replace(".", ",") + " % con la carga: compatible con un regulador de voltaje (AVR) o excitación que no compensa, o con sobrecarga.",
+        verificar: "AVR y su ajuste, conexiones del alternador, diodos rotativos y la corriente frente a la nominal." });
+    }
+    // Corriente frente a la nominal de placa.
+    if (mayor && num(mayor, "corrienteA") !== null) {
+      var vn = eq.voltajeNominal || null;
+      if (!eq.kva || !vn) faltan.push("kVA y voltaje nominal");
+      else {
+        var inom = eq.kva * 1000 / ((eq.fases === 1 ? 1 : Math.sqrt(3)) * vn), uso = num(mayor, "corrienteA") / inom;
+        if (uso > 1) h({ tema: "Carga", confianza: "alta",
+          medido: num(mayor, "corrienteA") + " A a " + col(mayor) + "; nominal de placa ≈ " + Math.round(inom) + " A (" + eq.kva + " kVA, " + vn + " V)",
+          interpretacion: "La corriente supera la nominal (" + Math.round(uso * 100) + " %): sobrecarga.",
+          supuesto: "Corriente nominal calculada con la placa: kVA × 1000 / (√3 × V).",
+          verificar: "Repartir o reducir la carga y revisar el ajuste de la protección del interruptor principal." });
+      }
+    }
+    // Presión de aceite que baja con carga o temperatura.
+    if (vacio && mayor && num(vacio, "presionAceitePsi") !== null && num(mayor, "presionAceitePsi") !== null) {
+      var p0 = num(vacio, "presionAceitePsi"), p1 = num(mayor, "presionAceitePsi");
+      if (p1 < p0 * 0.7 && p1 < 40) h({ tema: "Lubricación", confianza: "investigar",
+        medido: "Presión " + p0 + " psi en vacío → " + p1 + " psi a " + col(mayor),
+        interpretacion: "La presión baja con la carga más de lo esperable: compatible con aceite diluido o muy caliente, nivel bajo o desgaste de la bomba. No se puede afirmar cuál sin revisar.",
+        verificar: "Nivel y aspecto del aceite (combustible, refrigerante), temperatura, filtro y sensor de presión." });
+    }
+    // Temperatura alta en carga.
+    if (mayor && num(mayor, "tempRefrigeranteC") !== null && num(mayor, "tempRefrigeranteC") > 95) {
+      h({ tema: "Refrigeración", confianza: num(mayor, "tempRefrigeranteC") > 100 ? "alta" : "media",
+        medido: "Refrigerante " + num(mayor, "tempRefrigeranteC") + " °C a " + col(mayor),
+        interpretacion: "Temperatura alta con carga: compatible con radiador obstruido, faja floja, nivel bajo de refrigerante o termostato.",
+        verificar: "Fotos del radiador (c15), fajas y ventilador (c16) y nivel de refrigerante (c14)." });
+    }
+    // Carga de baterías con el motor en marcha.
+    var enMarcha = lista.filter(function (p) { return p.carga !== "inicial" && num(p, "vBateria") !== null; })[0];
+    if (enMarcha) {
+      var vb = num(enMarcha, "vBateria"), sist = eq.bateria && eq.bateria.voltaje;
+      if (!sist) faltan.push("voltaje del sistema de baterías");
+      else {
+        var k = sist >= 24 ? 2 : 1;
+        if (vb < 13.2 * k) h({ tema: "Carga de baterías", confianza: "media",
+          medido: "Batería " + vb + " V con el motor en marcha (" + col(enMarcha) + "), sistema de " + sist + " V",
+          interpretacion: "Con el motor en marcha la batería debería estar cargando (≈ " + (13.8 * k).toFixed(1).replace(".", ",") + "–" + (14.4 * k).toFixed(1).replace(".", ",") + " V): compatible con alternador de carga o faja que no carga.",
+          verificar: "Faja y conexiones del alternador de carga; medir con multímetro en bornes." });
+        else if (vb > 14.8 * k) h({ tema: "Carga de baterías", confianza: "media",
+          medido: "Batería " + vb + " V en marcha, sistema de " + sist + " V",
+          interpretacion: "Voltaje de carga alto: compatible con regulador del alternador de carga dañado; acelera la pérdida de electrolito.",
+          verificar: "Regulador del alternador de carga y nivel de electrolito." });
+      }
+    }
+    // Velocidad frente a la de placa.
+    if (mayor && num(mayor, "rpm") !== null) {
+      if (!eq.rpm) faltan.push("RPM nominal");
+      else if (Math.abs(num(mayor, "rpm") - eq.rpm) / eq.rpm > 0.02) h({ tema: "Velocidad (RPM)", confianza: "media",
+        medido: num(mayor, "rpm") + " RPM a " + col(mayor) + " (placa " + eq.rpm + ")",
+        interpretacion: "La velocidad se aleja más de 2 % de la nominal.",
+        verificar: "Ajuste del gobernador y sensor de velocidad (pickup magnético)." });
+    }
+    if (faltan.length) out.push({ tema: "Sin dato de placa", confianza: "investigar", medido: "—",
+      interpretacion: "Falta " + faltan.filter(function (x, i) { return faltan.indexOf(x) === i; }).join(", ") +
+        " en la placa confirmada: no se interpreta sin ese dato (no se adivina).",
+      supuesto: "—", verificar: "Complete la ficha del equipo con la placa y confírmela en la orden." });
+    return out;
+  }
+
   /* ---------- batería ----------
      La del kit. SOH < 70 % crítico (evaluar reemplazo), < 85 % aviso
      (seguimiento), SOC < 75 % aviso (cargar). En un check-list, además, los
@@ -5066,6 +5176,7 @@ MANT.validaciones = (function () {
   return { validarEquipo: validarEquipo, validarOT: validarOT,
            validarMantenimiento: validarMantenimiento, tagEnTexto: tagEnTexto,
            validarPrueba: validarPrueba, TOL_AVISO: TOL_AVISO, TOL_CRITICO: TOL_CRITICO,
+           diagnosticar: diagnosticar,
            validarBateria: validarBateria, validarProbador: validarProbador,
            ordenar: ordenar, VOLTAJES: VOLTAJES };
 })();
@@ -5857,14 +5968,17 @@ MANT.ordenes = (function () {
     var filas = L.propuestas.map(function (x, k) {
       var otro = x.destino === "tag" && x.valor !== m.tag;
       return '<div class="m-propuesta' + (otro ? " otro" : "") + '">' +
-        '<label class="m-usar"><input type="checkbox" data-usar="' + k + '"' + (x.destino === "tag" ? " disabled" : " checked") + "> " +
+        '<label class="m-usar"><input type="checkbox" data-usar="' + k + '"' + (x.destino === "tag" ? " disabled" : x.duda ? "" : " checked") + "> " +
         esc(x.rotulo) + (x.destino === "ficha" ? " <small>(ficha del equipo)</small>" : "") + "</label>" +
         (x.destino === "tag"
           ? '<p class="' + (otro ? "m-lect-mal" : "m-ok") + '">' + esc(x.valor) +
             (otro ? " — la foto es de otro equipo: esta orden es del " + esc(m.tag) : " — coincide con la orden") + "</p>"
           : '<input type="text" data-valor-prop="' + k + '" value="' + esc(x.valor == null ? "" : x.valor) + '">' +
             (x.leido !== undefined ? '<p class="m-nota-sn">Leído «' + esc(x.leido) + "» · corregido " +
-              (x.origen === "aprendido" ? "con lo aprendido en este teléfono" : "según la " + esc(x.origen)) + "</p>" : "")) +
+              (x.origen === "aprendido" ? "con una regla aprendida en este teléfono" : "según la " + esc(x.origen)) + "</p>" : "") +
+            (x.antes !== undefined ? '<p class="m-nota-sn">La vez anterior lo corrigió a «' + esc(x.antes) +
+              "»: si vuelve a corregirlo igual, el teléfono lo aprende.</p>" : "") +
+            (x.duda ? '<p class="m-lect-mal">Revise antes de usar: ' + esc(x.duda) + "</p>" : "")) +
         "</div>";
     }).join("");
     return '<div class="m-lectura"><p class="m-sub">Leído de la foto' + (L.recortada ? " (encuadre)" : "") +
@@ -5917,7 +6031,8 @@ MANT.ordenes = (function () {
       var fichas = r[1] || [], tags = fichas.map(function (e) { return e.tag; });
       var nominal = m.equipo.voltajeNominal || (ctx.ficha && M.normalizar.equipo(ctx.ficha).voltajeNominal) || null;
       return MANT.lector.leerFoto(r[0].archivo, f.casilla,
-        { tags: tags, fichas: fichas, tag: m.tag, nominal: nominal }, function (estado, avance) {
+        { tags: tags, fichas: fichas, tag: m.tag, nominal: nominal,
+          horometroPrevio: (ctx.ficha && M.normalizar.equipo(ctx.ficha).horometro) || null }, function (estado, avance) {
         if (!lectura || lectura.foto !== f.foto) return;
         lectura.aviso = (/recogniz/.test(estado) ? "leyendo" : "preparando el lector") + "… " + Math.round(avance * 100) + " %";
         var n = raiz.querySelector(".m-lectura-estado");
@@ -5944,7 +6059,12 @@ MANT.ordenes = (function () {
     if (!L) return Promise.resolve();
     var elegidas = [];
     raiz.querySelectorAll(".m-lectura [data-usar]").forEach(function (cb) {
-      if (!cb.checked || cb.disabled) return;
+      if (cb.disabled) return;
+      if (!cb.checked) {
+        var xd = L.propuestas[Number(cb.dataset.usar)];
+        if (xd) MANT.lector.descartar(xd.ruta, xd.leido !== undefined ? xd.leido : xd.valor);
+        return;
+      }
       var k = Number(cb.dataset.usar), x = L.propuestas[k];
       var campo = raiz.querySelector('.m-lectura [data-valor-prop="' + k + '"]');
       var crudo = campo ? campo.value.trim() : x.valor;
@@ -6092,7 +6212,23 @@ MANT.ordenes = (function () {
           (lleno ? " · con datos" : "") + "</summary>" +
           campos(F.parametros.map(function (r) { return [b + r[0], r[1], "num"]; })
                  .concat([[b + "voltajeLN", "Voltaje L-N (V)", "num"]])) + "</details>";
-      }).join("");
+      }).join("") +
+      '<p class="m-sub">Lectura por evidencia</p>' +
+      '<p class="m-nota-sn">Lo medido, lo que podría indicar y qué revisar. No decide: usted confirma.</p>' +
+      '<div id="m-o-diag" role="status" aria-live="polite"></div>';
+  }
+
+  function pintarDiagnostico() {
+    var n = raiz.querySelector("#m-o-diag");
+    if (!n || !m) return;
+    var l = V.diagnosticar(m.equipo, m.informe.pruebas);
+    n.innerHTML = l.length ? l.map(function (d) {
+      return '<div class="m-diag ' + esc(d.confianza) + '"><p><b>' + esc(d.tema) + "</b> · confianza " + esc(d.confianza) + "</p>" +
+        "<p><span class=\"lb\">Medido</span> " + esc(d.medido) + "</p>" +
+        "<p><span class=\"lb\">Puede indicar</span> " + esc(d.interpretacion) + "</p>" +
+        "<p><span class=\"lb\">Supuesto</span> " + esc(d.supuesto) + "</p>" +
+        "<p><span class=\"lb\">Verificar</span> " + esc(d.verificar) + "</p></div>";
+    }).join("") : '<p class="m-nota-sn">Sin hallazgos con lo cargado en la tabla (vacío y con carga).</p>';
   }
 
   /* ---------- firmas dibujadas ----------
@@ -6388,6 +6524,7 @@ MANT.ordenes = (function () {
   function pintarAlertas() {
     if (!m) return;
     pintarReporte();
+    pintarDiagnostico();
     var l = alertas();
     var vistas = {};
     m.decisiones.forEach(function (d) { vistas[d.clave] = d; });
@@ -11544,15 +11681,60 @@ MANT.lector = (function () {
     try { localStorage.setItem(CLAVE_APRENDIZAJE, JSON.stringify(a)); return true; } catch (e) { return false; }
   }
   function clave(ruta, leido) { return ruta + "|" + String(leido).toUpperCase(); }
+  /* Aprender por etapas, con evidencia:
+       · NOTA  — la primera corrección. No cambia lo leído: sólo lo recuerda
+                 al lado («la vez anterior lo corrigió a …»).
+       · REGLA — la misma corrección confirmada dos veces o más, y explicada
+                 por un error de lectura con nombre (confusión O/0, I/1, S/5…
+                 o un carácter mal leído). Sólo entonces se propone sola.
+     Si lo que el técnico escribió no se parece a lo leído, no es un error del
+     lector (otra placa, otro equipo): se guarda como nota y nunca sube a
+     regla. Lo que el técnico desmarca se anota como descarte; dos descartes
+     iguales hacen que la propuesta llegue sin marcar y con el aviso.
+     Nunca se guarda nada que parezca una clave o contraseña. */
+  var PROMOVER = 2;
+  function pareceSecreto(v) {
+    var t = String(v == null ? "" : v);
+    return t.length > 40 || /(sk-|ghp_|AKIA|bearer\s|password|contrase|token)/i.test(t);
+  }
+  function patronDe(leido, usado) {
+    var a = String(leido).toUpperCase(), b = String(usado).toUpperCase();
+    if (a === b) return null;
+    if (confusiones(a) === confusiones(b)) return "confusión de caracteres del lector (O/0, I/1, S/5, B/8…)";
+    if (distancia(a.replace(/[^A-Z0-9]/g, ""), b.replace(/[^A-Z0-9]/g, "")) <= 1) return "un carácter mal leído";
+    return null;
+  }
+  function etapa(c) { return c && c.patron && c.veces >= PROMOVER ? "regla" : "nota"; }
   // El técnico usó `usado` donde se leyó `leido`.
   function aprender(ruta, leido, usado) {
     if (leido === null || leido === undefined || usado === null || usado === undefined) return;
     if (String(leido).toUpperCase() === String(usado).toUpperCase()) return;
+    if (pareceSecreto(leido) || pareceSecreto(usado)) return;
     var a = aprendizaje(), k = clave(ruta, leido);
     a.correcciones = a.correcciones || {};
     var c = a.correcciones[k] || { ruta: ruta, leido: String(leido), usado: usado, veces: 0 };
+    // Otra corrección distinta para la misma lectura: la evidencia anterior
+    // ya no vale, se empieza de nuevo.
+    if (String(c.usado).toUpperCase() !== String(usado).toUpperCase()) c.veces = 0;
     c.usado = usado; c.veces += 1; c.ultima = Date.now();
+    c.patron = patronDe(leido, usado);
+    c.etapa = etapa(c);
     a.correcciones[k] = c;
+    guardarAprendizaje(a);
+  }
+  // El técnico desmarcó una propuesta: un callejón sin salida para la próxima.
+  function descartar(ruta, leido) {
+    if (leido === null || leido === undefined || leido === "" || pareceSecreto(leido)) return;
+    var a = aprendizaje(), k = clave(ruta, leido);
+    a.descartes = a.descartes || {};
+    var d = a.descartes[k] || { ruta: ruta, leido: String(leido), veces: 0 };
+    d.veces += 1; d.ultima = Date.now();
+    a.descartes[k] = d;
+    var ks = Object.keys(a.descartes);
+    if (ks.length > 300) {
+      ks.sort(function (x, y) { return a.descartes[x].ultima - a.descartes[y].ultima; });
+      ks.slice(0, ks.length - 300).forEach(function (x) { delete a.descartes[x]; });
+    }
     guardarAprendizaje(a);
   }
   function confusiones(t) {
@@ -11584,7 +11766,8 @@ MANT.lector = (function () {
     });
     return propuestas.map(function (x) {
       var c = corr[clave(x.ruta, x.valor)];
-      if (c) return extender(x, { valor: c.usado, leido: x.valor, origen: "aprendido" });
+      if (c && etapa(c) === "regla") return extender(x, { valor: c.usado, leido: x.valor, origen: "aprendido" });
+      if (c) x = extender(x, { antes: c.usado });
       if (/\.(modelo|serie)$/.test(x.ruta) && typeof x.valor === "string") {
         var nx = confusiones(x.valor), cand = null;
         conocidos.forEach(function (k) {
@@ -11617,7 +11800,17 @@ MANT.lector = (function () {
     a.correcciones = a.correcciones || {};
     Object.keys(entra).forEach(function (k) {
       var x = entra[k], y = a.correcciones[k];
-      if (!y || (x.ultima || 0) > (y.ultima || 0)) { a.correcciones[k] = x; n++; }
+      if (pareceSecreto(x && x.leido) || pareceSecreto(x && x.usado)) return;
+      if (!y || (x.ultima || 0) > (y.ultima || 0)) {
+        x.patron = patronDe(x.leido, x.usado); x.etapa = etapa(x);
+        a.correcciones[k] = x; n++;
+      }
+    });
+    var des = (j.datos && j.datos.descartes) || {};
+    a.descartes = a.descartes || {};
+    Object.keys(des).forEach(function (k) {
+      var x = des[k], y = a.descartes[k];
+      if (!y || (x.ultima || 0) > (y.ultima || 0)) a.descartes[k] = x;
     });
     guardarAprendizaje(a);
     return n;
@@ -11723,7 +11916,39 @@ MANT.lector = (function () {
      binarizarla con un umbral LOCAL —el reflejo del sol y el fondo verde de
      las pantallas no dejan usar uno solo para toda la imagen— y leerla en
      dos modos de página (bloque y texto disperso). */
-  function prepararImagen(blob, giro) {
+  /* Segundo preparado, para cuando el umbral local lee poco: grises,
+     contraste ×2 alrededor de la media, mediana 3×3 contra el ruido y
+     nitidez (el núcleo «SHARPEN» clásico). Sirve en pantallas con poco
+     contraste y placas grabadas, donde binarizar borra los trazos finos. */
+  function contrastar(y, W, H) {
+    var n = W * H, media = 0, i, r, q;
+    for (i = 0; i < n; i++) media += y[i];
+    media /= n || 1;
+    var a = new Float32Array(n);
+    for (i = 0; i < n; i++) a[i] = Math.max(0, Math.min(255, media + (y[i] - media) * 2));
+    var b = new Float32Array(n), v = [];
+    for (r = 0; r < H; r++) for (q = 0; q < W; q++) {
+      v.length = 0;
+      for (var dr = -1; dr <= 1; dr++) for (var dq = -1; dq <= 1; dq++) {
+        var rr = Math.min(H - 1, Math.max(0, r + dr)), qq = Math.min(W - 1, Math.max(0, q + dq));
+        v.push(a[rr * W + qq]);
+      }
+      v.sort(function (x, z) { return x - z; });
+      b[r * W + q] = v[4];
+    }
+    var c = new Float32Array(n);
+    for (r = 0; r < H; r++) for (q = 0; q < W; q++) {
+      var s = 0;
+      for (var er = -1; er <= 1; er++) for (var eq = -1; eq <= 1; eq++) {
+        var r2 = Math.min(H - 1, Math.max(0, r + er)), q2 = Math.min(W - 1, Math.max(0, q + eq));
+        s += b[r2 * W + q2] * (er === 0 && eq === 0 ? 32 : -2);
+      }
+      c[r * W + q] = Math.max(0, Math.min(255, s / 16));
+    }
+    return c;
+  }
+
+  function prepararImagen(blob, giro, modo) {
     return createImageBitmap(blob).then(function (img) {
       var rot = giro % 180 !== 0, iw = rot ? img.height : img.width, ih = rot ? img.width : img.height;
       var esc = Math.min(1500 / ih, 3000 / iw);
@@ -11738,6 +11963,12 @@ MANT.lector = (function () {
       if (img.close) img.close();
       var d = g.getImageData(0, 0, W, H), p = d.data, y = new Float32Array(W * H), i, j;
       for (i = 0, j = 0; i < p.length; i += 4, j++) y[j] = p[i] * 0.299 + p[i + 1] * 0.587 + p[i + 2] * 0.114;
+      if (modo === "contraste") {
+        var cc = contrastar(y, W, H);
+        for (i = 0, j = 0; i < p.length; i += 4, j++) p[i] = p[i + 1] = p[i + 2] = cc[j];
+        g.putImageData(d, 0, 0);
+        return new Promise(function (ok) { c.toBlob(ok, "image/png"); });
+      }
       // Imagen integral: la media de cualquier ventana en tiempo constante.
       var I = new Float64Array((W + 1) * (H + 1)), r, q;
       for (r = 1; r <= H; r++) {
@@ -11760,8 +11991,8 @@ MANT.lector = (function () {
     });
   }
 
-  function leerPreparada(blob, giro, avance) {
-    return Promise.all([preparar(avance), prepararImagen(blob, giro)]).then(function (r) {
+  function leerPreparada(blob, giro, avance, modo) {
+    return Promise.all([preparar(avance), prepararImagen(blob, giro, modo)]).then(function (r) {
       var w = r[0], img = r[1], textos = [], confianza = 0;
       // Dos modos de página: 6 (un bloque) y 11 (texto disperso). Se unen;
       // la confianza del motor se toma del primero.
@@ -11788,26 +12019,75 @@ MANT.lector = (function () {
   function leerFoto(blob, idc, opciones, avance) {
     var mejor = null;
     opciones = opciones || {};
-    function intento(giro) {
-      return leerPreparada(blob, giro, avance).then(function (r) {
+    function intento(giro, modo) {
+      return leerPreparada(blob, giro, avance, modo).then(function (r) {
         var p = interpretar(r.texto, idc, opciones);
         var n = p.filter(function (x) { return x.destino !== "tag"; }).length;
         var nota = r.confianza + n * 8;
-        if (!mejor || nota > mejor.nota) mejor = { texto: r.texto, giro: giro, propuestas: p, n: n, nota: nota, confianza: r.confianza };
+        if (!mejor || nota > mejor.nota) mejor = { texto: r.texto, giro: giro, propuestas: p, n: n, nota: nota,
+                                                   confianza: r.confianza, modo: modo || "umbral" };
         return r;
       });
     }
-    return intento(0).then(function (r) {
-      if (r.confianza >= 60 && mejor.n > 0) return mejor;
-      return intento(90).then(function () { return intento(270); }).then(function () { return mejor; });
-    }).then(function (r) {
-      r.propuestas = ajustar(r.propuestas, opciones.fichas, opciones.tag);
+    function bueno() { return mejor && mejor.confianza >= 60 && mejor.n > 0; }
+    return intento(0).then(function () {
+      if (bueno()) return;
+      return intento(90).then(function () { return intento(270); });
+    }).then(function () {
+      // Si el umbral local leyó poco, una pasada más con el otro preparado,
+      // en el giro que mejor salió.
+      if (bueno()) return;
+      return intento(mejor.giro, "contraste");
+    }).then(function () {
+      var r = mejor;
+      r.propuestas = revisar(ajustar(r.propuestas, opciones.fichas, opciones.tag), r.confianza, opciones);
       return r;
+    });
+  }
+
+  /* ---------- validar lo leído ----------
+     Lo que el lector propone pasa por un control de lo posible antes de
+     llegar al técnico: un valor fuera de rango, o leído con poca confianza,
+     no se marca solo —queda a la vista con el motivo y él decide—. Es la
+     regla del diagnóstico por evidencia: se dice qué se midió, qué se
+     interpreta y qué no se puede afirmar; nunca se adivina. */
+  var RANGOS = {
+    hz: [45, 65, "Hz"], frecuenciaHz: [45, 65, "Hz"], rpm: [600, 4000, "RPM"],
+    voltajeLL: [100, 15000, "V"], voltajeLN: [50, 9000, "V"], voltajeNominal: [100, 15000, "V"],
+    vBateria: [8, 32, "V"], presionAceitePsi: [0, 150, "PSI"], tempRefrigeranteC: [-30, 130, "°C"],
+    corrienteA: [0, 6000, "A"], kw: [0, 5000, "kW"], kva: [1, 6000, "kVA"],
+    "probador.soh": [0, 100, "%"], "probador.soc": [0, 100, "%"], "probador.voltaje": [8, 32, "V"],
+    "probador.ccaMedido": [50, 3000, "CCA"], "probador.resistenciaMOhm": [0.5, 50, "mΩ"],
+    "bateria.voltaje": [6, 48, "V"], "bateria.ah": [10, 400, "Ah"], fases: [1, 3, ""]
+  };
+  function hoja(ruta) { var t = String(ruta || "").split("."); return t[t.length - 1]; }
+  function verosimil(x, opciones) {
+    if (typeof x.valor !== "number") return null;
+    var R = RANGOS[x.ruta] || RANGOS[hoja(x.ruta)];
+    if (R && (x.valor < R[0] || x.valor > R[1])) {
+      return "fuera de lo posible para este dato (" + R[0] + "–" + R[1] + " " + R[2] + ")";
+    }
+    if (/horometro/i.test(x.ruta) && opciones.horometroPrevio && x.valor < opciones.horometroPrevio) {
+      return "menor que el horómetro ya registrado (" + opciones.horometroPrevio + " h): el horómetro no retrocede";
+    }
+    return null;
+  }
+  function revisar(propuestas, confianza, opciones) {
+    var rech = (aprendizaje().descartes) || {};
+    return propuestas.map(function (x) {
+      if (x.destino === "tag") return x;
+      var motivos = [], v = verosimil(x, opciones || {});
+      if (v) motivos.push(v);
+      if (confianza < 45) motivos.push("lectura de baja confianza (" + Math.round(confianza) + " %)");
+      var d = rech[clave(x.ruta, x.valor)];
+      if (d && d.veces >= 2) motivos.push("descartado antes " + d.veces + " veces en este teléfono");
+      return motivos.length ? extender(x, { duda: motivos.join(" · ") }) : x;
     });
   }
 
   return { LEE: LEE, interpretar: interpretar, reconocerTag: reconocerTag, disponible: disponible, leerFoto: leerFoto,
            prepararImagen: prepararImagen, aprender: aprender, ajustar: ajustar, aprendizaje: aprendizaje,
+           descartar: descartar, revisar: revisar, verosimil: verosimil, patronDe: patronDe, etapa: etapa,
            exportarAprendizaje: exportarAprendizaje, importarAprendizaje: importarAprendizaje,
            confusiones: confusiones,
            preparar: preparar, leer: leer, listoSinSenal: listoSinSenal, descargar: descargar };
